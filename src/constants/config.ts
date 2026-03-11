@@ -1,0 +1,55 @@
+import { NativeModules, Platform } from 'react-native';
+import RuntimeConfig from 'react-native-config';
+
+const asNumber = (value: string | undefined, fallback: number): number => {
+  if (!value) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const readEnv = (key: string): string => {
+  const nativeConfigModule = (NativeModules as Record<string, Record<string, unknown>>)
+    .RNCConfigModule;
+  const candidates: Array<Record<string, unknown> | undefined> = [
+    RuntimeConfig as unknown as Record<string, unknown>,
+    (RuntimeConfig as unknown as { default?: Record<string, unknown> }).default,
+    nativeConfigModule,
+  ];
+
+  for (const candidate of candidates) {
+    const value = candidate?.[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+
+  return '';
+};
+
+export const CONFIG = {
+  // Supabase anon key is public by design, but still loaded from env so credentials
+  // are not committed in source code.
+  SUPABASE_URL: readEnv('SUPABASE_URL'),
+  SUPABASE_ANON_KEY: readEnv('SUPABASE_ANON_KEY'),
+
+  // Support one shared key or platform-specific keys.
+  GOOGLE_PLACES_API_KEY_IOS: readEnv('GOOGLE_PLACES_API_KEY_IOS'),
+  GOOGLE_PLACES_API_KEY_ANDROID: readEnv('GOOGLE_PLACES_API_KEY_ANDROID'),
+  GOOGLE_PLACES_API_KEY: readEnv('GOOGLE_PLACES_API_KEY'),
+
+  get GOOGLE_PLACES_API_KEY_PLATFORM() {
+    if (Platform.OS === 'ios' && this.GOOGLE_PLACES_API_KEY_IOS) {
+      return this.GOOGLE_PLACES_API_KEY_IOS;
+    }
+    if (Platform.OS === 'android' && this.GOOGLE_PLACES_API_KEY_ANDROID) {
+      return this.GOOGLE_PLACES_API_KEY_ANDROID;
+    }
+    return this.GOOGLE_PLACES_API_KEY;
+  },
+
+  GEOFENCE_RADIUS: asNumber(readEnv('GEOFENCE_RADIUS'), 50),
+  LOCATION_UPDATE_INTERVAL: asNumber(readEnv('LOCATION_UPDATE_INTERVAL'), 10000),
+  LOCATION_DISTANCE_FILTER: asNumber(readEnv('LOCATION_DISTANCE_FILTER'), 50),
+};

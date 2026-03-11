@@ -1,6 +1,11 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+project.ext.envConfigFiles = [
+    debug: ".env",
+    release: ".env",
+]
+apply from: project(':react-native-config').projectDir.getPath() + "/dotenv.gradle"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -84,6 +89,14 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        resValue "string", "build_config_package", "com.rallyapp"
+        ndk {
+            abiFilters "arm64-v8a", "x86_64", "armeabi-v7a", "x86"
+        }
+        // react-native-maps needs this for the map tile; enable "Maps SDK for Android" on the key in Google Cloud.
+        manifestPlaceholders = [
+            GOOGLE_MAPS_API_KEY: project.ext.env.get("GOOGLE_MAPS_API_KEY_ANDROID") ?: project.ext.env.get("GOOGLE_PLACES_API_KEY_ANDROID") ?: project.ext.env.get("GOOGLE_PLACES_API_KEY") ?: ""
+        ]
     }
     signingConfigs {
         debug {
@@ -116,4 +129,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+}
+if (file("google-services.json").exists()) {
+    apply plugin: "com.google.gms.google-services"
+} else {
+    logger.warn("google-services.json not found in android/app. Firebase push will be disabled on Android until file is added.")
 }

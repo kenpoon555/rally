@@ -1,0 +1,34 @@
+diff --git a/node_modules/@supabase/realtime-js/dist/main/lib/transformers.js b/node_modules/@supabase/realtime-js/dist/main/lib/transformers.js
+index 3d82d77..ff0f70f 100644
+--- a/node_modules/@supabase/realtime-js/dist/main/lib/transformers.js
++++ b/node_modules/@supabase/realtime-js/dist/main/lib/transformers.js
+@@ -223,19 +223,22 @@ const toTimestampString = (value) => {
+ exports.toTimestampString = toTimestampString;
+ const httpEndpointURL = (socketUrl) => {
+     const wsUrl = new URL(socketUrl);
+-    wsUrl.protocol = wsUrl.protocol.replace(/^ws/i, 'http');
+-    wsUrl.pathname = wsUrl.pathname
++    // Create a new URL with modified protocol (protocol is read-only in React Native)
++    const newProtocol = wsUrl.protocol.replace(/^ws/i, 'http');
++    let pathname = wsUrl.pathname
+         .replace(/\/+$/, '') // remove all trailing slashes
+         .replace(/\/socket\/websocket$/i, '') // remove the socket/websocket path
+         .replace(/\/socket$/i, '') // remove the socket path
+         .replace(/\/websocket$/i, ''); // remove the websocket path
+-    if (wsUrl.pathname === '' || wsUrl.pathname === '/') {
+-        wsUrl.pathname = '/api/broadcast';
++    if (pathname === '' || pathname === '/') {
++        pathname = '/api/broadcast';
+     }
+     else {
+-        wsUrl.pathname = wsUrl.pathname + '/api/broadcast';
++        pathname = pathname + '/api/broadcast';
+     }
+-    return wsUrl.href;
++    // Construct URL string manually to avoid read-only protocol issue
++    const port = wsUrl.port ? `:${wsUrl.port}` : '';
++    return `${newProtocol}//${wsUrl.host}${port}${pathname}${wsUrl.search}${wsUrl.hash}`;
+ };
+ exports.httpEndpointURL = httpEndpointURL;
+ //# sourceMappingURL=transformers.js.map
+\ No newline at end of file

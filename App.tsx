@@ -1,45 +1,35 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useEffect } from 'react';
+import { Platform } from 'react-native';
+import { AuthProvider } from './src/context/AuthContext';
+import { AppNavigator } from './src/navigation/AppNavigator';
+import 'react-native-gesture-handler';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+function AppContent(): React.JSX.Element {
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      return;
+    }
+    const { setupNotificationHandlers } = require('./src/services/notificationService');
+    const cleanup = setupNotificationHandlers(
+      (notification: { data?: Record<string, string>; notification?: { title?: string; body?: string } }) => {
+        console.log('Foreground notification:', notification);
+      },
+      (notification: { data?: Record<string, string>; notification?: { title?: string; body?: string } }) => {
+        console.log('Notification opened:', notification);
+      }
+    );
+    return cleanup;
+  }, []);
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  return <AppNavigator />;
+}
 
+function App(): React.JSX.Element {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+    <AuthProvider>
       <AppContent />
-    </SafeAreaProvider>
+    </AuthProvider>
   );
 }
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
 
 export default App;
