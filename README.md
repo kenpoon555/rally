@@ -151,3 +151,4 @@ This project follows the agent-based architecture defined in `.agents/` director
 ## License
 
 Private project
+# rally
