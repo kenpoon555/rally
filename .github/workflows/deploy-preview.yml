@@ -1,0 +1,75 @@
+# Push to `preview` → EAS cloud build (no local Xcode/Android Studio).
+# Requires GitHub secret EXPO_TOKEN — see docs/github-actions-preview.md
+
+name: Deploy preview (EAS)
+
+on:
+  push:
+    branches: [preview]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        required: true
+        default: android
+        type: choice
+        options:
+          - android
+          - ios
+          - all
+
+concurrency:
+  group: eas-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Tests (fast gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests and lint
+        run: npm run verify
+
+  build:
+    name: EAS preview build
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build on EAS (preview profile)
+        env:
+          EAS_BUILD_PLATFORM: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.platform || 'android' }}
+        run: |
+          if [ "$EAS_BUILD_PLATFORM" = "all" ]; then
+            eas build --profile preview --platform all --non-interactive --no-wait
+          else
+            eas build --profile preview --platform "$EAS_BUILD_PLATFORM" --non-interactive --no-wait
+          fi
+
+      - name: Build dashboard
+        run: |
+          echo "Track the build at https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
