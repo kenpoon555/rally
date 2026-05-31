@@ -15,6 +15,11 @@ export interface ActivityLocation {
   google_place_id?: string;
   radius: number; // meters
   created_at: string;
+  /** False when community reports venue closed (2+ closed reports). */
+  is_active?: boolean;
+  source?: 'seed' | 'user' | 'places' | string;
+  last_verified_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface Geofence {

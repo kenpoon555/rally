@@ -19,6 +19,8 @@ import { usersAreBlocked } from './safetyService';
 import { notifyHostOfJoinRequest, notifyPlayerOfJoinApproval, notifyGameFinalized } from './pushDispatchService';
 import { ensureSupabaseSessionReady } from './api/ensureSupabaseSession';
 import { ensureActivityGroupConversation } from './chatService';
+import { activityHasFriend } from '../utils/activityHelpers';
+import { getUserFriends } from './friendsService';
 
 /**
  * Create a new activity
@@ -252,6 +254,16 @@ async function enrichActivitiesWithJoinRequests(
     addRow(row);
   }
 
+  const { data: approvedRows } = await supabase
+    .from('join_requests')
+    .select(JOIN_REQUEST_CARD_SELECT)
+    .in('activity_id', activityIds)
+    .eq('status', 'approved');
+
+  for (const row of (approvedRows || []) as JoinRequest[]) {
+    addRow(row);
+  }
+
   return activities.map((activity) => ({
     ...activity,
     join_requests: byActivity.get(activity.id) || activity.join_requests || [],
@@ -435,26 +447,65 @@ export const getNearbyActivities = async (
 
   const authUserId = authUser?.id;
 
-  const filtered = [...mergedById.values()]
-    .filter((activity) => isActivityListingActive(activity))
-    .filter((activity) => {
-      if (authUserId && activity.user_id === authUserId) {
-        return true;
-      }
+  let friendIds = new Set<string>();
+  if (authUserId) {
+    try {
+      const friends = await getUserFriends(authUserId);
+      friendIds = new Set(
+        friends
+          .map((friendship) => friendship.friend?.id || friendship.friend_id)
+          .filter((id): id is string => Boolean(id))
+      );
+    } catch (friendErr) {
       if (__DEV__) {
-        return true;
+        addDiscoverLog(
+          'friend list skipped:',
+          friendErr instanceof Error ? friendErr.message : String(friendErr)
+        );
       }
-      if (!hasUserCoords) {
-        return true;
-      }
-      return activityWithinRadius(activity, latitude!, longitude!, effectiveRadius);
-    });
-
-  if (__DEV__) {
-    addDiscoverLog(`returning ${filtered.length} after filters`, `radius=${effectiveRadius}m`);
+    }
   }
 
-  return enrichActivitiesWithJoinRequests(filtered, authUserId);
+  const friendRadius = CONFIG.FRIEND_DISCOVERY_RADIUS_M;
+
+  const activeActivities = [...mergedById.values()].filter((activity) =>
+    isActivityListingActive(activity)
+  );
+
+  const enriched = await enrichActivitiesWithJoinRequests(activeActivities, authUserId);
+
+  const filtered = enriched.filter((activity) => {
+    if (authUserId && activity.user_id === authUserId) {
+      return true;
+    }
+    if (__DEV__) {
+      return true;
+    }
+    if (!hasUserCoords) {
+      return true;
+    }
+    if (activityWithinRadius(activity, latitude!, longitude!, effectiveRadius)) {
+      return true;
+    }
+    if (
+      friendIds.size > 0 &&
+      activityWithinRadius(activity, latitude!, longitude!, friendRadius) &&
+      activityHasFriend(activity, friendIds)
+    ) {
+      return true;
+    }
+    return false;
+  });
+
+  if (__DEV__) {
+    addDiscoverLog(
+      `returning ${filtered.length} after filters`,
+      `radius=${effectiveRadius}m`,
+      `friendRadius=${friendRadius}m`
+    );
+  }
+
+  return filtered;
 };
 
 /**
@@ -694,43 +745,13 @@ export const approveJoinRequest = async (
   requestId: string,
   activityId: string
 ): Promise<void> => {
-  // Update request status
-  const { error: requestError } = await supabase
-    .from('join_requests')
-    .update({
-      status: 'approved',
-      responded_at: new Date().toISOString(),
-    })
-    .eq('id', requestId);
+  const { error } = await supabase.rpc('approve_join_request', {
+    p_request_id: requestId,
+    p_activity_id: activityId,
+  });
 
-  if (requestError) {
-    throw new Error(`Failed to approve join request: ${requestError.message}`);
-  }
-
-  // Increment player count
-  const { data: activity } = await supabase
-    .from('activities')
-    .select('player_count')
-    .eq('id', activityId)
-    .single();
-
-  if (activity) {
-    const nextCount = (activity.player_count || 1) + 1;
-    await supabase
-      .from('activities')
-      .update({
-        player_count: nextCount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', activityId);
-
-    try {
-      await ensureActivityGroupConversation(activityId);
-    } catch (chatError) {
-      if (__DEV__) {
-        console.warn('Game chat roster sync skipped:', chatError);
-      }
-    }
+  if (error) {
+    throw new Error(error.message);
   }
 
   const {
@@ -949,6 +970,8 @@ export const scheduleGroupNextGame = async (
   if (!data) {
     throw new Error('Failed to schedule group game');
   }
+  // Crew is replaying — the retention signal that gates the leagues launch.
+  void trackProductEvent('crew_replayed', { group_id: groupId, activity_id: data });
   return data as string;
 };
 

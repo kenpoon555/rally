@@ -3,7 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Activity } from '../types/activity';
 import { MyGameRole } from '../services/activityService';
 import { formatActivityTime, getGameStatusLabel } from '../utils/activityHelpers';
-import { PRIMARY_COLOR } from '../constants/theme';
+import { colors, radius, shadows, spacing, typography } from '../constants/theme';
+import { Badge } from './ui';
 
 interface MyGameListItemProps {
   activity: Activity;
@@ -16,6 +17,15 @@ const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
   const statusLabel = getGameStatusLabel(activity);
 
+  const statusTone =
+    statusLabel === 'Played'
+      ? 'muted'
+      : statusLabel === 'Open'
+        ? 'primary'
+        : statusLabel === 'Finalized'
+          ? 'success'
+          : 'default';
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -26,31 +36,13 @@ const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress
       <View style={styles.row}>
         <Text style={styles.sport}>{activity.sport_type}</Text>
         <View style={styles.badgeRow}>
-          <View style={[styles.badge, role === 'host' ? styles.badgeHost : styles.badgeJoined]}>
-            <Text style={styles.badgeText}>{role === 'host' ? 'Hosting' : 'Joined'}</Text>
-          </View>
-          <View
-            style={[
-              styles.badge,
-              { marginLeft: 6 },
-              statusLabel === 'Played'
-                ? styles.badgePlayed
-                : statusLabel === 'Open'
-                  ? styles.badgeOpen
-                  : styles.badgeMuted,
-            ]}
-          >
-            <Text style={styles.badgeText}>{statusLabel}</Text>
-          </View>
+          <Badge label={role === 'host' ? 'Hosting' : 'Joined'} tone={role === 'host' ? 'primary' : 'success'} />
+          <Badge label={statusLabel} tone={statusTone} style={styles.badgeGap} />
           {activity.visibility === 'invite_only' ? (
-            <View style={[styles.badge, styles.badgeInvite, { marginLeft: 6 }]}>
-              <Text style={styles.badgeText}>Invite</Text>
-            </View>
+            <Badge label="Invite" tone="muted" style={styles.badgeGap} />
           ) : null}
           {activity.urgency_level === 'tonight' ? (
-            <View style={[styles.badge, styles.badgeUrgent, { marginLeft: 6 }]}>
-              <Text style={styles.badgeText}>Tonight</Text>
-            </View>
+            <Badge label="Tonight" tone="accent" style={styles.badgeGap} />
           ) : null}
         </View>
       </View>
@@ -61,7 +53,7 @@ const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress
       <Text style={styles.meta}>
         {activity.player_count} player{activity.player_count === 1 ? '' : 's'}
       </Text>
-      {busy ? <ActivityIndicator size="small" color={PRIMARY_COLOR} style={styles.busy} /> : null}
+      {busy ? <ActivityIndicator size="small" color={colors.primary} style={styles.busy} /> : null}
     </TouchableOpacity>
   );
 };
@@ -69,11 +61,13 @@ const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress
 const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
-    borderColor: '#e8e8e8',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    backgroundColor: '#fafafa',
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surface,
+    ...shadows.card,
   },
   row: {
     flexDirection: 'row',
@@ -86,58 +80,26 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'flex-end',
   },
+  badgeGap: {
+    marginLeft: spacing.xs + 2,
+  },
   sport: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#111',
+    ...typography.bodyMedium,
     flex: 1,
-    marginRight: 8,
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  badgeHost: {
-    backgroundColor: '#e8f1ff',
-  },
-  badgeJoined: {
-    backgroundColor: '#ddf8e8',
-  },
-  badgeOpen: {
-    backgroundColor: '#eef2ff',
-  },
-  badgePlayed: {
-    backgroundColor: '#eceff1',
-  },
-  badgeMuted: {
-    backgroundColor: '#f5f5f5',
-  },
-  badgeInvite: {
-    backgroundColor: '#f3e8ff',
-  },
-  badgeUrgent: {
-    backgroundColor: '#ffe8e8',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#333',
+    marginRight: spacing.sm,
   },
   location: {
-    marginTop: 6,
-    fontSize: 14,
-    color: '#444',
+    marginTop: spacing.sm,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
   meta: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#777',
+    marginTop: spacing.xs,
+    ...typography.caption,
   },
   busy: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
+    marginTop: spacing.sm,
   },
 });
 

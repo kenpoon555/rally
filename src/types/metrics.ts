@@ -14,7 +14,10 @@ export type ProductEventName =
   | 'game_hosted'
   | 'no_show_reported'
   | 'repeat_game_detected'
-  | 'friend_connection_made';
+  | 'friend_connection_made'
+  | 'regular_group_created'
+  | 'crew_invite_redeemed'
+  | 'crew_replayed';
 
 export interface RateLimitResult {
   allowed: boolean;

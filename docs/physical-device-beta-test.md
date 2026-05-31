@@ -2,7 +2,16 @@
 
 Last updated: 2026-06-01
 
-Run on **real iPhone + real Android** before widening TestFlight / Play internal testers.
+Run on **real iPhone + real Android** in **Los Angeles** before widening TestFlight / Play internal testers.
+
+## 0. Seed LA courts (Supabase)
+
+```bash
+cd RallyApp
+node scripts/seed-la-courts.mjs
+```
+
+Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Re-run is safe (skips existing rows).
 
 ## 1. Get the build
 
@@ -59,7 +68,7 @@ Uses [smoke-test-join-pickleball.md](./smoke-test-join-pickleball.md) with tab u
 | **Tonight urgency** | Create with “Need players tonight” → badge on Discover |
 | **Invite link** | Host **Share invite link** → B opens link cold |
 | **Recurring** | **Make weekly recurring** → **Schedule next game** |
-| **RSVP** | B taps Going / Maybe on activity detail |
+| **RSVP** | On a **Regulars or recurring** game only — B taps Going / Maybe (hidden on one-off Discover games) |
 | **Post-game chat** | After play time, chat still open; archives after 72h |
 | **Map (hidden)** | No Map tab or screen; court picker on **Create Game** uses the inline map only |
 
@@ -81,7 +90,7 @@ Badminton-specific: [smoke-test-badminton-invite-loop.md](./smoke-test-badminton
 ## 5. Known limitations
 
 - **iOS Simulator:** no FCM token — use physical iPhone for push QA
-- **Discover empty:** widen dev radius or seed courts; set mock location near LA courts on emulator
+- **Discover empty:** run `node scripts/seed-la-courts.mjs`; on emulator set mock location to LA (e.g. Downtown 34.05, -118.24)
 - **Stale UI:** pull to refresh; kill and reopen app if Realtime lag
 
 ## 6. Sign-off

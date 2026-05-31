@@ -43,6 +43,98 @@ export const getApprovedParticipants = (activity: Activity): JoinRequest[] => {
   return (activity.join_requests || []).filter((r) => r.status === 'approved');
 };
 
+/** True when a friend hosts or has an approved spot on the game. */
+export function activityHasFriend(activity: Activity, friendIds: Set<string>): boolean {
+  if (friendIds.size === 0) {
+    return false;
+  }
+  if (friendIds.has(activity.user_id)) {
+    return true;
+  }
+  return getApprovedParticipants(activity).some((participant) => friendIds.has(participant.user_id));
+}
+
+export type ParticipantReadyState = 'ready' | 'waiting' | 'none';
+
+/** Host is always ready; waiting only applies before the roster is locked. */
+export function getParticipantReadyState(
+  params: {
+    isHost?: boolean;
+    readyAt?: string | null;
+    isFinalized?: boolean;
+    isApproved?: boolean;
+  }
+): ParticipantReadyState {
+  if (params.isFinalized) {
+    return 'none';
+  }
+  if (params.isHost || params.readyAt) {
+    return 'ready';
+  }
+  if (params.isApproved) {
+    return 'waiting';
+  }
+  return 'none';
+}
+
+export function countReadyParticipants(
+  activity: Activity,
+  approvedParticipants: JoinRequest[] = getApprovedParticipants(activity)
+): { readyCount: number; rosterCount: number } {
+  const readyCount =
+    approvedParticipants.filter((participant) => participant.ready_at).length + 1;
+  return { readyCount, rosterCount: approvedParticipants.length + 1 };
+}
+
+/** Friend-connected games first, then open spots / tonight, then distance. */
+export function sortDiscoverFeedActivities(
+  activities: Activity[],
+  userLocation?: { latitude: number; longitude: number } | null,
+  friendIds: Set<string> = new Set(),
+  options?: { highlightOpenSpots?: boolean }
+): Activity[] {
+  return [...activities].sort((a, b) => {
+    const aFriend = activityHasFriend(a, friendIds) ? 1 : 0;
+    const bFriend = activityHasFriend(b, friendIds) ? 1 : 0;
+    if (aFriend !== bFriend) {
+      return bFriend - aFriend;
+    }
+
+    if (options?.highlightOpenSpots) {
+      const aOpen = (a.missing_players ?? 0) > 0 ? 1 : 0;
+      const bOpen = (b.missing_players ?? 0) > 0 ? 1 : 0;
+      if (aOpen !== bOpen) {
+        return bOpen - aOpen;
+      }
+    }
+
+    const aTonight = a.urgency_level === 'tonight' ? 1 : 0;
+    const bTonight = b.urgency_level === 'tonight' ? 1 : 0;
+    if (aTonight !== bTonight) {
+      return bTonight - aTonight;
+    }
+
+    if (userLocation) {
+      const da = getDistanceToActivity(a, userLocation);
+      const db = getDistanceToActivity(b, userLocation);
+      if (da == null && db == null) {
+        return 0;
+      }
+      if (da == null) {
+        return 1;
+      }
+      if (db == null) {
+        return -1;
+      }
+      if (da !== db) {
+        return da - db;
+      }
+    }
+
+    return 0;
+  });
+}
+
 /** Discover is for finding open games — hide games you're already in or that are locked. */
 export function shouldShowInDiscoverFeed(activity: Activity, userId?: string): boolean {
   if (activity.visibility === 'invite_only') {
@@ -109,6 +201,13 @@ export function isGameChatReadOnly(
   return Date.now() >= getGameChatArchiveAtMs(activity);
 }
 
+/** RSVP removed — coordination uses Join + Mark Ready only. */
+export function shouldShowGameRsvp(
+  _activity: Pick<Activity, 'regular_group_id' | 'series_id' | 'match_status'>
+): boolean {
+  return false;
+}
+
 export function canHostScheduleNextGame(
   activity: Pick<Activity, 'start_time' | 'duration' | 'status' | 'match_status'>,
   isHost: boolean
@@ -117,6 +216,24 @@ export function canHostScheduleNextGame(
     return false;
   }
   return activity.match_status === 'finalized' || Date.now() >= gameEndMs(activity);
+}
+
+export function getActivityOpenSpots(
+  activity: Pick<Activity, 'missing_players'>
+): number {
+  return Math.max(0, activity.missing_players ?? 0);
+}
+
+export function getActivityTotalSpots(
+  activity: Pick<Activity, 'player_count' | 'missing_players'>
+): number {
+  return (activity.player_count ?? 1) + getActivityOpenSpots(activity);
+}
+
+export function activityHasOpenSpots(
+  activity: Pick<Activity, 'missing_players'>
+): boolean {
+  return getActivityOpenSpots(activity) > 0;
 }
 
 /** Nearest games first; activities without coordinates sort to the end. */

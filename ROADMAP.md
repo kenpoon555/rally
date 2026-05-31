@@ -1,6 +1,9 @@
 # RallyApp Roadmap
 
-Last updated: 2026-06-01
+Last updated: 2026-05-31
+
+> **What's next right now?** See **[docs/NEXT.md](docs/NEXT.md)** — blocked on preview build; retention-first beta focus.  
+> **Business / monetization stages:** [open_items.md](../open_items.md)
 
 ## Product Direction
 
@@ -9,6 +12,7 @@ Last updated: 2026-06-01
 - Core success metric for MVP: a user can discover, join, and play with a partner in minutes.
 - Next success metric: a group can converge on the best time/location with minimal coordination overhead.
 - **UX north star (2026-05-31):** **Chat-first coordination** — users live in game lobbies; Discover is for filling empty slots.
+- **Beta strategy (2026-05-31):** **Prove retention before monetization.** Build the free loop (discover → chat → play → *replay with the same crew*) and instrument it. Paid tiers (Organizer Pro → Player Plus → Leagues) are scaffolded ("monetization-ready") but not built until the crew-replay loop retains. North-star beta metric: **% of Regulars groups that replay** (`analytics_crew_lifecycle.retained`).
 
 ## Tab structure (current — 5 tabs)
 
@@ -35,9 +39,9 @@ Last updated: 2026-06-01
 | **Friends** | Add, accept, search, 1:1 chat entry |
 | **Chats tab** | Game lobbies + friend DMs in one inbox; **Details** → activity screen |
 | **Create game** | Fixed time + court; flex path exists but de-emphasized in MVP |
-| **Activity detail** | Join / approve / reject, Ready, Finalize, lobby chat, extend start |
+| **Activity detail** | Join / approve / reject, Ready, Finalize, lobby chat, extend start, **player ratings** |
 | **Stage 2.5** | Finalize, Ready, leave, flake score, 72h post-game chat grace |
-| **Stage 3 (partial)** | Recurring series, invite links, RSVP, tonight urgency, schedule next game |
+| **Stage 3 (partial)** | Recurring series, invite links, tonight urgency, schedule next game (**RSVP removed 2026-05-31**) |
 | **Push (partial)** | Join, approval, **finalize** — physical device + token required; iOS Simulator = no push |
 
 ### Known gaps (QA found, not fully closed)
@@ -47,7 +51,7 @@ Last updated: 2026-06-01
 - **Participant avatars on Discover:** RLS hides other players until confirmed — shows count, not faces (by design).
 - **Phase 3 checklist:** 2-account E2E not signed off in `phase-3-validation-results.md`.
 - **Finalize sync:** Realtime + in-app alert + push RPC shipped; device QA still uneven on simulators.
-- **Dev-only noise:** Discover pipeline panel, location debug (opt-in) — remove or gate before public beta.
+- **Dev-only noise:** Discover pipeline panel + location debug now gated behind `__DEV__` + `EXPO_PUBLIC_*` flags (`src/constants/devFlags.ts`); off in preview/prod builds (2026-05-31).
 
 ### Infra migrations recently applied (Supabase `casljueycxsqexpkdiuq`)
 
@@ -66,7 +70,7 @@ Last updated: 2026-06-01
 
 ## Pickleball MVP (2026-05-28)
 
-- **Launch sports:** **Pickleball, Basketball, Badminton** (`launchEnabled` in `src/constants/sports.ts`).
+- **Launch sports:** **10 sports** — Pickleball, Basketball, Badminton, Tennis, Volleyball, Soccer (+ Squash, Racquetball, Table Tennis, Ultimate Frisbee for partner/crew wedges). Running/Hiking off until meetup wedge. See `src/constants/sports.ts`.
 - **Default path:** **`fastFixed`** — set court + time now; join open games from Discover.
 - **Secondary path:** **flexible matching** — “I'm flexible on time” on Create Game; uses preference collection + finalize RPC (`partnerFlex` behavior).
 - **Phase 2+:** Re-enable additional sports via `launchEnabled` when expanding beyond pickleball wedge.
@@ -111,7 +115,7 @@ Priority order based on device QA:
 3. [x] **Notification clarity** — In-app Realtime alerts; push on join/approve/finalize (devices).
 4. [x] **Discover role** — Hide joined/finalized/invite-only from feed.
 5. [x] **Empty states** — Chats + My Games CTAs.
-6. [ ] **Remove dev diagnostics** from production builds (pipeline panel, debugger warnings).
+6. [x] **Remove dev diagnostics** from production builds — pipeline panel + location debug gated behind `devFlags` (2026-05-31).
 7. [ ] **Stage 1 trust & safety** — report/block, admin suspend (see `open_items.md` Stage 1; ahead of Stage 4 monetization).
 7. [x] **Hide Map** from navigation for beta; inline Create Game court picker only.
 
@@ -159,7 +163,7 @@ See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
 - [x] Add production-safe key/config strategy (remove hardcoded secrets).
 - [x] Improve error surfaces for auth/profile failures.
 - [ ] Run regression pass on iOS and Android.
-- [ ] Strip `__DEV__` discover diagnostics before TestFlight.
+- [x] Strip `__DEV__` discover diagnostics before TestFlight — gated via `devFlags.ts` (2026-05-31).
 
 ### Phase 6 - Flexible Match Optimization (V2.1)
 
@@ -191,7 +195,7 @@ See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
 - [x] **Chats tab** inbox with Games / Friends filters.
 - [ ] Add chat moderation baseline (block/report in thread — partial via Safety sheet).
 - [x] **Stage 2.5:** finalize, ready, leave, flake score, 72h chat grace — `docs/stage-2.5-game-commitment.md`
-- [x] **Stage 3 (partial):** recurring, invite links, RSVP, My Games tab, tonight urgency — `docs/stage-3-organizer-recurring.md`
+- [x] **Stage 3 (partial):** recurring, invite links, My Games tab, tonight urgency — `docs/stage-3-organizer-recurring.md` (RSVP removed 2026-05-31)
 
 ### Stage 2.5 — Game Commitment Loop (2026-05-30)
 
@@ -211,6 +215,7 @@ See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
 | Read-only past-game chat (72h grace) | **Shipped** |
 | Block join after finalize | **Won't do** |
 | Invite from chat → next game | **Shipped · Stage 3** |
+| Group RSVP | **Removed** (2026-05-31) — replaced by join + Ready |
 | Recurring + invite-only | **Shipped · Stage 3** (teams schema still Stage 3–4) |
 | My Games tab | **Shipped · Stage 3** |
 
@@ -223,6 +228,10 @@ See `docs/stage-2.5-game-commitment.md`, `docs/stage-3-organizer-recurring.md`, 
 | **3.5a** | Map hidden from navigation (Create Game inline map only) | **Shipped** |
 | **3.5b** | Badminton court seed + invite/recurring smoke test | **Seeded in prod** — QA on device |
 | **3.5c** | Regulars / Groups schema (`regular_groups`, `regular_group_members`) | **Shipped** — host CTA + group invite link |
+| **3.5d** | RSVP removed product-wide (Discover, Game Room, Activity detail, helpers, tests) | **Shipped** (2026-05-31) |
+| **3.5e** | Player review → **"Rate Players"** redesign (star ratings: Friendliness / Physicality / Vibe) | **Shipped** (2026-05-31) |
+| **3.5f** | Crew retention instrumentation: `regular_group_created`, `crew_invite_redeemed`, `crew_replayed` + `analytics_crew_*` views (migration `026`) | **Shipped** (2026-05-31) |
+| **3.5g** | Game Room player profiles: tap roster / join requests → ratings + trust; inline trust on pending requests | **Shipped** (2026-05-31) |
 
 Full design: `docs/stage-3.5-beta-polish-and-regulars.md`. Physical QA: `docs/physical-device-beta-test.md`.
 
@@ -283,8 +292,17 @@ Rate limits already protect runaway cost (`docs/stage-2-cost-metrics.md`): 300 d
 
 ## Validation Sprint Quick Start (Next 2-3 Days)
 
-1. Run **smoke test** on **two physical devices**: `docs/smoke-test-join-pickleball.md`.
-2. Record outcomes in `docs/phase-3-validation-results.md`.
-3. Run Phase 4 notification checklist on **physical** iPhone + Android.
-4. Triage defects: data correctness → Realtime sync → push → UX polish.
-5. Keep `docs/release-readiness-checklist.md` as final go/no-go gate.
+**Blocked until EAS preview build is on a physical device.** When ready, follow **[docs/NEXT.md](docs/NEXT.md)** and [post-preview-testing-backlog.md](docs/post-preview-testing-backlog.md).
+
+While waiting:
+
+1. ~~Apply Supabase migration **`026_crew_retention_funnel.sql`**~~ (applied)
+2. Line up 5–10 beta hosts (pickleball / badminton)
+3. Draft welcome message (Chats-first, Regulars link, Rate Players after game)
+
+When build installs:
+
+1. [smoke-test-join-pickleball.md](docs/smoke-test-join-pickleball.md) on two physical devices
+2. Record in [phase-3-validation-results.md](docs/phase-3-validation-results.md)
+3. [physical-device-beta-test.md](docs/physical-device-beta-test.md) for tester script
+4. [release-readiness-checklist.md](docs/release-readiness-checklist.md) as go/no-go gate

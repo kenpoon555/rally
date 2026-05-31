@@ -1,6 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Activity, GameRsvpStatus } from '../types/activity';
+import { Chip } from './ui';
+import { colors, radius, spacing, typography } from '../constants/theme';
 
 type Props = {
   activity: Activity;
@@ -61,20 +63,20 @@ const GameRsvpBar: React.FC<Props> = ({
         </Text>
       ) : null}
       <View style={styles.row}>
-        {RSVP_OPTIONS.map(({ status, label }) => {
-          const selected = mine === status;
-          return (
-            <TouchableOpacity
-              key={status}
-              style={[styles.chip, selected && styles.chipSelected, saving && styles.chipDisabled]}
-              onPress={() => onSetRsvp(status)}
-              disabled={saving}
-            >
-              <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-        {saving ? <ActivityIndicator size="small" color="#007AFF" style={styles.spinner} /> : null}
+        {RSVP_OPTIONS.map(({ status, label }) => (
+          <Chip
+            key={status}
+            label={label}
+            selected={mine === status}
+            tone="primary"
+            compact
+            onPress={() => onSetRsvp(status)}
+            disabled={saving}
+          />
+        ))}
+        {saving ? (
+          <ActivityIndicator size="small" color={colors.primary} style={styles.spinner} />
+        ) : null}
       </View>
       <Text style={styles.summary}>
         {going} going · {maybe} maybe · {notGoing} out
@@ -86,57 +88,34 @@ const GameRsvpBar: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: '#f8f9fb',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: colors.background,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   wrapCompact: {
-    marginBottom: 8,
-    paddingVertical: 10,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.md,
   },
   title: {
+    ...typography.bodyMedium,
     fontSize: 14,
-    fontWeight: '700',
-    color: '#222',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing.sm,
     alignItems: 'center',
   },
-  chip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    backgroundColor: '#fff',
-  },
-  chipSelected: {
-    backgroundColor: '#007AFF',
-    borderColor: '#007AFF',
-  },
-  chipDisabled: {
-    opacity: 0.6,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#444',
-  },
-  chipTextSelected: {
-    color: '#fff',
-  },
   spinner: {
-    marginLeft: 4,
+    marginLeft: spacing.xs,
   },
   summary: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#666',
+    marginTop: spacing.sm,
+    ...typography.caption,
   },
 });
 

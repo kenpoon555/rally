@@ -8,6 +8,7 @@ import {
 import { Activity, JoinRequest } from '../types/activity';
 import { useAuth } from '../hooks/useAuth';
 import JoinRequestButton from './JoinRequestButton';
+import { SportIcon } from './SportIcon';
 import {
   getIntensityFromDuration,
   INTENSITY_CONFIG,
@@ -15,48 +16,31 @@ import {
   formatDistance,
   getDistanceToActivity,
   getApprovedParticipants,
+  activityHasFriend,
 } from '../utils/activityHelpers';
-import { PRIMARY_COLOR } from '../constants/theme';
+import { colors, PRIMARY_COLOR, radius, shadows, spacing, typography, AVATAR_PALETTE } from '../constants/theme';
 import { formatApproximateDistance } from '../utils/approximateLocation';
 
 // ── Sport icon ────────────────────────────────────────────────────────────────
 
-const SPORT_EMOJIS: Record<string, string> = {
-  Pickleball: '🏓',
-  Basketball: '🏀',
-  Tennis:     '🎾',
-  Badminton:  '🏸',
-  Running:    '🏃',
-  Hiking:     '🥾',
-  Soccer:     '⚽',
-  Volleyball: '🏐',
-  Swimming:   '🏊',
-  Cycling:    '🚴',
-};
-
-const SportIcon: React.FC<{ sport: string }> = ({ sport }) => {
-  const emoji = SPORT_EMOJIS[sport] ?? sport[0];
-  return (
-    <View style={styles.iconBox}>
-      <Text style={styles.iconEmoji}>{emoji}</Text>
-    </View>
-  );
-};
+const SportIconBox: React.FC<{ sport: string }> = ({ sport }) => (
+  <SportIcon sport={sport} size="md" style={styles.iconBox} />
+);
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-  open:       { bg: '#e6f0ff', text: '#245fa7' },
-  collecting: { bg: '#fff3cd', text: '#856404' },
-  finalized:  { bg: '#ddf8e8', text: '#1a6535' },
-  cancelled:  { bg: '#fde8e8', text: '#9b1c1c' },
+  open:       { bg: colors.primaryLight, text: colors.primaryDark },
+  collecting: { bg: colors.warningSoft, text: colors.warning },
+  finalized:  { bg: colors.successSoft, text: colors.success },
+  cancelled:  { bg: colors.errorSoft, text: colors.error },
 };
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const colors = STATUS_COLORS[status] ?? STATUS_COLORS.open;
+  const palette = STATUS_COLORS[status] ?? STATUS_COLORS.open;
   return (
-    <View style={[styles.badge, { backgroundColor: colors.bg }]}>
-      <Text style={[styles.badgeText, { color: colors.text }]}>
+    <View style={[styles.badge, { backgroundColor: palette.bg }]}>
+      <Text style={[styles.badgeText, { color: palette.text }]}>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </Text>
     </View>
@@ -65,10 +49,6 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 
 // ── Avatar row ────────────────────────────────────────────────────────────────
 
-const AVATAR_FALLBACK_COLORS = [
-  '#b0c4de', '#c4b0de', '#b0deb0', '#deb0b0', '#dedad0', '#b0d5de',
-];
-
 const AvatarCircle: React.FC<{
   initials: string;
   index: number;
@@ -76,8 +56,8 @@ const AvatarCircle: React.FC<{
   overflowCount?: number;
 }> = ({ initials, index, isOverflow, overflowCount }) => {
   const bg = isOverflow
-    ? '#e0e0e0'
-    : AVATAR_FALLBACK_COLORS[initials.charCodeAt(0) % 6];
+    ? colors.border
+    : AVATAR_PALETTE[initials.charCodeAt(0) % AVATAR_PALETTE.length];
 
   return (
     <View
@@ -150,7 +130,7 @@ const SpotsBar: React.FC<{ playerCount: number; missing: number }> = ({
             styles.progressFill,
             {
               width: `${fillPercent}%` as any,
-              backgroundColor: isFull ? '#34C759' : PRIMARY_COLOR,
+              backgroundColor: isFull ? colors.success : PRIMARY_COLOR,
             },
           ]}
         />
@@ -165,9 +145,10 @@ interface GameCardProps {
   activity: Activity;
   onPress: () => void;
   userLocation?: { latitude: number; longitude: number } | null;
+  friendIds?: Set<string>;
 }
 
-const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) => {
+const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, friendIds }) => {
   const { user } = useAuth();
 
   const status = activity.match_status ?? 'open';
@@ -193,17 +174,24 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
       ? `${activity.player_count - 1} player${activity.player_count - 1 === 1 ? '' : 's'} joined`
       : null;
 
+  const hasFriendPlaying = friendIds ? activityHasFriend(activity, friendIds) : false;
+
   return (
     <View style={styles.card}>
       {/* ── HEADER ── */}
       <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
         <View style={styles.headerRow}>
-          <SportIcon sport={activity.sport_type} />
+          <SportIconBox sport={activity.sport_type} />
           <Text style={styles.sportTitle}>{activity.sport_type}</Text>
           <View style={styles.badgeGroup}>
             {isHost && (
               <View style={styles.hostingBadge}>
                 <Text style={styles.hostingBadgeText}>YOUR GAME</Text>
+              </View>
+            )}
+            {hasFriendPlaying && (
+              <View style={styles.friendBadge}>
+                <Text style={styles.friendBadgeText}>FRIEND PLAYING</Text>
               </View>
             )}
             {activity.urgency_level === 'tonight' && (
@@ -280,41 +268,28 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.09,
-    shadowRadius: 6,
-    elevation: 3,
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
     overflow: 'hidden',
   },
   // Header
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md + 2,
   },
   iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: '#eef3fd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  iconEmoji: {
-    fontSize: 18,
+    marginRight: spacing.md,
   },
   sportTitle: {
     flex: 1,
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1a1a1a',
+    ...typography.bodyMedium,
   },
   badgeGroup: {
     flexDirection: 'row',
@@ -331,42 +306,53 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   hostingBadge: {
-    borderRadius: 10,
-    backgroundColor: '#e8f4fd',
-    paddingHorizontal: 8,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
   hostingBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: PRIMARY_COLOR,
+    color: colors.primaryDark,
+  },
+  friendBadge: {
+    borderRadius: radius.sm,
+    backgroundColor: colors.infoSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  friendBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.info,
   },
   flexBadge: {
-    borderRadius: 10,
-    backgroundColor: '#fff3cd',
-    paddingHorizontal: 8,
+    borderRadius: radius.sm,
+    backgroundColor: colors.warningSoft,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
   flexBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#b06000',
+    color: colors.warning,
   },
   urgentBadge: {
-    borderRadius: 10,
-    backgroundColor: '#ffe8e8',
-    paddingHorizontal: 8,
+    borderRadius: radius.sm,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
   },
   urgentBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#b42318',
+    color: colors.accent,
   },
   // Shared row layout
   divider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e8e8e8',
+    borderTopColor: colors.border,
   },
   row: {
     flexDirection: 'row',
@@ -432,12 +418,12 @@ const styles = StyleSheet.create({
     color: PRIMARY_COLOR,
   },
   spotsOpenFull: {
-    color: '#34C759',
+    color: colors.success,
   },
   progressTrack: {
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: '#e8e8e8',
+    backgroundColor: colors.border,
     overflow: 'hidden',
   },
   progressFill: {

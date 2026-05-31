@@ -1,5 +1,6 @@
 /**
  * Seed Los Angeles area badminton courts via Supabase service role.
+ * Prefer the unified script: node scripts/seed-la-courts.mjs
  * Usage (from RallyApp/):
  *   node scripts/seed-la-badminton-courts.mjs
  * Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env.

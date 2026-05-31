@@ -34,10 +34,11 @@ import {
 } from '../../components/GameRoomActionBar';
 import GameRoomAnnouncementBanner from '../../components/GameRoomAnnouncementBanner';
 import { ROUTES } from '../../constants/routes';
+import { colors, radius, spacing } from '../../constants/theme';
 
 type MainStackParamList = {
   MainTabs: undefined;
-  ActivityDetail: { activityId: string };
+  ActivityDetail: { activityId: string; fromGameRoom?: boolean };
   CreateActivity: undefined;
   Profile: undefined;
   ChatList: undefined;
@@ -304,7 +305,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   if (loading && messages.length === 0) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -337,6 +338,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           onOpenDetails={() =>
             navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
               activityId: resolvedActivityId,
+              fromGameRoom: true,
             } as never)
           }
           onLeftGame={() => navigation.goBack()}
@@ -420,14 +422,14 @@ const styles = StyleSheet.create({
   },
   myBubble: {
     alignSelf: 'flex-end',
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderBottomRightRadius: 4,
   },
   otherBubble: {
     alignSelf: 'flex-start',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
     borderBottomLeftRadius: 4,
   },
   messageText: {
@@ -444,13 +446,13 @@ const styles = StyleSheet.create({
     color: '#777',
   },
   myMessageMeta: {
-    color: '#dfeaff',
+    color: colors.primaryLight,
   },
   inputRow: {
-    padding: 10,
+    padding: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#ddd',
-    backgroundColor: '#fff',
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'flex-end',
   },
@@ -466,8 +468,8 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 20,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
     paddingHorizontal: 16,
     paddingVertical: 10,
     minWidth: 64,
@@ -489,7 +491,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerSafetyText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
   },

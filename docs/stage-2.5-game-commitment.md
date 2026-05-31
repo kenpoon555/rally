@@ -22,7 +22,9 @@ Players commit before game time; host locks roster; flakes are trackable later.
 
 ## Ready / finalize rules
 
-- **Target roster** = host + `missing_players` (default 1 → 2 total).
+- **Target roster** = host + `missing_players` (open spots set at create — **Open spots besides you**).
+- **Approve join** atomically decrements `missing_players` via `approve_join_request` RPC; host cannot approve when full.
+- **Leave before finalize** restores one open spot when an approved player leaves.
 - Host may **Finalize** when:
   - roster is full **and** enough players tapped **Ready**, OR
   - roster is short **but everyone in the room** has tapped **Ready** (unanimous).

@@ -207,7 +207,17 @@ function buildChatInbox(params: {
 
   groupItems.sort((a, b) => a.group.name.localeCompare(b.group.name));
 
-  return [...groupItems, ...gameItems, ...friendItems];
+  /** When a game belongs to a Regulars crew, the group row already covers it — drop the duplicate game row. */
+  const groupNextActivityIds = new Set(
+    groupItems
+      .map((item) => item.nextActivity?.id)
+      .filter((id): id is string => Boolean(id))
+  );
+  const dedupedGameItems = gameItems.filter(
+    (item) => !groupNextActivityIds.has(item.activity.id)
+  );
+
+  return [...groupItems, ...dedupedGameItems, ...friendItems];
 }
 
 export function useChatInbox(userId: string | undefined) {

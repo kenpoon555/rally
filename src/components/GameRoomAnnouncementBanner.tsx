@@ -12,6 +12,7 @@ import {
   getActivityConversationAnnouncement,
   setGameRoomAnnouncement,
 } from '../services/chatService';
+import { colors } from '../constants/theme';
 
 type Props = {
   activityId: string;
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
   editLinkText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.primary,
   },
   label: {
     fontSize: 13,
@@ -217,7 +218,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     flex: 1,
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',

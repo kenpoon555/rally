@@ -22,6 +22,7 @@ import {
   REPORT_REASON_LABELS,
   ReportContextType,
 } from '../../types/safety';
+import { colors } from '../../constants/theme';
 
 type MainStackParamList = {
   Admin: undefined;
@@ -158,7 +159,7 @@ const AdminScreen: React.FC<Props> = () => {
 
       <Text style={styles.sectionTitle}>Pending reports ({reports.length})</Text>
       {loading && reports.length === 0 ? (
-        <ActivityIndicator color="#007AFF" style={styles.loader} />
+        <ActivityIndicator color={colors.primary} style={styles.loader} />
       ) : reports.length === 0 ? (
         <Text style={styles.empty}>No pending reports.</Text>
       ) : (
@@ -293,13 +294,13 @@ const styles = StyleSheet.create({
   dangerBtnText: { color: '#fff', fontWeight: '600' },
   secondaryBtn: {
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: colors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
-  secondaryBtnText: { color: '#007AFF', fontWeight: '600' },
+  secondaryBtnText: { color: colors.primary, fontWeight: '600' },
   btnDisabled: { opacity: 0.6 },
   loader: { marginVertical: 24 },
   empty: { color: '#666', marginBottom: 8 },
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
   suspendedBadgeText: { color: '#b42318', fontSize: 11, fontWeight: '700' },
   meta: { fontSize: 13, color: '#555', marginTop: 4 },
   detail: { fontSize: 14, marginTop: 8, color: '#333', lineHeight: 20 },
-  link: { color: '#007AFF', fontWeight: '600' },
+  link: { color: colors.primary, fontWeight: '600' },
   linkMuted: { color: '#666', fontWeight: '600' },
 });
 

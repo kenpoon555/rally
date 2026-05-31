@@ -1,5 +1,6 @@
 /**
  * Seed Bay Area pickleball courts via Supabase service role.
+ * Legacy — closed beta is LA-only. Use: node scripts/seed-la-courts.mjs
  * Usage (from RallyApp/):
  *   node scripts/seed-bay-area-courts.mjs
  * Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in env.

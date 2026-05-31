@@ -35,7 +35,7 @@ import {
   TERMS_SUMMARY,
   WAIVER_TEXT,
 } from '../../constants/legal';
-import { PRIMARY_COLOR } from '../../constants/theme';
+import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
 
 type SettingsRowProps = {
   label: string;
@@ -334,7 +334,7 @@ const ProfileScreen: React.FC = () => {
             onPress={() => setShowRatings((v) => !v)}
           >
             <Text style={styles.sectionTitle}>
-              Ratings to complete ({rateablePromptCount})
+              Rate Players ({rateablePromptCount})
             </Text>
             <Text style={styles.chevron}>{showRatings ? '▼' : '›'}</Text>
           </TouchableOpacity>
@@ -522,17 +522,19 @@ const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f2f4f7',
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 16,
+    padding: spacing.lg,
     paddingBottom: 40,
   },
   heroCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   identityRow: {
     flexDirection: 'row',
@@ -565,29 +567,29 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111',
+    color: colors.text,
   },
   usernameHandle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   trustHero: {
     marginTop: 10,
     fontSize: 15,
     fontWeight: '600',
-    color: PRIMARY_COLOR,
+    color: colors.primary,
   },
   reliabilityHero: {
     marginTop: 4,
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
     lineHeight: 18,
   },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#444',
+    color: colors.textSecondary,
     marginBottom: 6,
   },
   nameRow: {
@@ -598,24 +600,27 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fafafa',
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.background,
+    color: colors.text,
   },
   sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   groupLabel: {
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.6,
-    color: '#888',
+    color: colors.textTertiary,
     textTransform: 'uppercase',
     marginBottom: 4,
     marginTop: 4,
@@ -623,7 +628,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111',
+    color: colors.text,
   },
   ratingsHeader: {
     flexDirection: 'row',
@@ -643,12 +648,12 @@ const styles = StyleSheet.create({
   },
   settingsRowLabel: {
     fontSize: 16,
-    color: '#111',
+    color: colors.text,
     fontWeight: '500',
   },
   settingsRowValue: {
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
     marginTop: 2,
   },
   chevron: {
@@ -704,7 +709,7 @@ const styles = StyleSheet.create({
   },
   quietChipSelected: {
     borderColor: PRIMARY_COLOR,
-    backgroundColor: '#e8f2ff',
+    backgroundColor: colors.primaryLight,
   },
   quietChipText: {
     fontSize: 13,

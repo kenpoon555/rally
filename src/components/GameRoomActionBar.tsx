@@ -27,12 +27,9 @@ import {
   rejectJoinRequest,
   scheduleNextGameFromActivity,
   scheduleGroupNextGame,
-  setGameRsvp,
   setGameReady,
   updateActivity,
 } from '../services/activityService';
-import { GameRsvpStatus } from '../types/activity';
-import GameRsvpBar from './GameRsvpBar';
 import { isRegularGroupMember } from '../services/regularGroupService';
 import { supabase } from '../services/api/supabase';
 import { JoinRequest } from '../types/activity';
@@ -43,9 +40,13 @@ import {
   canHostScheduleNextGame,
   isGameChatReadOnly,
   isGameChatInPostGameGrace,
+  activityHasOpenSpots,
 } from '../utils/activityHelpers';
+import { colors } from '../constants/theme';
 import { GAME_CHAT_ARCHIVE_GRACE_HOURS } from '../constants/gameChat';
 import { getRegularGroupById } from '../services/regularGroupService';
+import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
+import { PlayerTrustLine } from './PlayerTrustLine';
 
 type GameRoomContextValue = {
   activityId: string;
@@ -64,6 +65,11 @@ type GameRoomContextValue = {
   loadingRequests: boolean;
   approvedParticipants: JoinRequest[];
   hostUsername: string;
+  hostUser: { id: string; username: string; profile_photo_url?: string } | null;
+  openPlayerProfile: (
+    player: { id: string; username: string; profile_photo_url?: string },
+    roleLabel: string
+  ) => void;
   courtName: string;
   timeLabel: string;
   statusLabel: string;
@@ -83,9 +89,6 @@ type GameRoomContextValue = {
   schedulingNext: boolean;
   viewerId?: string;
   isGroupMember: boolean;
-  allowGroupRsvp: boolean;
-  rsvpSaving: boolean;
-  handleSetRsvp: (status: GameRsvpStatus) => Promise<void>;
   schedulePickerVisible: boolean;
   nextStartTime: Date;
   setSchedulePickerVisible: (visible: boolean) => void;
@@ -133,7 +136,6 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const [publishingToDiscover, setPublishingToDiscover] = useState(false);
   const [groupName, setGroupName] = useState<string | null>(null);
   const [isGroupMember, setIsGroupMember] = useState(false);
-  const [rsvpSaving, setRsvpSaving] = useState(false);
   const [schedulePickerVisible, setSchedulePickerVisible] = useState(false);
   const [nextStartTime, setNextStartTime] = useState(() => {
     const d = new Date();
@@ -141,6 +143,22 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     d.setMinutes(0, 0, 0);
     return d;
   });
+  const [profilePlayer, setProfilePlayer] = useState<PlayerProfilePreview | null>(null);
+
+  const openPlayerProfile = useCallback(
+    (
+      player: { id: string; username: string; profile_photo_url?: string },
+      roleLabel: string
+    ) => {
+      setProfilePlayer({
+        id: player.id,
+        username: player.username,
+        profile_photo_url: player.profile_photo_url,
+        roleLabel,
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const groupId = activity?.regular_group_id;
@@ -196,9 +214,6 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const isApprovedJoiner = myJoinRequest?.status === 'approved';
   const isPendingJoiner = myJoinRequest?.status === 'pending';
   const isFinalized = activity?.match_status === 'finalized';
-  const allowGroupRsvp = Boolean(
-    activity?.regular_group_id && isGroupMember && !isFinalized
-  );
   const isChatReadOnly = activity ? isGameChatReadOnly(activity) : false;
   const iAmReady = Boolean(isHost || myJoinRequest?.ready_at);
   const approvedParticipants = useMemo(
@@ -332,22 +347,6 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     }
   };
 
-  const handleSetRsvp = async (status: GameRsvpStatus) => {
-    if (!activity) {
-      return;
-    }
-    setRsvpSaving(true);
-    try {
-      await setGameRsvp(activity.id, status);
-      await refetch();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Could not save RSVP.';
-      Alert.alert('RSVP', message);
-    } finally {
-      setRsvpSaving(false);
-    }
-  };
-
   const handleLeaveGame = () => {
     if (!activity) {
       return;
@@ -411,6 +410,16 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     : '';
   const statusLabel = activity ? getGameStatusLabel(activity) : '';
   const hostUsername = activity?.user?.username || 'Host';
+  const hostUser = useMemo(() => {
+    if (!activity?.user_id) {
+      return null;
+    }
+    return {
+      id: activity.user_id,
+      username: activity.user?.username || 'Host',
+      profile_photo_url: activity.user?.profile_photo_url,
+    };
+  }, [activity?.user_id, activity?.user?.username, activity?.user?.profile_photo_url]);
   const canScheduleNext = Boolean(activity && canHostScheduleNextGame(activity, isHost));
 
   const handlePublishToDiscover = useCallback(() => {
@@ -464,6 +473,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     loadingRequests,
     approvedParticipants,
     hostUsername,
+    hostUser,
+    openPlayerProfile,
     courtName,
     timeLabel,
     statusLabel,
@@ -483,9 +494,6 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     schedulingNext,
     viewerId: user?.id,
     isGroupMember,
-    allowGroupRsvp,
-    rsvpSaving,
-    handleSetRsvp,
     schedulePickerVisible,
     nextStartTime,
     setSchedulePickerVisible,
@@ -534,6 +542,15 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
           </View>
         </View>
       ) : null}
+      <PlayerProfileModal
+        visible={!!profilePlayer}
+        player={profilePlayer}
+        onClose={() => setProfilePlayer(null)}
+        currentUserId={user?.id}
+        contextType="activity"
+        contextId={activityId}
+        showNoShow={Boolean(isHost && activity && activity.status !== 'cancelled')}
+      />
     </GameRoomContext.Provider>
   );
 };
@@ -551,24 +568,39 @@ function statusStyle(label: string) {
 function RosterAvatar({
   label,
   ready,
+  waiting,
   role,
+  onPress,
 }: {
   label: string;
   ready: boolean;
+  waiting?: boolean;
   role?: string;
+  onPress?: () => void;
 }) {
-  return (
-    <View style={styles.avatarWrap}>
+  const content = (
+    <>
       <View style={[styles.avatar, ready && styles.avatarReady]}>
         <Text style={styles.avatarText}>{label.slice(0, 1).toUpperCase()}</Text>
         {ready ? <View style={styles.readyDot} /> : null}
+        {!ready && waiting ? <View style={styles.waitingDot} /> : null}
       </View>
       <Text style={styles.avatarName} numberOfLines={1}>
         {label}
       </Text>
       {role ? <Text style={styles.avatarRole}>{role}</Text> : null}
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity style={styles.avatarWrap} onPress={onPress} activeOpacity={0.7}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={styles.avatarWrap}>{content}</View>;
 }
 
 export const GameRoomHeader: React.FC = () => {
@@ -581,6 +613,8 @@ export const GameRoomHeader: React.FC = () => {
     rosterCount,
     approvedParticipants,
     hostUsername,
+    hostUser,
+    openPlayerProfile,
     groupName,
     courtName,
     timeLabel,
@@ -591,7 +625,7 @@ export const GameRoomHeader: React.FC = () => {
   if (loading && !activity) {
     return (
       <View style={styles.headerLoading}>
-        <ActivityIndicator size="small" color="#007AFF" />
+        <ActivityIndicator size="small" color={colors.primary} />
       </View>
     );
   }
@@ -633,13 +667,24 @@ export const GameRoomHeader: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rosterStrip}
       >
-        <RosterAvatar label={hostUsername} ready={isHost || isFinalized} role="Host" />
+        <RosterAvatar
+          label={hostUsername}
+          ready={isHost || isFinalized}
+          role="Host"
+          onPress={
+            hostUser
+              ? () => openPlayerProfile(hostUser, 'Host')
+              : undefined
+          }
+        />
         {approvedParticipants.map((req) =>
           req.user ? (
             <RosterAvatar
               key={req.id}
               label={req.user.username}
               ready={Boolean(req.ready_at)}
+              waiting={!isFinalized && !req.ready_at}
+              onPress={() => openPlayerProfile(req.user!, 'Player')}
             />
           ) : null
         )}
@@ -673,10 +718,7 @@ export const GameRoomFooter: React.FC = () => {
     handleScheduleNextGame,
     canScheduleNext,
     schedulingNext,
-    viewerId,
-    allowGroupRsvp,
-    rsvpSaving,
-    handleSetRsvp,
+    openPlayerProfile,
   } = useGameRoomContext();
 
   const [pendingExpanded, setPendingExpanded] = useState(pendingRequests.length > 0);
@@ -690,6 +732,8 @@ export const GameRoomFooter: React.FC = () => {
   if (!activity) {
     return null;
   }
+
+  const hasOpenSpots = activityHasOpenSpots(activity);
 
   if (isChatReadOnly) {
     return (
@@ -753,22 +797,12 @@ export const GameRoomFooter: React.FC = () => {
     );
   }
 
-  if (!showPlayerActions && !showHostFinalize && !showPending && !allowGroupRsvp) {
+  if (!showPlayerActions && !showHostFinalize && !showPending) {
     return null;
   }
 
   return (
     <View style={styles.footer}>
-      {allowGroupRsvp ? (
-        <GameRsvpBar
-          activity={activity}
-          userId={viewerId}
-          saving={rsvpSaving}
-          onSetRsvp={(status) => void handleSetRsvp(status)}
-          allowGroupRsvp
-          compact
-        />
-      ) : null}
       {isGameChatInPostGameGrace(activity) ? (
         <View style={styles.graceStrip}>
           <Text style={styles.graceText}>
@@ -810,22 +844,35 @@ export const GameRoomFooter: React.FC = () => {
           >
             <Text style={styles.pendingTitle}>
               {pendingRequests.length} join request{pendingRequests.length === 1 ? '' : 's'}
+              {!hasOpenSpots ? ' · roster full' : ''}
             </Text>
             <Text style={styles.pendingToggle}>{pendingExpanded ? 'Hide' : 'Show'}</Text>
           </TouchableOpacity>
           {pendingExpanded ? (
             loadingRequests ? (
-              <ActivityIndicator size="small" color="#007AFF" style={styles.pendingLoader} />
+              <ActivityIndicator size="small" color={colors.primary} style={styles.pendingLoader} />
             ) : (
               pendingRequests.map((req) => (
                 <View key={req.id} style={styles.pendingRow}>
-                  <Text style={styles.pendingName}>{req.user?.username || 'Player'}</Text>
+                  <TouchableOpacity
+                    style={styles.pendingUserTap}
+                    disabled={!req.user}
+                    onPress={() =>
+                      req.user && openPlayerProfile(req.user, 'Requested to join')
+                    }
+                  >
+                    <Text style={styles.pendingName}>{req.user?.username || 'Player'}</Text>
+                    {req.user ? <PlayerTrustLine userId={req.user.id} /> : null}
+                  </TouchableOpacity>
                   <View style={styles.pendingActions}>
                     <TouchableOpacity
-                      style={styles.approveBtn}
+                      style={[styles.approveBtn, !hasOpenSpots && styles.btnDisabled]}
                       onPress={() => void handleApprove(req.id)}
+                      disabled={!hasOpenSpots}
                     >
-                      <Text style={styles.approveBtnText}>Approve</Text>
+                      <Text style={styles.approveBtnText}>
+                        {hasOpenSpots ? 'Approve' : 'Full'}
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.rejectBtn}
@@ -893,12 +940,12 @@ const styles = StyleSheet.create({
     borderBottomColor: '#ddd',
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ddd',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 8,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md + 2,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   headerTop: {
     flexDirection: 'row',
@@ -929,13 +976,13 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusOpen: {
-    backgroundColor: '#e8f1ff',
+    backgroundColor: colors.primaryLight,
   },
   statusFinalized: {
-    backgroundColor: '#ddf8e8',
+    backgroundColor: colors.successSoft,
   },
   statusDefault: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: colors.background,
   },
   statusPillText: {
     fontSize: 11,
@@ -946,7 +993,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   moreBtnText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
     fontSize: 13,
   },
@@ -990,6 +1037,17 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: '#34C759',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  waitingDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.warning,
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -1069,7 +1127,7 @@ const styles = StyleSheet.create({
   waitingDetailsText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.primary,
   },
   scheduleBtn: {
     marginBottom: 8,
@@ -1094,7 +1152,7 @@ const styles = StyleSheet.create({
   },
   pendingToggle: {
     fontSize: 12,
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
   },
   pendingLoader: {
@@ -1106,18 +1164,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 8,
   },
-  pendingName: {
+  pendingUserTap: {
     flex: 1,
+    marginRight: 8,
+  },
+  pendingName: {
     fontSize: 14,
     color: '#222',
-    marginRight: 8,
+    fontWeight: '600',
   },
   pendingActions: {
     flexDirection: 'row',
     gap: 6,
   },
   approveBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -1150,7 +1211,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryBtn: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 11,

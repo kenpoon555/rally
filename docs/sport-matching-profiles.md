@@ -1,39 +1,44 @@
 # Sport matching profiles (product lock)
 
-Last updated: 2026-05-28
+Last updated: 2026-05-31
 
-## Pickleball MVP (locked)
+## Beta model (locked)
 
-**Decision:** Rally’s MVP is **pickleball-only** with **fixed games as the default** and **flexible matching as a secondary option**.
+**Fixed time + Game Room chat.** Host sets time and rough place; exact logistics (cost split, which gate, format) happen in chat. Flexible matching remains in code but is de-emphasized in Create Game.
+
+User-facing label: **game** (internal: `activities`).
 
 ### Default path: `fastFixed`
 
-- Host picks a **court** and publishes a **fixed start time** (`scheduling_mode: fixed`, `match_status: open`).
-- Discover shows open pickleball games nearby; players **join** via request flow.
-- User-facing label: **game** (internal tables still use `activities`).
+- Host picks **court/field** (or adds via Google Places) and publishes a **fixed start time**.
+- Discover shows open games; players **join** → **Mark Ready** → host **Finalizes**.
+- Coordination lives in **Game Room** chat.
 
-### Secondary path: flexible matching (`partnerFlex` behavior)
+### Launch-enabled sports (10)
 
-- On Create Game, user selects **“I’m flexible on time”**.
-- Same backend as before: time window, candidate courts, participant preferences, `finalize_activity_best_slot` RPC.
-- Lifecycle: `match_status`: `collecting` → `finalized`.
+| Sport | Profile | Default total | Open spots | Partner-dependent |
+| ----- | ------- | ------------- | ---------- | ----------------- |
+| Pickleball | `fastFixed` | 4 | 3 | |
+| Basketball | `fastFixed` | 8 | 7 | |
+| Badminton | `fastFixed` | 4 | 3 | |
+| Tennis | `fastFixed` | 4 | 3 | |
+| Volleyball | `fastFixed` | 12 | 11 | |
+| Soccer | `fastFixed` | 10 | 9 | |
+| Squash | `fastFixed` | 2 | 1 | yes |
+| Racquetball | `fastFixed` | 2 | 1 | yes |
+| Table Tennis | `fastFixed` | 4 | 3 | yes |
+| Ultimate Frisbee | `groupDiscuss` | 14 | 13 | yes |
 
-### Launch-enabled sports
-
-| Sport      | Profile     | Default scheduling | `launchEnabled` |
-| ---------- | ----------- | ------------------ | --------------- |
-| Pickleball | `fastFixed` | fixed              | yes             |
-
-**Not launch-enabled:** Tennis, Badminton, Basketball, Running, Hiking — legacy rows may still display in feeds.
+**Not launch-enabled (yet):** Running, Hiking — same shell, enable when meetup wedge is tested.
 
 ### Source of truth
 
-- [`src/constants/sports.ts`](../src/constants/sports.ts) — `SPORT_METADATA`, `MVP_DEFAULT_SCHEDULING_MODE`
-- [`src/hooks/useSportsCatalog.ts`](../src/hooks/useSportsCatalog.ts) — launch sports for Create / geofence modal
-- Validation notes: [pickleball-mvp-validation-notes.md](pickleball-mvp-validation-notes.md)
+- [`src/constants/sports.ts`](../src/constants/sports.ts) — `SPORT_METADATA`, `launchEnabled`, `defaultMissingPlayers`, `partnerDependent`
+- [`src/hooks/useSportsCatalog.ts`](../src/hooks/useSportsCatalog.ts) — launch sports for Create / Discover / geofence
+- [`src/components/SportIcon.tsx`](../src/components/SportIcon.tsx) — icons per sport
 
 ### Related docs
 
-- [HANDOFF-sport-matching.md](HANDOFF-sport-matching.md)
-- [phase2-fast-fixed-matching.md](phase2-fast-fixed-matching.md)
+- [product-review-multi-sport.md](product-review-multi-sport.md)
+- [beta-welcome-message.md](beta-welcome-message.md)
 - [ROADMAP.md](../ROADMAP.md)
