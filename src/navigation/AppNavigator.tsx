@@ -4,11 +4,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { useJoinRequestNotifications } from '../hooks/useJoinRequestNotifications';
 import { useGameLifecycleNotifications } from '../hooks/useGameLifecycleNotifications';
 import { ROUTES } from '../constants/routes';
 import { getTotalUnreadCount } from '../services/chatService';
+import { PRIMARY_COLOR } from '../constants/theme';
 
 // Auth Screens
 import LoginScreen from '../pages/Auth/LoginScreen';
@@ -16,7 +18,6 @@ import SignupScreen from '../pages/Auth/SignupScreen';
 
 // Home Screens
 import HomeScreen from '../pages/Home/HomeScreen';
-import MapScreen from '../pages/Home/MapScreen';
 
 // Activity Screens
 import ActivityDetailScreen from '../pages/Activity/ActivityDetailScreen';
@@ -28,6 +29,7 @@ import ProfileScreen from '../pages/Profile/ProfileScreen';
 import ChatListScreen from '../pages/Chat/ChatListScreen';
 import ChatThreadScreen from '../pages/Chat/ChatThreadScreen';
 import MyGamesScreen from '../pages/Games/MyGamesScreen';
+import AdminScreen from '../pages/Admin/AdminScreen';
 import { linking } from './deepLinking';
 import TosAcceptanceGate from '../components/TosAcceptanceGate';
 import { needsLegalAcceptance } from '../services/userService';
@@ -35,6 +37,16 @@ import { TOS_VERSION } from '../constants/legal';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICONS: Record<string, { focused: TabIconName; unfocused: TabIconName }> = {
+  [ROUTES.CHAT.TAB]: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
+  [ROUTES.MY_GAMES.TAB]: { focused: 'calendar', unfocused: 'calendar-outline' },
+  [ROUTES.HOME.MAIN]: { focused: 'search', unfocused: 'search-outline' },
+  [ROUTES.FRIENDS.LIST]: { focused: 'people', unfocused: 'people-outline' },
+  [ROUTES.PROFILE.MAIN]: { focused: 'person', unfocused: 'person-outline' },
+};
 
 const AuthStack = () => {
   return (
@@ -68,13 +80,24 @@ const MainTabs = () => {
   return (
     <Tab.Navigator
       initialRouteName={ROUTES.CHAT.TAB}
-      screenOptions={{ headerShown: false, lazy: true }}
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        lazy: true,
+        tabBarActiveTintColor: PRIMARY_COLOR,
+        tabBarInactiveTintColor: '#8e8e93',
+        tabBarIcon: ({ focused, color, size }) => {
+          const icons = TAB_ICONS[route.name];
+          const name = icons ? (focused ? icons.focused : icons.unfocused) : 'ellipse-outline';
+          return <Ionicons name={name} size={size} color={color} />;
+        },
+      })}
     >
       <Tab.Screen
         name={ROUTES.CHAT.TAB}
         component={ChatListScreen}
         options={{
           tabBarLabel: chatUnread > 0 ? `Chats (${chatUnread})` : 'Chats',
+          tabBarBadge: chatUnread > 0 ? (chatUnread > 9 ? '9+' : chatUnread) : undefined,
         }}
         listeners={{
           focus: () => {
@@ -125,11 +148,6 @@ const MainStack = () => {
         options={{ title: 'Create Game', headerLargeTitle: false }}
       />
       <Stack.Screen
-        name={ROUTES.HOME.MAP}
-        component={MapScreen}
-        options={{ title: 'Nearby courts' }}
-      />
-      <Stack.Screen
         name={ROUTES.CHAT.THREAD}
         component={ChatThreadScreen}
         options={{ title: 'Chat' }}
@@ -163,13 +181,16 @@ export const AppNavigator = () => {
           backgroundColor: '#fff',
         }}
       >
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={PRIMARY_COLOR} />
       </View>
     );
   }
 
+  // Remount navigation when auth mode changes — swapping stacks in one container causes a blank screen on Android.
+  const navKey = user ? 'main' : 'auth';
+
   return (
-    <NavigationContainer ref={navigationRef} linking={linking}>
+    <NavigationContainer key={navKey} ref={navigationRef} linking={user ? linking : undefined}>
       {user ? <MainStack /> : <AuthStack />}
       {user ? (
         <TosAcceptanceGate

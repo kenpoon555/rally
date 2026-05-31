@@ -93,6 +93,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
   const [fixedStartTime, setFixedStartTime] = useState(defaultFixedStart);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false);
 
   useEffect(() => {
     const meta = getSportMetadata(sportType);
@@ -421,78 +422,94 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>When do you want to play?</Text>
-          <View style={styles.row}>
+          <View style={styles.timePickerBlock}>
+            <Text style={styles.sectionTitle}>Game starts</Text>
             <TouchableOpacity
-              style={[styles.optionButton, schedulingMode === 'fixed' && styles.optionButtonSelected]}
-              onPress={() => setSchedulingMode('fixed')}
+              style={styles.timePickerButton}
+              onPress={() => setShowDatePicker(true)}
             >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  schedulingMode === 'fixed' && styles.optionButtonTextSelected,
-                ]}
-              >
-                Set time now
+              <Text style={styles.timePickerButtonText}>
+                {fixedStartTime.toLocaleString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.optionButton, schedulingMode === 'flex' && styles.optionButtonSelected]}
-              onPress={() => setSchedulingMode('flex')}
-            >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  schedulingMode === 'flex' && styles.optionButtonTextSelected,
-                ]}
-              >
-                I'm flexible
-              </Text>
-            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={fixedStartTime}
+                mode="datetime"
+                minimumDate={new Date()}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                  if (event.type === 'dismissed') {
+                    setShowDatePicker(false);
+                    return;
+                  }
+                  if (date) {
+                    setFixedStartTime(date);
+                  }
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && showDatePicker && (
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.timePickerDone}>Done</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          {schedulingMode === 'fixed' && (
-            <View style={styles.timePickerBlock}>
-              <Text style={styles.sectionTitle}>Game starts</Text>
+          <TouchableOpacity
+            style={styles.advancedToggle}
+            onPress={() => {
+              setShowAdvancedScheduling((v) => {
+                const next = !v;
+                if (!next) {
+                  setSchedulingMode('fixed');
+                }
+                return next;
+              });
+            }}
+          >
+            <Text style={styles.advancedToggleText}>
+              {showAdvancedScheduling ? 'Hide advanced scheduling ▲' : 'Advanced scheduling ▼'}
+            </Text>
+          </TouchableOpacity>
+          {showAdvancedScheduling ? (
+            <View style={styles.row}>
               <TouchableOpacity
-                style={styles.timePickerButton}
-                onPress={() => setShowDatePicker(true)}
+                style={[styles.optionButton, schedulingMode === 'fixed' && styles.optionButtonSelected]}
+                onPress={() => setSchedulingMode('fixed')}
               >
-                <Text style={styles.timePickerButtonText}>
-                  {fixedStartTime.toLocaleString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    schedulingMode === 'fixed' && styles.optionButtonTextSelected,
+                  ]}
+                >
+                  Set time now
                 </Text>
               </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={fixedStartTime}
-                  mode="datetime"
-                  minimumDate={new Date()}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') {
-                      setShowDatePicker(false);
-                    }
-                    if (event.type === 'dismissed') {
-                      setShowDatePicker(false);
-                      return;
-                    }
-                    if (date) {
-                      setFixedStartTime(date);
-                    }
-                  }}
-                />
-              )}
-              {Platform.OS === 'ios' && showDatePicker && (
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.timePickerDone}>Done</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={[styles.optionButton, schedulingMode === 'flex' && styles.optionButtonSelected]}
+                onPress={() => setSchedulingMode('flex')}
+              >
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    schedulingMode === 'flex' && styles.optionButtonTextSelected,
+                  ]}
+                >
+                  I'm flexible
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -927,6 +944,15 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: '#007AFF',
     fontWeight: '600',
+  },
+  advancedToggle: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+  },
+  advancedToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
   },
   input: {
     borderWidth: 1,

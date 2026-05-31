@@ -9,8 +9,8 @@ Bridges **Stage 3 (partial)** and **Stage 4 (Team Plan)**. Three product bets fr
 | Track | Idea | Roadmap slot | Status |
 |-------|------|--------------|--------|
 | **A** | Hide Map tab; courts from Discover | Stage 3.5a | **Shipped** |
-| **B** | Badminton host invite loop (beta wedge) | Stage 3.5b | Docs + seed script |
-| **C** | Regulars / Groups identity | Stage 3.5c → Stage 4 | Design only |
+| **B** | Badminton host invite loop (beta wedge) | Stage 3.5b | **Seeded** — device QA |
+| **C** | Regulars / Groups identity | Stage 3.5c → Stage 4 | **Shipped** (schema + host CTA) |
 
 ```mermaid
 flowchart TB
@@ -30,16 +30,14 @@ flowchart TB
 
 ---
 
-## 3.5a — Map deferral (shipped)
+## 3.5a — Map hidden for beta (shipped)
 
-**Problem:** Map tab duplicated Discover, fuzzed pins, and added a 6th tab.
+**Problem:** Map duplicated Discover, fuzzed pins, and added little value for beta users.
 
 **Solution:**
-- Remove Map from bottom tabs (5 tabs: Chats, My Games, Discover, Friends, Profile).
-- Keep `MapScreen` on the root stack — **Discover → “Browse nearby courts on map”**.
-- Re-enable as tab when map adds unique value (V2 presence, court-first browse).
-
-**Exit:** Beta users reach courts without a dedicated tab; no regression in Create Game court picker.
+- Remove Map from bottom tabs and stack navigation.
+- Court selection stays on **Create Game** (inline map + list).
+- Re-enable dedicated map when it adds unique value (V2 presence, court-first browse).
 
 ---
 
@@ -65,28 +63,26 @@ flowchart TB
 
 ---
 
-## 3.5c — Regulars / Groups (design → Stage 4)
+## 3.5c — Regulars / Groups (shipped foundation)
 
 **Problem:** Recurring series is **per-game UUID**; users think in **“our Tuesday crew”**, not activity rows.
 
-**Proposed model (not built yet):**
+**Shipped (migration `021`):**
 
 | Entity | Purpose |
 |--------|---------|
-| `groups` | Name, sport, default court, host |
-| `group_members` | Roster (roles later) |
-| `group.series_id` | Links to existing `game_series` |
-| Game Room header | “Monrovia Badminton Regulars” not just court name |
+| `regular_groups` | Name, sport, default court, host, series link, invite token |
+| `regular_group_members` | Roster (`host`, `member`, `captain`) |
+| `activities.regular_group_id` | Links games to a crew |
+| RPC `create_regular_group_from_activity` | Host saves roster from a game |
+| RPC `join_regular_group_via_invite` | `rallyapp://group-invite/{token}` |
 
-**Why before Team Plan:** Groups are the emotional container; Team Plan sells **tools on top** (waitlist, blast, analytics).
+**Client:** Activity detail → **Save as Regulars group** → **Share group invite link**.
 
-**Build order:**
-1. Schema + “Create group from this game” (host)
-2. Invite link joins **group + next occurrence**
-3. Chats tab: group row above game threads
-4. Stage 4: paid organizer dashboard on group
-
-**Defer until:** 3.5b shows ≥2 hosts running weekly games manually.
+**Still to build (Stage 4 prep):**
+1. Chats tab: group row above game threads
+2. Invite link joins **group + next occurrence** in one tap
+3. Stage 4: paid organizer dashboard on group (`teams` extends this)
 
 ---
 

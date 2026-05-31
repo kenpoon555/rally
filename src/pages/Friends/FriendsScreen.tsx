@@ -24,7 +24,7 @@ import { Friend } from '../../types/friends';
 import { User } from '../../types/user';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
-import { getOrCreateDirectConversation, getTotalUnreadCount } from '../../services/chatService';
+import { getOrCreateDirectConversation } from '../../services/chatService';
 
 type TabParamList = {
   Home: undefined;
@@ -36,12 +36,8 @@ type TabParamList = {
 
 type Props = BottomTabScreenProps<TabParamList, 'Friends'>;
 
-type Presence = 'available' | 'playing' | 'offline';
-
-const PRESENCE_SEQUENCE: Presence[] = ['available', 'playing', 'offline'];
-
 const FriendsScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
   const [outgoingRequests, setOutgoingRequests] = useState<Friend[]>([]);
@@ -51,7 +47,6 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
-  const [unreadChats, setUnreadChats] = useState(0);
 
   const loadFriends = useCallback(async () => {
     if (!user) return;
@@ -93,16 +88,6 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
     setLoadingInitial(true);
     loadAll().finally(() => setLoadingInitial(false));
   }, [user, loadAll]);
-
-  useEffect(() => {
-    if (!user?.id) {
-      setUnreadChats(0);
-      return;
-    }
-    getTotalUnreadCount(user.id)
-      .then(setUnreadChats)
-      .catch(() => setUnreadChats(0));
-  }, [user?.id, friends.length, pendingRequests.length, outgoingRequests.length]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -165,28 +150,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
     setRefreshing(false);
   };
 
-  const handleSignOut = () => {
-    Alert.alert('Sign out', 'Sign out from this device?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch (error: any) {
-            Alert.alert('Error', error?.message || 'Failed to sign out');
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleOpenChats = () => {
-    navigation.navigate(ROUTES.CHAT.TAB as never);
-  };
-
-  const handleDirectChat = async (friendUserId?: string) => {
+  const handleDirectChat = async (friendUserId?: string, username?: string) => {
     if (!friendUserId) {
       return;
     }
@@ -194,15 +158,11 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
       const conversationId = await getOrCreateDirectConversation(friendUserId, user?.id);
       navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
         conversationId,
-        title: 'Direct Chat',
+        title: username ? `@${username}` : 'Direct message',
       } as never);
     } catch (error: any) {
       Alert.alert('Chat unavailable', error?.message || 'Could not open chat right now.');
     }
-  };
-
-  const getPresence = (index: number): Presence => {
-    return PRESENCE_SEQUENCE[index % PRESENCE_SEQUENCE.length];
   };
 
   const pendingTotal = pendingRequests.length + outgoingRequests.length;
@@ -227,16 +187,6 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.header}>
         <View style={styles.headerTopRow}>
           <Text style={styles.headerTitle}>Friends</Text>
-          <View style={styles.headerActionRow}>
-            <TouchableOpacity onPress={handleOpenChats} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={styles.chatLink}>
-                Chats{unreadChats > 0 ? ` (${unreadChats})` : ''}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSignOut} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Text style={styles.signOutLink}>Sign out</Text>
-            </TouchableOpacity>
-          </View>
         </View>
         <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
       </View>
@@ -276,16 +226,13 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.friendItem}>
               <View style={styles.friendInfo}>
                 <Text style={styles.friendName}>{item.friend?.username || 'Unknown'}</Text>
-                <Text style={styles.friendStatus}>
-                  {getPresence(friends.findIndex((f) => f.id === item.id))}
-                </Text>
               </View>
               <TouchableOpacity style={styles.removeButton} onPress={() => handleRemove(item.id)}>
                 <Text style={styles.removeButtonText}>Remove</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.chatButton}
-                onPress={() => handleDirectChat(item.friend?.id)}
+                onPress={() => handleDirectChat(item.friend?.id, item.friend?.username)}
               >
                 <Text style={styles.chatButtonText}>Chat</Text>
               </TouchableOpacity>

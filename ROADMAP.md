@@ -10,18 +10,17 @@ Last updated: 2026-06-01
 - Next success metric: a group can converge on the best time/location with minimal coordination overhead.
 - **UX north star (2026-05-31):** **Chat-first coordination** — users live in game lobbies; Discover is for filling empty slots.
 
-## Tab structure (current — 6 tabs)
+## Tab structure (current — 5 tabs)
 
-| Order | Tab | Role | Verdict |
-|-------|-----|------|---------|
-| 1 | **Chats** | Primary hub — game lobbies + friend DMs | ✅ Correct default |
-| 2 | **My Games** | Upcoming / Past / Hosting roster view | ✅ Fits Stage 3 retention |
-| 3 | **Discover** | Find open games to join (not already in) | ✅ Supply acquisition |
-| 4 | **Map** | Courts browse (stack screen from Discover) | ✅ **Deferred off tab bar** (Stage 3.5a) |
-| 5 | **Friends** | Social graph + DMs entry | ✅ Keep |
-| 6 | **Profile** | Identity, trust, settings, reviews | ✅ Keep (lighter without My Games list) |
+| Order | Tab | Role |
+|-------|-----|------|
+| 1 | **Chats** | Primary hub — game lobbies + friend DMs |
+| 2 | **My Games** | Upcoming / Past / Hosting → Game Room |
+| 3 | **Discover** | Find open games to join |
+| 4 | **Friends** | Social graph + DMs |
+| 5 | **Profile** | Identity, trust, settings |
 
-**Map deferral (Stage 3.5a — shipped):** Map removed from tab bar; open via Discover → “Browse nearby courts on map”. See `docs/stage-3.5-beta-polish-and-regulars.md`.
+**Map:** Hidden for beta (not in tab bar or navigation). Court picker on Create Game uses inline map only.
 
 ## Current Status (honest snapshot)
 
@@ -31,7 +30,7 @@ Last updated: 2026-06-01
 |------|------------|
 | **Auth** | Signup, login, profile auto-create, session refresh |
 | **Discover** | Sport filter (pickleball / basketball / badminton), hide joined/finalized/invite-only, tonight boost |
-| **Map** | Activity + court pins, Start Here → create — **candidate to hide from tab bar** |
+| **Map** | Activity + court pins — **hidden for beta** | Inline map on Create Game only |
 | **My Games** | Upcoming / Past / Hosting tab (Stage 3) |
 | **Friends** | Add, accept, search, 1:1 chat entry |
 | **Chats tab** | Game lobbies + friend DMs in one inbox; **Details** → activity screen |
@@ -90,15 +89,11 @@ Last updated: 2026-06-01
 - Sport filter; open games only; **TONIGHT** badge for urgent hosts.
 - Join → pending → approved; host sees **YOUR GAME**.
 
-### Tab 4 — Map (defer for beta)
-
-- Same pins as Discover + court spots; consider hiding until map-native UX exists.
-
-### Tab 5 — Friends
+### Tab 4 — Friends
 
 - List, requests, search; message opens DM.
 
-### Tab 6 — Profile
+### Tab 5 — Profile
 
 - Default sport, trust stats, reviews, settings, quiet hours (My Games → tab).
 
@@ -117,7 +112,7 @@ Priority order based on device QA:
 4. [x] **Discover role** — Hide joined/finalized/invite-only from feed.
 5. [x] **Empty states** — Chats + My Games CTAs.
 6. [ ] **Remove dev diagnostics** from production builds (pipeline panel, debugger warnings).
-7. [ ] **Hide Map tab** until map adds value beyond Discover — **done (3.5a)**; optional: in-app host coach marks (3.5b).
+7. [x] **Hide Map** from navigation for beta; inline Create Game court picker only.
 
 See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
 
@@ -224,9 +219,9 @@ See `docs/stage-2.5-game-commitment.md`, `docs/stage-3-organizer-recurring.md`, 
 
 | Track | Deliverable | Status |
 |-------|-------------|--------|
-| **3.5a** | Map off tab bar; stack screen from Discover | **Shipped** |
-| **3.5b** | Badminton court seed + invite/recurring smoke test | **Docs + script** — run before sister’s beta |
-| **3.5c** | Regulars / Groups schema (`groups`, `group_members`) | **Design** — build after 2 weekly hosts validate manually |
+| **3.5a** | Map hidden from navigation (Create Game inline map only) | **Shipped** |
+| **3.5b** | Badminton court seed + invite/recurring smoke test | **Seeded in prod** — QA on device |
+| **3.5c** | Regulars / Groups schema (`regular_groups`, `regular_group_members`) | **Shipped** — host CTA + group invite link |
 
 Full design: `docs/stage-3.5-beta-polish-and-regulars.md`. Physical QA: `docs/physical-device-beta-test.md`.
 

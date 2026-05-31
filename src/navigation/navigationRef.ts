@@ -3,7 +3,6 @@ import { ROUTES } from '../constants/routes';
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  [ROUTES.HOME.MAP]: undefined;
   [ROUTES.ACTIVITY.DETAIL]: { activityId?: string; inviteToken?: string };
   [ROUTES.ACTIVITY.CREATE]: undefined;
   [ROUTES.PROFILE.MAIN]: undefined;

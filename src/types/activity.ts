@@ -30,6 +30,8 @@ export interface Activity {
   source_activity_id?: string | null;
   /** Stage 3: recurring weekly series. */
   series_id?: string | null;
+  /** Stage 3.5c: Regulars / Groups identity. */
+  regular_group_id?: string | null;
   urgency_level?: ActivityUrgencyLevel;
   invite_token?: string;
   created_at: string;

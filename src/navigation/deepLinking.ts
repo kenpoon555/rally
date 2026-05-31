@@ -16,7 +16,6 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
       },
       [ROUTES.ACTIVITY.DETAIL]: 'game/:activityId',
       [ROUTES.ACTIVITY.CREATE]: 'create',
-      [ROUTES.HOME.MAP]: 'courts/map',
     },
   },
 };
@@ -25,20 +24,30 @@ export function buildGameInviteUrl(inviteToken: string): string {
   return `${APP_SCHEME}://invite/${inviteToken}`;
 }
 
+export function buildRegularGroupInviteUrl(inviteToken: string): string {
+  return `${APP_SCHEME}://group-invite/${inviteToken}`;
+}
+
 export function buildGameActivityUrl(activityId: string): string {
   return `${APP_SCHEME}://game/${activityId}`;
 }
 
 /** Parse rallyapp://game/:id, rallyapp://invite/:token, rallyapp://auth/callback */
 export function parseAppDeepLink(url: string): {
-  type: 'auth' | 'game' | 'invite' | 'unknown';
+  type: 'auth' | 'game' | 'invite' | 'groupInvite' | 'unknown';
   activityId?: string;
   inviteToken?: string;
+  groupInviteToken?: string;
 } {
   try {
     const normalized = url.trim();
     if (normalized.includes('auth/callback')) {
       return { type: 'auth' };
+    }
+
+    const groupInviteMatch = normalized.match(/group-invite\/([0-9a-f-]{36})/i);
+    if (groupInviteMatch) {
+      return { type: 'groupInvite', groupInviteToken: groupInviteMatch[1] };
     }
 
     const inviteMatch = normalized.match(/invite\/([0-9a-f-]{36})/i);

@@ -44,6 +44,7 @@ type GameRoomContextValue = {
   loading: boolean;
   isHost: boolean;
   isApprovedJoiner: boolean;
+  isPendingJoiner: boolean;
   isFinalized: boolean;
   isChatReadOnly: boolean;
   iAmReady: boolean;
@@ -114,6 +115,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     [activity?.join_requests, user?.id]
   );
   const isApprovedJoiner = myJoinRequest?.status === 'approved';
+  const isPendingJoiner = myJoinRequest?.status === 'pending';
   const isFinalized = activity?.match_status === 'finalized';
   const isChatReadOnly = activity ? isGameChatReadOnly(activity) : false;
   const iAmReady = Boolean(isHost || myJoinRequest?.ready_at);
@@ -304,6 +306,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     loading,
     isHost,
     isApprovedJoiner,
+    isPendingJoiner,
     isFinalized,
     isChatReadOnly,
     iAmReady,
@@ -409,7 +412,7 @@ export const GameRoomHeader: React.FC = () => {
           </View>
           {onOpenDetails ? (
             <TouchableOpacity onPress={onOpenDetails} style={styles.moreBtn}>
-              <Text style={styles.moreBtnText}>More</Text>
+              <Text style={styles.moreBtnText}>Details</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -445,6 +448,7 @@ export const GameRoomFooter: React.FC = () => {
     activity,
     isHost,
     isApprovedJoiner,
+    isPendingJoiner,
     isFinalized,
     isChatReadOnly,
     iAmReady,
@@ -453,6 +457,7 @@ export const GameRoomFooter: React.FC = () => {
     finalizing,
     settingReady,
     leaving,
+    onOpenDetails,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -510,6 +515,23 @@ export const GameRoomFooter: React.FC = () => {
       <View style={styles.footer}>
         <View style={styles.finalizedStrip}>
           <Text style={styles.finalizedText}>Roster locked — see you on court!</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (!showPlayerActions && !showHostFinalize && !showPending && isPendingJoiner) {
+    return (
+      <View style={styles.footer}>
+        <View style={styles.waitingStrip}>
+          <Text style={styles.waitingText}>
+            Waiting for the host to approve your join request.
+          </Text>
+          {onOpenDetails ? (
+            <TouchableOpacity onPress={onOpenDetails} style={styles.waitingDetailsBtn}>
+              <Text style={styles.waitingDetailsText}>View game details</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
     );
@@ -788,6 +810,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#7a5b00',
+  },
+  waitingStrip: {
+    backgroundColor: '#fff8e6',
+    borderRadius: 10,
+    padding: 12,
+  },
+  waitingText: {
+    fontSize: 13,
+    color: '#6b4e00',
+    lineHeight: 18,
+  },
+  waitingDetailsBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  waitingDetailsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   scheduleBtn: {
     marginBottom: 8,
