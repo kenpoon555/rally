@@ -1,7 +1,8 @@
 /**
- * Debug session ingest: send logs to host. On Android emulator use 10.0.2.2 so the host receives logs.
+ * Debug session ingest: send logs to host. Off by default — set EXPO_PUBLIC_ENABLE_DEBUG_INGEST=true.
  */
 import { Platform } from 'react-native';
+import { ENABLE_DEBUG_INGEST } from '../constants/devFlags';
 
 const INGEST_ID = '6b58671e-eb23-45d8-a6fe-a7768139a3fc';
 const SESSION_ID = '3d9462';
@@ -14,6 +15,9 @@ export function sendDebugLog(
   data: Record<string, unknown> = {},
   hypothesisId: string = 'H'
 ): void {
+  if (!ENABLE_DEBUG_INGEST) {
+    return;
+  }
   const body = JSON.stringify({
     sessionId: SESSION_ID,
     location,

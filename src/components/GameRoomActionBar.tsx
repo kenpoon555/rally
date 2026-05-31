@@ -9,12 +9,14 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useActivity } from '../hooks/useActivities';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -24,8 +26,14 @@ import {
   leaveGame,
   rejectJoinRequest,
   scheduleNextGameFromActivity,
+  scheduleGroupNextGame,
+  setGameRsvp,
   setGameReady,
+  updateActivity,
 } from '../services/activityService';
+import { GameRsvpStatus } from '../types/activity';
+import GameRsvpBar from './GameRsvpBar';
+import { isRegularGroupMember } from '../services/regularGroupService';
 import { supabase } from '../services/api/supabase';
 import { JoinRequest } from '../types/activity';
 import {
@@ -37,13 +45,16 @@ import {
   isGameChatInPostGameGrace,
 } from '../utils/activityHelpers';
 import { GAME_CHAT_ARCHIVE_GRACE_HOURS } from '../constants/gameChat';
+import { getRegularGroupById } from '../services/regularGroupService';
 
 type GameRoomContextValue = {
   activityId: string;
   activity: ReturnType<typeof useActivity>['activity'];
   loading: boolean;
+  groupName: string | null;
   isHost: boolean;
   isApprovedJoiner: boolean;
+  isPendingJoiner: boolean;
   isFinalized: boolean;
   isChatReadOnly: boolean;
   iAmReady: boolean;
@@ -60,6 +71,8 @@ type GameRoomContextValue = {
   settingReady: boolean;
   leaving: boolean;
   onOpenDetails?: () => void;
+  handlePublishToDiscover: () => void;
+  publishingToDiscover: boolean;
   handleApprove: (requestId: string) => Promise<void>;
   handleReject: (requestId: string) => Promise<void>;
   handleSetReady: () => Promise<void>;
@@ -68,6 +81,16 @@ type GameRoomContextValue = {
   handleScheduleNextGame: () => void;
   canScheduleNext: boolean;
   schedulingNext: boolean;
+  viewerId?: string;
+  isGroupMember: boolean;
+  allowGroupRsvp: boolean;
+  rsvpSaving: boolean;
+  handleSetRsvp: (status: GameRsvpStatus) => Promise<void>;
+  schedulePickerVisible: boolean;
+  nextStartTime: Date;
+  setSchedulePickerVisible: (visible: boolean) => void;
+  setNextStartTime: (date: Date) => void;
+  confirmScheduleNext: () => Promise<void>;
 };
 
 const GameRoomContext = createContext<GameRoomContextValue | null>(null);
@@ -107,6 +130,63 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [schedulingNext, setSchedulingNext] = useState(false);
+  const [publishingToDiscover, setPublishingToDiscover] = useState(false);
+  const [groupName, setGroupName] = useState<string | null>(null);
+  const [isGroupMember, setIsGroupMember] = useState(false);
+  const [rsvpSaving, setRsvpSaving] = useState(false);
+  const [schedulePickerVisible, setSchedulePickerVisible] = useState(false);
+  const [nextStartTime, setNextStartTime] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    d.setMinutes(0, 0, 0);
+    return d;
+  });
+
+  useEffect(() => {
+    const groupId = activity?.regular_group_id;
+    if (!groupId) {
+      setGroupName(null);
+      return;
+    }
+    let cancelled = false;
+    getRegularGroupById(groupId)
+      .then((group) => {
+        if (!cancelled) {
+          setGroupName(group?.name ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGroupName(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activity?.regular_group_id]);
+
+  useEffect(() => {
+    const groupId = activity?.regular_group_id;
+    if (!groupId || !user?.id) {
+      setIsGroupMember(false);
+      return;
+    }
+    let cancelled = false;
+    isRegularGroupMember(groupId, user.id)
+      .then((member) => {
+        if (!cancelled) {
+          setIsGroupMember(member);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsGroupMember(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activity?.regular_group_id, user?.id]);
 
   const isHost = Boolean(user && activity && user.id === activity.user_id);
   const myJoinRequest = useMemo(
@@ -114,7 +194,11 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     [activity?.join_requests, user?.id]
   );
   const isApprovedJoiner = myJoinRequest?.status === 'approved';
+  const isPendingJoiner = myJoinRequest?.status === 'pending';
   const isFinalized = activity?.match_status === 'finalized';
+  const allowGroupRsvp = Boolean(
+    activity?.regular_group_id && isGroupMember && !isFinalized
+  );
   const isChatReadOnly = activity ? isGameChatReadOnly(activity) : false;
   const iAmReady = Boolean(isHost || myJoinRequest?.ready_at);
   const approvedParticipants = useMemo(
@@ -208,29 +292,60 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     if (!activity || !isHost) {
       return;
     }
-    Alert.alert(
-      'Schedule next game?',
-      'Creates an invite-only game next week with this roster. Hidden from Discover.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Schedule',
-          onPress: async () => {
-            setSchedulingNext(true);
-            try {
-              const newId = await scheduleNextGameFromActivity(activity.id);
-              onScheduledNextGame?.(newId);
-            } catch (error: unknown) {
-              const message =
-                error instanceof Error ? error.message : 'Could not schedule next game.';
-              Alert.alert('Schedule failed', message);
-            } finally {
-              setSchedulingNext(false);
-            }
-          },
-        },
-      ]
-    );
+    const base = activity.start_time ? new Date(activity.start_time) : new Date();
+    const suggested = new Date(base.getTime() + 7 * 24 * 60 * 60 * 1000);
+    if (suggested <= new Date()) {
+      suggested.setDate(suggested.getDate() + 7);
+    }
+    setNextStartTime(suggested);
+    setSchedulePickerVisible(true);
+  };
+
+  const confirmScheduleNext = async () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    setSchedulingNext(true);
+    try {
+      const startIso = nextStartTime.toISOString();
+      const capacity =
+        Math.max(2, (activity.player_count ?? 1) + (activity.missing_players ?? 0)) || 8;
+      let newId: string;
+      if (activity.regular_group_id) {
+        newId = await scheduleGroupNextGame(
+          activity.regular_group_id,
+          startIso,
+          capacity,
+          activity.duration
+        );
+      } else {
+        newId = await scheduleNextGameFromActivity(activity.id, startIso);
+      }
+      setSchedulePickerVisible(false);
+      onScheduledNextGame?.(newId);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Could not schedule next game.';
+      Alert.alert('Schedule failed', message);
+    } finally {
+      setSchedulingNext(false);
+    }
+  };
+
+  const handleSetRsvp = async (status: GameRsvpStatus) => {
+    if (!activity) {
+      return;
+    }
+    setRsvpSaving(true);
+    try {
+      await setGameRsvp(activity.id, status);
+      await refetch();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not save RSVP.';
+      Alert.alert('RSVP', message);
+    } finally {
+      setRsvpSaving(false);
+    }
   };
 
   const handleLeaveGame = () => {
@@ -298,12 +413,48 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const hostUsername = activity?.user?.username || 'Host';
   const canScheduleNext = Boolean(activity && canHostScheduleNextGame(activity, isHost));
 
+  const handlePublishToDiscover = useCallback(() => {
+    if (!activity || !isHost || activity.visibility !== 'invite_only') {
+      return;
+    }
+    const openSpots = activity.missing_players ?? 0;
+    Alert.alert(
+      'List on Discover?',
+      `Anyone nearby can request to join (${openSpots} spot${openSpots === 1 ? '' : 's'} open). You can still approve who gets in.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'List on Discover',
+          onPress: async () => {
+            setPublishingToDiscover(true);
+            try {
+              await updateActivity(activity.id, { visibility: 'nearby' });
+              await refetch();
+              Alert.alert(
+                'Listed on Discover',
+                'Your game now appears on Discover for players nearby. Share the invite link if you want to fill spots faster.'
+              );
+            } catch (error: unknown) {
+              const message =
+                error instanceof Error ? error.message : 'Could not update visibility.';
+              Alert.alert('Could not list game', message);
+            } finally {
+              setPublishingToDiscover(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [activity, isHost, refetch]);
+
   const value: GameRoomContextValue = {
     activityId,
     activity,
     loading,
+    groupName,
     isHost,
     isApprovedJoiner,
+    isPendingJoiner,
     isFinalized,
     isChatReadOnly,
     iAmReady,
@@ -320,6 +471,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     settingReady,
     leaving,
     onOpenDetails,
+    handlePublishToDiscover,
+    publishingToDiscover,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -328,9 +481,61 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     handleScheduleNextGame,
     canScheduleNext,
     schedulingNext,
+    viewerId: user?.id,
+    isGroupMember,
+    allowGroupRsvp,
+    rsvpSaving,
+    handleSetRsvp,
+    schedulePickerVisible,
+    nextStartTime,
+    setSchedulePickerVisible,
+    setNextStartTime,
+    confirmScheduleNext,
   };
 
-  return <GameRoomContext.Provider value={value}>{children}</GameRoomContext.Provider>;
+  return (
+    <GameRoomContext.Provider value={value}>
+      {children}
+      {schedulePickerVisible && activity && isHost ? (
+        <View style={styles.schedulePickerSheet}>
+          <Text style={styles.schedulePickerTitle}>Next game start time</Text>
+          <DateTimePicker
+            value={nextStartTime}
+            mode="datetime"
+            minimumDate={new Date()}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(_, date) => {
+              if (date) {
+                setNextStartTime(date);
+              }
+            }}
+          />
+          <View style={styles.schedulePickerActions}>
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={() => setSchedulePickerVisible(false)}
+              disabled={schedulingNext}
+            >
+              <Text style={styles.secondaryBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.primaryBtn, schedulingNext && styles.btnDisabled]}
+              onPress={() => void confirmScheduleNext()}
+              disabled={schedulingNext}
+            >
+              <Text style={styles.primaryBtnText}>
+                {schedulingNext
+                  ? 'Scheduling…'
+                  : activity.regular_group_id
+                    ? 'Post for crew'
+                    : 'Schedule'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+    </GameRoomContext.Provider>
+  );
 };
 
 function statusStyle(label: string) {
@@ -376,6 +581,7 @@ export const GameRoomHeader: React.FC = () => {
     rosterCount,
     approvedParticipants,
     hostUsername,
+    groupName,
     courtName,
     timeLabel,
     statusLabel,
@@ -399,9 +605,11 @@ export const GameRoomHeader: React.FC = () => {
       <View style={styles.headerTop}>
         <View style={styles.headerCopy}>
           <Text style={styles.courtName} numberOfLines={1}>
-            {courtName}
+            {groupName || courtName}
           </Text>
-          <Text style={styles.timeLabel}>{timeLabel}</Text>
+          <Text style={styles.timeLabel}>
+            {groupName ? `${courtName} · ${timeLabel}` : timeLabel}
+          </Text>
         </View>
         <View style={styles.headerBadges}>
           <View style={[styles.statusPill, statusStyle(statusLabel)]}>
@@ -409,7 +617,7 @@ export const GameRoomHeader: React.FC = () => {
           </View>
           {onOpenDetails ? (
             <TouchableOpacity onPress={onOpenDetails} style={styles.moreBtn}>
-              <Text style={styles.moreBtnText}>More</Text>
+              <Text style={styles.moreBtnText}>Details</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -445,6 +653,7 @@ export const GameRoomFooter: React.FC = () => {
     activity,
     isHost,
     isApprovedJoiner,
+    isPendingJoiner,
     isFinalized,
     isChatReadOnly,
     iAmReady,
@@ -453,6 +662,9 @@ export const GameRoomFooter: React.FC = () => {
     finalizing,
     settingReady,
     leaving,
+    onOpenDetails,
+    handlePublishToDiscover,
+    publishingToDiscover,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -461,6 +673,10 @@ export const GameRoomFooter: React.FC = () => {
     handleScheduleNextGame,
     canScheduleNext,
     schedulingNext,
+    viewerId,
+    allowGroupRsvp,
+    rsvpSaving,
+    handleSetRsvp,
   } = useGameRoomContext();
 
   const [pendingExpanded, setPendingExpanded] = useState(pendingRequests.length > 0);
@@ -504,6 +720,11 @@ export const GameRoomFooter: React.FC = () => {
   const showPlayerActions = !isFinalized && !isHost && isApprovedJoiner;
   const showHostFinalize = !isFinalized && isHost;
   const showPending = isHost && !isFinalized && pendingRequests.length > 0;
+  const showListOnDiscover =
+    isHost &&
+    !isFinalized &&
+    activity.visibility === 'invite_only' &&
+    (activity.missing_players ?? 0) > 0;
 
   if (isFinalized) {
     return (
@@ -515,18 +736,60 @@ export const GameRoomFooter: React.FC = () => {
     );
   }
 
-  if (!showPlayerActions && !showHostFinalize && !showPending) {
+  if (!showPlayerActions && !showHostFinalize && !showPending && isPendingJoiner) {
+    return (
+      <View style={styles.footer}>
+        <View style={styles.waitingStrip}>
+          <Text style={styles.waitingText}>
+            Waiting for the host to approve your join request.
+          </Text>
+          {onOpenDetails ? (
+            <TouchableOpacity onPress={onOpenDetails} style={styles.waitingDetailsBtn}>
+              <Text style={styles.waitingDetailsText}>View game details</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
+  if (!showPlayerActions && !showHostFinalize && !showPending && !allowGroupRsvp) {
     return null;
   }
 
   return (
     <View style={styles.footer}>
+      {allowGroupRsvp ? (
+        <GameRsvpBar
+          activity={activity}
+          userId={viewerId}
+          saving={rsvpSaving}
+          onSetRsvp={(status) => void handleSetRsvp(status)}
+          allowGroupRsvp
+          compact
+        />
+      ) : null}
       {isGameChatInPostGameGrace(activity) ? (
         <View style={styles.graceStrip}>
           <Text style={styles.graceText}>
             Post-game chat — {GAME_CHAT_ARCHIVE_GRACE_HOURS}h to coordinate the next game.
           </Text>
         </View>
+      ) : null}
+      {showListOnDiscover ? (
+        <TouchableOpacity
+          style={[styles.primaryBtn, styles.scheduleBtn, publishingToDiscover && styles.btnDisabled]}
+          onPress={handlePublishToDiscover}
+          disabled={publishingToDiscover}
+        >
+          <Text style={styles.primaryBtnText}>
+            {publishingToDiscover
+              ? 'Listing…'
+              : `List on Discover (${activity.missing_players} spot${
+                  activity.missing_players === 1 ? '' : 's'
+                } open)`}
+          </Text>
+        </TouchableOpacity>
       ) : null}
       {showScheduleNext ? (
         <TouchableOpacity
@@ -789,6 +1052,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#7a5b00',
   },
+  waitingStrip: {
+    backgroundColor: '#fff8e6',
+    borderRadius: 10,
+    padding: 12,
+  },
+  waitingText: {
+    fontSize: 13,
+    color: '#6b4e00',
+    lineHeight: 18,
+  },
+  waitingDetailsBtn: {
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  waitingDetailsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
   scheduleBtn: {
     marginBottom: 8,
     alignItems: 'center',
@@ -894,6 +1176,27 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.55,
+  },
+  schedulePickerSheet: {
+    backgroundColor: '#fff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#ddd',
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    paddingTop: 12,
+  },
+  schedulePickerTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#222',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  schedulePickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
   },
 });
 

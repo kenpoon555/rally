@@ -16,6 +16,7 @@ import {
   getDistanceToActivity,
   getApprovedParticipants,
 } from '../utils/activityHelpers';
+import { PRIMARY_COLOR } from '../constants/theme';
 import { formatApproximateDistance } from '../utils/approximateLocation';
 
 // ── Sport icon ────────────────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ const SpotsBar: React.FC<{ playerCount: number; missing: number }> = ({
             styles.progressFill,
             {
               width: `${fillPercent}%` as any,
-              backgroundColor: isFull ? '#34C759' : '#1a73e8',
+              backgroundColor: isFull ? '#34C759' : PRIMARY_COLOR,
             },
           ]}
         />
@@ -171,9 +172,6 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
 
   const status = activity.match_status ?? 'open';
   const isFinalized = status === 'finalized';
-  const isFlexAnonymous =
-    activity.scheduling_mode === 'flex' && !isFinalized;
-
   const intensity = getIntensityFromDuration(activity.duration);
   const intensityConfig = INTENSITY_CONFIG[intensity];
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
@@ -185,11 +183,7 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
 
   const approvedParticipants = getApprovedParticipants(activity);
 
-  const hostLabel = isFlexAnonymous
-    ? 'Anonymous host'
-    : activity.user?.username
-    ? `@${activity.user.username}`
-    : 'Unknown host';
+  const hostLabel = activity.user?.username ? `@${activity.user.username}` : 'Unknown host';
 
   const isHost = user?.id === activity.user_id;
   const canShowJoin = !isHost && !!user && !isFinalized && status !== 'cancelled';
@@ -261,10 +255,7 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
           <Text style={styles.whoHeader}>WHO'S GOING</Text>
           <View style={styles.whoBody}>
             {approvedParticipants.length > 0 ? (
-              <AvatarRow
-                participants={approvedParticipants}
-                isAnonymous={isFlexAnonymous}
-              />
+              <AvatarRow participants={approvedParticipants} isAnonymous={false} />
             ) : joinedCountLabel ? (
               <Text style={styles.noParticipants}>{joinedCountLabel}</Text>
             ) : (
@@ -348,7 +339,7 @@ const styles = StyleSheet.create({
   hostingBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#1a73e8',
+    color: PRIMARY_COLOR,
   },
   flexBadge: {
     borderRadius: 10,
@@ -438,7 +429,7 @@ const styles = StyleSheet.create({
   spotsOpen: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1a73e8',
+    color: PRIMARY_COLOR,
   },
   spotsOpenFull: {
     color: '#34C759',
@@ -506,7 +497,7 @@ const styles = StyleSheet.create({
     paddingTop: 2,
   },
   joinButton: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: PRIMARY_COLOR,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
@@ -522,7 +513,7 @@ const styles = StyleSheet.create({
   },
   requestedText: {
     textAlign: 'center',
-    color: '#1a73e8',
+    color: PRIMARY_COLOR,
     fontSize: 14,
     fontWeight: '600',
     paddingVertical: 10,

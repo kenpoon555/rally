@@ -1,6 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +14,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { useMyGames } from '../../hooks/useActivities';
 import MyGameListItem from '../../components/MyGameListItem';
 import { ROUTES } from '../../constants/routes';
+import { PRIMARY_COLOR } from '../../constants/theme';
+import { ensureActivityGroupConversation } from '../../services/chatService';
+import { isActivityListingActive } from '../../utils/activityExpiry';
 
 type Segment = 'upcoming' | 'past' | 'hosting';
 
@@ -20,12 +25,23 @@ const MyGamesScreen: React.FC = () => {
   const { user } = useAuth();
   const { games, loading, refetch } = useMyGames(user?.id || '');
   const [segment, setSegment] = useState<Segment>('upcoming');
+  const [refreshing, setRefreshing] = useState(false);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       refetch();
     }, [refetch])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   const entries = useMemo(() => {
     if (segment === 'upcoming') {
@@ -41,8 +57,52 @@ const MyGamesScreen: React.FC = () => {
     navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
   };
 
+  const openGameRoom = async (activityId: string, title: string) => {
+    setOpeningId(activityId);
+    try {
+      const conversationId = await ensureActivityGroupConversation(activityId);
+      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
+        conversationId,
+        title,
+        activityId,
+      } as never);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open game chat.';
+      Alert.alert('Chat unavailable', message);
+    } finally {
+      setOpeningId(null);
+    }
+  };
+
+  const handleGamePress = (activityId: string, title: string, isPast: boolean) => {
+    if (isPast) {
+      openActivityDetail(activityId);
+      return;
+    }
+    void openGameRoom(activityId, title);
+  };
+
+  const openCreateGame = () => {
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
+  };
+
+  const openDiscover = () => {
+    navigation.navigate(ROUTES.HOME.MAIN as never);
+  };
+
+  const emptyCopy =
+    segment === 'hosting'
+      ? 'No hosted games yet. Create one and invite your crew.'
+      : segment === 'past'
+        ? 'Past games show here after play time.'
+        : 'Join from Discover or open an invite link — your games show up here.';
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} />}
+    >
       <Text style={styles.title}>My Games</Text>
       <Text style={styles.subtitle}>Upcoming, past, and games you host.</Text>
 
@@ -68,23 +128,38 @@ const MyGamesScreen: React.FC = () => {
         <Text style={styles.linkText}>Open game chats →</Text>
       </TouchableOpacity>
 
-      {loading ? (
-        <ActivityIndicator color="#007AFF" style={styles.loader} />
+      {loading && entries.length === 0 ? (
+        <ActivityIndicator color={PRIMARY_COLOR} style={styles.loader} />
       ) : entries.length === 0 ? (
-        <Text style={styles.emptyText}>
-          {segment === 'hosting'
-            ? 'No hosted games yet. Create one from Discover.'
-            : 'No games here yet. Join from Discover or accept an invite link.'}
-        </Text>
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyTitle}>Nothing here yet</Text>
+          <Text style={styles.emptyText}>{emptyCopy}</Text>
+          {segment !== 'past' ? (
+            <View style={styles.emptyCtaRow}>
+              <TouchableOpacity style={styles.emptyPrimaryCta} onPress={openDiscover}>
+                <Text style={styles.emptyPrimaryCtaText}>Find a game</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.emptySecondaryCta} onPress={openCreateGame}>
+                <Text style={styles.emptySecondaryCtaText}>Create game</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
       ) : (
-        entries.map(({ activity, role }) => (
-          <MyGameListItem
-            key={activity.id}
-            activity={activity}
-            role={role}
-            onPress={() => openActivityDetail(activity.id)}
-          />
-        ))
+        entries.map(({ activity, role }) => {
+          const title = activity.location?.name || `${activity.sport_type} game`;
+          const isPast = !isActivityListingActive(activity) || activity.status === 'completed';
+          const busy = openingId === activity.id;
+          return (
+            <MyGameListItem
+              key={activity.id}
+              activity={activity}
+              role={role}
+              busy={busy}
+              onPress={() => handleGamePress(activity.id, title, isPast)}
+            />
+          );
+        })
       )}
     </ScrollView>
   );
@@ -122,7 +197,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   segmentChipSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: PRIMARY_COLOR,
   },
   segmentText: {
     fontSize: 13,
@@ -133,18 +208,55 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   linkText: {
-    color: '#007AFF',
+    color: PRIMARY_COLOR,
     fontWeight: '600',
     marginBottom: 16,
   },
   loader: {
     marginTop: 24,
   },
+  emptyContainer: {
+    marginTop: 8,
+    paddingVertical: 12,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 6,
+  },
   emptyText: {
     fontSize: 14,
     color: '#777',
     lineHeight: 20,
-    marginTop: 8,
+    marginBottom: 16,
+  },
+  emptyCtaRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  emptyPrimaryCta: {
+    backgroundColor: PRIMARY_COLOR,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  emptyPrimaryCtaText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  emptySecondaryCta: {
+    borderWidth: 1,
+    borderColor: PRIMARY_COLOR,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  emptySecondaryCtaText: {
+    color: PRIMARY_COLOR,
+    fontWeight: '600',
+    fontSize: 15,
   },
 });
 

@@ -1,5 +1,5 @@
 import { supabase } from './api/supabase';
-import { UserReport } from '../types/safety';
+import { AdminReportQueueItem, AdminTriageAction, UserReport } from '../types/safety';
 
 export async function listPendingReports(limit = 50): Promise<UserReport[]> {
   const { data, error } = await supabase.rpc('admin_list_pending_reports', { p_limit: limit });
@@ -7,6 +7,25 @@ export async function listPendingReports(limit = 50): Promise<UserReport[]> {
     throw new Error(`Failed to load reports: ${error.message}`);
   }
   return (data || []) as UserReport[];
+}
+
+/** Enriched pending reports with usernames and suspension state. */
+export async function listAdminReportQueue(limit = 50): Promise<AdminReportQueueItem[]> {
+  const { data, error } = await supabase.rpc('admin_get_report_queue', { p_limit: limit });
+  if (error) {
+    throw new Error(`Failed to load report queue: ${error.message}`);
+  }
+  return (data || []) as AdminReportQueueItem[];
+}
+
+export async function triageReport(reportId: string, action: AdminTriageAction): Promise<void> {
+  const { error } = await supabase.rpc('admin_triage_report', {
+    p_report_id: reportId,
+    p_action: action,
+  });
+  if (error) {
+    throw new Error(`Failed to triage report: ${error.message}`);
+  }
 }
 
 export async function updateReportStatus(

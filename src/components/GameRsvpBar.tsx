@@ -8,6 +8,8 @@ type Props = {
   saving?: boolean;
   onSetRsvp: (status: GameRsvpStatus) => void;
   compact?: boolean;
+  /** Regulars / series members can RSVP before host approves a join request. */
+  allowGroupRsvp?: boolean;
 };
 
 const RSVP_OPTIONS: { status: GameRsvpStatus; label: string }[] = [
@@ -20,7 +22,14 @@ export function countRsvps(activity: Activity, status: GameRsvpStatus): number {
   return (activity.rsvps || []).filter((r) => r.status === status).length;
 }
 
-const GameRsvpBar: React.FC<Props> = ({ activity, userId, saving, onSetRsvp, compact }) => {
+const GameRsvpBar: React.FC<Props> = ({
+  activity,
+  userId,
+  saving,
+  onSetRsvp,
+  compact,
+  allowGroupRsvp,
+}) => {
   if (!userId) {
     return null;
   }
@@ -29,18 +38,28 @@ const GameRsvpBar: React.FC<Props> = ({ activity, userId, saving, onSetRsvp, com
   const isApproved = (activity.join_requests || []).some(
     (r) => r.user_id === userId && r.status === 'approved'
   );
-  if (!isHost && !isApproved) {
+  if (!isHost && !isApproved && !allowGroupRsvp) {
     return null;
   }
 
-  const mine = (activity.rsvps || []).find((r) => r.user_id === userId)?.status;
+  const capacity =
+    Math.max(1, (activity.player_count ?? 1) + (activity.missing_players ?? 0)) - 1;
   const going = countRsvps(activity, 'going');
+  const spotsLeft = Math.max(0, capacity - going);
+
+  const mine = (activity.rsvps || []).find((r) => r.user_id === userId)?.status;
   const maybe = countRsvps(activity, 'maybe');
   const notGoing = countRsvps(activity, 'not_going');
 
   return (
     <View style={[styles.wrap, compact && styles.wrapCompact]}>
-      {!compact ? <Text style={styles.title}>RSVP for this game</Text> : null}
+      {!compact ? (
+        <Text style={styles.title}>
+          {allowGroupRsvp && !isApproved && !isHost
+            ? 'RSVP — first come for open court spots'
+            : 'RSVP for this game'}
+        </Text>
+      ) : null}
       <View style={styles.row}>
         {RSVP_OPTIONS.map(({ status, label }) => {
           const selected = mine === status;
@@ -59,6 +78,7 @@ const GameRsvpBar: React.FC<Props> = ({ activity, userId, saving, onSetRsvp, com
       </View>
       <Text style={styles.summary}>
         {going} going · {maybe} maybe · {notGoing} out
+        {allowGroupRsvp ? ` · ${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left` : ''}
       </Text>
     </View>
   );

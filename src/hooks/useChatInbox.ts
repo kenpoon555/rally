@@ -2,14 +2,29 @@ import { useCallback, useState } from 'react';
 import { Activity } from '../types/activity';
 import { Conversation } from '../types/chat';
 import { Friend } from '../types/friends';
+import { RegularGroup } from '../types/regularGroup';
 import { getMyGames, MyGameEntry, MyGameRole } from '../services/activityService';
 import { getMyConversations, getUnreadConversationCounts } from '../services/chatService';
+import { getMyRegularGroups } from '../services/regularGroupService';
+import { getBlockedUserIds } from '../services/safetyService';
 import { getUserFriends } from '../services/friendsService';
 import { supabase } from '../services/api/supabase';
 import { useSupabaseRealtimeReload } from './useSupabaseRealtimeReload';
 import { formatActivityTime, getGameStatusLabel } from '../utils/activityHelpers';
 
 export type ChatInboxFilter = 'all' | 'games' | 'friends';
+
+export type GroupChatInboxItem = {
+  kind: 'group';
+  key: string;
+  group: RegularGroup;
+  /** Soonest upcoming game for this group, if one is scheduled. */
+  nextActivity: Activity | null;
+  conversationId: string | null;
+  unread: number;
+  title: string;
+  subtitle: string;
+};
 
 export type GameChatInboxItem = {
   kind: 'game';
@@ -35,7 +50,7 @@ export type FriendChatInboxItem = {
   subtitle: string;
 };
 
-export type ChatInboxItem = GameChatInboxItem | FriendChatInboxItem;
+export type ChatInboxItem = GroupChatInboxItem | GameChatInboxItem | FriendChatInboxItem;
 
 function gameTitle(activity: Activity): string {
   const court = activity.location?.name;
@@ -77,10 +92,12 @@ async function buildDirectConversationPeerMap(
 
 function buildChatInbox(params: {
   games: { active: MyGameEntry[]; past: MyGameEntry[] };
+  groups: RegularGroup[];
   conversations: Conversation[];
   friends: Friend[];
   unreadCounts: Record<string, number>;
   directPeerMap: Record<string, string>;
+  blockedUserIds: Set<string>;
 }): ChatInboxItem[] {
   const convoByActivityId = new Map<string, Conversation>();
   const directConvos = params.conversations.filter((c) => c.conversation_type === 'friend_direct');
@@ -131,25 +148,66 @@ function buildChatInbox(params: {
     return new Date(b.activity.start_time).getTime() - new Date(a.activity.start_time).getTime();
   });
 
-  const friendItems: FriendChatInboxItem[] = params.friends.map((friend) => {
-    const friendId = friend.friend?.id || friend.friend_id;
-    const username = friend.friend?.username || 'Friend';
-    const convo = directConvoByFriendId.get(friendId);
-    return {
-      kind: 'friend',
-      key: `friend-${friendId}`,
-      userId: friendId,
-      username,
-      conversationId: convo?.id ?? null,
-      unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
-      title: `@${username}`,
-      subtitle: convo ? 'Friend chat' : 'Start a conversation',
-    };
-  });
+  const friendItems: FriendChatInboxItem[] = params.friends.reduce<FriendChatInboxItem[]>(
+    (acc, friend) => {
+      const friendId = friend.friend?.id || friend.friend_id;
+      if (params.blockedUserIds.has(friendId)) {
+        return acc;
+      }
+      const username = friend.friend?.username || 'Friend';
+      const convo = directConvoByFriendId.get(friendId);
+      acc.push({
+        kind: 'friend',
+        key: `friend-${friendId}`,
+        userId: friendId,
+        username,
+        conversationId: convo?.id ?? null,
+        unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
+        title: `@${username}`,
+        subtitle: convo ? 'Friend chat' : 'Start a conversation',
+      });
+      return acc;
+    },
+    []
+  );
 
   friendItems.sort((a, b) => a.username.localeCompare(b.username));
 
-  return [...gameItems, ...friendItems];
+  const activeByGroupId = new Map<string, Activity>();
+  for (const entry of params.games.active) {
+    const groupId = entry.activity.regular_group_id;
+    if (!groupId || !entry.activity.start_time) {
+      continue;
+    }
+    const existing = activeByGroupId.get(groupId);
+    if (
+      !existing ||
+      new Date(entry.activity.start_time).getTime() < new Date(existing.start_time).getTime()
+    ) {
+      activeByGroupId.set(groupId, entry.activity);
+    }
+  }
+
+  const groupItems: GroupChatInboxItem[] = params.groups.map((group) => {
+    const nextActivity = activeByGroupId.get(group.id) ?? null;
+    const convo = nextActivity ? convoByActivityId.get(nextActivity.id) : undefined;
+    return {
+      kind: 'group',
+      key: `group-${group.id}`,
+      group,
+      nextActivity,
+      conversationId: convo?.id ?? null,
+      unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
+      title: group.name,
+      subtitle: nextActivity
+        ? `Next: ${formatActivityTime(nextActivity.start_time, nextActivity.duration)}`
+        : 'No game scheduled yet',
+    };
+  });
+
+  groupItems.sort((a, b) => a.group.name.localeCompare(b.group.name));
+
+  return [...groupItems, ...gameItems, ...friendItems];
 }
 
 export function useChatInbox(userId: string | undefined) {
@@ -168,20 +226,30 @@ export function useChatInbox(userId: string | undefined) {
     setLoading(true);
     setErrorText(null);
     try {
-      const [games, conversations, friends, unreadCounts] = await Promise.all([
+      const [games, conversations, friends, unreadCounts, blockedIds] = await Promise.all([
         getMyGames(userId),
         getMyConversations(userId),
         getUserFriends(userId),
         getUnreadConversationCounts(userId),
+        getBlockedUserIds(userId),
       ]);
+
+      let groups: RegularGroup[] = [];
+      try {
+        groups = await getMyRegularGroups(userId);
+      } catch (groupError) {
+        console.warn('Regular groups load failed (inbox will show games only):', groupError);
+      }
 
       const directPeerMap = await buildDirectConversationPeerMap(userId, conversations);
       const inbox = buildChatInbox({
         games,
+        groups,
         conversations,
         friends,
         unreadCounts,
         directPeerMap,
+        blockedUserIds: new Set(blockedIds),
       });
 
       setItems(inbox);
@@ -205,7 +273,7 @@ export function useChatInboxWithRealtime(userId: string | undefined) {
 
 export function filterChatInbox(items: ChatInboxItem[], filter: ChatInboxFilter): ChatInboxItem[] {
   if (filter === 'games') {
-    return items.filter((item) => item.kind === 'game');
+    return items.filter((item) => item.kind === 'game' || item.kind === 'group');
   }
   if (filter === 'friends') {
     return items.filter((item) => item.kind === 'friend');

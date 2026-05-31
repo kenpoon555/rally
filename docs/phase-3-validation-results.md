@@ -6,6 +6,22 @@ Record detailed outcomes here after each platform pass. Checklist and steps: [VA
 
 ---
 
+## Stage 3.5c redesign sign-off (2026-05-31)
+
+Code pass before preview for the chat-first / Regulars redesign (Phases 0–6 of the redesign plan):
+
+- **Migrations applied** to the Rally Supabase project: `021` (regular_groups, regular_group_members + RPCs) and `022` (`join_group_and_next_game`). Verified `join_group_and_next_game` returns `jsonb`.
+- **One surface per job:** Activity Details now presents as a modal sheet; approved invitees are redirected from Details into the Game Room.
+- **Mode-aware Chats:** `useUserPlayMode` drives a "Next up" card and group rows in the inbox; the Game Room header shows the crew name first.
+- **Unified invite:** one crew link joins the group and its next game, deep-linking into the Game Room.
+- **Find players:** host-only CTA in the Game Room footer routes to Discover filtered by sport with open spots highlighted.
+- **Badminton wedge:** post-publish share prompt, surfaced "need players tonight" toggle, and dismissible coach marks.
+- **Lint:** no new TypeScript errors introduced (pre-existing eslint warnings in `ActivityDetailScreen.tsx` remain).
+
+**Run on device (two accounts):** unified crew invite → both land in the Game Room; Regular vs Explorer Chats; "Find players" → Discover; badminton host create → immediate share sheet. See [physical-device-beta-test.md](physical-device-beta-test.md).
+
+---
+
 ## Phase 3 polish (2026-05-29)
 
 Code pass before preview (no device QA required):

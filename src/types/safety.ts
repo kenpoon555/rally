@@ -27,6 +27,16 @@ export interface UserReport {
   created_at: string;
 }
 
+/** Admin queue row from `admin_get_report_queue` RPC. */
+export interface AdminReportQueueItem extends UserReport {
+  reporter_username: string;
+  reported_username: string;
+  reported_is_suspended: boolean;
+  reported_pending_count: number;
+}
+
+export type AdminTriageAction = 'dismiss' | 'reviewed' | 'suspend' | 'restore';
+
 export interface ProfileTrustStats {
   no_show_count: number;
   flake_count: number;

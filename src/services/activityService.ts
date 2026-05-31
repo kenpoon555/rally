@@ -38,6 +38,7 @@ export const createActivity = async (activityData: {
   match_status?: 'open' | 'collecting' | 'finalized' | 'cancelled';
   candidate_location_ids?: string[];
   urgency_level?: 'normal' | 'tonight';
+  cost_note?: string | null;
 }): Promise<Activity> => {
   const { candidate_location_ids, ...basePayload } = activityData;
   const schedulingMode = basePayload.scheduling_mode || 'fixed';
@@ -925,6 +926,28 @@ export const scheduleNextGameFromActivity = async (
   }
   if (!data) {
     throw new Error('Failed to schedule next game');
+  }
+  return data as string;
+};
+
+/** Regulars host posts next invite-only game with chosen time and court capacity (e.g. 8 of 50). */
+export const scheduleGroupNextGame = async (
+  groupId: string,
+  startTime: string,
+  playerCount = 8,
+  duration?: number
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('schedule_group_next_game', {
+    p_group_id: groupId,
+    p_start_time: startTime,
+    p_player_count: playerCount,
+    p_duration: duration ?? null,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Failed to schedule group game');
   }
   return data as string;
 };

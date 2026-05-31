@@ -21,11 +21,11 @@ import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
-import { resolveUserDefaultSport } from '../../constants/sports';
+import { resolveUserDefaultSport, resolvePreferredSportForLaunch } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
 import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
-import { getTotalUnreadCount } from '../../services/chatService';
 import { getCurrentLocation } from '../../services/locationService';
+import { PRIMARY_COLOR } from '../../constants/theme';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import DiscoverPipelinePanel from '../../components/DiscoverPipelinePanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
@@ -49,7 +49,7 @@ function runRawLocationTest() {
 }
 
 type TabParamList = {
-  Home: undefined;
+  Home: { sportFilter?: string; highlightOpenSpots?: boolean } | undefined;
   Chats: undefined;
   MyGames: undefined;
   Friends: undefined;
@@ -58,7 +58,7 @@ type TabParamList = {
 
 type Props = BottomTabScreenProps<TabParamList, 'Home'>;
 
-const HomeScreen: React.FC<Props> = ({ navigation }) => {
+const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const locState = useLocation(false, { skipPermissionCheckOnMount: Platform.OS === 'android' });
   const location = locState?.location ?? null;
@@ -76,6 +76,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     setSelectedSport(resolveUserDefaultSport(preferredSport));
   }, [preferredSport]);
+
+  // "Find players" from a Game Room deep-links here with a sport + open-spots intent.
+  const routeSportFilter = route.params?.sportFilter;
+  const highlightOpenSpots = route.params?.highlightOpenSpots ?? false;
+  useEffect(() => {
+    if (routeSportFilter) {
+      setSelectedSport(resolveUserDefaultSport(routeSportFilter));
+    }
+  }, [routeSportFilter]);
 
   const discoverTitle = `${selectedSport} near you`;
 
@@ -111,7 +120,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
-  const [unreadChats, setUnreadChats] = useState(0);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
 
   const visibleActivities = useMemo(() => {
@@ -120,11 +128,18 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       .filter((a) => shouldShowInDiscoverFeed(a, user?.id));
     const byDistance = sortActivitiesByDistance(filtered, location);
     return [...byDistance].sort((a, b) => {
+      if (highlightOpenSpots) {
+        const aOpen = (a.missing_players ?? 0) > 0 ? 1 : 0;
+        const bOpen = (b.missing_players ?? 0) > 0 ? 1 : 0;
+        if (aOpen !== bOpen) {
+          return bOpen - aOpen;
+        }
+      }
       const aTonight = a.urgency_level === 'tonight' ? 1 : 0;
       const bTonight = b.urgency_level === 'tonight' ? 1 : 0;
       return bTonight - aTonight;
     });
-  }, [sortedActivities, blockedUserIds, user?.id, location]);
+  }, [sortedActivities, blockedUserIds, user?.id, location, highlightOpenSpots]);
 
   const showInitialLoading = loading && visibleActivities.length === 0;
 
@@ -136,22 +151,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     ],
     []
   );
-
-  useEffect(() => {
-    const loadUnread = async () => {
-      if (!user?.id) {
-        setUnreadChats(0);
-        return;
-      }
-      try {
-        const total = await getTotalUnreadCount(user.id);
-        setUnreadChats(total);
-      } catch {
-        setUnreadChats(0);
-      }
-    };
-    loadUnread();
-  }, [user?.id, activities.length]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -200,26 +199,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   }, [authLoading, user?.id, location?.latitude, location?.longitude, refetch]);
 
   const openCreateGame = () => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as any);
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
-  const openNearbyCourtsMap = () => {
-    navigation.getParent()?.navigate(ROUTES.HOME.MAP as never);
-  };
-
-  const openProfile = () => {
-    navigation.navigate(ROUTES.PROFILE.MAIN as any);
-  };
-
-  const openChats = () => {
-    navigation.navigate(ROUTES.CHAT.TAB as never);
-  };
-
-  const handleQuickMatch = () => {
+  const handleJoinNearest = () => {
     if (visibleActivities.length > 0) {
-      navigation.navigate(ROUTES.ACTIVITY.DETAIL as any, {
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
         activityId: visibleActivities[0].id,
-      });
+      } as never);
       return;
     }
     openCreateGame();
@@ -227,13 +214,13 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const locationSetupMessage = locationLoading
     ? 'Finding your location…'
-      : hasPermission && locationError
-        ? locationError.message?.toLowerCase().includes('timed out')
-          ? 'Location timed out. On the emulator: ⋯ → Location → set a point, wait 2s, tap Find my location.'
-          : locationError.message || "We couldn't read your location. Try again."
-        : hasPermission
-          ? 'Tap Find my location below (emulator: set mock location in Extended controls first).'
-          : 'Enable location to see games and courts near you.';
+    : hasPermission && locationError
+      ? locationError.message?.toLowerCase().includes('timed out')
+        ? 'Location timed out. Check that location services are on, then try again.'
+        : locationError.message || "We couldn't read your location. Try again."
+      : hasPermission
+        ? 'Tap below to use your current location for nearby games.'
+        : 'Enable location to see games near you.';
 
   return (
     <View style={styles.container}>
@@ -248,29 +235,18 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.title}>{discoverTitle}</Text>
             <Text style={styles.subtitle}>Find a game or host one at a nearby court</Text>
             <Text style={styles.privacyHint}>
-              Distances and map pins are approximate until you join a game.
+              Distances are approximate until you join a game.
             </Text>
           </View>
-          <TouchableOpacity style={styles.profileButton} onPress={openProfile}>
-            <Text style={styles.profileButtonText}>Profile</Text>
-          </TouchableOpacity>
         </View>
         <View style={styles.actionRow}>
           <TouchableOpacity style={styles.primaryHeaderButton} onPress={openCreateGame}>
             <Text style={styles.primaryHeaderButtonText}>Create Game</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickMatchButton} onPress={handleQuickMatch}>
-            <Text style={styles.quickMatchButtonText}>Quick Match</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.chatsButton} onPress={openChats}>
-            <Text style={styles.chatsButtonText}>
-              Chats{unreadChats > 0 ? ` (${unreadChats})` : ''}
-            </Text>
+          <TouchableOpacity style={styles.quickMatchButton} onPress={handleJoinNearest}>
+            <Text style={styles.quickMatchButtonText}>Join nearest open game</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.nearbyCourtsLink} onPress={openNearbyCourtsMap}>
-          <Text style={styles.nearbyCourtsLinkText}>Browse nearby courts on map →</Text>
-        </TouchableOpacity>
         <Text style={styles.preferenceHint}>
           Default sport: {defaultSport} • {user?.default_duration || 60} min •{' '}
           {user?.default_visibility || 'nearby'}
@@ -333,7 +309,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
       {showInitialLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1a73e8" />
+          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
           <Text style={styles.loadingText}>Loading nearby games…</Text>
         </View>
       ) : (
@@ -346,9 +322,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               activity={item}
               userLocation={location}
               onPress={() =>
-                navigation.navigate('ActivityDetail', {
+                navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
                   activityId: item.id,
-                } as any)
+                } as never)
               }
             />
           )}
@@ -372,7 +348,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.emptyText}>
                 {discoverError
                   ? discoverError.message
-                  : 'Be the first to host a game, or browse nearby courts on the map.'}
+                  : 'No open games nearby yet. Host one at your court, or share a Regulars link so your crew can RSVP when you post the next game.'}
               </Text>
               {!discoverError && (
                 <View style={styles.tipList}>
@@ -389,14 +365,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={styles.primaryCtaText}>Try again</Text>
                   </TouchableOpacity>
                 ) : (
-                  <>
-                    <TouchableOpacity style={styles.primaryCta} onPress={openCreateGame}>
-                      <Text style={styles.primaryCtaText}>Create Game</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.secondaryCta} onPress={openNearbyCourtsMap}>
-                      <Text style={styles.secondaryCtaText}>Nearby courts</Text>
-                    </TouchableOpacity>
-                  </>
+                  <TouchableOpacity style={styles.primaryCta} onPress={openCreateGame}>
+                    <Text style={styles.primaryCtaText}>Create Game</Text>
+                  </TouchableOpacity>
                 )}
               </View>
               {!hasFetchedOnce && !discoverError && (
@@ -481,7 +452,7 @@ const styles = StyleSheet.create({
   },
   primaryHeaderButton: {
     borderRadius: 8,
-    backgroundColor: '#1a73e8',
+    backgroundColor: PRIMARY_COLOR,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
@@ -610,8 +581,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   filterChipSelected: {
-    backgroundColor: '#1a73e8',
-    borderColor: '#1a73e8',
+    backgroundColor: PRIMARY_COLOR,
   },
   filterChipText: {
     color: '#333',
@@ -671,7 +641,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   primaryCta: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: PRIMARY_COLOR,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -683,12 +653,12 @@ const styles = StyleSheet.create({
   secondaryCta: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#1a73e8',
+    borderColor: PRIMARY_COLOR,
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
   secondaryCtaText: {
-    color: '#1a73e8',
+    color: PRIMARY_COLOR,
     fontWeight: '700',
   },
   helperText: {

@@ -1,101 +1,94 @@
 # RallyApp Vision
 
-Last updated: 2026-02-21
+Last updated: 2026-06-01
 
 ## Mission
 
-Help people find sports partners faster, reduce friction to start playing, and promote a healthier lifestyle through regular activity.
+Help people find sports partners faster, reduce friction to start playing, and grow into **repeat crews** through chat-first coordination.
 
 ## Core Problem
 
 People want to play sports but often stop because:
 
-- They cannot quickly find a partner.
+- They cannot quickly find a partner or fill a roster.
 - Coordination is slow (time, location, skill level mismatch).
-- Existing apps are high-friction and not action-oriented.
+- One-off games don't turn into weekly habits.
 
 ## Product Principles
 
-1. Less friction than chat-first coordination.
-2. Action first: discover -> join -> play.
-3. Local and relevant: nearby options matter most.
-4. Healthy habits over one-time usage.
-5. Community and fun drive retention.
+1. **Chat-first coordination** — game lobbies are the hub; Discover fills empty slots.
+2. **Action first:** join → Game Room → play → recurring.
+3. **Local and relevant:** nearby games and courts matter most.
+4. **Healthy habits over one-time usage:** Regulars groups and weekly series.
+5. **Community and trust drive retention:** reviews, flakes, safety.
 
 ## North Star Experience
 
 In under 3 minutes, a user can:
 
-1. Open app and see nearby opportunities.
-2. Pick activity matching sport/time/skill.
-3. Confirm join or invite a friend.
-4. Get to the location and play.
+1. Open app on **Chats** and see upcoming game lobbies (or empty-state CTAs).
+2. Join or host via Discover / invite link.
+3. Coordinate in **Game Room** (chat + roster + Ready/Finalize).
+4. Host schedules the **next game** or saves a **Regulars group**.
 
 ## Version Strategy
 
-## V1 - Partner Finding MVP
+## V1 - Partner Finding + Coordination MVP
 
-Primary goal: make partner discovery and joining effortless.
-
-Key outcomes:
-
-- Useful home tabs: Discover, Map, Friends.
-- Clear empty states and call-to-action buttons.
-- Reliable create/join/invite flows.
-
-## V2 - Presence Intelligence
-
-Primary goal: improve relevance and real-time coordination.
+Primary goal: discover, join, and coordinate games with minimal friction.
 
 Key outcomes:
 
-- Better coordinate detection and context-aware matching.
-- Show friends that are currently playing somewhere.
-- Timely notifications for invites, nearby matches, and join updates.
+- **5 tabs:** Chats → My Games → Discover → Friends → Profile.
+- Game Room as primary coordination surface; Activity Details as a settings/reviews modal sheet.
+- Recurring games, invite links, RSVP, Regulars groups, and one unified crew-and-next-game invite.
+- Mode-aware Chats: a "Next up" card and crew rows for Regulars; Find/Create for Explorers.
+- Launch sports: Pickleball, Basketball, Badminton.
 
-## V3 - Tournament Fun Layer
+## V2 - Match Optimization + Identity Trust
 
-Primary goal: increase engagement through structured competition.
+Primary goal: improve relevance and reliability.
 
 Key outcomes:
 
-- Tournament creation and joining.
-- Bracket/schedule support for casual and recurring events.
+- Flexible scheduling (advanced path on Create Game).
+- Anonymous-until-confirmed identity.
+- Reviews and flake scores.
+- Player Plus filters (when liquidity supports monetization).
+
+## V3 - Community Growth + Programs
+
+Primary goal: recurring communities and organized play.
+
+Key outcomes:
+
+- Regulars/Groups as first-class identity in Chats.
+- Team Plan tools (waitlist, blast, attendance).
+- Tournaments and casual competitive formats.
 
 ## V4 - Social + Competitive Ecosystem
 
-Primary goal: turn Rally into a long-term sport community platform.
+Primary goal: long-term sport community platform.
 
 Key outcomes:
 
-- Instagram-like profile centered on sports identity.
-- Leaderboards based on activity performance and consistency.
-- Weekly tournaments.
-- Monthly tournaments.
-- Annual tournaments.
-- Country-wise tournaments.
+- Leagues, standings, playoffs.
+- Public league pages and SEO.
+- Optional facilities / membership vision.
 
 ## Success Metrics
 
 ### Activation
 
-- Time from signup to first joined activity.
-- Percentage of users who complete first join/invite in first session.
-
-### Engagement
-
-- Weekly active players.
-- Number of activities joined per user per week.
-- Friend invites sent and accepted.
+- Time from signup to first joined or hosted game.
+- First Game Room message sent.
 
 ### Retention
 
-- 7-day and 30-day retention.
-- Repeat play sessions per user.
-- Tournament participation rate (V3+).
+- Same crew plays twice within 14 days (Regulars wedge).
+- Weekly active hosts with recurring series.
 
-## Execution Notes
+### Trust
 
-- Prioritize reliability and useful content on all 3 home tabs before adding advanced social features.
-- Every screen should have a next action so users never feel blocked.
-- Keep onboarding minimal, with progressive hints only when needed.
+- Review completion after games.
+- Flake rate trending down for repeat players.

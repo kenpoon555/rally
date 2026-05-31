@@ -1,21 +1,28 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Activity } from '../types/activity';
 import { MyGameRole } from '../services/activityService';
 import { formatActivityTime, getGameStatusLabel } from '../utils/activityHelpers';
+import { PRIMARY_COLOR } from '../constants/theme';
 
 interface MyGameListItemProps {
   activity: Activity;
   role: MyGameRole;
   onPress: () => void;
+  busy?: boolean;
 }
 
-const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress }) => {
+const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress, busy }) => {
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
   const statusLabel = getGameStatusLabel(activity);
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.85}
+      disabled={busy}
+    >
       <View style={styles.row}>
         <Text style={styles.sport}>{activity.sport_type}</Text>
         <View style={styles.badgeRow}>
@@ -54,6 +61,7 @@ const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress
       <Text style={styles.meta}>
         {activity.player_count} player{activity.player_count === 1 ? '' : 's'}
       </Text>
+      {busy ? <ActivityIndicator size="small" color={PRIMARY_COLOR} style={styles.busy} /> : null}
     </TouchableOpacity>
   );
 };
@@ -125,6 +133,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 12,
     color: '#777',
+  },
+  busy: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
   },
 });
 

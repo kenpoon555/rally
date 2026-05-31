@@ -61,9 +61,22 @@ Uses [smoke-test-join-pickleball.md](./smoke-test-join-pickleball.md) with tab u
 | **Recurring** | **Make weekly recurring** → **Schedule next game** |
 | **RSVP** | B taps Going / Maybe on activity detail |
 | **Post-game chat** | After play time, chat still open; archives after 72h |
-| **Map (deferred)** | Discover → **Browse nearby courts on map** (not a tab) |
+| **Map (hidden)** | No Map tab or screen; court picker on **Create Game** uses the inline map only |
 
 Badminton-specific: [smoke-test-badminton-invite-loop.md](./smoke-test-badminton-invite-loop.md)
+
+## 4.5 Stage 3.5c redesign (~15 min)
+
+| Feature | How to test |
+|---------|-------------|
+| **Details as modal sheet** | From a Game Room, tap **Details** → Activity Details slides up as a sheet; swipe down returns to the Game Room |
+| **Invite → Game Room** | B opens a game invite link → after joining an open game, lands directly in the Game Room (not Details) |
+| **Regulars group** | Host (A) on Details → **Save as Regulars group**; group appears as a row in A's **Chats** inbox |
+| **Unified crew invite** | A → **Share crew + next game link**; B opens it cold → joins the crew **and** the next game, landing in the Game Room |
+| **Mode-aware Chats** | A (with an active game) sees a **Next up** card on Chats; a brand-new account sees the Find/Create empty state |
+| **Group name in Game Room** | Open a Regulars game's Game Room → header shows the **crew name** first, court + time secondary |
+| **Find players** | Host opens a game with open spots → Game Room footer shows **Find players (N spots open)** → routes to Discover filtered by sport |
+| **Badminton onboarding** | First host create → invite **share sheet opens automatically** after publish; **Need players tonight** toggle is visible (not buried); coach marks appear on Details |
 
 ## 5. Known limitations
 

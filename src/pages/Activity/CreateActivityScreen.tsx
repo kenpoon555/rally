@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -31,6 +32,8 @@ import {
   SportType,
 } from '../../constants/sports';
 import { createActivity } from '../../services/activityService';
+import { buildGameInviteUrl } from '../../navigation/deepLinking';
+import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
 import {
   getAllActivityLocations,
   getNearbyActivityLocations,
@@ -65,6 +68,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [needPlayersTonight, setNeedPlayersTonight] = useState(false);
+  const [costNote, setCostNote] = useState('');
   const didRequestInitialLocationRef = useRef(false);
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -93,6 +97,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
   const [fixedStartTime, setFixedStartTime] = useState(defaultFixedStart);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false);
 
   useEffect(() => {
     const meta = getSportMetadata(sportType);
@@ -351,15 +356,31 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         preference_deadline: schedulingMode === 'flex' ? windowEnd.toISOString() : undefined,
         candidate_location_ids: candidateLocationIds,
         urgency_level: needPlayersTonight ? 'tonight' : 'normal',
+        cost_note: costNote.trim() || null,
       });
 
+      void setOnboardingFlag(ONBOARDING_FLAGS.HOST_ONBOARDING_COMPLETED);
       navigation.replace(ROUTES.ACTIVITY.DETAIL as any, { activityId: created.id });
-      Alert.alert(
-        'Game created',
-        needPlayersTonight
-          ? 'Your urgent game is highlighted on Discover. Find players in My Games and Chats.'
-          : 'Your game is on Discover and in My Games. Others nearby can request to join.'
-      );
+
+      // Don't make the host hunt for the share button — open the invite sheet right away.
+      const inviteUrl = created.invite_token ? buildGameInviteUrl(created.invite_token) : null;
+      if (inviteUrl) {
+        try {
+          await Share.share({
+            message: `I'm hosting ${created.sport_type} on Rally — tap to join my game: ${inviteUrl}`,
+          });
+          void setOnboardingFlag(ONBOARDING_FLAGS.COACH_SHARE_SHOWN);
+        } catch {
+          // Host dismissed the share sheet; the link is still on the Details screen.
+        }
+      } else {
+        Alert.alert(
+          'Game created',
+          needPlayersTonight
+            ? 'Your urgent game is highlighted on Discover. Find players in My Games and Chats.'
+            : 'Your game is on Discover and in My Games. Others nearby can request to join.'
+        );
+      }
     } catch (error: any) {
       Alert.alert('Create failed', error?.message || 'Could not create game.');
     } finally {
@@ -421,78 +442,94 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>When do you want to play?</Text>
-          <View style={styles.row}>
+          <View style={styles.timePickerBlock}>
+            <Text style={styles.sectionTitle}>Game starts</Text>
             <TouchableOpacity
-              style={[styles.optionButton, schedulingMode === 'fixed' && styles.optionButtonSelected]}
-              onPress={() => setSchedulingMode('fixed')}
+              style={styles.timePickerButton}
+              onPress={() => setShowDatePicker(true)}
             >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  schedulingMode === 'fixed' && styles.optionButtonTextSelected,
-                ]}
-              >
-                Set time now
+              <Text style={styles.timePickerButtonText}>
+                {fixedStartTime.toLocaleString(undefined, {
+                  weekday: 'short',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.optionButton, schedulingMode === 'flex' && styles.optionButtonSelected]}
-              onPress={() => setSchedulingMode('flex')}
-            >
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  schedulingMode === 'flex' && styles.optionButtonTextSelected,
-                ]}
-              >
-                I'm flexible
-              </Text>
-            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={fixedStartTime}
+                mode="datetime"
+                minimumDate={new Date()}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                  if (event.type === 'dismissed') {
+                    setShowDatePicker(false);
+                    return;
+                  }
+                  if (date) {
+                    setFixedStartTime(date);
+                  }
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && showDatePicker && (
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.timePickerDone}>Done</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          {schedulingMode === 'fixed' && (
-            <View style={styles.timePickerBlock}>
-              <Text style={styles.sectionTitle}>Game starts</Text>
+          <TouchableOpacity
+            style={styles.advancedToggle}
+            onPress={() => {
+              setShowAdvancedScheduling((v) => {
+                const next = !v;
+                if (!next) {
+                  setSchedulingMode('fixed');
+                }
+                return next;
+              });
+            }}
+          >
+            <Text style={styles.advancedToggleText}>
+              {showAdvancedScheduling ? 'Hide advanced scheduling ▲' : 'Advanced scheduling ▼'}
+            </Text>
+          </TouchableOpacity>
+          {showAdvancedScheduling ? (
+            <View style={styles.row}>
               <TouchableOpacity
-                style={styles.timePickerButton}
-                onPress={() => setShowDatePicker(true)}
+                style={[styles.optionButton, schedulingMode === 'fixed' && styles.optionButtonSelected]}
+                onPress={() => setSchedulingMode('fixed')}
               >
-                <Text style={styles.timePickerButtonText}>
-                  {fixedStartTime.toLocaleString(undefined, {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    schedulingMode === 'fixed' && styles.optionButtonTextSelected,
+                  ]}
+                >
+                  Set time now
                 </Text>
               </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={fixedStartTime}
-                  mode="datetime"
-                  minimumDate={new Date()}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') {
-                      setShowDatePicker(false);
-                    }
-                    if (event.type === 'dismissed') {
-                      setShowDatePicker(false);
-                      return;
-                    }
-                    if (date) {
-                      setFixedStartTime(date);
-                    }
-                  }}
-                />
-              )}
-              {Platform.OS === 'ios' && showDatePicker && (
-                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                  <Text style={styles.timePickerDone}>Done</Text>
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={[styles.optionButton, schedulingMode === 'flex' && styles.optionButtonSelected]}
+                onPress={() => setSchedulingMode('flex')}
+              >
+                <Text
+                  style={[
+                    styles.optionButtonText,
+                    schedulingMode === 'flex' && styles.optionButtonTextSelected,
+                  ]}
+                >
+                  I'm flexible
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
+          ) : null}
         </View>
 
         <View style={styles.section}>
@@ -628,19 +665,6 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                 );
               })}
             </View>
-            <TouchableOpacity
-              style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
-              onPress={() => setNeedPlayersTonight((v) => !v)}
-            >
-              <Text
-                style={[
-                  styles.urgencyToggleText,
-                  needPlayersTonight && styles.urgencyToggleTextSelected,
-                ]}
-              >
-                {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
-              </Text>
-            </TouchableOpacity>
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
@@ -648,8 +672,29 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
               onChangeText={setMissingPlayersText}
               placeholder="Players needed"
             />
+            <TextInput
+              style={[styles.input, { marginTop: 8 }]}
+              value={costNote}
+              onChangeText={setCostNote}
+              placeholder="Cost note (optional) — e.g. ~$8/person court, BYO drinks"
+              maxLength={120}
+            />
           </View>
         )}
+
+        <TouchableOpacity
+          style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
+          onPress={() => setNeedPlayersTonight((v) => !v)}
+        >
+          <Text
+            style={[
+              styles.urgencyToggleText,
+              needPlayersTonight && styles.urgencyToggleTextSelected,
+            ]}
+          >
+            {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
+          </Text>
+        </TouchableOpacity>
 
         {!!selectedLocation && (
           <Text style={styles.selectedCourt} numberOfLines={1}>
@@ -821,8 +866,9 @@ const styles = StyleSheet.create({
     color: '#0057c2',
   },
   advancedToggle: {
-    marginTop: 6,
+    marginTop: 12,
     marginBottom: 4,
+    alignSelf: 'flex-start',
   },
   advancedBlock: {
     marginBottom: 6,
@@ -927,6 +973,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: '#007AFF',
     fontWeight: '600',
+  },
+  advancedToggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
   },
   input: {
     borderWidth: 1,

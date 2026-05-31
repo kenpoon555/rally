@@ -1,11 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { Linking, Platform } from 'react-native';
+import { Linking, Platform, Alert } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { User } from '../types/user';
 import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
 import { navigationRef } from '../navigation/navigationRef';
 import { parseAppDeepLink } from '../navigation/deepLinking';
+import { joinGroupAndNextGame } from '../services/regularGroupService';
+import { ensureActivityGroupConversation } from '../services/chatService';
 import { ROUTES } from '../constants/routes';
 
 interface AuthContextType {
@@ -53,15 +55,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [notificationCleanup, setNotificationCleanup] = useState<(() => void) | null>(null);
   const notificationCleanupRef = useRef<(() => void) | null>(null);
-  const loadUserInProgressRef = useRef<string | null>(null);
+  const loadUserPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
   notificationCleanupRef.current = notificationCleanup;
 
   const loadUser = useCallback(async (userId: string) => {
-    // Deduplicate: checkSession() and onAuthStateChange() both call loadUser for the same session; only run one.
-    if (loadUserInProgressRef.current === userId) {
-      return;
+    // Deduplicate: checkSession() and onAuthStateChange() both call loadUser; share one in-flight promise.
+    const inFlight = loadUserPromisesRef.current.get(userId);
+    if (inFlight) {
+      return inFlight;
     }
-    loadUserInProgressRef.current = userId;
+
+    const run = (async () => {
     try {
       // Prefer fetch by userId (session is already set); getCurrentUser() can be stale/empty right after sign-in.
       let userData = await getUserById(userId);
@@ -160,8 +164,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       throw new Error('Unable to complete account setup right now. Please try again.');
     } finally {
-      loadUserInProgressRef.current = null;
+      loadUserPromisesRef.current.delete(userId);
     }
+    })();
+
+    loadUserPromisesRef.current.set(userId, run);
+    return run;
   }, []);
 
   const checkSession = useCallback(async () => {
@@ -173,18 +181,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        const SESSION_LOAD_TIMEOUT_MS = 4000;
-        await Promise.race([
-          loadUser(session.user.id),
-          new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error('Session load timeout')), SESSION_LOAD_TIMEOUT_MS)
-          ),
-        ]);
+        // Wait for profile load before leaving bootstrap — avoids login flash + blank main nav on Android.
+        await loadUser(session.user.id);
       }
     } catch (error) {
-      if ((error as any)?.message !== 'Session load timeout') {
-        console.error('Error checking session:', error);
-      }
+      console.error('Error checking session:', error);
     } finally {
       // #region agent log
       sendDebugLog('AuthContext.tsx:setLoadingFalse', 'Auth loading=false', {}, 'H1');
@@ -198,15 +199,43 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const parsed = parseAppDeepLink(url);
         if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
-          navigationRef.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
             activityId: parsed.activityId,
-          } as never);
+          });
           return;
         }
         if (parsed.type === 'invite' && parsed.inviteToken && navigationRef.isReady()) {
-          navigationRef.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
             inviteToken: parsed.inviteToken,
-          } as never);
+          });
+          return;
+        }
+        if (parsed.type === 'groupInvite' && parsed.groupInviteToken) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session?.user) {
+            Alert.alert('Sign in required', 'Log in to join this Regulars group.');
+            return;
+          }
+          try {
+            const { activityId } = await joinGroupAndNextGame(parsed.groupInviteToken);
+            if (activityId && navigationRef.isReady()) {
+              try {
+                const conversationId = await ensureActivityGroupConversation(activityId);
+                (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+                  conversationId,
+                  activityId,
+                });
+                return;
+              } catch {
+                // Joined the crew but couldn't open the room — fall back to a confirmation.
+              }
+            }
+            Alert.alert('Joined crew', "You're in! Your next game will show up in Chats.");
+          } catch (err: any) {
+            Alert.alert('Group invite', err?.message || 'Could not join group.');
+          }
           return;
         }
 

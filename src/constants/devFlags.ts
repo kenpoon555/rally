@@ -8,3 +8,6 @@ export const SHOW_LOCATION_DEBUG_PANEL =
 
 export const SHOW_DISCOVER_PIPELINE_PANEL =
   __DEV__ && process.env.EXPO_PUBLIC_SHOW_DISCOVER_PIPELINE === 'true';
+
+export const ENABLE_DEBUG_INGEST =
+  __DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEBUG_INGEST === 'true';
