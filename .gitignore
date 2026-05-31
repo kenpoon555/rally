@@ -82,3 +82,4 @@ ios-build.log
 .env
 .env.local
 .env.*.local
+sce_confirmation.pdf
