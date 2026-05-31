@@ -866,8 +866,9 @@ const styles = StyleSheet.create({
     color: '#0057c2',
   },
   advancedToggle: {
-    marginTop: 6,
+    marginTop: 12,
     marginBottom: 4,
+    alignSelf: 'flex-start',
   },
   advancedBlock: {
     marginBottom: 6,
@@ -972,10 +973,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     color: '#007AFF',
     fontWeight: '600',
-  },
-  advancedToggle: {
-    marginTop: 12,
-    alignSelf: 'flex-start',
   },
   advancedToggleText: {
     fontSize: 13,

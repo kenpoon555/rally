@@ -31,7 +31,6 @@ import {
 } from '../../services/safetyService';
 import { ProfileTrustStats, UserBlock } from '../../types/safety';
 import {
-  FULL_LEGAL_SECTIONS,
   PRIVACY_LOCATION_TEXT,
   TERMS_SUMMARY,
   WAIVER_TEXT,
