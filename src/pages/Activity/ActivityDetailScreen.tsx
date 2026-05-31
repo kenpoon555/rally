@@ -28,13 +28,16 @@ import {
   canOpenActivityChat,
   extendActivitySchedule,
   scheduleNextGameFromActivity,
+  scheduleGroupNextGame,
   makeActivityRecurring,
   setGameRsvp,
   joinGameViaInvite,
+  updateActivity,
 } from '../../services/activityService';
 import {
   createRegularGroupFromActivity,
   getRegularGroupById,
+  isRegularGroupMember,
 } from '../../services/regularGroupService';
 import { buildGameInviteUrl, buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
 import { RegularGroup } from '../../types/regularGroup';
@@ -51,7 +54,6 @@ import {
   ensureActivityGroupConversation,
 } from '../../services/chatService';
 import {
-  canViewProfileIdentity,
   getProfileReviewStats,
   submitPlayerReview,
 } from '../../services/reviewService';
@@ -89,7 +91,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [earliestStartText, setEarliestStartText] = useState('');
   const [latestStartText, setLatestStartText] = useState('');
   const [availabilityWeight, setAvailabilityWeight] = useState(3);
-  const [canSeeHostIdentity, setCanSeeHostIdentity] = useState(false);
   const [reviewStats, setReviewStats] = useState<ProfileReviewStats | null>(null);
   const [friendliness, setFriendliness] = useState(3);
   const [physicality, setPhysicality] = useState(3);
@@ -107,6 +108,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [redeemingInvite, setRedeemingInvite] = useState(false);
   const [regularGroup, setRegularGroup] = useState<RegularGroup | null>(null);
   const [creatingRegularGroup, setCreatingRegularGroup] = useState(false);
+  const [isGroupMember, setIsGroupMember] = useState(false);
+  const [schedulePickerVisible, setSchedulePickerVisible] = useState(false);
+  const [nextStartTime, setNextStartTime] = useState(() => new Date());
+  const [costNoteDraft, setCostNoteDraft] = useState('');
+  const [savingCostNote, setSavingCostNote] = useState(false);
 
   const isHost = user && activity && user.id === activity.user_id;
   const myJoinRequest = useMemo(
@@ -300,6 +306,35 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [activity?.regular_group_id]);
 
+  useEffect(() => {
+    const groupId = activity?.regular_group_id;
+    if (!groupId || !user?.id) {
+      setIsGroupMember(false);
+      return;
+    }
+    let cancelled = false;
+    isRegularGroupMember(groupId, user.id)
+      .then((member) => {
+        if (!cancelled) {
+          setIsGroupMember(member);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIsGroupMember(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activity?.regular_group_id, user?.id]);
+
+  useEffect(() => {
+    setCostNoteDraft(activity?.cost_note ?? '');
+  }, [activity?.cost_note]);
+
+  const allowGroupRsvp = Boolean(activity?.regular_group_id && isGroupMember && !isFinalized);
+
   const handleExtendGame = async (date: Date) => {
     if (!activity) {
       return;
@@ -321,27 +356,54 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!activity || !isHost) {
       return;
     }
-    Alert.alert(
-      'Schedule next game?',
-      'Creates an invite-only game next week with this roster. Hidden from Discover.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Schedule',
-          onPress: async () => {
-            setSchedulingNext(true);
-            try {
-              const newId = await scheduleNextGameFromActivity(activity.id);
-              (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
-            } catch (error: any) {
-              Alert.alert('Schedule failed', error?.message || 'Could not schedule next game.');
-            } finally {
-              setSchedulingNext(false);
-            }
-          },
-        },
-      ]
-    );
+    const base = activity.start_time ? new Date(activity.start_time) : new Date();
+    const suggested = new Date(base.getTime() + 7 * 24 * 60 * 60 * 1000);
+    if (suggested <= new Date()) {
+      suggested.setDate(suggested.getDate() + 7);
+    }
+    setNextStartTime(suggested);
+    setSchedulePickerVisible(true);
+  };
+
+  const confirmScheduleNextGame = async () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    setSchedulingNext(true);
+    try {
+      const startIso = nextStartTime.toISOString();
+      const capacity =
+        Math.max(2, (activity.player_count ?? 1) + (activity.missing_players ?? 0)) || 8;
+      const newId = activity.regular_group_id
+        ? await scheduleGroupNextGame(
+            activity.regular_group_id,
+            startIso,
+            capacity,
+            activity.duration
+          )
+        : await scheduleNextGameFromActivity(activity.id, startIso);
+      setSchedulePickerVisible(false);
+      (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
+    } catch (error: any) {
+      Alert.alert('Schedule failed', error?.message || 'Could not schedule next game.');
+    } finally {
+      setSchedulingNext(false);
+    }
+  };
+
+  const handleSaveCostNote = async () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    setSavingCostNote(true);
+    try {
+      await updateActivity(activity.id, { cost_note: costNoteDraft.trim() || null });
+      await refetch();
+    } catch (error: any) {
+      Alert.alert('Cost note', error?.message || 'Could not save.');
+    } finally {
+      setSavingCostNote(false);
+    }
   };
 
   const handleShareInvite = async () => {
@@ -463,16 +525,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setCandidateLocations([]);
       });
   }, [activity?.id, activity?.scheduling_mode, preferredLocationId]);
-
-  useEffect(() => {
-    if (!activity?.user_id || !activity?.id) {
-      setCanSeeHostIdentity(false);
-      return;
-    }
-    canViewProfileIdentity(activity.user_id, activity.id)
-      .then(setCanSeeHostIdentity)
-      .catch(() => setCanSeeHostIdentity(activity.match_status === 'finalized'));
-  }, [activity?.id, activity?.user_id, activity?.match_status]);
 
   useEffect(() => {
     if (!activity?.user_id || !showReviewSection) {
@@ -694,7 +746,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     return `${count} player${count === 1 ? '' : 's'}`;
   })();
-  const showChat = canOpenActivityChat(activity, user?.id);
+  const showChat =
+    canOpenActivityChat(activity, user?.id) || isGroupMember || allowGroupRsvp;
   const canScheduleNext = Boolean(isHost && canHostScheduleNextGame(activity, true));
   const listingActive = isActivityListingActive(activity);
   const expiresLabel = activity.expires_at
@@ -741,6 +794,33 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {regularGroup ? (
           <Text style={styles.regularGroupText}>Regulars: {regularGroup.name}</Text>
         ) : null}
+        {!isHost && activity.cost_note ? (
+          <Text style={styles.costNoteText}>Cost: {activity.cost_note}</Text>
+        ) : null}
+        {isHost ? (
+          <View style={styles.costNoteBlock}>
+            <Text style={styles.costNoteLabel}>Cost note (optional)</Text>
+            <TextInput
+              style={styles.costNoteInput}
+              value={costNoteDraft}
+              onChangeText={setCostNoteDraft}
+              placeholder="e.g. ~$8/person court · BYO drinks"
+              maxLength={120}
+            />
+            <TouchableOpacity
+              style={[styles.secondaryButton, savingCostNote && styles.utilityButtonDisabled]}
+              onPress={() => void handleSaveCostNote()}
+              disabled={savingCostNote}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {savingCostNote ? 'Saving…' : 'Save cost note'}
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.costNoteHint}>
+              Shown in Details and Game Room. Pin a chat announcement from the Game Room.
+            </Text>
+          </View>
+        ) : null}
         {expiresLabel ? (
           <Text style={styles.expiresText}>
             {listingActive ? 'Listing open until' : 'Listing ended'}: {expiresLabel}
@@ -758,15 +838,49 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         ) : null}
         {canScheduleNext ? (
-          <TouchableOpacity
-            style={[styles.secondaryButton, schedulingNext && styles.utilityButtonDisabled]}
-            onPress={handleScheduleNextGame}
-            disabled={schedulingNext}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {schedulingNext ? 'Scheduling…' : 'Schedule next game'}
-            </Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={[styles.secondaryButton, schedulingNext && styles.utilityButtonDisabled]}
+              onPress={handleScheduleNextGame}
+              disabled={schedulingNext}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {schedulingNext
+                  ? 'Scheduling…'
+                  : activity.regular_group_id
+                    ? 'Post next game for crew'
+                    : 'Schedule next game'}
+              </Text>
+            </TouchableOpacity>
+            {schedulePickerVisible ? (
+              <View style={styles.schedulePickerBlock}>
+                <DateTimePicker
+                  value={nextStartTime}
+                  mode="datetime"
+                  minimumDate={new Date()}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(_, date) => {
+                    if (date) {
+                      setNextStartTime(date);
+                    }
+                  }}
+                />
+                <View style={styles.schedulePickerRow}>
+                  <TouchableOpacity onPress={() => setSchedulePickerVisible(false)}>
+                    <Text style={styles.linkAction}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => void confirmScheduleNextGame()}
+                    disabled={schedulingNext}
+                  >
+                    <Text style={styles.linkActionPrimary}>
+                      {schedulingNext ? 'Scheduling…' : 'Confirm time'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+          </>
         ) : null}
         {isHost && !activity.series_id && activity.status === 'active' ? (
           <TouchableOpacity
@@ -878,6 +992,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           userId={user?.id}
           saving={rsvpSaving}
           onSetRsvp={(status) => void handleSetRsvp(status)}
+          allowGroupRsvp={allowGroupRsvp}
         />
       ) : null}
 
@@ -886,22 +1001,15 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {activity.user && (
           <TouchableOpacity
             style={styles.participantRow}
-            onPress={() =>
-              canSeeHostIdentity || isHost
-                ? openPlayerProfile(activity.user!, 'Host')
-                : undefined
-            }
-            disabled={!canSeeHostIdentity && !isHost}
+            onPress={() => openPlayerProfile(activity.user!, 'Host')}
           >
             <View style={styles.participantAvatar}>
               <Text style={styles.participantAvatarText}>
-                {(canSeeHostIdentity || isHost ? activity.user.username : '?').slice(0, 1).toUpperCase()}
+                {activity.user.username.slice(0, 1).toUpperCase()}
               </Text>
             </View>
             <View style={styles.participantInfo}>
-              <Text style={styles.participantName}>
-                {canSeeHostIdentity || isHost ? activity.user.username : 'Host'}
-              </Text>
+              <Text style={styles.participantName}>{activity.user.username}</Text>
               <Text style={styles.participantRole}>Host</Text>
             </View>
           </TouchableOpacity>
@@ -1203,9 +1311,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   onPress={() => item.user && openPlayerProfile(item.user, 'Requested to join')}
                 >
                   <Text style={styles.requestUser}>
-                    {isHost || activity.match_status === 'finalized'
-                      ? item.user?.username || 'Unknown user'
-                      : 'Anonymous player'}
+                    {item.user?.username || 'Unknown user'}
                   </Text>
                 </TouchableOpacity>
                 <View style={styles.requestActions}>
@@ -1413,6 +1519,57 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#1e40af',
+  },
+  costNoteText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#3d3418',
+    backgroundColor: '#fff8e6',
+    padding: 10,
+    borderRadius: 8,
+  },
+  costNoteBlock: {
+    marginTop: 10,
+  },
+  costNoteLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#444',
+    marginBottom: 6,
+  },
+  costNoteInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 15,
+    backgroundColor: '#fff',
+    marginBottom: 8,
+  },
+  costNoteHint: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  schedulePickerBlock: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  schedulePickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  linkAction: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '600',
+  },
+  linkActionPrimary: {
+    fontSize: 15,
+    color: '#007AFF',
+    fontWeight: '700',
   },
   gameRoomButton: {
     backgroundColor: '#007AFF',

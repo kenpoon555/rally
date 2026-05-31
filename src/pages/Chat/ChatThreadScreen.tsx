@@ -32,6 +32,7 @@ import {
   GameRoomProvider,
   useOptionalGameRoom,
 } from '../../components/GameRoomActionBar';
+import GameRoomAnnouncementBanner from '../../components/GameRoomAnnouncementBanner';
 import { ROUTES } from '../../constants/routes';
 
 type MainStackParamList = {
@@ -76,6 +77,13 @@ const GameRoomChatBody: React.FC<{
 
   return (
   <>
+    {isGameRoom && gameRoom?.activity ? (
+      <GameRoomAnnouncementBanner
+        activityId={gameRoom.activity.id}
+        isHost={gameRoom.isHost}
+        costNote={gameRoom.activity.cost_note}
+      />
+    ) : null}
     {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
     <FlatList
       style={styles.list}

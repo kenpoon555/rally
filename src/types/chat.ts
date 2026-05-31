@@ -6,6 +6,9 @@ export interface Conversation {
   activity_id?: string | null;
   created_by: string;
   title?: string | null;
+  pinned_announcement?: string | null;
+  pinned_announcement_at?: string | null;
+  pinned_announcement_by?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -348,7 +348,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={styles.emptyText}>
                 {discoverError
                   ? discoverError.message
-                  : 'Be the first to host a game in your area.'}
+                  : 'No open games nearby yet. Host one at your court, or share a Regulars link so your crew can RSVP when you post the next game.'}
               </Text>
               {!discoverError && (
                 <View style={styles.tipList}>

@@ -339,3 +339,37 @@ export const getTotalUnreadCount = async (userId: string): Promise<number> => {
   const counts = await getUnreadConversationCounts(userId);
   return Object.values(counts).reduce((sum, value) => sum + value, 0);
 };
+
+export type ActivityAnnouncement = Pick<
+  Conversation,
+  'pinned_announcement' | 'pinned_announcement_at' | 'pinned_announcement_by'
+>;
+
+export const getActivityConversationAnnouncement = async (
+  activityId: string
+): Promise<ActivityAnnouncement | null> => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('pinned_announcement, pinned_announcement_at, pinned_announcement_by')
+    .eq('activity_id', activityId)
+    .eq('conversation_type', 'activity_group')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (data as ActivityAnnouncement) || null;
+};
+
+export const setGameRoomAnnouncement = async (
+  activityId: string,
+  text: string | null
+): Promise<void> => {
+  const { error } = await supabase.rpc('set_game_room_announcement', {
+    p_activity_id: activityId,
+    p_text: text,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};

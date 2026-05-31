@@ -64,6 +64,20 @@ export const getRegularGroupById = async (groupId: string): Promise<RegularGroup
   return (data as RegularGroup | null) ?? null;
 };
 
+export const isRegularGroupMember = async (
+  groupId: string,
+  userId: string
+): Promise<boolean> => {
+  const { data, error } = await supabase.rpc('is_regular_group_member', {
+    p_group_id: groupId,
+    p_user_id: userId,
+  });
+  if (error) {
+    return false;
+  }
+  return Boolean(data);
+};
+
 export const getMyRegularGroups = async (userId: string): Promise<RegularGroup[]> => {
   const { data: memberships, error: memberError } = await supabase
     .from('regular_group_members')

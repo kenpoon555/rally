@@ -34,6 +34,8 @@ export interface Activity {
   regular_group_id?: string | null;
   urgency_level?: ActivityUrgencyLevel;
   invite_token?: string;
+  /** Optional host note (court split, BYO drinks, etc.). */
+  cost_note?: string | null;
   created_at: string;
   updated_at: string;
   location?: ActivityLocation;

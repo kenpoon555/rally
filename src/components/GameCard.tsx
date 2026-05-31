@@ -172,9 +172,6 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
 
   const status = activity.match_status ?? 'open';
   const isFinalized = status === 'finalized';
-  const isFlexAnonymous =
-    activity.scheduling_mode === 'flex' && !isFinalized;
-
   const intensity = getIntensityFromDuration(activity.duration);
   const intensityConfig = INTENSITY_CONFIG[intensity];
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
@@ -186,11 +183,7 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
 
   const approvedParticipants = getApprovedParticipants(activity);
 
-  const hostLabel = isFlexAnonymous
-    ? 'Anonymous host'
-    : activity.user?.username
-    ? `@${activity.user.username}`
-    : 'Unknown host';
+  const hostLabel = activity.user?.username ? `@${activity.user.username}` : 'Unknown host';
 
   const isHost = user?.id === activity.user_id;
   const canShowJoin = !isHost && !!user && !isFinalized && status !== 'cancelled';
@@ -262,10 +255,7 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation }) 
           <Text style={styles.whoHeader}>WHO'S GOING</Text>
           <View style={styles.whoBody}>
             {approvedParticipants.length > 0 ? (
-              <AvatarRow
-                participants={approvedParticipants}
-                isAnonymous={isFlexAnonymous}
-              />
+              <AvatarRow participants={approvedParticipants} isAnonymous={false} />
             ) : joinedCountLabel ? (
               <Text style={styles.noParticipants}>{joinedCountLabel}</Text>
             ) : (

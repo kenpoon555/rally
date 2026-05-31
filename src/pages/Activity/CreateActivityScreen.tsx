@@ -68,6 +68,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [needPlayersTonight, setNeedPlayersTonight] = useState(false);
+  const [costNote, setCostNote] = useState('');
   const didRequestInitialLocationRef = useRef(false);
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -355,6 +356,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         preference_deadline: schedulingMode === 'flex' ? windowEnd.toISOString() : undefined,
         candidate_location_ids: candidateLocationIds,
         urgency_level: needPlayersTonight ? 'tonight' : 'normal',
+        cost_note: costNote.trim() || null,
       });
 
       void setOnboardingFlag(ONBOARDING_FLAGS.HOST_ONBOARDING_COMPLETED);
@@ -669,6 +671,13 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
               value={missingPlayersText}
               onChangeText={setMissingPlayersText}
               placeholder="Players needed"
+            />
+            <TextInput
+              style={[styles.input, { marginTop: 8 }]}
+              value={costNote}
+              onChangeText={setCostNote}
+              placeholder="Cost note (optional) — e.g. ~$8/person court, BYO drinks"
+              maxLength={120}
             />
           </View>
         )}
