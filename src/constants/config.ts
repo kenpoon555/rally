@@ -43,7 +43,7 @@ export const CONFIG = {
   NEARBY_COURT_RADIUS_M: 5000,
   /** Court search when none within NEARBY_COURT_RADIUS_M (meters). */
   WIDER_COURT_RADIUS_M: 25000,
-  /** Discover feed radius (meters). Bay Area dev/testing needs wider reach across simulators. */
+  /** Discover feed radius (meters). LA beta — wide enough to cover the metro from one GPS fix. */
   DISCOVERY_RADIUS_M: 60000,
   /** Wider radius for games a friend hosts or joined (meters). */
   FRIEND_DISCOVERY_RADIUS_M: 120000,

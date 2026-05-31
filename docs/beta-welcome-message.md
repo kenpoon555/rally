@@ -2,13 +2,15 @@
 
 Last updated: 2026-05-31
 
+**Market:** Los Angeles closed beta — invite friends who can host or join games in LA.
+
 Copy-paste for TestFlight notes, SMS, or group chat when inviting your first hosts.
 
 ---
 
 ## Short version (SMS / iMessage)
 
-Hey — I'm testing **Rally**, an app to find people for pick-up sports. You host a game (time + place), players join and coordinate in a group chat, and regular crews can replay weekly.
+Hey — I'm testing **Rally** in **LA**, an app to find people for pick-up sports. You host a game (time + place), players join and coordinate in a group chat, and regular crews can replay weekly.
 
 **Try it:** [TestFlight or install link]
 
@@ -24,7 +26,7 @@ Would love your honest feedback after one game 🙏
 
 Hi everyone,
 
-I'm opening a small beta of **Rally** — think *group chat for pick-up sports*, not a league app.
+I'm opening a small **Los Angeles beta** of **Rally** — think *group chat for pick-up sports*, not a league app.
 
 **How it works (2 minutes):**
 1. Open **Rally** → **Discover** → **Create Game**
@@ -41,7 +43,7 @@ I'm opening a small beta of **Rally** — think *group chat for pick-up sports*,
 
 **Install:** [TestFlight / APK link]
 
-Reply with your sport + neighborhood if you want me to seed courts near you.
+Reply with your sport + LA neighborhood if you want me to seed courts near you.
 
 Thanks,
 [Your name]

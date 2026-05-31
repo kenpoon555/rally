@@ -21,6 +21,7 @@ import { useLocation } from '../../hooks/useLocation';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
 import { ROUTES } from '../../constants/routes';
 import { CONFIG } from '../../constants/config';
+import { BETA_REGION } from '../../constants/betaRegion';
 import {
   ACTIVITY_DURATIONS,
   CREATE_ACTIVITY_VISIBILITY,
@@ -285,10 +286,10 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
       return { latitude: lat, longitude: lng, latitudeDelta: 0.08, longitudeDelta: 0.08 };
     }
     return {
-      latitude: 37.323,
-      longitude: -122.0322,
-      latitudeDelta: 0.08,
-      longitudeDelta: 0.08,
+      latitude: BETA_REGION.center.latitude,
+      longitude: BETA_REGION.center.longitude,
+      latitudeDelta: BETA_REGION.mapDelta,
+      longitudeDelta: BETA_REGION.mapDelta,
     };
   }, [location, visibleLocations]);
 

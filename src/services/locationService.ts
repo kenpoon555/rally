@@ -7,11 +7,12 @@ import { supabase } from './api/supabase';
 import { ActivityLocation } from '../types/location';
 import { normalizeActivityLocations } from '../utils/activityLocationGeo';
 import { checkGeofences, locationToGeofence } from '../utils/geofence';
+import { BETA_REGION } from '../constants/betaRegion';
 
-/** Bay Area test coords — used only in __DEV__ when simulator has no GPS fix. */
+/** LA beta coords — used only in __DEV__ when simulator has no GPS fix. */
 const DEV_LOCATION_FALLBACK: Location = {
-  latitude: 37.33233141,
-  longitude: -122.0312186,
+  latitude: BETA_REGION.center.latitude,
+  longitude: BETA_REGION.center.longitude,
   accuracy: 5000,
 };
 
@@ -205,7 +206,7 @@ export async function getCurrentLocation(): Promise<Location> {
   if (!location) {
     if (__DEV__) {
       addLocationLog(
-        `${Platform.OS} dev fallback: using Bay Area test coords. Set mock location in simulator if needed.`
+        `${Platform.OS} dev fallback: using ${BETA_REGION.name} beta coords. Set mock location in simulator if needed.`
       );
       return { ...DEV_LOCATION_FALLBACK };
     }

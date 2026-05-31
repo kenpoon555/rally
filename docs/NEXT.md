@@ -1,10 +1,22 @@
-# What's Next — Rally closed beta
+# What's Next — Rally LA closed beta
 
 Last updated: 2026-05-31
 
 **Single checklist for "what do we do now?"** Engineering detail lives in [ROADMAP.md](../ROADMAP.md). Business stages live in [open_items.md](../../open_items.md).
 
+**Beta market:** Los Angeles — courts seeded metro-wide; dev simulators fall back to central LA when GPS is off.
+
 ---
+
+## Seed LA courts (one-time)
+
+```bash
+cd RallyApp
+# Requires SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY in env
+node scripts/seed-la-courts.mjs
+```
+
+Covers all 10 launch sports (pickleball through Ultimate). Idempotent — safe to re-run.
 
 ## Current focus
 
@@ -51,10 +63,11 @@ When the build lands → run **Post-preview testing backlog** only; do not start
 | Priority | Task | Owner |
 |----------|------|--------|
 | 1 | ~~**Apply migration `026`**~~ to Supabase (`analytics_crew_funnel_30d`, `analytics_crew_lifecycle`) | **Done** (2026-05-31) |
-| 2 | **Invite 5–10 beta testers** (pickleball/badminton hosts you know) — list names, don't wait for perfect | Product |
+| 2 | **Invite 5–10 LA beta testers** (pickleball/badminton/tennis hosts you know) — list names, don't wait for perfect | Product |
 | 3 | ~~**Draft beta welcome message**~~ — [beta-welcome-message.md](beta-welcome-message.md) | **Done** (2026-05-31) |
 | 4 | ~~Optional: thin **entitlements scaffold**~~ | **Done** (2026-05-31) |
-| 5 | **Invite 5–10 beta hosts** — use welcome copy; list names | Product |
+| 5 | **Invite 5–10 LA beta hosts** — use welcome copy; list names | Product |
+| 6 | **Run `node scripts/seed-la-courts.mjs`** against Supabase prod | Engineering |
 
 ---
 

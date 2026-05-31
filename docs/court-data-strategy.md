@@ -4,13 +4,13 @@ Last updated: 2026-05-31
 
 ## Problem
 
-`activity_locations` started as **manual seed scripts** (Bay Area pickleball, LA basketball/badminton). There is no automatic world-wide court database. Courts close, rename, or were never seeded in a new city.
+`activity_locations` started as **manual seed scripts**. **Closed beta is LA-only** — run `scripts/seed-la-courts.mjs` for all 10 launch sports. Legacy Bay Area pickleball seeds remain for old dev notes only.
 
 ## Current model (after migration `027`)
 
 | Layer | What it does |
 |-------|----------------|
-| **Seed scripts** | Bootstrap high-traffic test regions (`scripts/seed-*`, `supabase/scripts/seed_*.sql`) |
+| **Seed scripts** | Bootstrap LA beta (`scripts/seed-la-courts.mjs`; legacy `seed-bay-area-*` archived) |
 | **Google Places add** | Host searches on Create Game → saved as `source='places'`, shared for everyone |
 | **Community reports** | Host/player taps **Report court issue** on Activity Details |
 | **Auto-hide** | 2 distinct **closed** reports → `is_active = false` (hidden from picker) |
