@@ -21,10 +21,7 @@ import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
-import {
-  getDefaultLaunchSportName,
-  resolveUserDefaultSport,
-} from '../../constants/sports';
+import { resolveUserDefaultSport } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
 import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
 import { getTotalUnreadCount } from '../../services/chatService';
@@ -34,7 +31,6 @@ import DiscoverPipelinePanel from '../../components/DiscoverPipelinePanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
 import { shouldShowInDiscoverFeed, sortActivitiesByDistance } from '../../utils/activityHelpers';
-import { SHOW_DISCOVER_PIPELINE_PANEL } from '../../constants/devFlags';
 import { getBlockedUserIds } from '../../services/safetyService';
 
 function runRawLocationTest() {
@@ -76,9 +72,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedSport, setSelectedSport] = useState(defaultSport);
   const effectiveSportFilter = selectedSport;
 
+  const preferredSport = user?.preferred_sports?.[0];
   useEffect(() => {
-    setSelectedSport(resolveUserDefaultSport(user?.preferred_sports?.[0]));
-  }, [user?.preferred_sports?.[0]]);
+    setSelectedSport(resolveUserDefaultSport(preferredSport));
+  }, [preferredSport]);
 
   const discoverTitle = `${selectedSport} near you`;
 
@@ -99,7 +96,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         // Filter still applies locally; profile sync can retry from Profile.
       }
     },
-    [user?.id, user?.preferred_sports, refreshUser]
+    [user, refreshUser]
   );
 
   const { activities, loading, error: discoverError, refetch } = useActivities(

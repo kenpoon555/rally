@@ -10,7 +10,6 @@ import {
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
 import { useMyGames } from '../../hooks/useActivities';
-import { MyGameEntry } from '../../services/activityService';
 import MyGameListItem from '../../components/MyGameListItem';
 import { ROUTES } from '../../constants/routes';
 

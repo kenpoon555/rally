@@ -18,10 +18,7 @@ import { consumeRateLimit } from './rateLimitService';
 import { usersAreBlocked } from './safetyService';
 import { notifyHostOfJoinRequest, notifyPlayerOfJoinApproval, notifyGameFinalized } from './pushDispatchService';
 import { ensureSupabaseSessionReady } from './api/ensureSupabaseSession';
-import {
-  ensureActivityGroupConversation,
-  getActivityGroupConversationId,
-} from './chatService';
+import { ensureActivityGroupConversation } from './chatService';
 
 /**
  * Create a new activity

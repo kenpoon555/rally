@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
 import { updateUserProfile } from '../../services/userService';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
@@ -100,7 +100,7 @@ const ProfileScreen: React.FC = () => {
     }
   }, [user?.push_quiet_hours_start, user?.push_quiet_hours_end]);
 
-  const loadBlockedUsers = async () => {
+  const loadBlockedUsers = useCallback(async () => {
     if (!user?.id) {
       setBlockedUsers([]);
       return;
@@ -113,11 +113,11 @@ const ProfileScreen: React.FC = () => {
     } finally {
       setBlockedLoading(false);
     }
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     loadBlockedUsers();
-  }, [user?.id]);
+  }, [loadBlockedUsers]);
 
   useEffect(() => {
     if (!user?.id) {

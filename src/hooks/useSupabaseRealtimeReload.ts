@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { supabase } from '../services/api/supabase';
 
 type RealtimeTable = 'activities' | 'join_requests' | 'messages';
@@ -11,6 +11,8 @@ export function useSupabaseRealtimeReload(
   onReload: () => void,
   enabled = true
 ): void {
+  const tablesKey = useMemo(() => tables.join(','), [tables]);
+
   useEffect(() => {
     if (!enabled) {
       return;
@@ -31,5 +33,5 @@ export function useSupabaseRealtimeReload(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tables.join(','), onReload, enabled]);
+  }, [tables, tablesKey, onReload, enabled]);
 }

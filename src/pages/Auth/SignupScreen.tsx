@@ -11,8 +11,6 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { toAuthErrorMessage } from '../../utils/errorMessages';
-import { acceptLegalTerms, acknowledgeLocationPrivacy } from '../../services/userService';
-import { supabase } from '../../services/api/supabase';
 import { TERMS_SUMMARY } from '../../constants/legal';
 
 type AuthStackParamList = {

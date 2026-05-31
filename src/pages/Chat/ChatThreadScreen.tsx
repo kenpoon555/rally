@@ -131,7 +131,7 @@ const GameRoomChatBody: React.FC<{
         <Text style={styles.sendButtonText}>{sending ? '…' : 'Send'}</Text>
       </TouchableOpacity>
     </View>
-    )}
+    ) : null}
   </>
   );
 };

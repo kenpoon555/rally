@@ -300,6 +300,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
     locations.length,
     showAllCourtsDev,
     courtSearchRadiusM,
+    sportType,
   ]);
 
   const selectLocation = (loc: ActivityLocation) => {
