@@ -43,7 +43,7 @@ import { GameRsvpStatus } from '../../types/activity';
 import { supabase } from '../../services/api/supabase';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
 import { formatActivityTime, getApprovedParticipants, canHostScheduleNextGame } from '../../utils/activityHelpers';
-import { isActivityListingActive, isReviewWindowOpen } from '../../utils/activityExpiry';
+import { isActivityListingActive, isReviewWindowOpen, gameEndMs } from '../../utils/activityExpiry';
 import { ActivityCandidateLocation, JoinRequest } from '../../types/activity';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ROUTES } from '../../constants/routes';
@@ -126,6 +126,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     () => Boolean(activity && isReviewWindowOpen(activity)),
     [activity]
   );
+
+  /** Reviews belong after a game ends — hide the panel for upcoming / in-progress listings. */
+  const showReviewSection = useMemo(() => {
+    if (!activity) {
+      return false;
+    }
+    if (canShowReviewForm) {
+      return true;
+    }
+    if (activity.status === 'completed') {
+      return true;
+    }
+    const listingEnded =
+      activity.status === 'cancelled' || !isActivityListingActive(activity);
+    return listingEnded && Date.now() >= gameEndMs(activity);
+  }, [activity, canShowReviewForm]);
 
   const activeReviewTargetId = useMemo(() => {
     if (!activity || !user) {
@@ -459,14 +475,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [activity?.id, activity?.user_id, activity?.match_status]);
 
   useEffect(() => {
-    if (!activity?.user_id) {
+    if (!activity?.user_id || !showReviewSection) {
       setReviewStats(null);
       return;
     }
     getProfileReviewStats(activity.user_id)
       .then(setReviewStats)
       .catch(() => setReviewStats(null));
-  }, [activity?.user_id]);
+  }, [activity?.user_id, showReviewSection]);
 
   const handleApprove = async (requestId: string) => {
     try {
@@ -1044,13 +1060,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <Text style={styles.finalizedBanner}>Roster locked — game is finalized</Text>
       )}
 
+      {showReviewSection ? (
       <View style={styles.reviewPanel}>
-        <Text style={styles.sectionTitle}>Host Review Snapshot</Text>
+        <Text style={styles.sectionTitle}>Post-game reviews</Text>
+        {activity?.regular_group_id ? (
+          <Text style={styles.reviewMeta}>
+            Each completed game adds to trust scores — reviews are per match, not one score for the whole crew.
+          </Text>
+        ) : null}
         <Text style={styles.reviewMeta}>
-          Reviews: {reviewStats?.review_count || 0}
+          Host trust: {reviewStats?.review_count || 0} review
+          {(reviewStats?.review_count || 0) === 1 ? '' : 's'}
           {typeof reviewStats?.visible_score === 'number'
-            ? ` • Score: ${reviewStats.visible_score.toFixed(2)}`
-            : ' • Score hidden until 5 reviews'}
+            ? ` · ${reviewStats.visible_score.toFixed(1)}/5`
+            : reviewStats?.review_count
+              ? ' · score hidden until 5 reviews'
+              : ''}
         </Text>
         {canShowReviewForm && activeReviewTargetId && user?.id !== activeReviewTargetId && (
           <>
@@ -1153,6 +1178,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
         )}
       </View>
+      ) : null}
 
       {isHost && (
         <View style={styles.requestsSection}>

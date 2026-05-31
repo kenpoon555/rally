@@ -24,6 +24,7 @@
     "eas:submit:android": "eas submit --platform android"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^9.1.0",
     "@react-native-firebase/app": "^23.8.4",
@@ -35,6 +36,8 @@
     "@sentry/react-native": "^8.10.0",
     "@supabase/supabase-js": "^2.91.1",
     "expo": "~55.0.0",
+    "expo-asset": "~55.0.17",
+    "expo-font": "~55.0.8",
     "expo-location": "^55.1.2",
     "react": "19.2.0",
     "react-native": "0.83.1",

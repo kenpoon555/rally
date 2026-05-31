@@ -77,6 +77,11 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
 
+  const hasNextUpCard =
+    mode === 'regular' &&
+    filter !== 'friends' &&
+    Boolean(nextGame || regularGroups[0]);
+
   const openThread = (
     conversationId: string,
     title: string,
@@ -327,35 +332,37 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           ListHeaderComponent={renderNextUp()}
           contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>Nothing here yet</Text>
-              <Text style={styles.emptyText}>{emptyCopy}</Text>
-              {filter !== 'friends' ? (
-                <View style={styles.emptyCtaRow}>
+            hasNextUpCard ? null : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>Nothing here yet</Text>
+                <Text style={styles.emptyText}>{emptyCopy}</Text>
+                {filter !== 'friends' ? (
+                  <View style={styles.emptyCtaRow}>
+                    <TouchableOpacity
+                      style={styles.emptyPrimaryCta}
+                      onPress={() => navigation.navigate(ROUTES.HOME.MAIN as never)}
+                    >
+                      <Text style={styles.emptyPrimaryCtaText}>Find a game</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.emptySecondaryCta}
+                      onPress={() =>
+                        navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never)
+                      }
+                    >
+                      <Text style={styles.emptySecondaryCtaText}>Create game</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
                   <TouchableOpacity
                     style={styles.emptyPrimaryCta}
-                    onPress={() => navigation.navigate(ROUTES.HOME.MAIN as never)}
+                    onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
                   >
-                    <Text style={styles.emptyPrimaryCtaText}>Find a game</Text>
+                    <Text style={styles.emptyPrimaryCtaText}>Go to Friends</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.emptySecondaryCta}
-                    onPress={() =>
-                      navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never)
-                    }
-                  >
-                    <Text style={styles.emptySecondaryCtaText}>Create game</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.emptyPrimaryCta}
-                  onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
-                >
-                  <Text style={styles.emptyPrimaryCtaText}>Go to Friends</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+                )}
+              </View>
+            )
           }
         />
       )}

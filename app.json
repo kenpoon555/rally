@@ -22,6 +22,10 @@
         "projectId": "c8adc581-8790-4de6-8c81-c4a49d291ffe"
       }
     },
-    "owner": "kendrewpoon"
+    "owner": "kendrewpoon",
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ]
   }
 }

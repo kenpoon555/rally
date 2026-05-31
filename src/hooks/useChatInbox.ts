@@ -217,13 +217,19 @@ export function useChatInbox(userId: string | undefined) {
     setLoading(true);
     setErrorText(null);
     try {
-      const [games, groups, conversations, friends, unreadCounts] = await Promise.all([
+      const [games, conversations, friends, unreadCounts] = await Promise.all([
         getMyGames(userId),
-        getMyRegularGroups(userId),
         getMyConversations(userId),
         getUserFriends(userId),
         getUnreadConversationCounts(userId),
       ]);
+
+      let groups: RegularGroup[] = [];
+      try {
+        groups = await getMyRegularGroups(userId);
+      } catch (groupError) {
+        console.warn('Regular groups load failed (inbox will show games only):', groupError);
+      }
 
       const directPeerMap = await buildDirectConversationPeerMap(userId, conversations);
       const inbox = buildChatInbox({
