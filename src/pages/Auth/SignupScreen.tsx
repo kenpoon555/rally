@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { toAuthErrorMessage } from '../../utils/errorMessages';
+import { TERMS_SUMMARY } from '../../constants/legal';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -75,10 +76,15 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         editable={!loading}
       />
 
+      <TouchableOpacity style={styles.termsRow} onPress={() => setAgreedToTerms((v) => !v)}>
+        <Text style={styles.termsCheck}>{agreedToTerms ? '☑' : '☐'}</Text>
+        <Text style={styles.termsText}>{TERMS_SUMMARY}</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[styles.button, (loading || !agreedToTerms) && styles.buttonDisabled]}
         onPress={handleSignup}
-        disabled={loading}
+        disabled={loading || !agreedToTerms}
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
@@ -140,6 +146,22 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#007AFF',
     fontSize: 14,
+  },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  termsCheck: {
+    fontSize: 18,
+    marginRight: 8,
+    marginTop: 2,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#555',
+    lineHeight: 18,
   },
 });
 

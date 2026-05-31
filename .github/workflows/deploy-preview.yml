@@ -1,5 +1,6 @@
-# Push to `preview` → EAS cloud build (no local Xcode/Android Studio).
-# Requires GitHub secret EXPO_TOKEN — see docs/github-actions-preview.md
+# Push to `preview` → tests, then EAS preview builds (Android + iOS in parallel).
+# Requires: EXPO_TOKEN, EAS env, Android keystore, iOS preview credentials (eas credentials -p ios).
+# See docs/github-actions-preview.md
 
 name: Deploy preview (EAS)
 
@@ -11,12 +12,12 @@ on:
       platform:
         description: Platform to build
         required: true
-        default: android
+        default: all
         type: choice
         options:
+          - all
           - android
           - ios
-          - all
 
 concurrency:
   group: eas-preview-${{ github.ref }}
@@ -40,36 +41,69 @@ jobs:
       - name: Run unit tests and lint
         run: npm run verify
 
-  build:
-    name: EAS preview build
+  build-android:
+    name: EAS preview · Android
     needs: verify
+    if: >-
+      github.event_name == 'push' ||
+      github.event.inputs.platform == 'all' ||
+      github.event.inputs.platform == 'android'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
-
       - uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: eas build --profile preview --platform android --non-interactive --no-wait
+      - name: Install link
+        run: echo "Android → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
 
-      - name: Install dependencies
-        run: npm ci
+  build-ios:
+    name: EAS preview · iOS
+    needs: verify
+    if: >-
+      github.event_name == 'push' ||
+      github.event.inputs.platform == 'all' ||
+      github.event.inputs.platform == 'ios'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: eas build --profile preview --platform ios --non-interactive --no-wait
+      - name: Install link
+        run: echo "iOS → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
 
-      - name: Build on EAS (preview profile)
-        env:
-          EAS_BUILD_PLATFORM: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.platform || 'android' }}
+  summary:
+    name: Where to test
+    needs: [build-android, build-ios]
+    if: always() && (needs.build-android.result != 'skipped' || needs.build-ios.result != 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Job summary
         run: |
-          if [ "$EAS_BUILD_PLATFORM" = "all" ]; then
-            eas build --profile preview --platform all --non-interactive --no-wait
-          else
-            eas build --profile preview --platform "$EAS_BUILD_PLATFORM" --non-interactive --no-wait
-          fi
-
-      - name: Build dashboard
-        run: |
-          echo "Track the build at https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
+          {
+            echo "## Preview install"
+            echo ""
+            echo "| Platform | CI | Install |"
+            echo "|----------|-----|---------|"
+            echo "| Android | ${{ needs.build-android.result }} | [Expo builds](https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds) |"
+            echo "| iOS | ${{ needs.build-ios.result }} | Same dashboard (device must be registered for internal) |"
+            echo ""
+            echo "**Commit:** \`${{ github.sha }}\`"
+            echo ""
+            echo "Wait until each build shows **Finished**, then open it and install on your phone."
+          } >> "$GITHUB_STEP_SUMMARY"

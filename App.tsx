@@ -1,22 +1,46 @@
 import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Alert } from 'react-native';
+import * as Sentry from '@sentry/react-native';
+import { CONFIG } from './src/constants/config';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import type { NotificationPayload } from './src/services/notificationService';
 import 'react-native-gesture-handler';
+
+if (CONFIG.SENTRY_DSN) {
+  Sentry.init({
+    dsn: CONFIG.SENTRY_DSN,
+    enableAutoSessionTracking: true,
+    tracesSampleRate: __DEV__ ? 0 : 0.15,
+  });
+}
+
+function handleForegroundNotification(notification: NotificationPayload): void {
+  const title = notification.notification?.title || 'Rally';
+  const body = notification.notification?.body || '';
+  Alert.alert(title, body, [
+    { text: 'Dismiss', style: 'cancel' },
+    {
+      text: 'Open',
+      onPress: () => {
+        const { navigateFromNotificationData } = require('./src/navigation/navigationRef');
+        navigateFromNotificationData(notification.data);
+      },
+    },
+  ]);
+}
+
+function handleNotificationOpened(notification: NotificationPayload): void {
+  const { navigateFromNotificationData } = require('./src/navigation/navigationRef');
+  navigateFromNotificationData(notification.data);
+}
 
 function AppContent(): React.JSX.Element {
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      return;
-    }
     const { setupNotificationHandlers } = require('./src/services/notificationService');
     const cleanup = setupNotificationHandlers(
-      (notification: { data?: Record<string, string>; notification?: { title?: string; body?: string } }) => {
-        console.log('Foreground notification:', notification);
-      },
-      (notification: { data?: Record<string, string>; notification?: { title?: string; body?: string } }) => {
-        console.log('Notification opened:', notification);
-      }
+      handleForegroundNotification,
+      handleNotificationOpened
     );
     return cleanup;
   }, []);
@@ -32,4 +56,4 @@ function App(): React.JSX.Element {
   );
 }
 
-export default App;
+export default CONFIG.SENTRY_DSN ? Sentry.wrap(App) : App;

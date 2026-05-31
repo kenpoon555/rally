@@ -1,6 +1,6 @@
 # Release Readiness Checklist
 
-Last updated: 2026-02-27
+Last updated: 2026-03-15
 
 Use this doc as the **go/no-go gate** before shipping. Do not release until the gate below and the sections that follow are satisfied.
 
@@ -26,10 +26,29 @@ These must be **pass** before release. Check the linked result docs; do not rely
 
 ## Security and Config
 
-- [ ] `.env` is populated from `.env.example` on CI/local machines.
-- [ ] No production secrets are hardcoded in `src/constants/config.ts`.
-- [ ] Supabase URL/key values load from environment at runtime.
-- [ ] Google Places keys use platform restrictions.
+- [x] `.env` is populated from `.env.example` on CI/local machines.
+- [x] No production secrets are hardcoded in `src/constants/config.ts`.
+- [x] Supabase URL/key values load from environment at runtime.
+- [x] Google Places keys use platform restrictions.
+
+**Verification (2026-03-15):** `config.ts` uses `readEnv()` for all keys; no literal URLs/keys in source. Supabase client and Google Places use `CONFIG.*`. `.env.example` documents required/optional vars. Platform restrictions for Places/Maps are applied in Google Cloud Console (API key restrictions by bundle ID / package name), not in code.
+
+### Detailed steps (re-run when needed)
+
+1. **`.env` from `.env.example`**  
+   - Ensure `.env` exists (gitignored). Copy from `.env.example` and fill real values. On CI, inject vars from secrets; do not commit `.env`.
+
+2. **No hardcoded secrets in `config.ts`**  
+   - Run: `grep -r "supabase.co\|eyJ\|sk_live\|AIza" RallyApp/src --include="*.ts" --include="*.tsx"`. Expect only comments or test mocks (e.g. `jest.setup.js`), no production credentials.
+
+3. **Supabase from env**  
+   - Open `src/constants/config.ts`: `SUPABASE_URL` and `SUPABASE_ANON_KEY` must come from `readEnv(...)`. Open `src/services/api/supabase.ts`: client must use `CONFIG.SUPABASE_URL` and `CONFIG.SUPABASE_ANON_KEY`.
+
+4. **Places from env**  
+   - In `config.ts`, `GOOGLE_PLACES_API_KEY*` must come from `readEnv(...)`. Usage in `src/services/api/googlePlaces.ts` must use `CONFIG.GOOGLE_PLACES_API_KEY_PLATFORM` (or equivalent), not a literal key.
+
+5. **Google Places/Maps key restrictions**  
+   - In Google Cloud Console → APIs & Services → Credentials, ensure the key(s) used for Places and Maps have application restrictions (e.g. Android package name, iOS bundle ID) so they cannot be used from other apps.
 
 ## Core Regression (iOS + Android)
 

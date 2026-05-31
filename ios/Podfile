@@ -5,6 +5,8 @@ require Pod::Executable.execute_command('node', ['-p',
     {paths: [process.argv[1]]},
   )', __dir__]).strip
 
+require File.join(File.dirname(`node --print "require.resolve('expo/package.json', { paths: ['#{__dir__}'] })"`), "scripts/autolinking.rb")
+
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
@@ -16,6 +18,7 @@ end
 
 target 'RallyApp' do
   config = use_native_modules!
+  use_expo_modules!
 
   # Required for Firebase Swift pods (FirebaseCoreInternal -> GoogleUtilities)
   pod 'GoogleUtilities', :modular_headers => true
@@ -33,5 +36,22 @@ target 'RallyApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    # Fix Swift 6 strict concurrency errors in expo-modules-core
+    installer.pods_project.targets.each do |target|
+      if target.name.start_with?('Expo')
+        target.build_configurations.each do |config|
+          config.build_settings['SWIFT_VERSION'] = '5.9'
+          config.build_settings['OTHER_SWIFT_FLAGS'] = '$(inherited) -Xfrontend -disable-actor-data-race-checks'
+        end
+      end
+
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FMT_USE_CONSTEVAL=0'
+        end
+      end
+    end
   end
 end

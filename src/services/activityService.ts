@@ -3,10 +3,22 @@ import {
   Activity,
   ActivityCandidateLocation,
   ActivityParticipantPreference,
+  ActivityRsvp,
   FinalizedActivityResult,
+  GameRsvpStatus,
   JoinRequest,
 } from '../types/activity';
 import { SportType, ActivityVisibility } from '../constants/sports';
+import { defaultExpiresAt, isActivityListingActive } from '../utils/activityExpiry';
+import { normalizeActivityLocation, parseGeographyCoordinates } from '../utils/activityLocationGeo';
+import { addDiscoverLog } from '../utils/devLocationLog';
+import { CONFIG } from '../constants/config';
+import { trackProductEvent } from './analyticsService';
+import { consumeRateLimit } from './rateLimitService';
+import { usersAreBlocked } from './safetyService';
+import { notifyHostOfJoinRequest, notifyPlayerOfJoinApproval, notifyGameFinalized } from './pushDispatchService';
+import { ensureSupabaseSessionReady } from './api/ensureSupabaseSession';
+import { ensureActivityGroupConversation } from './chatService';
 
 /**
  * Create a new activity
@@ -25,13 +37,21 @@ export const createActivity = async (activityData: {
   window_end?: string;
   match_status?: 'open' | 'collecting' | 'finalized' | 'cancelled';
   candidate_location_ids?: string[];
+  urgency_level?: 'normal' | 'tonight';
 }): Promise<Activity> => {
   const { candidate_location_ids, ...basePayload } = activityData;
+  const schedulingMode = basePayload.scheduling_mode || 'fixed';
+  const expires_at = defaultExpiresAt({
+    scheduling_mode: schedulingMode,
+    start_time: basePayload.start_time,
+    window_end: basePayload.window_end,
+  });
 
   const { data, error } = await supabase
     .from('activities')
     .insert({
       ...basePayload,
+      expires_at,
       player_count: 1,
       status: 'active',
     })
@@ -60,6 +80,20 @@ export const createActivity = async (activityData: {
     }
   }
 
+  trackProductEvent(
+    'game_hosted',
+    { activity_id: createdActivity.id, sport_type: createdActivity.sport_type },
+    activityData.user_id
+  );
+
+  try {
+    await ensureActivityGroupConversation(createdActivity.id);
+  } catch (chatError) {
+    if (__DEV__) {
+      console.warn('Game lobby chat auto-create skipped:', chatError);
+    }
+  }
+
   return createdActivity;
 };
 
@@ -67,44 +101,11 @@ export const createActivity = async (activityData: {
  * Get activity by ID with related data
  */
 export const getActivityById = async (activityId: string): Promise<Activity | null> => {
-  const { data, error } = await supabase
-    .from('activities')
-    .select(
-      `
-      *,
-      location:activity_locations(*),
-      user:profiles!activities_user_id_fkey(id, username, profile_photo_url),
-      candidate_locations:activity_candidate_locations(
-        id,
-        activity_id,
-        location_id,
-        priority_order,
-        created_at,
-        location:activity_locations(*)
-      )
-    `
-    )
-    .eq('id', activityId)
-    .single();
-
-  if (error) {
-    console.error('Error fetching activity:', error);
+  if (!activityId) {
     return null;
   }
 
-  return data as Activity;
-};
-
-/**
- * Get nearby activities
- */
-export const getNearbyActivities = async (
-  latitude: number,
-  longitude: number,
-  radius: number = 5000, // 5km default
-  sportType?: SportType
-): Promise<Activity[]> => {
-  let query = supabase
+  const { data, error } = await supabase
     .from('activities')
     .select(
       `
@@ -113,36 +114,354 @@ export const getNearbyActivities = async (
       user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
     `
     )
-    .eq('status', 'active')
-    .gte('start_time', new Date().toISOString());
+    .eq('id', activityId)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching activity:', error);
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  const { data: joinRows, error: joinError } = await supabase
+    .from('join_requests')
+    .select(
+      `
+      id,
+      user_id,
+      status,
+      ready_at,
+      user:profiles!join_requests_user_id_fkey(id, username, profile_photo_url)
+    `
+    )
+    .eq('activity_id', activityId)
+    .in('status', ['approved', 'pending']);
+
+  if (joinError) {
+    console.error('Error fetching join requests for activity:', joinError);
+  }
+
+  const { data: rsvpRows, error: rsvpError } = await supabase
+    .from('activity_rsvps')
+    .select(
+      `
+      activity_id,
+      user_id,
+      status,
+      updated_at,
+      user:profiles!activity_rsvps_user_id_fkey(id, username)
+    `
+    )
+    .eq('activity_id', activityId);
+
+  if (rsvpError) {
+    console.error('Error fetching RSVPs for activity:', rsvpError);
+  }
+
+  return {
+    ...(data as Activity),
+    join_requests: (joinRows || []) as Activity['join_requests'],
+    rsvps: (rsvpRows || []) as ActivityRsvp[],
+  };
+};
+
+/**
+ * Distance gate used by {@link getNearbyActivities}. Activities without resolved
+ * coordinates pass through so they are not silently dropped.
+ */
+export function activityWithinRadius(
+  activity: Pick<Activity, 'location'>,
+  latitude: number,
+  longitude: number,
+  radiusMeters: number
+): boolean {
+  const normalized = activity.location
+    ? normalizeActivityLocation(activity.location)
+    : null;
+  const coords = parseGeographyCoordinates(normalized?.location ?? activity.location?.location);
+  if (!coords) {
+    return true;
+  }
+  const [lng, lat] = coords;
+  const distanceDeg = Math.sqrt(
+    Math.pow(lat - latitude, 2) + Math.pow(lng - longitude, 2)
+  );
+  return distanceDeg * 111000 <= radiusMeters;
+}
+
+const DISCOVER_SELECT = `
+  *,
+  location:activity_locations(*),
+  user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
+`;
+
+const JOIN_REQUEST_CARD_SELECT = `
+  id,
+  activity_id,
+  user_id,
+  status,
+  ready_at,
+  user:profiles!join_requests_user_id_fkey(id, username, profile_photo_url)
+`;
+
+async function enrichActivitiesWithJoinRequests(
+  activities: Activity[],
+  viewerId?: string
+): Promise<Activity[]> {
+  if (!viewerId || activities.length === 0) {
+    return activities;
+  }
+
+  const activityIds = activities.map((activity) => activity.id);
+  const hostActivityIds = activities
+    .filter((activity) => activity.user_id === viewerId)
+    .map((activity) => activity.id);
+
+  const [mineRes, hostJoinRes] = await Promise.all([
+    supabase
+      .from('join_requests')
+      .select(JOIN_REQUEST_CARD_SELECT)
+      .in('activity_id', activityIds)
+      .eq('user_id', viewerId),
+    hostActivityIds.length > 0
+      ? supabase
+          .from('join_requests')
+          .select(JOIN_REQUEST_CARD_SELECT)
+          .in('activity_id', hostActivityIds)
+          .in('status', ['approved', 'pending'])
+      : Promise.resolve({ data: [] as JoinRequest[], error: null }),
+  ]);
+
+  const byActivity = new Map<string, JoinRequest[]>();
+  const addRow = (row: JoinRequest) => {
+    const list = byActivity.get(row.activity_id) || [];
+    if (!list.some((existing) => existing.id === row.id)) {
+      list.push(row);
+      byActivity.set(row.activity_id, list);
+    }
+  };
+
+  for (const row of (mineRes.data || []) as JoinRequest[]) {
+    addRow(row);
+  }
+  for (const row of (hostJoinRes.data || []) as JoinRequest[]) {
+    addRow(row);
+  }
+
+  return activities.map((activity) => ({
+    ...activity,
+    join_requests: byActivity.get(activity.id) || activity.join_requests || [],
+  }));
+}
+
+async function queryDiscoverActivities(
+  sportType: SportType | undefined
+): Promise<{ activities: Activity[]; errorMessage?: string }> {
+  let query = supabase.from('activities').select(DISCOVER_SELECT).eq('status', 'active');
 
   if (sportType) {
     query = query.eq('sport_type', sportType);
   }
 
   const { data, error } = await query;
-
   if (error) {
-    console.error('Error fetching nearby activities:', error);
-    return [];
+    return { activities: [], errorMessage: error.message };
   }
+  return { activities: (data || []) as Activity[] };
+}
 
-  // Filter by distance (PostGIS would be better, but this works for MVP)
-  const activities = (data || []) as Activity[];
-  return activities.filter((activity) => {
-    if (!activity.location?.location?.coordinates) return false;
-    const [lng, lat] = activity.location.location.coordinates;
-    const distance = Math.sqrt(
-      Math.pow(lat - latitude, 2) + Math.pow(lng - longitude, 2)
-    );
-    return distance * 111000 <= radius; // Rough conversion to meters
-  });
+/**
+ * Get nearby activities
+ */
+/**
+ * Mark active listings past expires_at (or past start_time when expires_at unset) as completed.
+ */
+export const expireStaleActivities = async (): Promise<void> => {
+  const now = new Date().toISOString();
+
+  await supabase
+    .from('activities')
+    .update({ status: 'completed', updated_at: now })
+    .eq('status', 'active')
+    .not('expires_at', 'is', null)
+    .lt('expires_at', now);
+
+  await supabase
+    .from('activities')
+    .update({ status: 'completed', updated_at: now })
+    .eq('status', 'active')
+    .is('expires_at', null)
+    .lt('start_time', now);
+
+  // Mark completed after scheduled play window ends (enables post-game reviews).
+  const { data: activeGames } = await supabase
+    .from('activities')
+    .select('id, start_time, duration')
+    .eq('status', 'active');
+
+  if (activeGames?.length) {
+    const nowMs = Date.now();
+    const toComplete = activeGames.filter((row) => {
+      const endMs =
+        new Date(row.start_time).getTime() + (row.duration || 60) * 60 * 1000;
+      return nowMs >= endMs;
+    });
+    if (toComplete.length > 0) {
+      await supabase
+        .from('activities')
+        .update({ status: 'completed', updated_at: now })
+        .in(
+          'id',
+          toComplete.map((r) => r.id)
+        );
+    }
+  }
 };
 
 /**
- * Get user's activities
+ * Host extends game start + listing expiry together.
+ */
+export const extendActivitySchedule = async (
+  activityId: string,
+  newStartTime: Date
+): Promise<Activity> => {
+  const startIso = newStartTime.toISOString();
+  const { data: current, error: readError } = await supabase
+    .from('activities')
+    .select('scheduling_mode, duration')
+    .eq('id', activityId)
+    .single();
+
+  if (readError || !current) {
+    throw new Error('Could not load activity to extend.');
+  }
+
+  const schedulingMode = (current.scheduling_mode as 'fixed' | 'flex') || 'fixed';
+  const windowEndIso =
+    schedulingMode === 'flex'
+      ? new Date(newStartTime.getTime() + 3 * 60 * 60 * 1000).toISOString()
+      : undefined;
+
+  return updateActivity(activityId, {
+    start_time: startIso,
+    expires_at: defaultExpiresAt({
+      scheduling_mode: schedulingMode,
+      start_time: startIso,
+      window_end: windowEndIso,
+    }),
+    ...(windowEndIso ? { window_end: windowEndIso, window_start: startIso } : {}),
+  });
+};
+
+export const getNearbyActivities = async (
+  latitude?: number,
+  longitude?: number,
+  radius: number = CONFIG.DISCOVERY_RADIUS_M,
+  sportType?: SportType
+): Promise<Activity[]> => {
+  const hasUserCoords =
+    latitude != null &&
+    longitude != null &&
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude);
+  const effectiveRadius = __DEV__
+    ? Math.max(radius, 75000)
+    : radius;
+
+  await ensureSupabaseSessionReady();
+
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (authUser) {
+    try {
+      await consumeRateLimit('discovery_search', authUser.id);
+    } catch (rateErr) {
+      if (__DEV__) {
+        addDiscoverLog(
+          'rate limit skipped:',
+          rateErr instanceof Error ? rateErr.message : String(rateErr)
+        );
+      }
+    }
+    await trackProductEvent(
+      'discover_refreshed',
+      { sport_type: sportType || null },
+      authUser.id
+    );
+  }
+
+  let { activities, errorMessage } = await queryDiscoverActivities(sportType);
+  if (errorMessage && activities.length === 0) {
+    throw new Error(`Could not load games: ${errorMessage}`);
+  }
+
+  if (__DEV__) {
+    addDiscoverLog(
+      `query returned ${activities.length} raw`,
+      sportType ? `sport=${sportType}` : 'sport=all',
+      hasUserCoords ? `coords=${latitude!.toFixed(4)},${longitude!.toFixed(4)}` : 'coords=none'
+    );
+  }
+
+  let hostedActive: Activity[] = [];
+  if (authUser) {
+    try {
+      const hosted = await getUserActivities(authUser.id);
+      hostedActive = hosted.filter(
+        (activity) => activity.status === 'active' && isActivityListingActive(activity)
+      );
+    } catch (hostedErr) {
+      if (__DEV__) {
+        addDiscoverLog(
+          'hosted merge skipped:',
+          hostedErr instanceof Error ? hostedErr.message : String(hostedErr)
+        );
+      }
+    }
+  }
+
+  const mergedById = new Map<string, Activity>();
+  for (const activity of activities) {
+    mergedById.set(activity.id, activity);
+  }
+  for (const activity of hostedActive) {
+    mergedById.set(activity.id, activity);
+  }
+
+  const authUserId = authUser?.id;
+
+  const filtered = [...mergedById.values()]
+    .filter((activity) => isActivityListingActive(activity))
+    .filter((activity) => {
+      if (authUserId && activity.user_id === authUserId) {
+        return true;
+      }
+      if (__DEV__) {
+        return true;
+      }
+      if (!hasUserCoords) {
+        return true;
+      }
+      return activityWithinRadius(activity, latitude!, longitude!, effectiveRadius);
+    });
+
+  if (__DEV__) {
+    addDiscoverLog(`returning ${filtered.length} after filters`, `radius=${effectiveRadius}m`);
+  }
+
+  return enrichActivitiesWithJoinRequests(filtered, authUserId);
+};
+
+/**
+ * Get activities hosted by the user.
  */
 export const getUserActivities = async (userId: string): Promise<Activity[]> => {
+  await ensureSupabaseSessionReady();
+
   const { data, error } = await supabase
     .from('activities')
     .select(
@@ -158,11 +477,100 @@ export const getUserActivities = async (userId: string): Promise<Activity[]> => 
 
   if (error) {
     console.error('Error fetching user activities:', error);
-    return [];
+    throw new Error(`Could not load your games: ${error.message}`);
   }
 
   return (data || []) as Activity[];
 };
+
+export type MyGameRole = 'host' | 'joined';
+
+export interface MyGameEntry {
+  activity: Activity;
+  role: MyGameRole;
+}
+
+export interface MyGamesResult {
+  active: MyGameEntry[];
+  past: MyGameEntry[];
+}
+
+function sortMyGameEntries(entries: MyGameEntry[]): MyGameEntry[] {
+  return entries.sort(
+    (a, b) =>
+      new Date(b.activity.created_at).getTime() - new Date(a.activity.created_at).getTime()
+  );
+}
+
+/**
+ * Hosted games plus games the user joined (approved join requests).
+ */
+export const getMyGames = async (userId: string): Promise<MyGamesResult> => {
+  const [hosted, joinRows] = await Promise.all([
+    getUserActivities(userId),
+    supabase
+      .from('join_requests')
+      .select(
+        `
+        activity_id,
+        activity:activities(
+          *,
+          location:activity_locations(*),
+          user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
+        )
+      `
+      )
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .order('requested_at', { ascending: false })
+      .limit(50),
+  ]);
+
+  const entries: MyGameEntry[] = hosted.map((activity) => ({
+    activity,
+    role: 'host' as const,
+  }));
+  const seen = new Set(hosted.map((a) => a.id));
+
+  if (!joinRows.error && joinRows.data) {
+    for (const row of joinRows.data as { activity_id: string; activity: Activity | null }[]) {
+      const activity = row.activity;
+      if (!activity || seen.has(activity.id)) {
+        continue;
+      }
+      seen.add(activity.id);
+      entries.push({ activity, role: 'joined' });
+    }
+  }
+
+  const sorted = sortMyGameEntries(entries);
+  return {
+    active: sorted.filter(
+      ({ activity }) => activity.status === 'active' && isActivityListingActive(activity)
+    ),
+    past: sorted.filter(
+      ({ activity }) => activity.status !== 'active' || !isActivityListingActive(activity)
+    ),
+  };
+};
+
+/** Whether activity group chat should be available in the UI. */
+export function canOpenActivityChat(activity: Activity, viewerUserId?: string): boolean {
+  if (viewerUserId && viewerUserId === activity.user_id) {
+    return true;
+  }
+  if (activity.match_status === 'finalized') {
+    return true;
+  }
+  const approvedCount = (activity.join_requests || []).filter((r) => r.status === 'approved').length;
+  if (approvedCount > 0) {
+    return true;
+  }
+  if (activity.scheduling_mode === 'fixed' && (activity.player_count || 1) >= 2) {
+    return true;
+  }
+  return false;
+}
 
 /**
  * Update activity
@@ -195,6 +603,46 @@ export const createJoinRequest = async (
   activityId: string,
   userId: string
 ): Promise<JoinRequest> => {
+  const { data: activityRow, error: activityErr } = await supabase
+    .from('activities')
+    .select('user_id, host:profiles!activities_user_id_fkey(is_suspended)')
+    .eq('id', activityId)
+    .single();
+
+  if (activityErr || !activityRow) {
+    throw new Error('Activity not found.');
+  }
+
+  const hostId = activityRow.user_id as string;
+  const hostSuspended = Boolean(
+    (activityRow.host as { is_suspended?: boolean } | null)?.is_suspended
+  );
+
+  if (hostSuspended) {
+    throw new Error('This host is not accepting join requests right now.');
+  }
+
+  const { data: requesterProfile } = await supabase
+    .from('profiles')
+    .select('is_suspended')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (requesterProfile?.is_suspended) {
+    throw new Error('Your account cannot send join requests right now.');
+  }
+
+  if (await usersAreBlocked(userId, hostId)) {
+    throw new Error('You cannot join this game because of a block between you and the host.');
+  }
+
+  const { error: joinLimitError } = await supabase.rpc('assert_user_can_join_activity', {
+    p_activity_id: activityId,
+  });
+  if (joinLimitError) {
+    throw new Error(joinLimitError.message);
+  }
+
   // Check if request already exists
   const { data: existing } = await supabase
     .from('join_requests')
@@ -220,6 +668,20 @@ export const createJoinRequest = async (
   if (error) {
     throw new Error(`Failed to create join request: ${error.message}`);
   }
+
+  try {
+    await notifyHostOfJoinRequest(activityId);
+  } catch (pushError) {
+    if (__DEV__) {
+      console.warn('Host push notification skipped:', pushError);
+    }
+  }
+
+  await trackProductEvent(
+    'join_request_created',
+    { activity_id: activityId, join_request_id: data.id },
+    userId
+  );
 
   return data as JoinRequest;
 };
@@ -252,13 +714,65 @@ export const approveJoinRequest = async (
     .single();
 
   if (activity) {
+    const nextCount = (activity.player_count || 1) + 1;
     await supabase
       .from('activities')
       .update({
-        player_count: (activity.player_count || 1) + 1,
+        player_count: nextCount,
         updated_at: new Date().toISOString(),
       })
       .eq('id', activityId);
+
+    try {
+      await ensureActivityGroupConversation(activityId);
+    } catch (chatError) {
+      if (__DEV__) {
+        console.warn('Game chat roster sync skipped:', chatError);
+      }
+    }
+  }
+
+  const {
+    data: { user: hostUser },
+  } = await supabase.auth.getUser();
+  if (hostUser) {
+    await trackProductEvent(
+      'join_request_approved',
+      { activity_id: activityId, join_request_id: requestId },
+      hostUser.id
+    );
+
+    const { data: joinRow } = await supabase
+      .from('join_requests')
+      .select('user_id')
+      .eq('id', requestId)
+      .maybeSingle();
+
+    if (joinRow?.user_id) {
+      try {
+        await notifyPlayerOfJoinApproval(activityId, joinRow.user_id as string);
+      } catch (pushError) {
+        if (__DEV__) {
+          console.warn('Approval push skipped:', pushError);
+        }
+      }
+
+      const { data: playedBefore } = await supabase.rpc('users_played_together_before', {
+        p_host_id: hostUser.id,
+        p_guest_id: joinRow.user_id as string,
+        p_exclude_activity_id: activityId,
+      });
+      if (playedBefore) {
+        await trackProductEvent(
+          'repeat_game_detected',
+          {
+            activity_id: activityId,
+            guest_user_id: joinRow.user_id,
+          },
+          hostUser.id
+        );
+      }
+    }
   }
 };
 
@@ -366,7 +880,112 @@ export const getActivityParticipantPreferences = async (
 };
 
 /**
- * Host finalizes best matching slot via RPC.
+ * Host finalizes game (fixed or flex) after ready gates pass.
+ */
+export const finalizeGameCommitment = async (activityId: string): Promise<void> => {
+  const { error } = await supabase.rpc('finalize_game_commitment', {
+    p_activity_id: activityId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  await notifyGameFinalized(activityId);
+};
+
+export const setGameReady = async (activityId: string, ready = true): Promise<void> => {
+  const { error } = await supabase.rpc('set_game_ready', {
+    p_activity_id: activityId,
+    p_ready: ready,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const leaveGame = async (activityId: string): Promise<void> => {
+  const { error } = await supabase.rpc('leave_game', {
+    p_activity_id: activityId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+/** Host creates invite-only follow-up game; seeds roster from source game. */
+export const scheduleNextGameFromActivity = async (
+  sourceActivityId: string,
+  startTime?: string
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('schedule_next_game_from_activity', {
+    p_source_activity_id: sourceActivityId,
+    p_start_time: startTime ?? null,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Failed to schedule next game');
+  }
+  return data as string;
+};
+
+export const makeActivityRecurring = async (
+  activityId: string,
+  intervalDays = 7
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('make_activity_recurring', {
+    p_activity_id: activityId,
+    p_interval_days: intervalDays,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Failed to create recurring series');
+  }
+  return data as string;
+};
+
+export const setGameRsvp = async (
+  activityId: string,
+  status: GameRsvpStatus
+): Promise<void> => {
+  const { error } = await supabase.rpc('set_game_rsvp', {
+    p_activity_id: activityId,
+    p_status: status,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const joinGameViaInvite = async (inviteToken: string): Promise<string> => {
+  const { data, error } = await supabase.rpc('join_game_via_invite', {
+    p_invite_token: inviteToken,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Invite link could not be redeemed');
+  }
+  return data as string;
+};
+
+export const getActivityByInviteToken = async (inviteToken: string): Promise<Activity | null> => {
+  const { data, error } = await supabase
+    .from('activities')
+    .select('id')
+    .eq('invite_token', inviteToken)
+    .maybeSingle();
+  if (error || !data?.id) {
+    return null;
+  }
+  return getActivityById(data.id as string);
+};
+
+/**
+ * Host finalizes best matching slot via RPC (flex internals).
  */
 export const finalizeFlexibleActivity = async (
   activityId: string,

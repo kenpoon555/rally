@@ -17,8 +17,15 @@ export const ROUTES = {
   PROFILE: {
     MAIN: 'Profile',
   },
+  MY_GAMES: {
+    TAB: 'MyGames',
+  },
   CHAT: {
+    TAB: 'Chats',
     LIST: 'ChatList',
     THREAD: 'ChatThread',
+  },
+  ADMIN: {
+    MAIN: 'Admin',
   },
 } as const;

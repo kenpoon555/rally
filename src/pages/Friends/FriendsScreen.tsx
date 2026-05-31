@@ -28,6 +28,7 @@ import { getOrCreateDirectConversation, getTotalUnreadCount } from '../../servic
 
 type TabParamList = {
   Home: undefined;
+  Chats: undefined;
   Map: undefined;
   Friends: undefined;
   Profile: undefined;
@@ -182,7 +183,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleOpenChats = () => {
-    navigation.navigate(ROUTES.CHAT.LIST as any);
+    navigation.navigate(ROUTES.CHAT.TAB as never);
   };
 
   const handleDirectChat = async (friendUserId?: string) => {
@@ -190,11 +191,11 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
     try {
-      const conversationId = await getOrCreateDirectConversation(friendUserId);
-      navigation.navigate(ROUTES.CHAT.THREAD as any, {
+      const conversationId = await getOrCreateDirectConversation(friendUserId, user?.id);
+      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
         conversationId,
         title: 'Direct Chat',
-      });
+      } as never);
     } catch (error: any) {
       Alert.alert('Chat unavailable', error?.message || 'Could not open chat right now.');
     }

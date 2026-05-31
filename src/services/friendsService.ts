@@ -1,5 +1,6 @@
 import { supabase } from './api/supabase';
 import { Friend } from '../types/friends';
+import { trackProductEvent } from './analyticsService';
 
 /**
  * Send friend request
@@ -40,6 +41,9 @@ export const sendFriendRequest = async (
  * Accept friend request
  */
 export const acceptFriendRequest = async (friendshipId: string): Promise<void> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const { error } = await supabase
     .from('friends')
     .update({
@@ -49,6 +53,10 @@ export const acceptFriendRequest = async (friendshipId: string): Promise<void> =
 
   if (error) {
     throw new Error(`Failed to accept friend request: ${error.message}`);
+  }
+
+  if (user) {
+    await trackProductEvent('friend_connection_made', { friendship_id: friendshipId }, user.id);
   }
 };
 

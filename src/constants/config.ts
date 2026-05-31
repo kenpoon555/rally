@@ -39,6 +39,13 @@ export const CONFIG = {
   GOOGLE_PLACES_API_KEY_ANDROID: readEnv('GOOGLE_PLACES_API_KEY_ANDROID'),
   GOOGLE_PLACES_API_KEY: readEnv('GOOGLE_PLACES_API_KEY'),
 
+  /** Court search on Create Game — first pass (meters). */
+  NEARBY_COURT_RADIUS_M: 5000,
+  /** Court search when none within NEARBY_COURT_RADIUS_M (meters). */
+  WIDER_COURT_RADIUS_M: 25000,
+  /** Discover feed radius (meters). Bay Area dev/testing needs wider reach across simulators. */
+  DISCOVERY_RADIUS_M: 60000,
+
   get GOOGLE_PLACES_API_KEY_PLATFORM() {
     if (Platform.OS === 'ios' && this.GOOGLE_PLACES_API_KEY_IOS) {
       return this.GOOGLE_PLACES_API_KEY_IOS;
@@ -52,4 +59,7 @@ export const CONFIG = {
   GEOFENCE_RADIUS: asNumber(readEnv('GEOFENCE_RADIUS'), 50),
   LOCATION_UPDATE_INTERVAL: asNumber(readEnv('LOCATION_UPDATE_INTERVAL'), 10000),
   LOCATION_DISTANCE_FILTER: asNumber(readEnv('LOCATION_DISTANCE_FILTER'), 50),
+
+  /** Optional crash/error reporting (set `SENTRY_DSN` via react-native-config / EAS secrets). */
+  SENTRY_DSN: readEnv('SENTRY_DSN'),
 };

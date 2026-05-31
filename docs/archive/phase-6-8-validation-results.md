@@ -1,8 +1,20 @@
 # Phase 6-8 Validation Results
 
-Last updated: 2026-02-23
+Last updated: 2026-05-06
 
 This file tracks execution status for Phase 6 (flexible matching), Phase 7 (review + identity), and Phase 8 (chat).
+
+---
+
+## Automated verification (CI bundle — 2026-05-06)
+
+| Check | Status |
+| ----- | ------ |
+| `./scripts/verify-release-bundle.sh` | PASS |
+
+DB smoke checks below remain valid for schema/RPC presence. **Device validation** rows still require manual execution on iOS and Android hardware.
+
+---
 
 ## Environment
 
@@ -16,6 +28,14 @@ This file tracks execution status for Phase 6 (flexible matching), Phase 7 (revi
 - Planned run window: next 2-3 days.
 
 ## Platform Pass Matrix
+
+| Track | Status | Notes |
+| ----- | ------ | ----- |
+| Automated unit + lint bundle | **PASS** | 2026-05-06 |
+| iOS — Phase 6–8 device cases | Pending | Use phase-6/7/8 checklists |
+| Android — Phase 6–8 device cases | Pending | Use phase-6/7/8 checklists |
+
+Legacy:
 
 - [ ] iOS all cases passed
 - [ ] Android all cases passed

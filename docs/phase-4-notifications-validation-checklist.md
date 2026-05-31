@@ -1,19 +1,43 @@
 # Phase 4 Notifications Validation Checklist
 
-Last updated: 2026-02-23
+Last updated: 2026-05-28
 
 Use this checklist to validate push setup and runtime behavior across iOS and Android.
 
+---
+
+## Repo + Firebase artifacts (automated check — 2026-05-06)
+
+| Artifact | Status |
+| -------- | ------ |
+| `ios/RallyApp/GoogleService-Info.plist` present | Present |
+| `android/app/google-services.json` present | Present |
+| `@react-native-firebase/app` / `messaging` in `package.json` | Present |
+| Background handler registration in `index.js` | Present |
+
+**Still manual (Firebase Console / Apple Developer):**
+
+Console walkthrough: [phase-4-firebase-apns-console-steps.md](phase-4-firebase-apns-console-steps.md).
+
+- [ ] Firebase iOS app registered with bundle ID `com.rallyapp`; APNs Authentication Key **or** certificate uploaded in Firebase Project Settings → Cloud Messaging.
+- [ ] Firebase Android app registered with package `com.rallyapp`; SHA-256 upload if required by your Firebase setup.
+- [ ] Physical Case 1–5 runs below on **iOS** and **Android**.
+
+---
+
 ## Preconditions
+
 
 - Firebase project exists with iOS and Android apps registered.
 - `GoogleService-Info.plist` is added to Xcode target (`ios/RallyApp/`).
 - `google-services.json` exists at `android/app/google-services.json`.
 - APNs is configured in Firebase for iOS.
 - App has latest code with:
-  - `initializeNotificationsForUser()` token registration and refresh sync.
-  - Foreground/open handlers in `App.tsx`.
+  - `initializeNotificationsForUser()` token registration and refresh sync (iOS + Android).
+  - Foreground/open handlers in `App.tsx` with navigation to Activity Detail.
   - Background handler registration in `index.js`.
+  - Supabase Edge Function `send-push` deployed; secret `FIREBASE_SERVER_KEY` set ([phase-4-secrets-setup.md](phase-4-secrets-setup.md)).
+  - Join request triggers `notifyHostOfJoinRequest` after insert.
 
 ## Platform Matrix
 
@@ -21,6 +45,8 @@ Use this checklist to validate push setup and runtime behavior across iOS and An
 - [ ] Android pass
 
 ## Case 1: Permission Prompt + Persisted Grant
+
+| Status | Notes |
 
 Steps:
 
@@ -35,6 +61,8 @@ Expected:
 - After re-enable, token registration resumes on next app load.
 
 ## Case 2: Token Registration in `user_device_tokens`
+
+| Status | Notes |
 
 Steps:
 
@@ -59,6 +87,8 @@ limit 30;
 
 ## Case 3: Token Refresh Lifecycle
 
+| Status | Notes |
+
 Steps:
 
 1. Keep app signed in.
@@ -72,6 +102,8 @@ Expected:
 
 ## Case 4: Foreground Notification Handling
 
+| Status | Notes |
+
 Steps:
 
 1. Keep app in foreground.
@@ -83,6 +115,8 @@ Expected:
 - App remains responsive (no crash/UI deadlock).
 
 ## Case 5: Background + Cold Start Handling
+
+| Status | Notes |
 
 Steps:
 
