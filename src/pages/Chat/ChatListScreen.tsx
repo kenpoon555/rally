@@ -24,6 +24,10 @@ import {
 import { ROUTES } from '../../constants/routes';
 import { useUserPlayMode } from '../../hooks/useUserPlayMode';
 import { MyGameEntry } from '../../services/activityService';
+import { Button, Chip, EmptyState, ScreenHeader } from '../../components/ui';
+import { SportIcon } from '../../components/SportIcon';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, radius, spacing, typography } from '../../constants/theme';
 
 function formatRelativeStart(startTime?: string | null): string {
   if (!startTime) {
@@ -61,6 +65,20 @@ const FILTERS: { id: ChatInboxFilter; label: string }[] = [
   { id: 'friends', label: 'Friends' },
 ];
 
+const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
+  if (item.kind === 'game') {
+    return <SportIcon sport={item.activity.sport_type} size="sm" style={styles.rowIcon} />;
+  }
+  if (item.kind === 'group') {
+    return <SportIcon sport={item.group.sport_type} size="sm" style={styles.rowIcon} />;
+  }
+  return (
+    <View style={styles.rowIconFriend}>
+      <MaterialCommunityIcons name="message-text-outline" size={18} color={colors.primaryDark} />
+    </View>
+  );
+};
+
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
@@ -77,9 +95,22 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
 
+  const nextUpDuplicatesInbox = useMemo(() => {
+    if (!nextGame?.activity.regular_group_id) {
+      return false;
+    }
+    return visibleItems.some(
+      (item) =>
+        item.kind === 'group' &&
+        item.group.id === nextGame.activity.regular_group_id &&
+        item.nextActivity?.id === nextGame.activity.id
+    );
+  }, [nextGame, visibleItems]);
+
   const hasNextUpCard =
     mode === 'regular' &&
     filter !== 'friends' &&
+    !nextUpDuplicatesInbox &&
     Boolean(nextGame || regularGroups[0]);
 
   const openThread = (
@@ -198,13 +229,15 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
             {nextGame.activity.sport_type} · {court}
           </Text>
           <Text style={styles.nextUpTime}>{formatRelativeStart(nextGame.activity.start_time)}</Text>
-          <TouchableOpacity
-            style={[styles.nextUpCta, busy && styles.nextUpCtaDisabled]}
+          <Button
+            title={busy ? 'Opening…' : 'Open Game Room'}
+            variant="secondary"
+            size="sm"
             onPress={() => void openActivityRoom(nextGame)}
             disabled={busy}
-          >
-            <Text style={styles.nextUpCtaText}>{busy ? 'Opening…' : 'Open Game Room'}</Text>
-          </TouchableOpacity>
+            loading={busy}
+            style={styles.nextUpCtaButton}
+          />
         </View>
       );
     }
@@ -220,24 +253,18 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.nextUpTitle}>{group.name}</Text>
         <Text style={styles.nextUpTime}>No game on the calendar yet.</Text>
         {isGroupHost && group.source_activity_id ? (
-          <TouchableOpacity
-            style={styles.nextUpCta}
+          <Button
+            title="Schedule next"
+            variant="secondary"
+            size="sm"
             onPress={() => openGroupSourceDetails(group.source_activity_id as string)}
-          >
-            <Text style={styles.nextUpCtaText}>Schedule next</Text>
-          </TouchableOpacity>
+            style={styles.nextUpCtaButton}
+          />
         ) : (
           <Text style={styles.nextUpWaiting}>Waiting for the host to schedule the next game.</Text>
         )}
       </View>
     );
-  };
-
-  const rowEmoji = (item: ChatInboxItem) => {
-    if (item.kind === 'group') {
-      return '🏸 ';
-    }
-    return item.kind === 'game' ? '💬 ' : '👤 ';
   };
 
   const renderItem = ({ item }: { item: ChatInboxItem }) => {
@@ -254,10 +281,12 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
       >
         <View style={styles.rowMain}>
           <View style={styles.rowTop}>
-            <Text style={styles.rowTitle} numberOfLines={2}>
-              {rowEmoji(item)}
-              {item.title}
-            </Text>
+            <View style={styles.rowTitleRow}>
+              <ChatRowIcon item={item} />
+              <Text style={styles.rowTitle} numberOfLines={2}>
+                {item.title}
+              </Text>
+            </View>
             {item.unread > 0 && (
               <View style={styles.unreadBadge}>
                 <Text style={styles.unreadBadgeText}>{item.unread}</Text>
@@ -281,7 +310,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
         </View>
-        {busy ? <ActivityIndicator size="small" color="#007AFF" style={styles.rowSpinner} /> : null}
+        {busy ? <ActivityIndicator size="small" color={colors.primary} style={styles.rowSpinner} /> : null}
       </TouchableOpacity>
     );
   };
@@ -295,24 +324,20 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Chats</Text>
-        <Text style={styles.headerSubtitle}>
-          Game lobbies and friend messages — tap a game to open the Game Room.
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Chats"
+        subtitle="Tap your crew or game to open the Game Room."
+      />
 
       <View style={styles.filterRow}>
         {FILTERS.map((f) => (
-          <TouchableOpacity
+          <Chip
             key={f.id}
-            style={[styles.filterChip, filter === f.id && styles.filterChipActive]}
+            label={f.label}
+            selected={filter === f.id}
+            tone="primary"
             onPress={() => setFilter(f.id)}
-          >
-            <Text style={[styles.filterChipText, filter === f.id && styles.filterChipTextActive]}>
-              {f.label}
-            </Text>
-          </TouchableOpacity>
+          />
         ))}
       </View>
 
@@ -320,7 +345,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
       {loading && visibleItems.length === 0 ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -333,35 +358,31 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
             hasNextUpCard ? null : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>Nothing here yet</Text>
-                <Text style={styles.emptyText}>{emptyCopy}</Text>
-                {filter !== 'friends' ? (
-                  <View style={styles.emptyCtaRow}>
-                    <TouchableOpacity
-                      style={styles.emptyPrimaryCta}
-                      onPress={() => navigation.navigate(ROUTES.HOME.MAIN as never)}
-                    >
-                      <Text style={styles.emptyPrimaryCtaText}>Find a game</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.emptySecondaryCta}
-                      onPress={() =>
-                        navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never)
+              <EmptyState
+                icon="💬"
+                title="Nothing here yet"
+                message={emptyCopy}
+                primaryAction={
+                  filter !== 'friends'
+                    ? {
+                        label: 'Find a game',
+                        onPress: () => navigation.navigate(ROUTES.HOME.MAIN as never),
                       }
-                    >
-                      <Text style={styles.emptySecondaryCtaText}>Create game</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.emptyPrimaryCta}
-                    onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
-                  >
-                    <Text style={styles.emptyPrimaryCtaText}>Go to Friends</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                    : {
+                        label: 'Go to Friends',
+                        onPress: () => navigation.navigate(ROUTES.FRIENDS.LIST as never),
+                      }
+                }
+                secondaryAction={
+                  filter !== 'friends'
+                    ? {
+                        label: 'Create game',
+                        onPress: () =>
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never),
+                      }
+                    : undefined
+                }
+              />
             )
           }
         />
@@ -373,46 +394,14 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#111',
-  },
-  headerSubtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
+    backgroundColor: colors.background,
   },
   filterRow: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-  },
-  filterChipActive: {
-    backgroundColor: '#007AFF',
-  },
-  filterChipText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#444',
-  },
-  filterChipTextActive: {
-    color: '#fff',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
   },
   centered: {
     flex: 1,
@@ -422,179 +411,137 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   rowPast: {
     opacity: 0.85,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.background,
   },
   rowGroup: {
-    backgroundColor: '#f5f9ff',
+    backgroundColor: colors.primaryLight,
   },
   rowMain: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: spacing.sm,
   },
   rowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
+  rowTitleRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  rowIcon: {
+    marginRight: spacing.sm,
+  },
+  rowIconFriend: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
   rowTitle: {
     flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111',
-    paddingRight: 8,
+    ...typography.bodyMedium,
+    paddingRight: spacing.sm,
   },
   rowSubtitle: {
-    marginTop: 4,
-    fontSize: 13,
-    color: '#666',
+    marginTop: spacing.xs,
+    ...typography.caption,
   },
   metaRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 8,
+    gap: spacing.xs + 2,
+    marginTop: spacing.sm,
   },
   chip: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: radius.sm,
   },
   chipHost: {
-    backgroundColor: '#e8f1ff',
+    backgroundColor: colors.infoSoft,
   },
   chipJoined: {
-    backgroundColor: '#ddf8e8',
+    backgroundColor: colors.successSoft,
   },
   chipMuted: {
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: '#f0f0f0',
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
   },
   chipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#333',
+    color: colors.text,
   },
   rowSpinner: {
-    marginLeft: 8,
+    marginLeft: spacing.sm,
   },
   unreadBadge: {
     minWidth: 22,
     borderRadius: 11,
-    backgroundColor: '#ff3b30',
-    paddingHorizontal: 6,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.xs + 2,
     paddingVertical: 2,
     alignItems: 'center',
   },
   unreadBadgeText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 11,
     fontWeight: '700',
   },
   errorText: {
-    color: '#b42318',
+    color: colors.error,
     fontSize: 12,
-    marginHorizontal: 16,
-    marginBottom: 8,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
   },
   emptyList: {
     flexGrow: 1,
     justifyContent: 'center',
   },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    lineHeight: 22,
-  },
-  emptyCtaRow: {
-    marginTop: 20,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  emptyPrimaryCta: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  emptyPrimaryCtaText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  emptySecondaryCta: {
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-  },
-  emptySecondaryCtaText: {
-    color: '#007AFF',
-    fontWeight: '700',
-    fontSize: 15,
-  },
   nextUpCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 14,
-    backgroundColor: '#0a84ff',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primary,
   },
   nextUpLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1,
+    ...typography.label,
     color: 'rgba(255,255,255,0.85)',
   },
   nextUpTitle: {
-    marginTop: 6,
+    marginTop: spacing.xs + 2,
     fontSize: 18,
     fontWeight: '700',
-    color: '#fff',
+    color: colors.textInverse,
   },
   nextUpTime: {
     marginTop: 2,
     fontSize: 14,
     color: 'rgba(255,255,255,0.9)',
   },
-  nextUpCta: {
-    marginTop: 12,
+  nextUpCtaButton: {
+    marginTop: spacing.md,
     alignSelf: 'flex-start',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 16,
-  },
-  nextUpCtaDisabled: {
-    opacity: 0.7,
-  },
-  nextUpCtaText: {
-    color: '#0a84ff',
-    fontWeight: '700',
-    fontSize: 15,
   },
   nextUpWaiting: {
-    marginTop: 12,
+    marginTop: spacing.md,
     fontSize: 13,
     color: 'rgba(255,255,255,0.9)',
     lineHeight: 18,

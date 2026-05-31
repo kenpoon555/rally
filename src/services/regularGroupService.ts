@@ -1,5 +1,6 @@
 import { supabase } from './api/supabase';
 import { RegularGroup } from '../types/regularGroup';
+import { trackProductEvent } from './analyticsService';
 
 export const createRegularGroupFromActivity = async (
   activityId: string,
@@ -15,6 +16,10 @@ export const createRegularGroupFromActivity = async (
   if (!data) {
     throw new Error('Failed to create Regulars group');
   }
+  void trackProductEvent('regular_group_created', {
+    group_id: data,
+    source_activity_id: activityId,
+  });
   return data as string;
 };
 
@@ -28,6 +33,7 @@ export const joinRegularGroupViaInvite = async (inviteToken: string): Promise<st
   if (!data) {
     throw new Error('Group invite could not be redeemed');
   }
+  void trackProductEvent('crew_invite_redeemed', { group_id: data, via: 'group_only' });
   return data as string;
 };
 
@@ -49,6 +55,11 @@ export const joinGroupAndNextGame = async (inviteToken: string): Promise<JoinGro
   if (!result.group_id) {
     throw new Error('Group invite could not be redeemed');
   }
+  void trackProductEvent('crew_invite_redeemed', {
+    group_id: result.group_id,
+    activity_id: result.activity_id ?? null,
+    via: 'group_and_next_game',
+  });
   return { groupId: result.group_id, activityId: result.activity_id ?? null };
 };
 

@@ -1,20 +1,29 @@
 {
   "name": "RallyApp",
-  "displayName": "RallyApp",
+  "displayName": "Rally",
   "expo": {
-    "name": "RallyApp",
+    "name": "Rally",
     "slug": "rallyapp",
     "version": "1.0.0",
+    "icon": "./assets/branding/icon-1024.png",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/branding/icon-1024.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F4F0"
+    },
     "ios": {
       "bundleIdentifier": "com.rallyapp",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "icon": "./assets/branding/icon-1024.png"
     },
     "android": {
       "package": "com.rallyapp",
+      "icon": "./assets/branding/icon-1024.png",
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/branding/icon-1024.png",
+        "backgroundColor": "#0B7A5E"
       }
     },
     "extra": {

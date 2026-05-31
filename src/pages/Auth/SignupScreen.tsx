@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { toAuthErrorMessage } from '../../utils/errorMessages';
 import { TERMS_SUMMARY } from '../../constants/legal';
+import { AuthScreenLayout } from '../../components/AuthScreenLayout';
+import { Button, TextField } from '../../components/ui';
+import { colors, radius, spacing } from '../../constants/theme';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -24,6 +19,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
 
@@ -36,7 +32,6 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     try {
       await signUp(email, password, username);
-      // Success - user will be navigated automatically by AuthContext
     } catch (error: any) {
       Alert.alert('Signup Failed', toAuthErrorMessage(error, 'Unable to create account right now.'));
     } finally {
@@ -45,21 +40,22 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
+    <AuthScreenLayout
+      title="Join Rally"
+      subtitle="Create an account to host games and join nearby players."
+    >
+      <TextField
+        label="Username"
+        placeholder="Pick a handle"
         value={username}
         onChangeText={setUsername}
         autoCapitalize="none"
         editable={!loading}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
+      <TextField
+        label="Email"
+        placeholder="you@example.com"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -67,101 +63,88 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
         editable={!loading}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
+      <TextField
+        label="Password"
+        placeholder="At least 6 characters"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         editable={!loading}
       />
 
-      <TouchableOpacity style={styles.termsRow} onPress={() => setAgreedToTerms((v) => !v)}>
-        <Text style={styles.termsCheck}>{agreedToTerms ? '☑' : '☐'}</Text>
+      <TouchableOpacity
+        style={styles.termsRow}
+        onPress={() => setAgreedToTerms((v) => !v)}
+        disabled={loading}
+      >
+        <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+          {agreedToTerms ? <Text style={styles.checkmark}>✓</Text> : null}
+        </View>
         <Text style={styles.termsText}>{TERMS_SUMMARY}</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.button, (loading || !agreedToTerms) && styles.buttonDisabled]}
+      <Button
+        title="Create account"
         onPress={handleSignup}
-        disabled={loading || !agreedToTerms}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Sign Up</Text>
-        )}
-      </TouchableOpacity>
+        loading={loading}
+        disabled={!agreedToTerms}
+        fullWidth
+      />
 
-      <TouchableOpacity
-        onPress={() => navigation.goBack()}
-        style={styles.linkButton}
-      >
-        <Text style={styles.linkText}>Already have an account? Login</Text>
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.linkButton} disabled={loading}>
+        <Text style={styles.linkText}>
+          Already have an account? <Text style={styles.linkTextBold}>Sign in</Text>
+        </Text>
       </TouchableOpacity>
-    </View>
+    </AuthScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 40,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#007AFF',
-    fontSize: 14,
-  },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.lg,
+    marginTop: -spacing.sm,
   },
-  termsCheck: {
-    fontSize: 18,
-    marginRight: 8,
-    marginTop: 2,
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.sm - 2,
+    borderWidth: 1.5,
+    borderColor: colors.borderStrong,
+    marginRight: spacing.sm,
+    marginTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkboxChecked: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  checkmark: {
+    color: colors.textInverse,
+    fontSize: 13,
+    fontWeight: '700',
   },
   termsText: {
     flex: 1,
     fontSize: 12,
-    color: '#555',
+    color: colors.textSecondary,
     lineHeight: 18,
+  },
+  linkButton: {
+    marginTop: spacing.xl,
+    alignItems: 'center',
+  },
+  linkText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  linkTextBold: {
+    color: colors.primary,
+    fontWeight: '700',
   },
 });
 

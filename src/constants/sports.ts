@@ -1,16 +1,22 @@
 /**
  * Sport types and matching profiles.
  *
- * MVP launch: pickleball-only (`launchEnabled`). User-facing label: "game" (internal: activity).
- * Default scheduling: fixed time at a court; flexible matching is secondary.
+ * Beta: fixed-time games by default; host coordinates details in Game Room chat.
+ * Launch set via `launchEnabled` in SPORT_METADATA.
  * See docs/sport-matching-profiles.md.
  */
 
 export enum SportType {
   PICKLEBALL = 'Pickleball',
   BASKETBALL = 'Basketball',
-  TENNIS = 'Tennis',
   BADMINTON = 'Badminton',
+  TENNIS = 'Tennis',
+  VOLLEYBALL = 'Volleyball',
+  SOCCER = 'Soccer',
+  SQUASH = 'Squash',
+  RACQUETBALL = 'Racquetball',
+  TABLE_TENNIS = 'Table Tennis',
+  ULTIMATE = 'Ultimate Frisbee',
   RUNNING = 'Running',
   HIKING = 'Hiking',
 }
@@ -28,9 +34,12 @@ export interface SportMetadata {
   /** When true, sport appears in Discover filters and Create Game pickers. */
   launchEnabled: boolean;
   minPlayers: number;
+  /** Typical total roster including host (drives default open spots). */
+  defaultTotalPlayers: number;
+  /** Hard to find partners without a crew — Rally's niche wedge. */
+  partnerDependent?: boolean;
   locationStrictness: LocationStrictness;
   timeStrictness: TimeStrictness;
-  /** Default create flow for this sport (fixed = set time now; flex = collect preferences). */
   defaultSchedulingMode: 'fixed' | 'flex';
   shortLabel?: string;
 }
@@ -45,32 +54,11 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     matchingProfile: 'fastFixed',
     launchEnabled: true,
     minPlayers: 1,
+    defaultTotalPlayers: 4,
     locationStrictness: 'strict',
     timeStrictness: 'moderate',
     defaultSchedulingMode: 'fixed',
     shortLabel: 'Pickleball',
-  },
-  [SportType.TENNIS]: {
-    id: 'tennis',
-    name: SportType.TENNIS,
-    matchingProfile: 'partnerFlex',
-    launchEnabled: false,
-    minPlayers: 2,
-    locationStrictness: 'strict',
-    timeStrictness: 'moderate',
-    defaultSchedulingMode: 'flex',
-    shortLabel: 'Tennis',
-  },
-  [SportType.BADMINTON]: {
-    id: 'badminton',
-    name: SportType.BADMINTON,
-    matchingProfile: 'fastFixed',
-    launchEnabled: true,
-    minPlayers: 2,
-    locationStrictness: 'strict',
-    timeStrictness: 'moderate',
-    defaultSchedulingMode: 'fixed',
-    shortLabel: 'Badminton',
   },
   [SportType.BASKETBALL]: {
     id: 'basketball',
@@ -78,10 +66,111 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     matchingProfile: 'fastFixed',
     launchEnabled: true,
     minPlayers: 2,
+    defaultTotalPlayers: 8,
     locationStrictness: 'strict',
     timeStrictness: 'strict',
     defaultSchedulingMode: 'fixed',
     shortLabel: 'Basketball',
+  },
+  [SportType.BADMINTON]: {
+    id: 'badminton',
+    name: SportType.BADMINTON,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 2,
+    defaultTotalPlayers: 4,
+    locationStrictness: 'strict',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Badminton',
+  },
+  [SportType.TENNIS]: {
+    id: 'tennis',
+    name: SportType.TENNIS,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 2,
+    defaultTotalPlayers: 4,
+    locationStrictness: 'strict',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Tennis',
+  },
+  [SportType.VOLLEYBALL]: {
+    id: 'volleyball',
+    name: SportType.VOLLEYBALL,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 4,
+    defaultTotalPlayers: 12,
+    locationStrictness: 'strict',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Volleyball',
+  },
+  [SportType.SOCCER]: {
+    id: 'soccer',
+    name: SportType.SOCCER,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 4,
+    defaultTotalPlayers: 10,
+    locationStrictness: 'moderate',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Soccer',
+  },
+  [SportType.SQUASH]: {
+    id: 'squash',
+    name: SportType.SQUASH,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 2,
+    defaultTotalPlayers: 2,
+    partnerDependent: true,
+    locationStrictness: 'strict',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Squash',
+  },
+  [SportType.RACQUETBALL]: {
+    id: 'racquetball',
+    name: SportType.RACQUETBALL,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 2,
+    defaultTotalPlayers: 2,
+    partnerDependent: true,
+    locationStrictness: 'strict',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Racquetball',
+  },
+  [SportType.TABLE_TENNIS]: {
+    id: 'table_tennis',
+    name: SportType.TABLE_TENNIS,
+    matchingProfile: 'fastFixed',
+    launchEnabled: true,
+    minPlayers: 2,
+    defaultTotalPlayers: 4,
+    partnerDependent: true,
+    locationStrictness: 'strict',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Table Tennis',
+  },
+  [SportType.ULTIMATE]: {
+    id: 'ultimate',
+    name: SportType.ULTIMATE,
+    matchingProfile: 'groupDiscuss',
+    launchEnabled: true,
+    minPlayers: 6,
+    defaultTotalPlayers: 14,
+    partnerDependent: true,
+    locationStrictness: 'moderate',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Ultimate',
   },
   [SportType.RUNNING]: {
     id: 'running',
@@ -89,6 +178,7 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     matchingProfile: 'fastFixed',
     launchEnabled: false,
     minPlayers: 1,
+    defaultTotalPlayers: 2,
     locationStrictness: 'moderate',
     timeStrictness: 'moderate',
     defaultSchedulingMode: 'fixed',
@@ -100,6 +190,8 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     matchingProfile: 'partnerFlex',
     launchEnabled: false,
     minPlayers: 2,
+    defaultTotalPlayers: 4,
+    partnerDependent: true,
     locationStrictness: 'loose',
     timeStrictness: 'moderate',
     defaultSchedulingMode: 'flex',
@@ -123,9 +215,6 @@ export function getDefaultLaunchSportName(): string {
   return LAUNCH_SPORT_TYPES[0] ?? SportType.PICKLEBALL;
 }
 
-/**
- * If the user prefers a launch-enabled sport, use it; otherwise default to pickleball.
- */
 export function resolvePreferredSportForLaunch(preferred?: string | null): string {
   if (preferred && getSportMetadata(preferred)?.launchEnabled) {
     return preferred;
@@ -133,12 +222,44 @@ export function resolvePreferredSportForLaunch(preferred?: string | null): strin
   return getDefaultLaunchSportName();
 }
 
-/** User's default sport for Discover filter and Create Game prefill. */
 export function resolveUserDefaultSport(preferred?: string | null): string {
   return resolvePreferredSportForLaunch(preferred);
 }
 
-/** User-facing strings for Activity Detail, keyed by sport `matchingProfile`. */
+export function getDefaultTotalPlayersForSport(sportName: string): number {
+  return getSportMetadata(sportName)?.defaultTotalPlayers ?? 2;
+}
+
+/** Open spots besides the host — stored as activities.missing_players. */
+export function getDefaultOpenSpotsForSport(sportName: string): number {
+  return Math.max(1, getDefaultTotalPlayersForSport(sportName) - 1);
+}
+
+/** @deprecated Use getDefaultOpenSpotsForSport */
+export function getDefaultMissingPlayersForSport(sportName: string): number {
+  return getDefaultOpenSpotsForSport(sportName);
+}
+
+export function openSpotsFromTotalPlayers(totalPlayers: number): number {
+  return Math.max(0, totalPlayers - 1);
+}
+
+export function totalPlayersFromOpenSpots(openSpots: number): number {
+  return Math.max(1, openSpots + 1);
+}
+
+export function getCreateGameSubtitle(sportName: string): string {
+  const meta = getSportMetadata(sportName);
+  const label = sportName.toLowerCase();
+  if (meta?.locationStrictness === 'loose') {
+    return `Host a ${label} meetup — set a time; pin the meet spot in chat.`;
+  }
+  if (meta?.partnerDependent) {
+    return `Host a ${label} game — find your crew, then nail down court details in chat.`;
+  }
+  return `Host a ${label} game at a nearby court or field.`;
+}
+
 export interface ActivityDetailMatchingCopy {
   statusSchedulingDescriptor: string;
   statusDetailLine?: string;
@@ -176,7 +297,7 @@ export const ACTIVITY_DETAIL_COPY_BY_PROFILE: Record<
   },
   groupDiscuss: {
     statusSchedulingDescriptor: 'Group coordination',
-    statusDetailLine: 'Use game chat to agree on time and place.',
+    statusDetailLine: 'Use game chat to agree on field, format, and meet spot.',
     preferenceCardTitle: 'Your preferences',
     preferenceCardSubtitle: 'Share what works so the group can agree.',
     submitPreferenceButtonLabel: 'Submit preferences',
@@ -213,5 +334,4 @@ export type ActivityDuration = (typeof ACTIVITY_DURATIONS)[number];
 export const ACTIVITY_VISIBILITY = ['friends', 'nearby', 'invite_only'] as const;
 export type ActivityVisibility = (typeof ACTIVITY_VISIBILITY)[number];
 
-/** Shown in Create Activity advanced settings (not invite-only — use Schedule next game). */
 export const CREATE_ACTIVITY_VISIBILITY = ['friends', 'nearby'] as const;

@@ -45,6 +45,8 @@ export const CONFIG = {
   WIDER_COURT_RADIUS_M: 25000,
   /** Discover feed radius (meters). Bay Area dev/testing needs wider reach across simulators. */
   DISCOVERY_RADIUS_M: 60000,
+  /** Wider radius for games a friend hosts or joined (meters). */
+  FRIEND_DISCOVERY_RADIUS_M: 120000,
 
   get GOOGLE_PLACES_API_KEY_PLATFORM() {
     if (Platform.OS === 'ios' && this.GOOGLE_PLACES_API_KEY_IOS) {

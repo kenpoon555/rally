@@ -28,6 +28,10 @@ import {
   MVP_DEFAULT_SCHEDULING_MODE,
   getDefaultLaunchSportName,
   getSportMetadata,
+  getDefaultOpenSpotsForSport,
+  getDefaultTotalPlayersForSport,
+  getCreateGameSubtitle,
+  totalPlayersFromOpenSpots,
   resolvePreferredSportForLaunch,
   SportType,
 } from '../../constants/sports';
@@ -42,6 +46,10 @@ import { ActivityLocation } from '../../types/location';
 import { calculateDistance } from '../../utils/distance';
 import { formatDistanceLabel } from '../../utils/formatDistance';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
+import { colors, radius, spacing } from '../../constants/theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { getSportIconName } from '../../components/SportIcon';
+import { AddCourtSheet } from '../../components/AddCourtSheet';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -73,6 +81,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState('');
+  const [addCourtSheetVisible, setAddCourtSheetVisible] = useState(false);
   const [sportType, setSportType] = useState<string>(() =>
     resolvePreferredSportForLaunch(user?.preferred_sports?.[0])
   );
@@ -82,9 +91,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [visibility, setVisibility] = useState<ActivityVisibility>(
     (user?.default_visibility as ActivityVisibility) || 'nearby'
   );
-  const [missingPlayersText, setMissingPlayersText] = useState(() => {
+  const [openSpotsText, setOpenSpotsText] = useState(() => {
     const sport = resolvePreferredSportForLaunch(user?.preferred_sports?.[0]);
-    return sport === SportType.BASKETBALL ? '3' : '1';
+    return String(getDefaultOpenSpotsForSport(sport));
   });
   const [schedulingMode, setSchedulingMode] = useState<'fixed' | 'flex'>(
     MVP_DEFAULT_SCHEDULING_MODE
@@ -100,11 +109,16 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false);
 
   useEffect(() => {
-    const meta = getSportMetadata(sportType);
-    if (meta?.name === SportType.BASKETBALL) {
-      setMissingPlayersText((prev) => (prev === '1' ? '3' : prev));
-    }
+    setOpenSpotsText(String(getDefaultOpenSpotsForSport(sportType)));
   }, [sportType]);
+
+  const rosterTotalPlayers = useMemo(() => {
+    const open = Number.parseInt(openSpotsText, 10);
+    if (!Number.isFinite(open) || open < 0) {
+      return getDefaultTotalPlayersForSport(sportType);
+    }
+    return totalPlayersFromOpenSpots(open);
+  }, [openSpotsText, sportType]);
 
   useEffect(() => {
     if (didRequestInitialLocationRef.current) {
@@ -288,7 +302,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         : 'Waiting for your location… tap Refresh.';
     }
     if (locations.length === 0) {
-      return `No ${sportType.toLowerCase()} courts near you yet. Ask us to add courts in your area, or try Refresh after moving.`;
+      return `No ${sportType.toLowerCase()} courts near you yet. Add one below, or host at a park you know.`;
     }
     if (showAllCourtsDev) {
       return 'Showing all courts (dev mode). Distances are from your current location.';
@@ -312,6 +326,18 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
     setSelectedLocationId(loc.id);
   };
 
+  const handleCourtAdded = (loc: ActivityLocation) => {
+    setLocations((prev) => {
+      if (prev.some((item) => item.id === loc.id)) {
+        return prev;
+      }
+      return [loc, ...prev];
+    });
+    setSelectedLocationId(loc.id);
+    setShowAllCourtsDev(false);
+    setShowAllCourtsFallback(false);
+  };
+
   const handleCreate = async () => {
     if (!user) {
       Alert.alert('Not signed in', 'Please sign in and try again.');
@@ -322,8 +348,8 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    const parsed = Number.parseInt(missingPlayersText, 10);
-    const missingPlayers = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+    const parsed = Number.parseInt(openSpotsText, 10);
+    const missingPlayers = Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
     const now = new Date();
     const gameStart = schedulingMode === 'fixed' ? fixedStartTime : now;
     const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000);
@@ -416,7 +442,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.subtitle}>Host a {sportType.toLowerCase()} game at a nearby court.</Text>
+        <Text style={styles.subtitle}>{getCreateGameSubtitle(sportType)}</Text>
 
         {showSportPicker ? (
           <View style={[styles.section, { marginTop: 8 }]}>
@@ -427,9 +453,15 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                 return (
                   <TouchableOpacity
                     key={sport.id}
-                    style={[styles.pill, selected && styles.pillSelected]}
+                    style={[styles.pill, styles.pillRow, selected && styles.pillSelected]}
                     onPress={() => setSportType(sport.name)}
                   >
+                    <MaterialCommunityIcons
+                      name={getSportIconName(sport.name)}
+                      size={16}
+                      color={selected ? '#fff' : colors.primaryDark}
+                      style={styles.pillIcon}
+                    />
                     <Text style={[styles.pillText, selected && styles.pillTextSelected]}>
                       {sport.name}
                     </Text>
@@ -533,6 +565,22 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Roster size</Text>
+          <Text style={styles.rosterHint}>
+            {rosterTotalPlayers} players total including you. Host can finalize early if everyone
+            in the room taps Ready.
+          </Text>
+          <Text style={styles.fieldLabel}>Open spots (besides you)</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="number-pad"
+            value={openSpotsText}
+            onChangeText={setOpenSpotsText}
+            placeholder="How many more players?"
+          />
+        </View>
+
+        <View style={styles.section}>
           {courtStatusMessage ? (
             <Text style={styles.statusText}>{courtStatusMessage}</Text>
           ) : null}
@@ -558,7 +606,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                     coordinate={{ latitude: lat, longitude: lng }}
                     title={loc.name}
                     description={formatDistanceLabel(loc.distanceMeters)}
-                    pinColor={selected ? '#007AFF' : '#34a853'}
+                    pinColor={selected ? colors.primary : '#34a853'}
                     onPress={() => selectLocation(loc)}
                   />
                 );
@@ -566,7 +614,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
             </MapView>
             {(loadingLocation || loadingLocations) && (
               <View style={styles.mapLoading}>
-                <ActivityIndicator color="#007AFF" />
+                <ActivityIndicator color={colors.primary} />
               </View>
             )}
           </View>
@@ -606,6 +654,15 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
               ? 'No courts match your search.'
               : `${filteredLocations.length} court${filteredLocations.length === 1 ? '' : 's'} nearby`}
           </Text>
+
+          <TouchableOpacity
+            style={styles.addCourtBtn}
+            onPress={() => setAddCourtSheetVisible(true)}
+          >
+            <Text style={styles.addCourtBtnText}>
+              {locations.length === 0 ? 'Add a court near you' : "Can't find your court? Add one"}
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
@@ -666,13 +723,6 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
               })}
             </View>
             <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              value={missingPlayersText}
-              onChangeText={setMissingPlayersText}
-              placeholder="Players needed"
-            />
-            <TextInput
               style={[styles.input, { marginTop: 8 }]}
               value={costNote}
               onChangeText={setCostNote}
@@ -717,6 +767,13 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
           )}
         </TouchableOpacity>
       </View>
+      <AddCourtSheet
+        visible={addCourtSheetVisible}
+        sportType={sportType as SportType}
+        near={location}
+        onClose={() => setAddCourtSheetVisible(false)}
+        onAdded={handleCourtAdded}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -724,7 +781,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   scroll: {
     flex: 1,
@@ -751,7 +808,7 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
   },
   mapRefreshText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
     fontSize: 12,
   },
@@ -769,8 +826,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   linkText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
+  },
+  addCourtBtn: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  addCourtBtnText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 14,
   },
   devLink: {
     marginTop: 8,
@@ -783,6 +849,18 @@ const styles = StyleSheet.create({
     color: '#444',
     marginBottom: 8,
     lineHeight: 18,
+  },
+  rosterHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: spacing.sm,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: spacing.xs,
   },
   mapWrap: {
     height: 220,
@@ -846,7 +924,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   locationCardSelected: {
-    borderColor: '#007AFF',
+    borderColor: colors.primary,
     backgroundColor: '#e8f1ff',
   },
   locationName: {
@@ -855,7 +933,7 @@ const styles = StyleSheet.create({
     color: '#222',
   },
   locationNameSelected: {
-    color: '#0057c2',
+    color: colors.primaryDark,
   },
   locationMeta: {
     marginTop: 2,
@@ -863,7 +941,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   locationMetaSelected: {
-    color: '#0057c2',
+    color: colors.primaryDark,
   },
   advancedToggle: {
     marginTop: 12,
@@ -917,9 +995,16 @@ const styles = StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
+  pillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pillIcon: {
+    marginRight: 6,
+  },
   pillSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#007AFF',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   pillText: {
     color: '#333',
@@ -940,8 +1025,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   optionButtonSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#007AFF',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   optionButtonText: {
     color: '#333',
@@ -957,7 +1042,7 @@ const styles = StyleSheet.create({
   },
   timePickerButton: {
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -966,12 +1051,12 @@ const styles = StyleSheet.create({
   timePickerButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0057c2',
+    color: colors.primaryDark,
   },
   timePickerDone: {
     marginTop: 8,
     textAlign: 'right',
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
   },
   advancedToggleText: {
@@ -988,7 +1073,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   createButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',

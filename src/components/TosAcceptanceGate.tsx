@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { FULL_LEGAL_SECTIONS } from '../constants/legal';
 import { acceptLegalTerms, acknowledgeLocationPrivacy } from '../services/userService';
+import { colors } from '../constants/theme';
 
 type Props = {
   visible: boolean;
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   checkbox: { fontSize: 20, marginRight: 8 },
   checkLabel: { flex: 1, fontSize: 14 },
   button: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',

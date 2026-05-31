@@ -59,7 +59,7 @@ Uses [smoke-test-join-pickleball.md](./smoke-test-join-pickleball.md) with tab u
 | **Tonight urgency** | Create with “Need players tonight” → badge on Discover |
 | **Invite link** | Host **Share invite link** → B opens link cold |
 | **Recurring** | **Make weekly recurring** → **Schedule next game** |
-| **RSVP** | B taps Going / Maybe on activity detail |
+| **RSVP** | On a **Regulars or recurring** game only — B taps Going / Maybe (hidden on one-off Discover games) |
 | **Post-game chat** | After play time, chat still open; archives after 72h |
 | **Map (hidden)** | No Map tab or screen; court picker on **Create Game** uses the inline map only |
 

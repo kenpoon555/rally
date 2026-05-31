@@ -19,6 +19,7 @@ import {
   ReportContextType,
   ReportReason,
 } from '../types/safety';
+import { colors } from '../constants/theme';
 
 type Props = {
   visible: boolean;
@@ -228,7 +229,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#eee',
   },
-  actionText: { fontSize: 16, color: '#007AFF' },
+  actionText: { fontSize: 16, color: colors.primary },
   actionDanger: { paddingVertical: 14 },
   actionDangerText: { fontSize: 16, color: '#d32f2f', fontWeight: '600' },
   reportScroll: { maxHeight: 360 },
@@ -240,9 +241,9 @@ const styles = StyleSheet.create({
     borderColor: '#ddd',
     marginBottom: 8,
   },
-  reasonChipOn: { borderColor: '#007AFF', backgroundColor: '#e8f2ff' },
+  reasonChipOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   reasonText: { fontSize: 14, color: '#333' },
-  reasonTextOn: { color: '#007AFF', fontWeight: '600' },
+  reasonTextOn: { color: colors.primary, fontWeight: '600' },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
@@ -253,14 +254,14 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   submit: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   submitText: { color: '#fff', fontWeight: '700' },
   disabled: { opacity: 0.5 },
-  back: { color: '#007AFF', textAlign: 'center', marginTop: 12 },
+  back: { color: colors.primary, textAlign: 'center', marginTop: 12 },
   cancel: { marginTop: 16, alignItems: 'center' },
   cancelText: { color: '#666', fontSize: 16 },
 });

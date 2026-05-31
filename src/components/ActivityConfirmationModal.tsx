@@ -14,6 +14,7 @@ import { createActivity } from '../services/activityService';
 import { saveActivityLocation } from '../services/locationService';
 import { useAuth } from '../hooks/useAuth';
 import { useSportsCatalog } from '../hooks/useSportsCatalog';
+import { colors } from '../constants/theme';
 
 interface ActivityConfirmationModalProps {
   visible: boolean;
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sportButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   sportButtonText: {
     fontSize: 14,
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   durationButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   durationButtonText: {
     fontSize: 14,
@@ -308,7 +309,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   visibilityButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   visibilityButtonText: {
     fontSize: 14,
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   confirmButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   buttonDisabled: {
     opacity: 0.6,

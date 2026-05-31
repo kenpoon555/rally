@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -25,6 +24,8 @@ import { User } from '../../types/user';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
 import { getOrCreateDirectConversation } from '../../services/chatService';
+import { Button, Chip, EmptyState, ScreenHeader, TextField } from '../../components/ui';
+import { colors, radius, spacing } from '../../constants/theme';
 
 type TabParamList = {
   Home: undefined;
@@ -176,7 +177,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
   if (loadingInitial) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color={colors.primary} />
         <Text style={styles.loadingText}>Loading friends...</Text>
       </View>
     );
@@ -184,37 +185,24 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <Text style={styles.headerTitle}>Friends</Text>
-        </View>
-        <Text style={styles.headerSubtitle}>{headerSubtitle}</Text>
-      </View>
+      <ScreenHeader title="Friends" subtitle={headerSubtitle} />
+
       <View style={styles.tabs}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'friends' && styles.tabActive]}
-          onPress={() => setActiveTab('friends')}
-        >
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.tabTextActive]}>
-            Friends
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'requests' && styles.tabActive]}
-          onPress={() => setActiveTab('requests')}
-        >
-          <Text style={[styles.tabText, activeTab === 'requests' && styles.tabTextActive]}>
-            Requests ({pendingTotal})
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'search' && styles.tabActive]}
-          onPress={() => setActiveTab('search')}
-        >
-          <Text style={[styles.tabText, activeTab === 'search' && styles.tabTextActive]}>
-            Add
-          </Text>
-        </TouchableOpacity>
+        {([
+          { id: 'friends' as const, label: 'Friends' },
+          { id: 'requests' as const, label: `Requests (${pendingTotal})` },
+          { id: 'search' as const, label: 'Add' },
+        ]).map((tab) => (
+          <Chip
+            key={tab.id}
+            label={tab.label}
+            selected={activeTab === tab.id}
+            tone="primary"
+            compact
+            onPress={() => setActiveTab(tab.id)}
+            style={styles.tabChip}
+          />
+        ))}
       </View>
 
       {activeTab === 'friends' && (
@@ -239,16 +227,12 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           )}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No friends yet</Text>
-              <Text style={styles.emptyText}>Add friends to send quick play invites.</Text>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => setActiveTab('search')}
-              >
-                <Text style={styles.primaryButtonText}>Add Friends</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="👥"
+              title="No friends yet"
+              message="Add friends to send quick play invites."
+              primaryAction={{ label: 'Add Friends', onPress: () => setActiveTab('search') }}
+            />
           }
         />
       )}
@@ -285,16 +269,12 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
             );
           }}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No requests right now</Text>
-              <Text style={styles.emptyText}>Invite someone to play and start building your list.</Text>
-              <TouchableOpacity
-                style={styles.primaryButton}
-                onPress={() => setActiveTab('search')}
-              >
-                <Text style={styles.primaryButtonText}>Add Friends</Text>
-              </TouchableOpacity>
-            </View>
+            <EmptyState
+              icon="📬"
+              title="No requests right now"
+              message="Invite someone to play and start building your list."
+              primaryAction={{ label: 'Add Friends', onPress: () => setActiveTab('search') }}
+            />
           }
         />
       )}
@@ -302,18 +282,21 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
       {activeTab === 'search' && (
         <View style={styles.searchContainer}>
           <View style={styles.searchBar}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by username or phone"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearch}
+            <View style={styles.searchFieldWrap}>
+              <TextField
+                placeholder="Username or phone"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearch}
+                style={styles.searchInput}
+              />
+            </View>
+            <Button
+              title={loadingSearch ? 'Searching…' : 'Search'}
+              size="sm"
+              onPress={handleSearch}
+              loading={loadingSearch}
             />
-            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-              <Text style={styles.searchButtonText}>
-                {loadingSearch ? 'Searching...' : 'Search'}
-              </Text>
-            </TouchableOpacity>
           </View>
           <FlatList
             data={searchResults}
@@ -330,11 +313,15 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             )}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
-                  {searchQuery ? 'No users found' : 'Search for users to add'}
-                </Text>
-              </View>
+              <EmptyState
+                icon="🔍"
+                title={searchQuery ? 'No users found' : 'Search for players'}
+                message={
+                  searchQuery
+                    ? 'Try a different username.'
+                    : 'Find people by username to send a friend request.'
+                }
+              />
             }
           />
         </View>
@@ -348,71 +335,28 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
   },
   loadingText: {
-    marginTop: 8,
-    color: '#666',
+    marginTop: spacing.sm,
+    color: colors.textSecondary,
   },
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 10,
-    backgroundColor: '#fff',
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chatLink: {
-    color: '#007AFF',
-    fontSize: 12,
-    fontWeight: '700',
-    marginRight: 14,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  signOutLink: {
-    color: '#8e8e93',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  headerSubtitle: {
-    marginTop: 4,
-    color: '#666',
+    backgroundColor: colors.background,
   },
   tabs: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  tabActive: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
-  },
-  tabText: {
-    fontSize: 14,
-    color: '#666',
-  },
-  tabTextActive: {
-    color: '#007AFF',
-    fontWeight: '600',
+  tabChip: {
+    flexGrow: 0,
   },
   friendInfo: {
     flex: 1,
@@ -421,42 +365,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   friendName: {
     fontSize: 16,
     fontWeight: '600',
-  },
-  friendStatus: {
-    marginTop: 4,
-    color: '#666',
-    textTransform: 'capitalize',
-    fontSize: 12,
+    color: colors.text,
   },
   removeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#FF3B30',
-    marginLeft: 8,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.error,
+    marginLeft: spacing.sm,
   },
   removeButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
   chatButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    marginLeft: 8,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    marginLeft: spacing.sm,
   },
   chatButtonText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -464,39 +404,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   requestName: {
     fontSize: 16,
     fontWeight: '600',
+    color: colors.text,
   },
   requestMeta: {
-    marginTop: 4,
+    marginTop: spacing.xs,
     fontSize: 12,
-    color: '#666',
+    color: colors.textSecondary,
   },
   acceptButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#34C759',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.success,
   },
   acceptButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
   outgoingBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: '#bbb',
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.background,
   },
   outgoingBadgeText: {
-    color: '#666',
+    color: colors.textSecondary,
     fontSize: 13,
     fontWeight: '600',
   },
@@ -505,80 +448,44 @@ const styles = StyleSheet.create({
   },
   searchBar: {
     flexDirection: 'row',
-    padding: 16,
+    alignItems: 'flex-end',
+    padding: spacing.lg,
+    gap: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  searchFieldWrap: {
+    flex: 1,
+    marginBottom: -spacing.lg,
   },
   searchInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginRight: 8,
-    fontSize: 16,
-  },
-  searchButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#007AFF',
-    justifyContent: 'center',
-  },
-  searchButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
+    marginBottom: 0,
   },
   searchItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    padding: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
   searchItemName: {
     fontSize: 16,
     flex: 1,
+    color: colors.text,
   },
   addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    backgroundColor: '#007AFF',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primary,
   },
   addButtonText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    color: '#222',
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-  },
-  primaryButton: {
-    marginTop: 14,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
   },
 });
 

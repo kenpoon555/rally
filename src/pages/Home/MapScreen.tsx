@@ -18,6 +18,7 @@ import { ROUTES } from '../../constants/routes';
 import { useAuth } from '../../hooks/useAuth';
 import { fuzzMapCoordinate } from '../../utils/approximateLocation';
 import { PRIVACY_LOCATION_TEXT } from '../../constants/legal';
+import { colors } from '../../constants/theme';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -157,7 +158,7 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
 
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#1a73e8" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading map data...</Text>
         </View>
       )}
@@ -282,7 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   primaryCta: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -293,14 +294,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryCta: {
-    borderColor: '#1a73e8',
+    borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
   secondaryCtaText: {
-    color: '#1a73e8',
+    color: colors.primary,
     fontWeight: '700',
   },
   bottomSheet: {
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   bottomCta: {
-    color: '#1a73e8',
+    color: colors.primary,
     fontWeight: '700',
     fontSize: 13,
   },

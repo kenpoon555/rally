@@ -5,7 +5,7 @@ import {
   OnboardingFlag,
   setOnboardingFlag,
 } from '../constants/onboardingFlags';
-import { PRIMARY_COLOR } from '../constants/theme';
+import { colors, radius, spacing, typography } from '../constants/theme';
 
 type CoachMarkProps = {
   /** Persisted flag so the tip shows at most once. */
@@ -18,10 +18,6 @@ type CoachMarkProps = {
   onAction?: () => void;
 };
 
-/**
- * Lightweight, dismissible coaching banner for the badminton host wedge (Phase 5C).
- * Renders inline (no overlay library) and remembers dismissal across sessions.
- */
 const CoachMark: React.FC<CoachMarkProps> = ({
   flag,
   active,
@@ -79,47 +75,46 @@ const CoachMark: React.FC<CoachMarkProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: 12,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#eef5ff',
+    marginBottom: spacing.md,
+    padding: spacing.md + 2,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
     borderWidth: 1,
-    borderColor: '#cfe0ff',
+    borderColor: colors.border,
   },
   title: {
+    ...typography.bodyMedium,
     fontSize: 15,
-    fontWeight: '700',
-    color: '#0a3d91',
+    color: colors.primaryDark,
   },
   body: {
-    marginTop: 4,
-    fontSize: 13,
-    color: '#33507e',
-    lineHeight: 18,
+    marginTop: spacing.xs,
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 10,
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
   actionBtn: {
-    backgroundColor: PRIMARY_COLOR,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md + 2,
   },
   actionText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontWeight: '700',
     fontSize: 13,
   },
   dismissBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs + 2,
   },
   dismissText: {
-    color: '#5b6b86',
+    color: colors.textSecondary,
     fontWeight: '600',
     fontSize: 13,
   },

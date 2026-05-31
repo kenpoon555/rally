@@ -12,6 +12,7 @@ import { ProfileReviewStats } from '../types/review';
 import SafetyActionsSheet from './SafetyActionsSheet';
 import { ProfileTrustStats, ReportContextType } from '../types/safety';
 import { getProfileTrustStats } from '../services/safetyService';
+import { colors } from '../constants/theme';
 
 export interface PlayerProfilePreview {
   id: string;
@@ -82,10 +83,10 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
           {player.roleLabel ? <Text style={styles.role}>{player.roleLabel}</Text> : null}
 
           {loading ? (
-            <ActivityIndicator style={styles.loader} color="#007AFF" />
+            <ActivityIndicator style={styles.loader} color={colors.primary} />
           ) : (
             <View style={styles.statsBox}>
-              <Text style={styles.statsTitle}>Player reviews</Text>
+              <Text style={styles.statsTitle}>Player ratings</Text>
               <Text style={styles.statsLine}>
                 {stats?.review_count || 0} review{(stats?.review_count || 0) === 1 ? '' : 's'}
               </Text>
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   closeButtonText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontSize: 16,
     fontWeight: '600',
   },

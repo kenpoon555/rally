@@ -1,15 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, StyleSheet, Alert, Text } from 'react-native';
 import { Activity } from '../types/activity';
 import { useAuth } from '../hooks/useAuth';
 import { createJoinRequest } from '../services/activityService';
+import { activityHasOpenSpots } from '../utils/activityHelpers';
+import { Button } from './ui';
+import { colors, spacing, typography } from '../constants/theme';
 
 interface JoinRequestButtonProps {
   activity: Activity;
@@ -103,55 +99,54 @@ const JoinRequestButton: React.FC<JoinRequestButtonProps> = ({
     );
   }
 
+  if (!activityHasOpenSpots(activity)) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.fullText}>Game full — check back if someone leaves</Text>
+      </View>
+    );
+  }
+
   return (
-    <TouchableOpacity
-      style={[styles.button, loading && styles.buttonDisabled]}
+    <Button
+      title="Request to Join"
       onPress={handleJoin}
-      disabled={loading}
-    >
-      {loading ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <Text style={styles.buttonText}>Request to Join</Text>
-      )}
-    </TouchableOpacity>
+      loading={loading}
+      fullWidth
+      style={styles.button}
+    />
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    marginTop: spacing.sm,
   },
   requestedText: {
-    color: '#007AFF',
-    fontSize: 14,
+    ...typography.caption,
+    color: colors.primary,
     textAlign: 'center',
+    fontWeight: '600',
   },
   approvedText: {
-    color: '#34C759',
-    fontSize: 14,
+    ...typography.caption,
+    color: colors.success,
     fontWeight: '600',
     textAlign: 'center',
   },
   rejectedText: {
-    color: '#666',
-    fontSize: 14,
+    ...typography.caption,
+    color: colors.textSecondary,
     textAlign: 'center',
+  },
+  fullText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
 

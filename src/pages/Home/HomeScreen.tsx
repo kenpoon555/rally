@@ -8,6 +8,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   TouchableOpacity,
+  ScrollView,
   Platform,
   Linking,
 } from 'react-native';
@@ -21,17 +22,19 @@ import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
-import { resolveUserDefaultSport, resolvePreferredSportForLaunch } from '../../constants/sports';
+import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
-import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
+import { SHOW_LOCATION_DEBUG_PANEL, SHOW_DISCOVER_PIPELINE_PANEL } from '../../constants/devFlags';
 import { getCurrentLocation } from '../../services/locationService';
-import { PRIMARY_COLOR } from '../../constants/theme';
+import { colors, PRIMARY_COLOR, radius, spacing, typography } from '../../constants/theme';
+import { Button, ScreenHeader } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import DiscoverPipelinePanel from '../../components/DiscoverPipelinePanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
-import { shouldShowInDiscoverFeed, sortActivitiesByDistance } from '../../utils/activityHelpers';
+import { shouldShowInDiscoverFeed, sortDiscoverFeedActivities } from '../../utils/activityHelpers';
 import { getBlockedUserIds } from '../../services/safetyService';
+import { getUserFriends } from '../../services/friendsService';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -114,32 +117,20 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const sortedActivities = useMemo(
-    () => sortActivitiesByDistance(activities, location),
-    [activities, location]
+    () => sortDiscoverFeedActivities(activities, location, friendIds, { highlightOpenSpots }),
+    [activities, location, friendIds, highlightOpenSpots]
   );
   const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
 
   const visibleActivities = useMemo(() => {
-    const filtered = sortedActivities
+    return sortedActivities
       .filter((a) => !blockedUserIds.has(a.user_id))
       .filter((a) => shouldShowInDiscoverFeed(a, user?.id));
-    const byDistance = sortActivitiesByDistance(filtered, location);
-    return [...byDistance].sort((a, b) => {
-      if (highlightOpenSpots) {
-        const aOpen = (a.missing_players ?? 0) > 0 ? 1 : 0;
-        const bOpen = (b.missing_players ?? 0) > 0 ? 1 : 0;
-        if (aOpen !== bOpen) {
-          return bOpen - aOpen;
-        }
-      }
-      const aTonight = a.urgency_level === 'tonight' ? 1 : 0;
-      const bTonight = b.urgency_level === 'tonight' ? 1 : 0;
-      return bTonight - aTonight;
-    });
-  }, [sortedActivities, blockedUserIds, user?.id, location, highlightOpenSpots]);
+  }, [sortedActivities, blockedUserIds, user?.id]);
 
   const showInitialLoading = loading && visibleActivities.length === 0;
 
@@ -155,11 +146,23 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     if (!user?.id) {
       setBlockedUserIds(new Set());
+      setFriendIds(new Set());
       return;
     }
     getBlockedUserIds(user.id)
       .then((ids) => setBlockedUserIds(new Set(ids)))
       .catch(() => setBlockedUserIds(new Set()));
+    getUserFriends(user.id)
+      .then((friends) =>
+        setFriendIds(
+          new Set(
+            friends
+              .map((friendship) => friendship.friend?.id || friendship.friend_id)
+              .filter((id): id is string => Boolean(id))
+          )
+        )
+      )
+      .catch(() => setFriendIds(new Set()));
   }, [user?.id]);
 
   const onGeofenceLocationDetected = useCallback((loc: ActivityLocation) => {
@@ -230,22 +233,13 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         </ErrorBoundary>
       )}
       <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.headerTitles}>
-            <Text style={styles.title}>{discoverTitle}</Text>
-            <Text style={styles.subtitle}>Find a game or host one at a nearby court</Text>
-            <Text style={styles.privacyHint}>
-              Distances are approximate until you join a game.
-            </Text>
-          </View>
-        </View>
+        <ScreenHeader
+          title={discoverTitle}
+          subtitle="Find a game or host one at a nearby court. Distances are approximate until you join."
+        />
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.primaryHeaderButton} onPress={openCreateGame}>
-            <Text style={styles.primaryHeaderButtonText}>Create Game</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickMatchButton} onPress={handleJoinNearest}>
-            <Text style={styles.quickMatchButtonText}>Join nearest open game</Text>
-          </TouchableOpacity>
+          <Button title="Create Game" size="sm" onPress={openCreateGame} />
+          <Button title="Join nearest" variant="accent" size="sm" onPress={handleJoinNearest} />
         </View>
         <Text style={styles.preferenceHint}>
           Default sport: {defaultSport} • {user?.default_duration || 60} min •{' '}
@@ -287,9 +281,14 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
       )}
 
       {showSportFilters && (
-        <View style={styles.filterRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+        >
           {sports.map((sport) => {
             const selected = selectedSport === sport.name;
+            const label = getSportMetadata(sport.name)?.shortLabel ?? sport.name;
             return (
               <TouchableOpacity
                 key={sport.id}
@@ -299,12 +298,12 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text
                   style={[styles.filterChipText, selected && styles.filterChipTextSelected]}
                 >
-                  {sport.name}
+                  {label}
                 </Text>
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
       )}
 
       {showInitialLoading ? (
@@ -321,6 +320,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
             <GameCard
               activity={item}
               userLocation={location}
+              friendIds={friendIds}
               onPress={() =>
                 navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
                   activityId: item.id,
@@ -331,24 +331,26 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <DiscoverPipelinePanel
-                userId={user?.id}
-                latitude={location?.latitude}
-                longitude={location?.longitude}
-                sportType={effectiveSportFilter}
-                activitiesCount={activities.length}
-                visibleCount={visibleActivities.length}
-                discoverLoading={loading}
-                discoverError={discoverError?.message ?? null}
-                authLoading={authLoading}
-              />
+              {SHOW_DISCOVER_PIPELINE_PANEL && (
+                <DiscoverPipelinePanel
+                  userId={user?.id}
+                  latitude={location?.latitude}
+                  longitude={location?.longitude}
+                  sportType={effectiveSportFilter}
+                  activitiesCount={activities.length}
+                  visibleCount={visibleActivities.length}
+                  discoverLoading={loading}
+                  discoverError={discoverError?.message ?? null}
+                  authLoading={authLoading}
+                />
+              )}
               <Text style={styles.emptyTitle}>
                 {discoverError ? 'Could not load games' : emptyGamesLabel}
               </Text>
               <Text style={styles.emptyText}>
                 {discoverError
                   ? discoverError.message
-                  : 'No open games nearby yet. Host one at your court, or share a Regulars link so your crew can RSVP when you post the next game.'}
+                  : 'No open games nearby yet. Host one at your court, or share a Regulars link so your crew can join the next game.'}
               </Text>
               {!discoverError && (
                 <View style={styles.tipList}>
@@ -397,97 +399,27 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
-    backgroundColor: '#fff',
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  headerTitles: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#111',
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#666',
-    lineHeight: 20,
-  },
-  privacyHint: {
-    marginTop: 6,
-    fontSize: 12,
-    color: '#888',
-    lineHeight: 17,
-  },
-  profileButton: {
-    borderWidth: 1,
-    borderColor: '#d7d7d7',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  profileButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#333',
+    paddingBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   actionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    marginTop: 12,
-    gap: 8,
-  },
-  primaryHeaderButton: {
-    borderRadius: 8,
-    backgroundColor: PRIMARY_COLOR,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-  },
-  primaryHeaderButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  quickMatchButton: {
-    borderRadius: 8,
-    backgroundColor: '#0b8f55',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  quickMatchButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  chatsButton: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    paddingHorizontal: 11,
-    paddingVertical: 8,
-  },
-  chatsButtonText: {
-    color: '#007AFF',
-    fontWeight: '700',
-    fontSize: 12,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
   preferenceHint: {
-    marginTop: 8,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
     fontSize: 12,
-    color: '#7a7a7a',
+    color: colors.textTertiary,
   },
   nearbyCourtsLink: {
     marginTop: 6,
@@ -496,28 +428,25 @@ const styles = StyleSheet.create({
   nearbyCourtsLinkText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#007AFF',
+    color: colors.primary,
   },
   locationSetupCard: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    marginBottom: 4,
-    padding: 14,
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: spacing.md + 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#e8e8e8',
+    borderColor: colors.border,
   },
   locationSetupTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#222',
-    marginBottom: 6,
+    ...typography.bodyMedium,
+    marginBottom: spacing.xs + 2,
   },
   locationSetupBody: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
+    ...typography.caption,
+    color: colors.textSecondary,
   },
   locationButtonRow: {
     flexDirection: 'row',
@@ -526,37 +455,37 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   retryLocationButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
   },
   retryLocationText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
   settingsLocationButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: colors.primary,
   },
   settingsLocationText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
   limitBanner: {
-    marginHorizontal: 12,
-    marginTop: 8,
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: '#fff4e5',
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningSoft,
     borderWidth: 1,
-    borderColor: '#f5c26b',
+    borderColor: colors.warning,
   },
   limitBannerText: {
     color: '#8a5a00',
@@ -565,10 +494,11 @@ const styles = StyleSheet.create({
   },
   filterRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
   },
   filterChip: {
     borderWidth: 1,
@@ -576,8 +506,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    marginHorizontal: 4,
-    marginVertical: 2,
     backgroundColor: '#fff',
   },
   filterChipSelected: {

@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { toAuthErrorMessage } from '../../utils/errorMessages';
+import { AuthScreenLayout } from '../../components/AuthScreenLayout';
+import { Button, TextField } from '../../components/ui';
+import { colors, spacing } from '../../constants/theme';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -43,13 +38,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Rally</Text>
-      <Text style={styles.subtitle}>Sports Social App</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
+    <AuthScreenLayout
+      title="Welcome back"
+      subtitle="Sign in to open your game lobbies and crew chats."
+    >
+      <TextField
+        label="Email"
+        placeholder="you@example.com"
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -57,86 +52,42 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         editable={!loading}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
+      <TextField
+        label="Password"
+        placeholder="Your password"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         editable={!loading}
       />
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleLogin}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Login</Text>
-        )}
-      </TouchableOpacity>
+      <Button title="Sign in" onPress={handleLogin} loading={loading} fullWidth />
 
       <TouchableOpacity
         onPress={() => navigation.navigate(ROUTES.AUTH.SIGNUP)}
         style={styles.linkButton}
+        disabled={loading}
       >
-        <Text style={styles.linkText}>Don't have an account? Sign up</Text>
+        <Text style={styles.linkText}>
+          New here? <Text style={styles.linkTextBold}>Create an account</Text>
+        </Text>
       </TouchableOpacity>
-    </View>
+    </AuthScreenLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 40,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   linkButton: {
-    marginTop: 20,
+    marginTop: spacing.xl,
     alignItems: 'center',
   },
   linkText: {
-    color: '#007AFF',
     fontSize: 14,
+    color: colors.textSecondary,
+  },
+  linkTextBold: {
+    color: colors.primary,
+    fontWeight: '700',
   },
 });
 

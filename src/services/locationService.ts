@@ -358,6 +358,7 @@ export const getAllActivityLocations = async (
   const { data, error } = await supabase
     .from('activity_locations')
     .select('*')
+    .eq('is_active', true)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -401,7 +402,7 @@ export const checkUserAtSportsLocation = async (
  * Create or update activity location
  */
 export const saveActivityLocation = async (
-  location: Omit<ActivityLocation, 'id' | 'created_at'>
+  location: Omit<ActivityLocation, 'id' | 'created_at'> & { id?: string }
 ): Promise<ActivityLocation> => {
   // Check if location with same google_place_id exists
   if (location.google_place_id) {
@@ -409,21 +410,43 @@ export const saveActivityLocation = async (
       .from('activity_locations')
       .select('*')
       .eq('google_place_id', location.google_place_id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
-      return existing as ActivityLocation;
+      const { data: refreshed, error: refreshError } = await supabase
+        .from('activity_locations')
+        .update({
+          is_active: true,
+          last_verified_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          sport_type: location.sport_type,
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (refreshError) {
+        return existing as ActivityLocation;
+      }
+      return refreshed as ActivityLocation;
     }
   }
 
   const { data, error } = await supabase
     .from('activity_locations')
     .insert({
-      ...location,
+      name: location.name,
+      sport_type: location.sport_type,
       location: {
         type: 'Point',
         coordinates: location.location.coordinates,
       },
+      google_place_id: location.google_place_id ?? null,
+      radius: location.radius,
+      source: location.source ?? 'user',
+      is_active: location.is_active ?? true,
+      last_verified_at: location.last_verified_at ?? new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .select()
     .single();

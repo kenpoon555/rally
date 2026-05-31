@@ -30,7 +30,6 @@ import {
   scheduleNextGameFromActivity,
   scheduleGroupNextGame,
   makeActivityRecurring,
-  setGameRsvp,
   joinGameViaInvite,
   updateActivity,
 } from '../../services/activityService';
@@ -41,11 +40,18 @@ import {
 } from '../../services/regularGroupService';
 import { buildGameInviteUrl, buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
 import { RegularGroup } from '../../types/regularGroup';
-import GameRsvpBar from '../../components/GameRsvpBar';
-import { GameRsvpStatus } from '../../types/activity';
-import { supabase } from '../../services/api/supabase';
+import { PlayerReviewForm } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
-import { formatActivityTime, getApprovedParticipants, canHostScheduleNextGame } from '../../utils/activityHelpers';
+import { PlayerTrustLine } from '../../components/PlayerTrustLine';
+import { reportCourtIssue, CourtReportType } from '../../services/courtService';
+import { supabase } from '../../services/api/supabase';
+import {
+  formatActivityTime,
+  getApprovedParticipants,
+  canHostScheduleNextGame,
+  countReadyParticipants,
+  getParticipantReadyState,
+} from '../../utils/activityHelpers';
 import { isActivityListingActive, isReviewWindowOpen, gameEndMs } from '../../utils/activityExpiry';
 import { ActivityCandidateLocation, JoinRequest } from '../../types/activity';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -54,27 +60,26 @@ import {
   ensureActivityGroupConversation,
 } from '../../services/chatService';
 import {
-  getProfileReviewStats,
   submitPlayerReview,
 } from '../../services/reviewService';
-import { ProfileReviewStats } from '../../types/review';
 import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
-import { PRIMARY_COLOR } from '../../constants/theme';
+import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
+import { Avatar } from '../../components/ui';
 import CoachMark from '../../components/CoachMark';
 import { ONBOARDING_FLAGS } from '../../constants/onboardingFlags';
 
 type MainStackParamList = {
   MainTabs: undefined;
-  ActivityDetail: { activityId?: string; inviteToken?: string };
+  ActivityDetail: { activityId?: string; inviteToken?: string; fromGameRoom?: boolean };
   CreateActivity: undefined;
-  ChatThread: { conversationId: string; title?: string };
+  ChatThread: { conversationId: string; title?: string; activityId?: string };
 };
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
 
 const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { activityId: routeActivityId, inviteToken } = route.params;
+  const { activityId: routeActivityId, inviteToken, fromGameRoom } = route.params;
   const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(routeActivityId);
   const activityId = resolvedActivityId || '';
   const { activity, loading, error, refetch } = useActivity(activityId);
@@ -91,7 +96,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [earliestStartText, setEarliestStartText] = useState('');
   const [latestStartText, setLatestStartText] = useState('');
   const [availabilityWeight, setAvailabilityWeight] = useState(3);
-  const [reviewStats, setReviewStats] = useState<ProfileReviewStats | null>(null);
   const [friendliness, setFriendliness] = useState(3);
   const [physicality, setPhysicality] = useState(3);
   const [vibe, setVibe] = useState(3);
@@ -104,7 +108,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [extending, setExtending] = useState(false);
   const [schedulingNext, setSchedulingNext] = useState(false);
   const [makingRecurring, setMakingRecurring] = useState(false);
-  const [rsvpSaving, setRsvpSaving] = useState(false);
   const [redeemingInvite, setRedeemingInvite] = useState(false);
   const [regularGroup, setRegularGroup] = useState<RegularGroup | null>(null);
   const [creatingRegularGroup, setCreatingRegularGroup] = useState(false);
@@ -126,6 +129,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const approvedParticipants = useMemo(
     () => (activity ? getApprovedParticipants(activity) : []),
     [activity]
+  );
+
+  const { readyCount, rosterCount } = useMemo(
+    () =>
+      activity
+        ? countReadyParticipants(activity, approvedParticipants)
+        : { readyCount: 0, rosterCount: 0 },
+    [activity, approvedParticipants]
   );
 
   const canShowReviewForm = useMemo(
@@ -333,8 +344,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setCostNoteDraft(activity?.cost_note ?? '');
   }, [activity?.cost_note]);
 
-  const allowGroupRsvp = Boolean(activity?.regular_group_id && isGroupMember && !isFinalized);
-
   const handleExtendGame = async (date: Date) => {
     if (!activity) {
       return;
@@ -465,6 +474,42 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const handleReportCourt = () => {
+    if (!activity?.location_id) {
+      return;
+    }
+    const options: { text: string; type: CourtReportType }[] = [
+      { text: 'Court closed / gone', type: 'closed' },
+      { text: 'Wrong sport', type: 'wrong_sport' },
+      { text: 'Wrong location', type: 'wrong_location' },
+      { text: 'Duplicate listing', type: 'duplicate' },
+    ];
+    Alert.alert(
+      'Report court issue',
+      activity.location?.name || 'This court',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        ...options.map((option) => ({
+          text: option.text,
+          onPress: async () => {
+            try {
+              await reportCourtIssue(activity.location_id!, option.type);
+              Alert.alert(
+                'Thanks',
+                option.type === 'closed'
+                  ? 'Report recorded. The court hides after a second closed report.'
+                  : 'Report recorded — we use these to keep court data fresh.'
+              );
+            } catch (error: unknown) {
+              const message = error instanceof Error ? error.message : 'Could not submit report.';
+              Alert.alert('Report failed', message);
+            }
+          },
+        })),
+      ]
+    );
+  };
+
   const handleMakeRecurring = () => {
     if (!activity || !isHost) {
       return;
@@ -493,21 +538,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   };
 
-  const handleSetRsvp = async (status: GameRsvpStatus) => {
-    if (!activity) {
-      return;
-    }
-    setRsvpSaving(true);
-    try {
-      await setGameRsvp(activity.id, status);
-      await refetch();
-    } catch (err: any) {
-      Alert.alert('RSVP failed', err?.message || 'Could not save RSVP.');
-    } finally {
-      setRsvpSaving(false);
-    }
-  };
-
   useEffect(() => {
     if (!activity?.id || activity.scheduling_mode !== 'flex') {
       setCandidateLocations([]);
@@ -525,16 +555,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         setCandidateLocations([]);
       });
   }, [activity?.id, activity?.scheduling_mode, preferredLocationId]);
-
-  useEffect(() => {
-    if (!activity?.user_id || !showReviewSection) {
-      setReviewStats(null);
-      return;
-    }
-    getProfileReviewStats(activity.user_id)
-      .then(setReviewStats)
-      .catch(() => setReviewStats(null));
-  }, [activity?.user_id, showReviewSection]);
 
   const handleApprove = async (requestId: string) => {
     try {
@@ -598,15 +618,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         overall_vibe_rating: vibe,
         comment: reviewComment.trim() || undefined,
       });
-      Alert.alert('Thanks', 'Your review has been submitted.');
-      const updatedStats = await getProfileReviewStats(activeReviewTargetId);
-      setReviewStats(updatedStats);
+      Alert.alert('Thanks', 'Your rating has been submitted.');
       setReviewComment('');
       if (isHost) {
         setReviewTargetUserId(null);
       }
     } catch (error: any) {
-      Alert.alert('Review failed', error?.message || 'Could not submit review.');
+      Alert.alert('Rating failed', error?.message || 'Could not submit rating.');
     } finally {
       setSubmittingReview(false);
     }
@@ -746,8 +764,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     return `${count} player${count === 1 ? '' : 's'}`;
   })();
-  const showChat =
-    canOpenActivityChat(activity, user?.id) || isGroupMember || allowGroupRsvp;
+  const showChat = canOpenActivityChat(activity, user?.id) || isGroupMember;
   const canScheduleNext = Boolean(isHost && canHostScheduleNextGame(activity, true));
   const listingActive = isActivityListingActive(activity);
   const expiresLabel = activity.expires_at
@@ -770,6 +787,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
         <Text style={styles.heroTime}>{timeLabel}</Text>
         <Text style={styles.heroLocation}>{activity.location?.name || 'Court TBD'}</Text>
+        {activity.location_id && (isHost || isApprovedJoiner) ? (
+          <TouchableOpacity onPress={handleReportCourt}>
+            <Text style={styles.courtReportLink}>Report court issue</Text>
+          </TouchableOpacity>
+        ) : null}
         <Text style={styles.heroMeta}>
           {slotsLabel} · {detailCopy.statusSchedulingDescriptor}
         </Text>
@@ -826,7 +848,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {listingActive ? 'Listing open until' : 'Listing ended'}: {expiresLabel}
           </Text>
         ) : null}
-        {showChat ? (
+        {showChat && !fromGameRoom ? (
           <TouchableOpacity
             style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
             onPress={handleOpenGroupChat}
@@ -836,6 +858,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {openingChat ? 'Opening…' : 'Open Game Room'}
             </Text>
           </TouchableOpacity>
+        ) : null}
+        {showChat && fromGameRoom ? (
+          <Text style={styles.gameRoomHint}>Use back to return to the Game Room chat.</Text>
         ) : null}
         {canScheduleNext ? (
           <>
@@ -893,7 +918,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </TouchableOpacity>
         ) : null}
-        {isHost && !activity.regular_group_id && activity.status === 'active' ? (
+        {isHost &&
+        !activity.regular_group_id &&
+        (activity.status === 'active' || activity.status === 'completed') ? (
           <TouchableOpacity
             style={[styles.secondaryButton, creatingRegularGroup && styles.utilityButtonDisabled]}
             onPress={handleCreateRegularGroup}
@@ -986,31 +1013,70 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         onAction={handleCreateRegularGroup}
       />
 
-      {activity.status === 'active' ? (
-        <GameRsvpBar
-          activity={activity}
-          userId={user?.id}
-          saving={rsvpSaving}
-          onSetRsvp={(status) => void handleSetRsvp(status)}
-          allowGroupRsvp={allowGroupRsvp}
+      {showReviewSection && canShowReviewForm && activeReviewTargetId && user?.id !== activeReviewTargetId ? (
+        <PlayerReviewForm
+          subtitle={
+            isHost
+              ? `How did your players show up at ${activity.location?.name || 'this game'}?`
+              : `How was the host for this match?`
+          }
+          players={
+            isHost
+              ? approvedParticipants
+                  .filter((participant) => participant.user_id !== user?.id)
+                  .map((participant) => ({
+                    userId: participant.user_id,
+                    username: participant.user?.username || 'Player',
+                  }))
+              : activity.user
+                ? [{ userId: activity.user.id, username: activity.user.username }]
+                : []
+          }
+          selectedPlayerId={activeReviewTargetId}
+          onSelectPlayer={isHost ? setReviewTargetUserId : undefined}
+          friendliness={friendliness}
+          physicality={physicality}
+          vibe={vibe}
+          onChangeFriendliness={setFriendliness}
+          onChangePhysicality={setPhysicality}
+          onChangeVibe={setVibe}
+          comment={reviewComment}
+          onChangeComment={setReviewComment}
+          submitting={submittingReview}
+          onSubmit={() => void handleSubmitReview()}
         />
+      ) : null}
+
+      {showReviewSection && !canShowReviewForm && activity.status === 'completed' ? (
+        <View style={styles.reviewPanel}>
+          <Text style={styles.sectionTitle}>Rate Players</Text>
+          <Text style={styles.reviewMeta}>
+            Ratings open about 2 hours after the scheduled game ends.
+          </Text>
+        </View>
       ) : null}
 
       <View style={styles.participantsSection}>
         <Text style={styles.sectionTitle}>Players</Text>
+        {!isFinalized ? (
+          <Text style={styles.readySummary}>
+            {readyCount} of {rosterCount} marked ready
+            {readyCount < rosterCount ? ' · amber dot = still waiting' : ''}
+          </Text>
+        ) : null}
         {activity.user && (
           <TouchableOpacity
             style={styles.participantRow}
             onPress={() => openPlayerProfile(activity.user!, 'Host')}
           >
-            <View style={styles.participantAvatar}>
-              <Text style={styles.participantAvatarText}>
-                {activity.user.username.slice(0, 1).toUpperCase()}
-              </Text>
-            </View>
+            <Avatar
+              name={activity.user.username}
+              size="md"
+              readyState={getParticipantReadyState({ isHost: true, isFinalized })}
+            />
             <View style={styles.participantInfo}>
               <Text style={styles.participantName}>{activity.user.username}</Text>
-              <Text style={styles.participantRole}>Host</Text>
+              <Text style={styles.participantRole}>Host · Ready</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -1021,15 +1087,19 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               style={styles.participantRow}
               onPress={() => openPlayerProfile(req.user!, 'Player')}
             >
-              <View style={styles.participantAvatar}>
-                <Text style={styles.participantAvatarText}>
-                  {req.user.username.slice(0, 1).toUpperCase()}
-                </Text>
-              </View>
+              <Avatar
+                name={req.user.username}
+                size="md"
+                readyState={getParticipantReadyState({
+                  readyAt: req.ready_at,
+                  isFinalized,
+                  isApproved: true,
+                })}
+              />
               <View style={styles.participantInfo}>
                 <Text style={styles.participantName}>{req.user.username}</Text>
                 <Text style={styles.participantRole}>
-                  Joined{req.ready_at ? ' · Ready' : ''}
+                  {req.ready_at ? 'Ready' : isFinalized ? 'Joined' : 'Waiting to mark ready'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1168,126 +1238,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <Text style={styles.finalizedBanner}>Roster locked — game is finalized</Text>
       )}
 
-      {showReviewSection ? (
-      <View style={styles.reviewPanel}>
-        <Text style={styles.sectionTitle}>Post-game reviews</Text>
-        {activity?.regular_group_id ? (
-          <Text style={styles.reviewMeta}>
-            Each completed game adds to trust scores — reviews are per match, not one score for the whole crew.
-          </Text>
-        ) : null}
-        <Text style={styles.reviewMeta}>
-          Host trust: {reviewStats?.review_count || 0} review
-          {(reviewStats?.review_count || 0) === 1 ? '' : 's'}
-          {typeof reviewStats?.visible_score === 'number'
-            ? ` · ${reviewStats.visible_score.toFixed(1)}/5`
-            : reviewStats?.review_count
-              ? ' · score hidden until 5 reviews'
-              : ''}
-        </Text>
-        {canShowReviewForm && activeReviewTargetId && user?.id !== activeReviewTargetId && (
-          <>
-            {isHost && approvedParticipants.length > 1 && (
-              <View style={styles.inlineRow}>
-                {approvedParticipants.map((participant) => (
-                  <TouchableOpacity
-                    key={participant.user_id}
-                    style={[
-                      styles.inlineChip,
-                      activeReviewTargetId === participant.user_id && styles.inlineChipSelected,
-                    ]}
-                    onPress={() => setReviewTargetUserId(participant.user_id)}
-                  >
-                    <Text
-                      style={[
-                        styles.inlineChipText,
-                        activeReviewTargetId === participant.user_id &&
-                          styles.inlineChipTextSelected,
-                      ]}
-                    >
-                      {participant.user?.username || 'Player'}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
-            <Text style={styles.reviewMeta}>
-              {isHost ? 'Rate your player after the match:' : 'Rate host vibe after the match:'}
-            </Text>
-            <View style={styles.inlineRow}>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <TouchableOpacity
-                  key={`f-${value}`}
-                  style={[styles.inlineChip, friendliness === value && styles.inlineChipSelected]}
-                  onPress={() => setFriendliness(value)}
-                >
-                  <Text
-                    style={[
-                      styles.inlineChipText,
-                      friendliness === value && styles.inlineChipTextSelected,
-                    ]}
-                  >
-                    Friendly {value}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.inlineRow}>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <TouchableOpacity
-                  key={`p-${value}`}
-                  style={[styles.inlineChip, physicality === value && styles.inlineChipSelected]}
-                  onPress={() => setPhysicality(value)}
-                >
-                  <Text
-                    style={[
-                      styles.inlineChipText,
-                      physicality === value && styles.inlineChipTextSelected,
-                    ]}
-                  >
-                    Physical {value}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.inlineRow}>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <TouchableOpacity
-                  key={`v-${value}`}
-                  style={[styles.inlineChip, vibe === value && styles.inlineChipSelected]}
-                  onPress={() => setVibe(value)}
-                >
-                  <Text style={[styles.inlineChipText, vibe === value && styles.inlineChipTextSelected]}>
-                    Vibe {value}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TextInput
-              style={styles.input}
-              value={reviewComment}
-              onChangeText={setReviewComment}
-              placeholder="Optional review comment"
-            />
-            <TouchableOpacity
-              style={[styles.utilityButton, submittingReview && styles.utilityButtonDisabled]}
-              onPress={handleSubmitReview}
-              disabled={submittingReview}
-            >
-              <Text style={styles.utilityButtonText}>
-                {submittingReview ? 'Submitting...' : 'Submit Review'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
-        {activity && !canShowReviewForm && activity.status === 'completed' && (
-          <Text style={styles.reviewMeta}>
-            Reviews open about 2 hours after the scheduled game ends.
-          </Text>
-        )}
-      </View>
-      ) : null}
-
       {isHost && (
         <View style={styles.requestsSection}>
           <Text style={styles.sectionTitle}>Join Requests</Text>
@@ -1313,6 +1263,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                   <Text style={styles.requestUser}>
                     {item.user?.username || 'Unknown user'}
                   </Text>
+                  {item.user ? <PlayerTrustLine userId={item.user.id} /> : null}
                 </TouchableOpacity>
                 <View style={styles.requestActions}>
                   <TouchableOpacity
@@ -1350,51 +1301,51 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f2f4f7',
+    backgroundColor: colors.background,
   },
   content: {
-    padding: 16,
-    paddingBottom: 32,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxxl,
   },
   loadingCenter: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
   loadingLabel: {
-    marginTop: 12,
+    marginTop: spacing.md,
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
   },
   gameRoomHint: {
-    marginTop: 12,
-    marginBottom: 4,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
     fontSize: 13,
-    color: '#555',
+    color: colors.textSecondary,
     lineHeight: 18,
-    backgroundColor: '#eef4ff',
-    padding: 12,
-    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+    padding: spacing.md,
+    borderRadius: radius.md,
   },
   errorTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 8,
-    color: '#111',
+    marginBottom: spacing.sm,
+    color: colors.text,
   },
   errorBody: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
   },
   heroCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md + 2,
     borderWidth: 1,
-    borderColor: '#e8ecf0',
+    borderColor: colors.border,
   },
   heroTopRow: {
     flexDirection: 'row',
@@ -1404,56 +1355,67 @@ const styles = StyleSheet.create({
   heroSport: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#111',
+    color: colors.text,
   },
   statusBadge: {
-    backgroundColor: '#e8f1ff',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
   },
   statusBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#0057c2',
+    color: colors.primaryDark,
     textTransform: 'capitalize',
   },
   heroTime: {
-    marginTop: 10,
+    marginTop: spacing.md,
     fontSize: 16,
     fontWeight: '600',
-    color: '#222',
+    color: colors.text,
   },
   heroLocation: {
-    marginTop: 6,
+    marginTop: spacing.xs + 2,
     fontSize: 15,
-    color: '#444',
+    color: colors.textSecondary,
+  },
+  courtReportLink: {
+    marginTop: spacing.xs,
+    fontSize: 13,
+    color: colors.primary,
+    fontWeight: '600',
   },
   heroMeta: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     fontSize: 13,
-    color: '#666',
+    color: colors.textSecondary,
   },
   participantsSection: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 14,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md + 2,
+    marginBottom: spacing.md + 2,
     borderWidth: 1,
-    borderColor: '#e8ecf0',
+    borderColor: colors.border,
+  },
+  readySummary: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   participantRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: colors.border,
   },
   participantAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1568,11 +1530,11 @@ const styles = StyleSheet.create({
   },
   linkActionPrimary: {
     fontSize: 15,
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '700',
   },
   gameRoomButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
     borderRadius: 10,
     paddingVertical: 12,
     paddingHorizontal: 14,
@@ -1582,7 +1544,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     marginTop: 10,
     borderWidth: 1,
-    borderColor: '#007AFF',
+    borderColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
@@ -1621,11 +1583,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButtonText: {
-    color: '#007AFF',
+    color: colors.primary,
     fontWeight: '600',
   },
   utilityButton: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 11,
     paddingHorizontal: 14,
@@ -1682,8 +1644,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   inlineChipSelected: {
-    borderColor: '#007AFF',
-    backgroundColor: '#007AFF',
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
   inlineChipText: {
     fontSize: 12,

@@ -10,7 +10,7 @@ import { useJoinRequestNotifications } from '../hooks/useJoinRequestNotification
 import { useGameLifecycleNotifications } from '../hooks/useGameLifecycleNotifications';
 import { ROUTES } from '../constants/routes';
 import { getTotalUnreadCount } from '../services/chatService';
-import { PRIMARY_COLOR } from '../constants/theme';
+import { colors, PRIMARY_COLOR } from '../constants/theme';
 
 // Auth Screens
 import LoginScreen from '../pages/Auth/LoginScreen';
@@ -84,7 +84,11 @@ const MainTabs = () => {
         headerShown: false,
         lazy: true,
         tabBarActiveTintColor: PRIMARY_COLOR,
-        tabBarInactiveTintColor: '#8e8e93',
+        tabBarInactiveTintColor: colors.tabInactive,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           const name = icons ? (focused ? icons.focused : icons.unfocused) : 'ellipse-outline';
