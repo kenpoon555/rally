@@ -22,6 +22,28 @@ import {
   getOrCreateDirectConversation,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
+import { useUserPlayMode } from '../../hooks/useUserPlayMode';
+import { MyGameEntry } from '../../services/activityService';
+
+function formatRelativeStart(startTime?: string | null): string {
+  if (!startTime) {
+    return 'Time TBD';
+  }
+  const diffMs = new Date(startTime).getTime() - Date.now();
+  if (diffMs <= 0) {
+    return 'Happening now';
+  }
+  const minutes = Math.round(diffMs / 60000);
+  if (minutes < 60) {
+    return `In ${minutes} min`;
+  }
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `In ${hours} hr${hours === 1 ? '' : 's'}`;
+  }
+  const days = Math.round(hours / 24);
+  return `In ${days} day${days === 1 ? '' : 's'}`;
+}
 
 type TabParamList = {
   Home: undefined;
@@ -42,13 +64,15 @@ const FILTERS: { id: ChatInboxFilter; label: string }[] = [
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
+  const { mode, regularGroups, nextGame, refetch: refetchPlayMode } = useUserPlayMode(user?.id);
   const [filter, setFilter] = useState<ChatInboxFilter>('all');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load])
+      refetchPlayMode();
+    }, [load, refetchPlayMode])
   );
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
@@ -94,7 +118,35 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const openGroupRow = async (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
+    if (item.nextActivity) {
+      setOpeningKey(item.key);
+      try {
+        const conversationId =
+          item.conversationId || (await ensureActivityGroupConversation(item.nextActivity.id));
+        openThread(conversationId, item.title, item.nextActivity.id);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Could not open Game Room.';
+        Alert.alert('Game Room unavailable', message);
+      } finally {
+        setOpeningKey(null);
+      }
+      return;
+    }
+    if (item.group.source_activity_id) {
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+        activityId: item.group.source_activity_id,
+      } as never);
+      return;
+    }
+    Alert.alert(item.group.name, 'No game scheduled yet. The host can schedule the next one.');
+  };
+
   const handlePress = (item: ChatInboxItem) => {
+    if (item.kind === 'group') {
+      void openGroupRow(item);
+      return;
+    }
     if (item.kind === 'game') {
       void openGameChat(item);
       return;
@@ -102,18 +154,103 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     void openFriendChat(item);
   };
 
+  const openActivityRoom = async (entry: MyGameEntry) => {
+    const key = `next-${entry.activity.id}`;
+    setOpeningKey(key);
+    try {
+      const conversationId = await ensureActivityGroupConversation(entry.activity.id);
+      openThread(
+        conversationId,
+        entry.activity.location?.name || `${entry.activity.sport_type} game`,
+        entry.activity.id
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open Game Room.';
+      Alert.alert('Game Room unavailable', message);
+    } finally {
+      setOpeningKey(null);
+    }
+  };
+
+  const openGroupSourceDetails = (sourceActivityId: string) => {
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+      activityId: sourceActivityId,
+    } as never);
+  };
+
+  const renderNextUp = () => {
+    if (mode !== 'regular' || filter === 'friends') {
+      return null;
+    }
+
+    if (nextGame) {
+      const busy = openingKey === `next-${nextGame.activity.id}`;
+      const court = nextGame.activity.location?.name || 'Court TBD';
+      return (
+        <View style={styles.nextUpCard}>
+          <Text style={styles.nextUpLabel}>NEXT UP</Text>
+          <Text style={styles.nextUpTitle}>
+            {nextGame.activity.sport_type} · {court}
+          </Text>
+          <Text style={styles.nextUpTime}>{formatRelativeStart(nextGame.activity.start_time)}</Text>
+          <TouchableOpacity
+            style={[styles.nextUpCta, busy && styles.nextUpCtaDisabled]}
+            onPress={() => void openActivityRoom(nextGame)}
+            disabled={busy}
+          >
+            <Text style={styles.nextUpCtaText}>{busy ? 'Opening…' : 'Open Game Room'}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const group = regularGroups[0];
+    if (!group) {
+      return null;
+    }
+    const isGroupHost = group.host_id === user?.id;
+    return (
+      <View style={styles.nextUpCard}>
+        <Text style={styles.nextUpLabel}>YOUR CREW</Text>
+        <Text style={styles.nextUpTitle}>{group.name}</Text>
+        <Text style={styles.nextUpTime}>No game on the calendar yet.</Text>
+        {isGroupHost && group.source_activity_id ? (
+          <TouchableOpacity
+            style={styles.nextUpCta}
+            onPress={() => openGroupSourceDetails(group.source_activity_id as string)}
+          >
+            <Text style={styles.nextUpCtaText}>Schedule next</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.nextUpWaiting}>Waiting for the host to schedule the next game.</Text>
+        )}
+      </View>
+    );
+  };
+
+  const rowEmoji = (item: ChatInboxItem) => {
+    if (item.kind === 'group') {
+      return '🏸 ';
+    }
+    return item.kind === 'game' ? '💬 ' : '👤 ';
+  };
+
   const renderItem = ({ item }: { item: ChatInboxItem }) => {
     const busy = openingKey === item.key;
     return (
       <TouchableOpacity
-        style={[styles.row, item.kind === 'game' && item.isPast && styles.rowPast]}
+        style={[
+          styles.row,
+          item.kind === 'group' && styles.rowGroup,
+          item.kind === 'game' && item.isPast && styles.rowPast,
+        ]}
         onPress={() => handlePress(item)}
         disabled={busy}
       >
         <View style={styles.rowMain}>
           <View style={styles.rowTop}>
             <Text style={styles.rowTitle} numberOfLines={2}>
-              {item.kind === 'game' ? '💬 ' : '👤 '}
+              {rowEmoji(item)}
               {item.title}
             </Text>
             {item.unread > 0 && (
@@ -187,6 +324,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           renderItem={renderItem}
           onRefresh={load}
           refreshing={loading}
+          ListHeaderComponent={renderNextUp()}
           contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -285,6 +423,9 @@ const styles = StyleSheet.create({
   rowPast: {
     opacity: 0.85,
     backgroundColor: '#fafafa',
+  },
+  rowGroup: {
+    backgroundColor: '#f5f9ff',
   },
   rowMain: {
     flex: 1,
@@ -404,6 +545,52 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '700',
     fontSize: 15,
+  },
+  nextUpCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 14,
+    backgroundColor: '#0a84ff',
+  },
+  nextUpLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: 'rgba(255,255,255,0.85)',
+  },
+  nextUpTitle: {
+    marginTop: 6,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  nextUpTime: {
+    marginTop: 2,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  nextUpCta: {
+    marginTop: 12,
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+  },
+  nextUpCtaDisabled: {
+    opacity: 0.7,
+  },
+  nextUpCtaText: {
+    color: '#0a84ff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  nextUpWaiting: {
+    marginTop: 12,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    lineHeight: 18,
   },
 });
 

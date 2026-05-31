@@ -6,7 +6,8 @@ import { User } from '../types/user';
 import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
 import { navigationRef } from '../navigation/navigationRef';
 import { parseAppDeepLink } from '../navigation/deepLinking';
-import { joinRegularGroupViaInvite } from '../services/regularGroupService';
+import { joinGroupAndNextGame } from '../services/regularGroupService';
+import { ensureActivityGroupConversation } from '../services/chatService';
 import { ROUTES } from '../constants/routes';
 
 interface AuthContextType {
@@ -198,15 +199,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const parsed = parseAppDeepLink(url);
         if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
-          navigationRef.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
             activityId: parsed.activityId,
-          } as never);
+          });
           return;
         }
         if (parsed.type === 'invite' && parsed.inviteToken && navigationRef.isReady()) {
-          navigationRef.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
             inviteToken: parsed.inviteToken,
-          } as never);
+          });
           return;
         }
         if (parsed.type === 'groupInvite' && parsed.groupInviteToken) {
@@ -218,8 +219,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return;
           }
           try {
-            await joinRegularGroupViaInvite(parsed.groupInviteToken);
-            Alert.alert('Joined group', 'You are now part of this Regulars crew.');
+            const { activityId } = await joinGroupAndNextGame(parsed.groupInviteToken);
+            if (activityId && navigationRef.isReady()) {
+              try {
+                const conversationId = await ensureActivityGroupConversation(activityId);
+                (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+                  conversationId,
+                  activityId,
+                });
+                return;
+              } catch {
+                // Joined the crew but couldn't open the room — fall back to a confirmation.
+              }
+            }
+            Alert.alert('Joined crew', "You're in! Your next game will show up in Chats.");
           } catch (err: any) {
             Alert.alert('Group invite', err?.message || 'Could not join group.');
           }

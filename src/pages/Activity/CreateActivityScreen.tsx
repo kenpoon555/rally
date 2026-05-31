@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -31,6 +32,8 @@ import {
   SportType,
 } from '../../constants/sports';
 import { createActivity } from '../../services/activityService';
+import { buildGameInviteUrl } from '../../navigation/deepLinking';
+import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
 import {
   getAllActivityLocations,
   getNearbyActivityLocations,
@@ -354,13 +357,28 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         urgency_level: needPlayersTonight ? 'tonight' : 'normal',
       });
 
+      void setOnboardingFlag(ONBOARDING_FLAGS.HOST_ONBOARDING_COMPLETED);
       navigation.replace(ROUTES.ACTIVITY.DETAIL as any, { activityId: created.id });
-      Alert.alert(
-        'Game created',
-        needPlayersTonight
-          ? 'Your urgent game is highlighted on Discover. Find players in My Games and Chats.'
-          : 'Your game is on Discover and in My Games. Others nearby can request to join.'
-      );
+
+      // Don't make the host hunt for the share button — open the invite sheet right away.
+      const inviteUrl = created.invite_token ? buildGameInviteUrl(created.invite_token) : null;
+      if (inviteUrl) {
+        try {
+          await Share.share({
+            message: `I'm hosting ${created.sport_type} on Rally — tap to join my game: ${inviteUrl}`,
+          });
+          void setOnboardingFlag(ONBOARDING_FLAGS.COACH_SHARE_SHOWN);
+        } catch {
+          // Host dismissed the share sheet; the link is still on the Details screen.
+        }
+      } else {
+        Alert.alert(
+          'Game created',
+          needPlayersTonight
+            ? 'Your urgent game is highlighted on Discover. Find players in My Games and Chats.'
+            : 'Your game is on Discover and in My Games. Others nearby can request to join.'
+        );
+      }
     } catch (error: any) {
       Alert.alert('Create failed', error?.message || 'Could not create game.');
     } finally {
@@ -645,19 +663,6 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                 );
               })}
             </View>
-            <TouchableOpacity
-              style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
-              onPress={() => setNeedPlayersTonight((v) => !v)}
-            >
-              <Text
-                style={[
-                  styles.urgencyToggleText,
-                  needPlayersTonight && styles.urgencyToggleTextSelected,
-                ]}
-              >
-                {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
-              </Text>
-            </TouchableOpacity>
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
@@ -667,6 +672,20 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
             />
           </View>
         )}
+
+        <TouchableOpacity
+          style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
+          onPress={() => setNeedPlayersTonight((v) => !v)}
+        >
+          <Text
+            style={[
+              styles.urgencyToggleText,
+              needPlayersTonight && styles.urgencyToggleTextSelected,
+            ]}
+          >
+            {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
+          </Text>
+        </TouchableOpacity>
 
         {!!selectedLocation && (
           <Text style={styles.selectedCourt} numberOfLines={1}>

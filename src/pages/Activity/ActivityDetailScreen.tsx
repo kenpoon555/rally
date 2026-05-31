@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -59,6 +59,8 @@ import { ProfileReviewStats } from '../../types/review';
 import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
 import { PRIMARY_COLOR } from '../../constants/theme';
+import CoachMark from '../../components/CoachMark';
+import { ONBOARDING_FLAGS } from '../../constants/onboardingFlags';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -217,6 +219,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [routeActivityId]);
 
+  const arrivedViaInvite = useRef(Boolean(inviteToken && !routeActivityId));
+  const redirectedToRoom = useRef(false);
+
   useEffect(() => {
     if (routeActivityId || !inviteToken || !user?.id) {
       return;
@@ -232,6 +237,30 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       })
       .finally(() => setRedeemingInvite(false));
   }, [inviteToken, routeActivityId, user?.id, navigation]);
+
+  // After redeeming an invite, send approved joiners straight into the Game Room
+  // (the modal Details sheet is for settings/history, not day-of coordination).
+  useEffect(() => {
+    if (!arrivedViaInvite.current || redirectedToRoom.current) {
+      return;
+    }
+    if (!activity || !user?.id || !canOpenActivityChat(activity, user.id)) {
+      return;
+    }
+    redirectedToRoom.current = true;
+    (async () => {
+      try {
+        const conversationId = await ensureActivityGroupConversation(activity.id);
+        (navigation as any).replace(ROUTES.CHAT.THREAD, {
+          conversationId,
+          title: activity.location?.name || `${activity.sport_type} game`,
+          activityId: activity.id,
+        });
+      } catch {
+        redirectedToRoom.current = false;
+      }
+    })();
+  }, [activity, user?.id, navigation]);
 
   useEffect(() => {
     if (!activity?.regular_group_id) {
@@ -351,7 +380,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     try {
       await Share.share({
-        message: `Join our ${regularGroup.sport_type} crew "${regularGroup.name}" on Rally: ${buildRegularGroupInviteUrl(regularGroup.invite_token)}`,
+        message: `Join our ${regularGroup.sport_type} crew "${regularGroup.name}" and our next game on Rally — one tap to get in: ${buildRegularGroupInviteUrl(regularGroup.invite_token)}`,
       });
     } catch {
       // User dismissed share sheet.
@@ -747,12 +776,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
         {regularGroup?.invite_token && (isHost || isApprovedJoiner) ? (
           <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleShareGroupInvite()}>
-            <Text style={styles.secondaryButtonText}>Share group invite link</Text>
+            <Text style={styles.secondaryButtonText}>Share crew + next game link</Text>
           </TouchableOpacity>
         ) : null}
         {activity.invite_token && (isHost || isApprovedJoiner) ? (
           <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleShareInvite()}>
-            <Text style={styles.secondaryButtonText}>Share invite link</Text>
+            <Text style={styles.secondaryButtonText}>
+              {regularGroup ? 'Invite to just this game' : 'Share invite link'}
+            </Text>
           </TouchableOpacity>
         ) : null}
         {isHost && activity.status === 'active' && (
@@ -801,6 +832,29 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </>
         )}
       </View>
+
+      <CoachMark
+        flag={ONBOARDING_FLAGS.COACH_RECURRING_SHOWN}
+        active={Boolean(
+          isHost &&
+            !activity.series_id &&
+            activity.start_time &&
+            new Date(activity.start_time).getTime() < Date.now()
+        )}
+        title="Played a good game?"
+        body="Turn this into a weekly recurring game so your crew keeps the same slot."
+        actionLabel="Make weekly recurring"
+        onAction={handleMakeRecurring}
+      />
+
+      <CoachMark
+        flag={ONBOARDING_FLAGS.COACH_REGULARS_SHOWN}
+        active={Boolean(isHost && activity.series_id && !activity.regular_group_id)}
+        title="Make it official"
+        body="Save these players as a Regulars group and share one link to invite the whole crew."
+        actionLabel="Save as Regulars group"
+        onAction={handleCreateRegularGroup}
+      />
 
       {activity.status === 'active' ? (
         <GameRsvpBar

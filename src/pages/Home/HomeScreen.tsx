@@ -49,7 +49,7 @@ function runRawLocationTest() {
 }
 
 type TabParamList = {
-  Home: undefined;
+  Home: { sportFilter?: string; highlightOpenSpots?: boolean } | undefined;
   Chats: undefined;
   MyGames: undefined;
   Friends: undefined;
@@ -58,7 +58,7 @@ type TabParamList = {
 
 type Props = BottomTabScreenProps<TabParamList, 'Home'>;
 
-const HomeScreen: React.FC<Props> = ({ navigation }) => {
+const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const locState = useLocation(false, { skipPermissionCheckOnMount: Platform.OS === 'android' });
   const location = locState?.location ?? null;
@@ -76,6 +76,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     setSelectedSport(resolveUserDefaultSport(preferredSport));
   }, [preferredSport]);
+
+  // "Find players" from a Game Room deep-links here with a sport + open-spots intent.
+  const routeSportFilter = route.params?.sportFilter;
+  const highlightOpenSpots = route.params?.highlightOpenSpots ?? false;
+  useEffect(() => {
+    if (routeSportFilter) {
+      setSelectedSport(resolveUserDefaultSport(routeSportFilter));
+    }
+  }, [routeSportFilter]);
 
   const discoverTitle = `${selectedSport} near you`;
 
@@ -119,11 +128,18 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       .filter((a) => shouldShowInDiscoverFeed(a, user?.id));
     const byDistance = sortActivitiesByDistance(filtered, location);
     return [...byDistance].sort((a, b) => {
+      if (highlightOpenSpots) {
+        const aOpen = (a.missing_players ?? 0) > 0 ? 1 : 0;
+        const bOpen = (b.missing_players ?? 0) > 0 ? 1 : 0;
+        if (aOpen !== bOpen) {
+          return bOpen - aOpen;
+        }
+      }
       const aTonight = a.urgency_level === 'tonight' ? 1 : 0;
       const bTonight = b.urgency_level === 'tonight' ? 1 : 0;
       return bTonight - aTonight;
     });
-  }, [sortedActivities, blockedUserIds, user?.id, location]);
+  }, [sortedActivities, blockedUserIds, user?.id, location, highlightOpenSpots]);
 
   const showInitialLoading = loading && visibleActivities.length === 0;
 

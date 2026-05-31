@@ -140,7 +140,7 @@ const MainStack = () => {
       <Stack.Screen
         name={ROUTES.ACTIVITY.DETAIL}
         component={ActivityDetailScreen}
-        options={{ title: 'Activity Details' }}
+        options={{ title: 'Activity Details', presentation: 'modal' }}
       />
       <Stack.Screen
         name={ROUTES.ACTIVITY.CREATE}

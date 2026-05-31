@@ -31,6 +31,27 @@ export const joinRegularGroupViaInvite = async (inviteToken: string): Promise<st
   return data as string;
 };
 
+export interface JoinGroupResult {
+  groupId: string;
+  /** Soonest upcoming game the invitee was joined to, if any. */
+  activityId: string | null;
+}
+
+/** Unified invite: join the Regulars crew and its next scheduled game in one call. */
+export const joinGroupAndNextGame = async (inviteToken: string): Promise<JoinGroupResult> => {
+  const { data, error } = await supabase.rpc('join_group_and_next_game', {
+    p_group_invite_token: inviteToken,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const result = (data ?? {}) as { group_id?: string; activity_id?: string | null };
+  if (!result.group_id) {
+    throw new Error('Group invite could not be redeemed');
+  }
+  return { groupId: result.group_id, activityId: result.activity_id ?? null };
+};
+
 export const getRegularGroupById = async (groupId: string): Promise<RegularGroup | null> => {
   const { data, error } = await supabase
     .from('regular_groups')

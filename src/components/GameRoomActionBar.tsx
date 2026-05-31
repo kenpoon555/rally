@@ -37,11 +37,13 @@ import {
   isGameChatInPostGameGrace,
 } from '../utils/activityHelpers';
 import { GAME_CHAT_ARCHIVE_GRACE_HOURS } from '../constants/gameChat';
+import { getRegularGroupById } from '../services/regularGroupService';
 
 type GameRoomContextValue = {
   activityId: string;
   activity: ReturnType<typeof useActivity>['activity'];
   loading: boolean;
+  groupName: string | null;
   isHost: boolean;
   isApprovedJoiner: boolean;
   isPendingJoiner: boolean;
@@ -61,6 +63,7 @@ type GameRoomContextValue = {
   settingReady: boolean;
   leaving: boolean;
   onOpenDetails?: () => void;
+  onFindPlayers?: (sportType: string) => void;
   handleApprove: (requestId: string) => Promise<void>;
   handleReject: (requestId: string) => Promise<void>;
   handleSetReady: () => Promise<void>;
@@ -88,6 +91,7 @@ function useGameRoomContext(): GameRoomContextValue {
 type ProviderProps = {
   activityId: string;
   onOpenDetails?: () => void;
+  onFindPlayers?: (sportType: string) => void;
   onLeftGame?: () => void;
   onScheduledNextGame?: (newActivityId: string) => void;
   children: React.ReactNode;
@@ -96,6 +100,7 @@ type ProviderProps = {
 export const GameRoomProvider: React.FC<ProviderProps> = ({
   activityId,
   onOpenDetails,
+  onFindPlayers,
   onLeftGame,
   onScheduledNextGame,
   children,
@@ -108,6 +113,30 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [schedulingNext, setSchedulingNext] = useState(false);
+  const [groupName, setGroupName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const groupId = activity?.regular_group_id;
+    if (!groupId) {
+      setGroupName(null);
+      return;
+    }
+    let cancelled = false;
+    getRegularGroupById(groupId)
+      .then((group) => {
+        if (!cancelled) {
+          setGroupName(group?.name ?? null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGroupName(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activity?.regular_group_id]);
 
   const isHost = Boolean(user && activity && user.id === activity.user_id);
   const myJoinRequest = useMemo(
@@ -304,6 +333,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     activityId,
     activity,
     loading,
+    groupName,
     isHost,
     isApprovedJoiner,
     isPendingJoiner,
@@ -323,6 +353,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     settingReady,
     leaving,
     onOpenDetails,
+    onFindPlayers,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -379,6 +410,7 @@ export const GameRoomHeader: React.FC = () => {
     rosterCount,
     approvedParticipants,
     hostUsername,
+    groupName,
     courtName,
     timeLabel,
     statusLabel,
@@ -402,9 +434,11 @@ export const GameRoomHeader: React.FC = () => {
       <View style={styles.headerTop}>
         <View style={styles.headerCopy}>
           <Text style={styles.courtName} numberOfLines={1}>
-            {courtName}
+            {groupName || courtName}
           </Text>
-          <Text style={styles.timeLabel}>{timeLabel}</Text>
+          <Text style={styles.timeLabel}>
+            {groupName ? `${courtName} · ${timeLabel}` : timeLabel}
+          </Text>
         </View>
         <View style={styles.headerBadges}>
           <View style={[styles.statusPill, statusStyle(statusLabel)]}>
@@ -458,6 +492,7 @@ export const GameRoomFooter: React.FC = () => {
     settingReady,
     leaving,
     onOpenDetails,
+    onFindPlayers,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -509,6 +544,8 @@ export const GameRoomFooter: React.FC = () => {
   const showPlayerActions = !isFinalized && !isHost && isApprovedJoiner;
   const showHostFinalize = !isFinalized && isHost;
   const showPending = isHost && !isFinalized && pendingRequests.length > 0;
+  const showFindPlayers =
+    isHost && !isFinalized && (activity.missing_players ?? 0) > 0 && Boolean(onFindPlayers);
 
   if (isFinalized) {
     return (
@@ -549,6 +586,17 @@ export const GameRoomFooter: React.FC = () => {
             Post-game chat — {GAME_CHAT_ARCHIVE_GRACE_HOURS}h to coordinate the next game.
           </Text>
         </View>
+      ) : null}
+      {showFindPlayers ? (
+        <TouchableOpacity
+          style={[styles.primaryBtn, styles.scheduleBtn]}
+          onPress={() => onFindPlayers?.(activity.sport_type)}
+        >
+          <Text style={styles.primaryBtnText}>
+            Find players ({activity.missing_players} spot
+            {activity.missing_players === 1 ? '' : 's'} open)
+          </Text>
+        </TouchableOpacity>
       ) : null}
       {showScheduleNext ? (
         <TouchableOpacity

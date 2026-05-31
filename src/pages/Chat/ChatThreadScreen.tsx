@@ -314,6 +314,12 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
               activityId: resolvedActivityId,
             } as never)
           }
+          onFindPlayers={(sportType) =>
+            (navigation as any).navigate('MainTabs', {
+              screen: ROUTES.HOME.MAIN,
+              params: { sportFilter: sportType, highlightOpenSpots: true },
+            })
+          }
           onLeftGame={() => navigation.goBack()}
           onScheduledNextGame={(newActivityId) =>
             navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {

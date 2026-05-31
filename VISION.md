@@ -40,8 +40,9 @@ Primary goal: discover, join, and coordinate games with minimal friction.
 Key outcomes:
 
 - **5 tabs:** Chats → My Games → Discover → Friends → Profile.
-- Game Room as primary coordination surface; Activity Details for settings/reviews.
-- Recurring games, invite links, RSVP, Regulars groups foundation.
+- Game Room as primary coordination surface; Activity Details as a settings/reviews modal sheet.
+- Recurring games, invite links, RSVP, Regulars groups, and one unified crew-and-next-game invite.
+- Mode-aware Chats: a "Next up" card and crew rows for Regulars; Find/Create for Explorers.
 - Launch sports: Pickleball, Basketball, Badminton.
 
 ## V2 - Match Optimization + Identity Trust
