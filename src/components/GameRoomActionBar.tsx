@@ -718,7 +718,6 @@ export const GameRoomFooter: React.FC = () => {
     handleScheduleNextGame,
     canScheduleNext,
     schedulingNext,
-    viewerId,
     openPlayerProfile,
   } = useGameRoomContext();
 

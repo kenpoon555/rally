@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { AVATAR_PALETTE, colors, radius } from '../../constants/theme';
+import { AVATAR_PALETTE, colors } from '../../constants/theme';
 import type { ParticipantReadyState } from '../../utils/activityHelpers';
 
 type Size = 'sm' | 'md' | 'lg';

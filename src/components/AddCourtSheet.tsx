@@ -7,7 +7,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
 } from 'react-native';
 import { SportType } from '../constants/sports';
 import { ActivityLocation } from '../types/location';

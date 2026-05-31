@@ -28,7 +28,6 @@ import {
   ActivityVisibility,
   MVP_DEFAULT_SCHEDULING_MODE,
   getDefaultLaunchSportName,
-  getSportMetadata,
   getDefaultOpenSpotsForSport,
   getDefaultTotalPlayersForSport,
   getCreateGameSubtitle,
@@ -47,7 +46,7 @@ import { ActivityLocation } from '../../types/location';
 import { calculateDistance } from '../../utils/distance';
 import { formatDistanceLabel } from '../../utils/formatDistance';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
-import { colors, radius, spacing } from '../../constants/theme';
+import { colors, spacing } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSportIconName } from '../../components/SportIcon';
 import { AddCourtSheet } from '../../components/AddCourtSheet';

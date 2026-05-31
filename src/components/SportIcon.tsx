@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radius, spacing } from '../constants/theme';
+import { colors, radius } from '../constants/theme';
 import { SportType, getSportMetadata } from '../constants/sports';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
