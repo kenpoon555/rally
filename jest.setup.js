@@ -1,3 +1,4 @@
+/* eslint-env jest */
 import 'react-native-gesture-handler/jestSetup';
 
 jest.mock('@react-native-async-storage/async-storage', () =>
@@ -13,6 +14,7 @@ jest.mock('react-native-config', () => ({
   GEOFENCE_RADIUS: '50',
   LOCATION_UPDATE_INTERVAL: '10000',
   LOCATION_DISTANCE_FILTER: '50',
+  SENTRY_DSN: '',
 }));
 
 jest.mock('@react-native-firebase/app', () => ({
@@ -40,3 +42,8 @@ jest.mock('@react-native-firebase/messaging', () => {
     default: mock,
   };
 });
+
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  wrap: (Component: unknown) => Component,
+}));

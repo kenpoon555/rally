@@ -1,21 +1,90 @@
-import * as ExpoLocation from 'expo-location';
 import { Platform } from 'react-native';
+import type * as ExpoLocationType from 'expo-location';
 import { Location } from '../types/location';
-import { sendDebugLog } from '../utils/debugIngest';
 import { addLocationLog } from '../utils/devLocationLog';
-
-const DEBUG_HOST = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1';
-const DEBUG_INGEST_URL = `http://${DEBUG_HOST}:7244/ingest/6b58671e-eb23-45d8-a6fe-a7768139a3fc`;
-function agentLog(location: string, message: string, data: Record<string, unknown>, hypothesisId: string) {
-  fetch(DEBUG_INGEST_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a6a971' }, body: JSON.stringify({ sessionId: 'a6a971', location, message, data, timestamp: Date.now(), hypothesisId }) }).catch(() => {});
-}
 import { CONFIG } from '../constants/config';
 import { supabase } from './api/supabase';
 import { ActivityLocation } from '../types/location';
+import { normalizeActivityLocations } from '../utils/activityLocationGeo';
 import { checkGeofences, locationToGeofence } from '../utils/geofence';
 
+/** Bay Area test coords — used only in __DEV__ when simulator has no GPS fix. */
+const DEV_LOCATION_FALLBACK: Location = {
+  latitude: 37.33233141,
+  longitude: -122.0312186,
+  accuracy: 5000,
+};
+
+/** Lazy-load expo-location so globalThis.expo is set by native (avoids iOS "EventEmitter of undefined" crash). */
+function getExpoLocation(): typeof ExpoLocationType {
+  return require('expo-location');
+}
+
+async function getAndroidProviderStatus(
+  ExpoLocation: typeof ExpoLocationType,
+  reason: string
+): Promise<ExpoLocationType.LocationProviderStatus | null> {
+  if (Platform.OS !== 'android') {
+    return null;
+  }
+
+  try {
+    const status = await ExpoLocation.getProviderStatusAsync();
+
+    if (__DEV__) {
+      addLocationLog(
+        `Android provider status (${reason}):`,
+        JSON.stringify({
+          locationServicesEnabled: status.locationServicesEnabled,
+          gpsAvailable: status.gpsAvailable,
+          networkAvailable: status.networkAvailable,
+          passiveAvailable: status.passiveAvailable,
+        })
+      );
+
+      if (!status.locationServicesEnabled) {
+        addLocationLog('Android diagnosis: location services disabled');
+      } else if (status.networkAvailable === false) {
+        addLocationLog('Android diagnosis: network provider disabled (balanced accuracy may fail)');
+      }
+    }
+
+    return status;
+  } catch (error) {
+    if (__DEV__) addLocationLog('Android provider status check failed:', String(error));
+    return null;
+  }
+}
+
+async function ensureAndroidNetworkProvider(
+  ExpoLocation: typeof ExpoLocationType,
+  providerStatus: ExpoLocationType.LocationProviderStatus | null
+): Promise<ExpoLocationType.LocationProviderStatus | null> {
+  if (Platform.OS !== 'android') {
+    return providerStatus;
+  }
+
+  if (!providerStatus?.locationServicesEnabled || providerStatus.networkAvailable !== false) {
+    return providerStatus;
+  }
+
+  if (__DEV__) addLocationLog('Android diagnosis: prompting enableNetworkProviderAsync...');
+
+  try {
+    await ExpoLocation.enableNetworkProviderAsync();
+    if (__DEV__) addLocationLog('Android diagnosis: enableNetworkProviderAsync resolved');
+  } catch (error) {
+    if (__DEV__) addLocationLog('Android diagnosis: enableNetworkProviderAsync rejected:', String(error));
+    return providerStatus;
+  }
+
+  return getAndroidProviderStatus(ExpoLocation, 'after network prompt');
+}
+
+type LocationSubscription = ExpoLocationType.LocationSubscription | { remove(): void };
+
 let _watchIdCounter = 0;
-const _subscriptions = new Map<number, ExpoLocation.LocationSubscription>();
+const _subscriptions = new Map<number, LocationSubscription>();
 const _cancelledBeforeReady = new Set<number>();
 
 /**
@@ -23,6 +92,7 @@ const _cancelledBeforeReady = new Set<number>();
  */
 export const checkLocationPermission = async (): Promise<boolean> => {
   try {
+    const ExpoLocation = getExpoLocation();
     const { status } = await ExpoLocation.getForegroundPermissionsAsync();
     const granted = status === ExpoLocation.PermissionStatus.GRANTED;
     if (__DEV__) addLocationLog('location permission:', status, granted ? '(granted)' : '');
@@ -38,10 +108,13 @@ export const checkLocationPermission = async (): Promise<boolean> => {
  */
 export const requestLocationPermission = async (): Promise<boolean> => {
   try {
-    sendDebugLog('locationService.ts:requestPermission', 'Requesting foreground location', {}, 'H3');
+    const ExpoLocation = getExpoLocation();
+    const currentPermission = await ExpoLocation.getForegroundPermissionsAsync();
+    if (currentPermission.status === ExpoLocation.PermissionStatus.GRANTED) {
+      return true;
+    }
     const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
     const granted = status === ExpoLocation.PermissionStatus.GRANTED;
-    sendDebugLog('locationService.ts:permissionResult', 'requestForegroundPermissionsAsync returned', { status }, 'H8');
     return granted;
   } catch (error) {
     console.warn('Error requesting location permission:', error);
@@ -51,70 +124,176 @@ export const requestLocationPermission = async (): Promise<boolean> => {
 
 /**
  * Get current location (single attempt) using expo-location.
+ * On Android emulator, getCurrentPositionAsync often fails even with mock location set.
+ * We try getCurrentPositionAsync first, then fall back to getLastKnownPositionAsync.
  */
 export async function getCurrentLocation(): Promise<Location> {
-  const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
-  if (status !== ExpoLocation.PermissionStatus.GRANTED) {
+  const ExpoLocation = getExpoLocation();
+  const hasPermission = await checkLocationPermission();
+  if (!hasPermission) {
     throw new Error('Permission denied');
   }
 
   if (__DEV__) addLocationLog('getCurrentLocation called');
-  sendDebugLog('locationService.ts:getCurrentLocation', 'getCurrentPositionAsync called', {}, 'H8');
-  agentLog('locationService.ts:getCurrentPosition:entry', 'getCurrentPositionAsync called', {}, 'H1,H2,H4');
 
-  const location = await ExpoLocation.getCurrentPositionAsync({
-    accuracy: ExpoLocation.Accuracy.Balanced,
-  });
+  let location: ExpoLocationType.LocationObject | null = null;
+  let locationSource: 'current' | 'lastKnownConstrained' | 'lastKnownUnconstrained' = 'current';
+  let providerStatus: ExpoLocationType.LocationProviderStatus | null = null;
+
+  if (Platform.OS === 'android') {
+    providerStatus = await getAndroidProviderStatus(ExpoLocation, 'before fetch');
+
+    if (providerStatus && !providerStatus.locationServicesEnabled) {
+      throw new Error('Android location services are disabled. Turn on location services and retry.');
+    }
+
+    providerStatus = await ensureAndroidNetworkProvider(ExpoLocation, providerStatus);
+  }
+
+  // Try getCurrentPositionAsync — on Android try low accuracy first (emulator-friendly).
+  const accuracyOrder =
+    Platform.OS === 'android'
+      ? [
+          ExpoLocation.Accuracy.Lowest,
+          ExpoLocation.Accuracy.Low,
+          ExpoLocation.Accuracy.Balanced,
+        ]
+      : [ExpoLocation.Accuracy.Balanced];
+
+  for (const accuracy of accuracyOrder) {
+    if (location) {
+      break;
+    }
+    try {
+      location = await ExpoLocation.getCurrentPositionAsync({ accuracy });
+      if (location && __DEV__) {
+        addLocationLog(`getCurrentPositionAsync ok (accuracy=${accuracy})`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (__DEV__) addLocationLog(`getCurrentPositionAsync failed (accuracy=${accuracy}):`, msg);
+    }
+  }
+
+  if (!location) {
+    if (__DEV__) addLocationLog('Trying getLastKnownPositionAsync fallback...');
+    // Use a generous requiredAccuracy (10km) so network/wifi positions are accepted.
+    // Emulators often report accuracy > 500m for non-GPS fixes, which caused the 500m
+    // threshold to silently discard a valid cached position (e.g. from Google Maps).
+    location = await ExpoLocation.getLastKnownPositionAsync({
+      maxAge: 300000, // 5 minutes
+      requiredAccuracy: 10000, // 10km – accept any realistically cached position
+    });
+    if (location) {
+      locationSource = 'lastKnownConstrained';
+    } else if (Platform.OS === 'android' && __DEV__) {
+      addLocationLog('Android diagnosis: constrained fused lastLocation cache empty');
+    }
+  }
+
+  // Last resort: no constraints at all (handles the case where maxAge/accuracy filtered everything out)
+  if (!location) {
+    if (__DEV__) addLocationLog('Trying getLastKnownPositionAsync with no constraints...');
+    location = await ExpoLocation.getLastKnownPositionAsync({});
+    if (location) {
+      locationSource = 'lastKnownUnconstrained';
+    } else if (Platform.OS === 'android' && __DEV__) {
+      addLocationLog('Android diagnosis: unconstrained fused lastLocation cache empty');
+    }
+  }
+
+  if (!location) {
+    if (__DEV__) {
+      addLocationLog(
+        `${Platform.OS} dev fallback: using Bay Area test coords. Set mock location in simulator if needed.`
+      );
+      return { ...DEV_LOCATION_FALLBACK };
+    }
+    if (Platform.OS === 'android') {
+      throw new Error(
+        'Android location unavailable. Turn on location (High accuracy) or set a mock location in the emulator, then retry.'
+      );
+    }
+    throw new Error('Location unavailable. Enable location services and set mock location if on emulator.');
+  }
 
   const result: Location = {
     latitude: location.coords.latitude,
     longitude: location.coords.longitude,
     accuracy: location.coords.accuracy ?? undefined,
   };
-  if (__DEV__) addLocationLog('getCurrentPosition success:', result.latitude.toFixed(4), result.longitude.toFixed(4));
-  agentLog('locationService.ts:getCurrentPosition:success', 'success', { lat: result.latitude, lng: result.longitude }, 'H1');
+  if (__DEV__) {
+    addLocationLog(
+      `getCurrentLocation success (${locationSource}):`,
+      result.latitude.toFixed(4),
+      result.longitude.toFixed(4)
+    );
+  }
   return result;
 }
 
 /**
- * Start location monitoring (expo-location watchPositionAsync).
+ * Start location monitoring.
+ * On Android and iOS we avoid watchPositionAsync (EventEmitter path) and use getCurrentPositionAsync
+ * polling instead, so native EventEmitter is never used for location and startup/race issues are avoided.
  */
 export const startLocationMonitoring = (
   onLocationUpdate: (location: Location) => void,
   onError: (error: Error) => void
 ): number => {
   const watchId = ++_watchIdCounter;
-  sendDebugLog('locationService.ts:watchPosition', 'watchPositionAsync called', {}, 'H3,H5');
-  let firstUpdateLogged = false;
 
-  ExpoLocation.watchPositionAsync(
-    {
-      accuracy: ExpoLocation.Accuracy.Balanced,
-      timeInterval: CONFIG.LOCATION_UPDATE_INTERVAL,
-      distanceInterval: CONFIG.LOCATION_DISTANCE_FILTER,
-    },
-    (position) => {
-      if (!firstUpdateLogged) {
-        firstUpdateLogged = true;
-        sendDebugLog('locationService.ts:firstLocationUpdate', 'First watchPosition update received', {}, 'H5');
+  const pollOnce = async () => {
+    try {
+      const loc = await getCurrentLocation();
+      onLocationUpdate(loc);
+    } catch (err) {
+      onError(err instanceof Error ? err : new Error(String(err)));
+    }
+  };
+
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
+    const ExpoLocation = getExpoLocation();
+    ExpoLocation.watchPositionAsync(
+      {
+        accuracy: ExpoLocation.Accuracy.Balanced,
+        timeInterval: CONFIG.LOCATION_UPDATE_INTERVAL,
+        distanceInterval: CONFIG.LOCATION_DISTANCE_FILTER,
+      },
+      (position) => {
+        onLocationUpdate({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy ?? undefined,
+        });
       }
-      onLocationUpdate({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy: position.coords.accuracy ?? undefined,
-      });
-    }
-  ).then((subscription) => {
-    if (_cancelledBeforeReady.has(watchId)) {
-      subscription.remove();
-      _cancelledBeforeReady.delete(watchId);
-    } else {
-      _subscriptions.set(watchId, subscription);
-    }
-  }).catch((err) => {
-    onError(err instanceof Error ? err : new Error(String(err)));
-  });
+    ).then((subscription) => {
+      if (_cancelledBeforeReady.has(watchId)) {
+        subscription.remove();
+        _cancelledBeforeReady.delete(watchId);
+      } else {
+        _subscriptions.set(watchId, subscription);
+      }
+    }).catch((err) => {
+      onError(err instanceof Error ? err : new Error(String(err)));
+    });
+    return watchId;
+  }
 
+  // Android & iOS: polling with getCurrentPositionAsync (no EventEmitter)
+  pollOnce();
+  const intervalId = setInterval(pollOnce, CONFIG.LOCATION_UPDATE_INTERVAL);
+  const subscription: LocationSubscription = {
+    remove() {
+      clearInterval(intervalId);
+    },
+  };
+  if (_cancelledBeforeReady.has(watchId)) {
+    subscription.remove();
+    _cancelledBeforeReady.delete(watchId);
+  } else {
+    _subscriptions.set(watchId, subscription);
+  }
   return watchId;
 };
 
@@ -156,7 +335,7 @@ export const getNearbyActivityLocations = async (
     if (!allLocations) return [];
 
     // Simple distance filtering (PostGIS would be better)
-    return allLocations.filter((loc: ActivityLocation) => {
+    const filtered = allLocations.filter((loc: ActivityLocation) => {
       if (!loc.location?.coordinates) return false;
       const [lng, lat] = loc.location.coordinates;
       const distance = Math.sqrt(
@@ -164,9 +343,10 @@ export const getNearbyActivityLocations = async (
       );
       return distance * 111000 <= radius; // Rough conversion to meters
     }) as ActivityLocation[];
+    return normalizeActivityLocations(filtered);
   }
 
-  return (data || []) as ActivityLocation[];
+  return normalizeActivityLocations((data || []) as ActivityLocation[]);
 };
 
 /**
@@ -185,7 +365,7 @@ export const getAllActivityLocations = async (
     throw new Error(`Failed to load activity locations: ${error.message}`);
   }
 
-  return (data || []) as ActivityLocation[];
+  return normalizeActivityLocations((data || []) as ActivityLocation[]);
 };
 
 /**

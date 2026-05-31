@@ -3,13 +3,14 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import FirebaseCore
+public import Expo
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
   var window: UIWindow?
 
   var reactNativeDelegate: ReactNativeDelegate?
-  var reactNativeFactory: RCTReactNativeFactory?
+  var reactNativeFactory: ExpoReactNativeFactoryObjC?
 
   func application(
     _ application: UIApplication,
@@ -20,7 +21,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     let delegate = ReactNativeDelegate()
-    let factory = RCTReactNativeFactory(delegate: delegate)
+    let factory = ExpoReactNativeFactoryObjC(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()
 
     reactNativeDelegate = delegate

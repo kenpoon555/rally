@@ -1,20 +1,40 @@
 import { useMemo } from 'react';
-import { SPORT_TYPES } from '../constants/sports';
+import {
+  LAUNCH_SPORT_TYPES,
+  SPORT_METADATA,
+  SPORT_TYPES,
+  type MatchingProfile,
+  type SportType,
+} from '../constants/sports';
 
 export interface SportsCatalogItem {
   id: string;
   name: string;
+  matchingProfile: MatchingProfile;
+  launchEnabled: boolean;
 }
 
-export const useSportsCatalog = () => {
-  const sports = useMemo<SportsCatalogItem[]>(
-    () =>
-      SPORT_TYPES.map((name) => ({
-        id: name.toLowerCase(),
-        name,
-      })),
-    []
-  );
+function toCatalogItem(name: SportType): SportsCatalogItem {
+  const meta = SPORT_METADATA[name];
+  return {
+    id: meta.id,
+    name: meta.name,
+    matchingProfile: meta.matchingProfile,
+    launchEnabled: meta.launchEnabled,
+  };
+}
 
-  return { sports };
+/**
+ * Sports exposed in Discover / Create / geofence modal: launch-enabled only (Phase 1 wedge).
+ * Use `allSports` for full enum + metadata (e.g. displaying legacy activities).
+ */
+export const useSportsCatalog = () => {
+  return useMemo(() => {
+    const launchSports = LAUNCH_SPORT_TYPES.map(toCatalogItem);
+    const allSports = SPORT_TYPES.map(toCatalogItem);
+    return {
+      sports: launchSports,
+      allSports,
+    };
+  }, []);
 };

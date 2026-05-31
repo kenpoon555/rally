@@ -1,6 +1,6 @@
 # Phase 3 Partner Matching Validation Checklist
 
-Last updated: 2026-02-23
+Last updated: 2026-03-15 (Case 1 Android pass and resolution notes added)
 
 Use this checklist to validate the full partner-matching flow with two real accounts.
 
@@ -21,9 +21,13 @@ Use this checklist to validate the full partner-matching flow with two real acco
 Run all core cases below on both platforms.
 
 ## Case 1: Geolocation Permission + Live Location
-9344916953
+
+| Status | Notes |
+|--------|-------|
+| Pass (Android, 2026-03) | **Why it succeeds:** (1) Expo modules added on Android (`expo` package + `expoAutolinking.useExpoModules()` in `android/settings.gradle`) so `globalThis.expo` is set and expo-location no longer crashes with EventEmitter undefined. (2) `getCurrentLocation()` uses `getCurrentPositionAsync` then `getLastKnownPositionAsync` fallback so location resolves (first attempt or cached/mock). Create activity no longer crashes; location visible in Location debug (dark) panel. See [ANDROID-LOCATION-ISSUE-CONTEXT.md](ANDROID-LOCATION-ISSUE-CONTEXT.md) § Resolution. |
+
 Steps:
-0212726550
+
 1. Open app with a signed-in account.
 2. Deny location permission once, then re-enable from OS settings.
 3. Return to app and refresh location-dependent views.
@@ -39,6 +43,8 @@ Failure signals:
 - Location-dependent content never refreshes.
 
 ## Case 2: Geofence Detection Prompt
+
+| Status | Notes |
 
 Steps:
 
@@ -58,6 +64,8 @@ Failure signals:
 
 ## Case 3: Create Activity + Discover Listing
 
+| Status | Notes |
+
 Steps:
 
 1. Use `Create Activity` path (`Discover`, `Map`, or direct screen).
@@ -76,6 +84,8 @@ Failure signals:
 - Detail screen opens with missing/incorrect data.
 
 ## Case 4: Join Request Flow (Two Accounts)
+
+| Status | Notes |
 
 Steps:
 
@@ -98,6 +108,8 @@ Failure signals:
 
 ## Case 5: Friend Request + Accept
 
+| Status | Notes |
+
 Steps:
 
 1. Account A sends friend request to Account B from Friends tab.
@@ -115,6 +127,8 @@ Failure signals:
 - Accepted request does not convert into friend list entry.
 
 ## Case 6: Quick Match Behavior
+
+| Status | Notes |
 
 Steps:
 

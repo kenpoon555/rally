@@ -6,6 +6,7 @@ Archived on: 2026-02-21
 
 ## Moved Files
 
+- `FIREBASE-CONFIG-SETUP.md` (archived 2026-03-14; Firebase config task done; both plist and google-services.json in place)
 - `auth-profile-validation-checklist.md` (archived 2026-02-27; Cases 4 and 6 passed; revisit if needed)
 - `map-tab-max-update-depth-hypotheses.md` (archived 2026-02-27; root cause fixed in useLocation)
 - `IMMEDIATE_NEXT_STEPS.md`

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -14,11 +15,23 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import {
   getConversationMessages,
+  getConversationPeerUserIds,
+  getConversationById,
   markConversationRead,
   sendConversationMessage,
   subscribeToConversationMessages,
 } from '../../services/chatService';
 import { ChatMessage } from '../../types/chat';
+import { trackProductEvent } from '../../services/analyticsService';
+import { getUserById } from '../../services/userService';
+import SafetyActionsSheet from '../../components/SafetyActionsSheet';
+import {
+  GameRoomFooter,
+  GameRoomHeader,
+  GameRoomProvider,
+  useOptionalGameRoom,
+} from '../../components/GameRoomActionBar';
+import { ROUTES } from '../../constants/routes';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -26,25 +39,177 @@ type MainStackParamList = {
   CreateActivity: undefined;
   Profile: undefined;
   ChatList: undefined;
-  ChatThread: { conversationId: string; title?: string };
+  ChatThread: { conversationId: string; title?: string; activityId?: string };
 };
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ChatThread'>;
 
+const GameRoomChatBody: React.FC<{
+  isGameRoom: boolean;
+  userId?: string;
+  messages: ChatMessage[];
+  loading: boolean;
+  errorText: string | null;
+  draft: string;
+  sending: boolean;
+  canSend: boolean;
+  onDraftChange: (text: string) => void;
+  onSend: () => void;
+  onRefresh: () => void;
+}> = ({
+  isGameRoom,
+  userId,
+  messages,
+  loading,
+  errorText,
+  draft,
+  sending,
+  canSend,
+  onDraftChange,
+  onSend,
+  onRefresh,
+}) => {
+  const gameRoom = useOptionalGameRoom();
+  const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
+  const canSendMessage = canSend && !chatReadOnly;
+
+  return (
+  <>
+    {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+    <FlatList
+      style={styles.list}
+      contentContainerStyle={messages.length === 0 ? styles.emptyList : styles.listContent}
+      data={messages}
+      keyExtractor={(item) => item.id}
+      onRefresh={onRefresh}
+      refreshing={loading}
+      keyboardDismissMode="interactive"
+      keyboardShouldPersistTaps="handled"
+      ListEmptyComponent={
+        !loading && !errorText ? (
+          <Text style={styles.emptyHint}>
+            {isGameRoom
+              ? 'Coordinate here — say hi and tap Mark Ready when you can make it.'
+              : 'No messages yet. Say hi!'}
+          </Text>
+        ) : null
+      }
+      renderItem={({ item }) => {
+        const mine = item.sender_id === userId;
+        return (
+          <View style={[styles.messageBubble, mine ? styles.myBubble : styles.otherBubble]}>
+            <Text style={[styles.messageText, mine && styles.myMessageText]}>{item.content}</Text>
+            <Text style={[styles.messageMeta, mine && styles.myMessageMeta]}>
+              {new Date(item.created_at).toLocaleTimeString([], {
+                hour: 'numeric',
+                minute: '2-digit',
+              })}
+            </Text>
+          </View>
+        );
+      }}
+    />
+
+    {isGameRoom ? <GameRoomFooter /> : null}
+
+    {!chatReadOnly ? (
+    <View style={styles.inputRow}>
+      <TextInput
+        style={styles.input}
+        value={draft}
+        onChangeText={onDraftChange}
+        placeholder={isGameRoom ? 'Message the group…' : 'Type a message…'}
+        multiline={false}
+        returnKeyType="send"
+        onSubmitEditing={canSendMessage ? onSend : undefined}
+      />
+      <TouchableOpacity
+        style={[styles.sendButton, !canSendMessage && styles.sendButtonDisabled]}
+        onPress={onSend}
+        disabled={!canSendMessage}
+      >
+        <Text style={styles.sendButtonText}>{sending ? '…' : 'Send'}</Text>
+      </TouchableOpacity>
+    </View>
+    )}
+  </>
+  );
+};
+
 const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { conversationId, title } = route.params;
+  const { conversationId, title, activityId } = route.params;
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
+  const [peerUserId, setPeerUserId] = useState<string | null>(null);
+  const [peerUsername, setPeerUsername] = useState<string | null>(null);
+  const [safetyOpen, setSafetyOpen] = useState(false);
+  const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(activityId);
+
+  const isGameRoom = Boolean(resolvedActivityId);
 
   useEffect(() => {
-    if (title) {
-      navigation.setOptions({ title });
+    if (activityId) {
+      setResolvedActivityId(activityId);
+      return;
     }
-  }, [navigation, title]);
+    getConversationById(conversationId)
+      .then((convo) => {
+        if (convo?.activity_id) {
+          setResolvedActivityId(convo.activity_id);
+        }
+      })
+      .catch(() => undefined);
+  }, [activityId, conversationId]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+    trackProductEvent('conversation_opened', { conversation_id: conversationId }, user.id);
+  }, [conversationId, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setPeerUserId(null);
+      setPeerUsername(null);
+      return;
+    }
+    getConversationPeerUserIds(conversationId, user.id)
+      .then(async (peerIds) => {
+        if (peerIds.length !== 1) {
+          setPeerUserId(null);
+          setPeerUsername(null);
+          return;
+        }
+        const peerId = peerIds[0];
+        setPeerUserId(peerId);
+        const profile = await getUserById(peerId);
+        setPeerUsername(profile?.username || 'Player');
+      })
+      .catch(() => {
+        setPeerUserId(null);
+        setPeerUsername(null);
+      });
+  }, [conversationId, user?.id]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      title: isGameRoom ? title || 'Game Room' : title || 'Chat',
+      headerRight: () => (
+        <View style={styles.headerActions}>
+          {!isGameRoom && peerUserId ? (
+            <TouchableOpacity onPress={() => setSafetyOpen(true)} style={styles.headerSafety}>
+              <Text style={styles.headerSafetyText}>Safety</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      ),
+    });
+  }, [navigation, title, isGameRoom, peerUserId]);
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -95,10 +260,17 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     setDraft('');
     setSending(true);
     try {
-      await sendConversationMessage(conversationId, user.id, content);
+      const sent = await sendConversationMessage(conversationId, user.id, content);
+      setMessages((prev) => {
+        if (prev.some((msg) => msg.id === sent.id)) {
+          return prev;
+        }
+        return [...prev, sent];
+      });
     } catch (error: any) {
       console.error('Send message failed:', error);
       setDraft(content);
+      Alert.alert('Message not sent', error?.message || 'Could not send message.');
     } finally {
       setSending(false);
     }
@@ -112,46 +284,61 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
+  const chatBody = (
+    <GameRoomChatBody
+      isGameRoom={isGameRoom}
+      userId={user?.id}
+      messages={messages}
+      loading={loading}
+      errorText={errorText}
+      draft={draft}
+      sending={sending}
+      canSend={canSend}
+      onDraftChange={setDraft}
+      onSend={() => void handleSend()}
+      onRefresh={() => void loadMessages()}
+    />
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
-      {errorText && <Text style={styles.errorText}>{errorText}</Text>}
-      <FlatList
-        style={styles.list}
-        data={messages}
-        keyExtractor={(item) => item.id}
-        onRefresh={loadMessages}
-        refreshing={loading}
-        renderItem={({ item }) => {
-          const mine = item.sender_id === user?.id;
-          return (
-            <View style={[styles.messageBubble, mine ? styles.myBubble : styles.otherBubble]}>
-              <Text style={[styles.messageText, mine && styles.myMessageText]}>{item.content}</Text>
-              <Text style={[styles.messageMeta, mine && styles.myMessageMeta]}>
-                {new Date(item.created_at).toLocaleTimeString()}
-              </Text>
-            </View>
-          );
-        }}
-      />
-
-      <View style={styles.inputRow}>
-        <TextInput
-          style={styles.input}
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Type a message..."
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, !canSend && styles.sendButtonDisabled]}
-          onPress={handleSend}
-          disabled={!canSend}
+      {isGameRoom && resolvedActivityId ? (
+        <GameRoomProvider
+          activityId={resolvedActivityId}
+          onOpenDetails={() =>
+            navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+              activityId: resolvedActivityId,
+            } as never)
+          }
+          onLeftGame={() => navigation.goBack()}
+          onScheduledNextGame={(newActivityId) =>
+            navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+              activityId: newActivityId,
+            } as never)
+          }
         >
-          <Text style={styles.sendButtonText}>{sending ? '...' : 'Send'}</Text>
-        </TouchableOpacity>
-      </View>
+          <GameRoomHeader />
+          {chatBody}
+        </GameRoomProvider>
+      ) : (
+        chatBody
+      )}
+
+      {user?.id && peerUserId && peerUsername ? (
+        <SafetyActionsSheet
+          visible={safetyOpen}
+          onClose={() => setSafetyOpen(false)}
+          currentUserId={user.id}
+          targetUserId={peerUserId}
+          targetUsername={peerUsername}
+          contextType="chat"
+          contextId={conversationId}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 };
@@ -175,28 +362,45 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+  },
+  listContent: {
     padding: 12,
+    paddingBottom: 4,
+  },
+  emptyList: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyHint: {
+    textAlign: 'center',
+    color: '#888',
+    fontSize: 14,
+    lineHeight: 20,
   },
   messageBubble: {
     maxWidth: '78%',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 12,
-    marginBottom: 10,
+    borderRadius: 16,
+    marginBottom: 8,
   },
   myBubble: {
     alignSelf: 'flex-end',
     backgroundColor: '#007AFF',
+    borderBottomRightRadius: 4,
   },
   otherBubble: {
     alignSelf: 'flex-start',
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e4e4e4',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#e0e0e0',
+    borderBottomLeftRadius: 4,
   },
   messageText: {
     fontSize: 15,
     color: '#222',
+    lineHeight: 20,
   },
   myMessageText: {
     color: '#fff',
@@ -210,35 +414,51 @@ const styles = StyleSheet.create({
     color: '#dfeaff',
   },
   inputRow: {
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#ececec',
+    padding: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#ddd',
     backgroundColor: '#fff',
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
   input: {
     flex: 1,
     borderWidth: 1,
     borderColor: '#ddd',
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: 20,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    marginRight: 10,
-    backgroundColor: '#fff',
+    marginRight: 8,
+    backgroundColor: '#fafafa',
+    maxHeight: 100,
   },
   sendButton: {
     backgroundColor: '#007AFF',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     paddingVertical: 10,
+    minWidth: 64,
+    alignItems: 'center',
   },
   sendButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   sendButtonText: {
     color: '#fff',
     fontWeight: '700',
+  },
+  headerSafety: {
+    marginRight: 12,
+    paddingVertical: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerSafetyText: {
+    color: '#007AFF',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });
 

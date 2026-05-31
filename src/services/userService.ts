@@ -1,5 +1,7 @@
 import { supabase } from './api/supabase';
 import { User } from '../types/user';
+import { getDefaultLaunchSportName, resolveUserDefaultSport } from '../constants/sports';
+import { TOS_VERSION } from '../constants/legal';
 
 /**
  * Get current user profile
@@ -68,7 +70,9 @@ export const createUserProfile = async (
       username: profileData.username,
       ...(profileData.email && { email: profileData.email }),
       ...(profileData.phone && { phone: profileData.phone }),
-      ...(profileData.preferred_sports && { preferred_sports: profileData.preferred_sports }),
+      ...(profileData.preferred_sports?.length
+        ? { preferred_sports: profileData.preferred_sports }
+        : { preferred_sports: [getDefaultLaunchSportName()] }),
     };
 
     const { data, error } = await supabase
@@ -177,6 +181,15 @@ export const updateUserProfile = async (
   return data as User;
 };
 
+/** Persist a default sport when profile has none (legacy accounts). */
+export async function ensureUserDefaultSport(user: User): Promise<User> {
+  if (user.preferred_sports?.[0]) {
+    return user;
+  }
+  const defaultSport = resolveUserDefaultSport(null);
+  return updateUserProfile(user.id, { preferred_sports: [defaultSport] as User['preferred_sports'] });
+}
+
 /**
  * Get user by ID
  */
@@ -198,6 +211,32 @@ export const getUserById = async (userId: string): Promise<User | null> => {
 /**
  * Search users by username or phone
  */
+export const acceptLegalTerms = async (userId: string): Promise<User> => {
+  return updateUserProfile(userId, {
+    tos_accepted_at: new Date().toISOString(),
+    tos_version: TOS_VERSION,
+  } as Partial<User>);
+};
+
+export const acknowledgeLocationPrivacy = async (userId: string): Promise<User> => {
+  return updateUserProfile(userId, {
+    location_privacy_ack_at: new Date().toISOString(),
+  } as Partial<User>);
+};
+
+export const needsLegalAcceptance = (user: User | null): boolean => {
+  if (!user) {
+    return false;
+  }
+  if (!user.tos_accepted_at || user.tos_version !== TOS_VERSION) {
+    return true;
+  }
+  if (!user.location_privacy_ack_at) {
+    return true;
+  }
+  return false;
+};
+
 export const searchUsers = async (query: string): Promise<User[]> => {
   const { data, error } = await supabase
     .from('profiles')

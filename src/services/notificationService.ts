@@ -77,12 +77,26 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
   }
 };
 
+function isExpectedPushTokenFailure(error: unknown): boolean {
+  const message = String(error instanceof Error ? error.message : error).toLowerCase();
+  return (
+    message.includes('simulator') ||
+    message.includes('unregistered') ||
+    message.includes('apns') ||
+    message.includes('entitlement') ||
+    message.includes('messaging/') ||
+    message.includes('not registered')
+  );
+}
+
 /**
- * Get device token
+ * Get device token (FCM). Returns null on simulator / missing APNs — not a fatal app error.
  */
 export const getDeviceToken = async (): Promise<string | null> => {
   if (!isFirebaseInitialized()) {
-    console.warn('Firebase not initialized. Cannot get device token.');
+    if (__DEV__) {
+      console.warn('Firebase not initialized. Push token skipped.');
+    }
     return null;
   }
 
@@ -90,7 +104,14 @@ export const getDeviceToken = async (): Promise<string | null> => {
     const token = await messaging().getToken();
     return token;
   } catch (error) {
-    console.error('Failed to get device token:', error);
+    // console.error triggers a red LogBox toast; simulator lacks APNs/FCM.
+    if (__DEV__ && isExpectedPushTokenFailure(error)) {
+      console.warn(
+        'Push token unavailable (normal on iOS Simulator). Use a physical device for push testing.'
+      );
+    } else if (__DEV__) {
+      console.warn('Failed to get device token:', error);
+    }
     return null;
   }
 };

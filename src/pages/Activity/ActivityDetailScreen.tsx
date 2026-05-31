@@ -1,30 +1,48 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
   Alert,
   TextInput,
+  ScrollView,
+  Platform,
+  Share,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import JoinRequestButton from '../../components/JoinRequestButton';
 import {
-  finalizeFlexibleActivity,
+  finalizeGameCommitment,
+  setGameReady,
+  leaveGame,
   getActivityCandidateLocations,
   getActivityJoinRequests,
   upsertParticipantPreference,
   approveJoinRequest,
   rejectJoinRequest,
+  canOpenActivityChat,
+  extendActivitySchedule,
+  scheduleNextGameFromActivity,
+  makeActivityRecurring,
+  setGameRsvp,
+  joinGameViaInvite,
 } from '../../services/activityService';
+import { buildGameInviteUrl } from '../../navigation/deepLinking';
+import GameRsvpBar from '../../components/GameRsvpBar';
+import { GameRsvpStatus } from '../../types/activity';
+import { supabase } from '../../services/api/supabase';
+import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
+import { formatActivityTime, getApprovedParticipants, canHostScheduleNextGame } from '../../utils/activityHelpers';
+import { isActivityListingActive, isReviewWindowOpen } from '../../utils/activityExpiry';
 import { ActivityCandidateLocation, JoinRequest } from '../../types/activity';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ROUTES } from '../../constants/routes';
 import {
-  createActivityGroupConversation,
-  getActivityGroupConversationId,
+  ensureActivityGroupConversation,
 } from '../../services/chatService';
 import {
   canViewProfileIdentity,
@@ -32,10 +50,12 @@ import {
   submitPlayerReview,
 } from '../../services/reviewService';
 import { ProfileReviewStats } from '../../types/review';
+import { getActivityDetailMatchingCopy } from '../../constants/sports';
+import { trackProductEvent } from '../../services/analyticsService';
 
 type MainStackParamList = {
   MainTabs: undefined;
-  ActivityDetail: { activityId: string };
+  ActivityDetail: { activityId?: string; inviteToken?: string };
   CreateActivity: undefined;
   ChatThread: { conversationId: string; title?: string };
 };
@@ -43,13 +63,17 @@ type MainStackParamList = {
 type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
 
 const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { activityId } = route.params;
-  const { activity, loading, refetch } = useActivity(activityId);
+  const { activityId: routeActivityId, inviteToken } = route.params;
+  const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(routeActivityId);
+  const activityId = resolvedActivityId || '';
+  const { activity, loading, error, refetch } = useActivity(activityId);
   const { user } = useAuth();
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [submittingPreference, setSubmittingPreference] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [settingReady, setSettingReady] = useState(false);
+  const [leaving, setLeaving] = useState(false);
   const [openingChat, setOpeningChat] = useState(false);
   const [candidateLocations, setCandidateLocations] = useState<ActivityCandidateLocation[]>([]);
   const [preferredLocationId, setPreferredLocationId] = useState<string | null>(null);
@@ -62,9 +86,61 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [physicality, setPhysicality] = useState(3);
   const [vibe, setVibe] = useState(3);
   const [reviewComment, setReviewComment] = useState('');
+  const [reviewTargetUserId, setReviewTargetUserId] = useState<string | null>(null);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [profilePlayer, setProfilePlayer] = useState<PlayerProfilePreview | null>(null);
+  const [extendPickerVisible, setExtendPickerVisible] = useState(false);
+  const [extendStartTime, setExtendStartTime] = useState(() => new Date());
+  const [extending, setExtending] = useState(false);
+  const [schedulingNext, setSchedulingNext] = useState(false);
+  const [makingRecurring, setMakingRecurring] = useState(false);
+  const [rsvpSaving, setRsvpSaving] = useState(false);
+  const [redeemingInvite, setRedeemingInvite] = useState(false);
 
   const isHost = user && activity && user.id === activity.user_id;
+  const myJoinRequest = useMemo(
+    () => (activity?.join_requests || []).find((r) => r.user_id === user?.id),
+    [activity?.join_requests, user?.id]
+  );
+  const isApprovedJoiner = myJoinRequest?.status === 'approved';
+  const isFinalized = activity?.match_status === 'finalized';
+  const iAmReady = Boolean(isHost || myJoinRequest?.ready_at);
+
+  const approvedParticipants = useMemo(
+    () => (activity ? getApprovedParticipants(activity) : []),
+    [activity]
+  );
+
+  const canShowReviewForm = useMemo(
+    () => Boolean(activity && isReviewWindowOpen(activity)),
+    [activity]
+  );
+
+  const activeReviewTargetId = useMemo(() => {
+    if (!activity || !user) {
+      return null;
+    }
+    if (isHost) {
+      const fallback = approvedParticipants[0]?.user_id || null;
+      if (reviewTargetUserId && approvedParticipants.some((p) => p.user_id === reviewTargetUserId)) {
+        return reviewTargetUserId;
+      }
+      return fallback;
+    }
+    return activity.user_id;
+  }, [activity, user, isHost, approvedParticipants, reviewTargetUserId]);
+
+  const openPlayerProfile = (
+    player: { id: string; username: string; profile_photo_url?: string },
+    roleLabel: string
+  ) => {
+    setProfilePlayer({
+      id: player.id,
+      username: player.username,
+      profile_photo_url: player.profile_photo_url,
+      roleLabel,
+    });
+  };
 
   const loadJoinRequests = useCallback(async () => {
     setLoadingRequests(true);
@@ -83,6 +159,170 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       loadJoinRequests();
     }
   }, [isHost, activityId, loadJoinRequests]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isHost && activityId) {
+        loadJoinRequests();
+      }
+    }, [isHost, activityId, loadJoinRequests])
+  );
+
+  useEffect(() => {
+    if (!activityId) {
+      return;
+    }
+    const channel = supabase
+      .channel(`join-requests-sync-${activityId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'join_requests',
+          filter: `activity_id=eq.${activityId}`,
+        },
+        () => {
+          if (isHost) {
+            loadJoinRequests();
+          }
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activityId, isHost, loadJoinRequests, refetch]);
+
+  useEffect(() => {
+    if (activity?.start_time) {
+      setExtendStartTime(new Date(activity.start_time));
+    }
+  }, [activity?.start_time]);
+
+  useEffect(() => {
+    if (routeActivityId) {
+      setResolvedActivityId(routeActivityId);
+    }
+  }, [routeActivityId]);
+
+  useEffect(() => {
+    if (routeActivityId || !inviteToken || !user?.id) {
+      return;
+    }
+    setRedeemingInvite(true);
+    joinGameViaInvite(inviteToken)
+      .then((id) => {
+        setResolvedActivityId(id);
+        navigation.setParams({ activityId: id, inviteToken: undefined });
+      })
+      .catch((err: Error) => {
+        Alert.alert('Invite link', err.message || 'Could not join from invite.');
+      })
+      .finally(() => setRedeemingInvite(false));
+  }, [inviteToken, routeActivityId, user?.id, navigation]);
+
+  const handleExtendGame = async (date: Date) => {
+    if (!activity) {
+      return;
+    }
+    setExtending(true);
+    try {
+      await extendActivitySchedule(activity.id, date);
+      await refetch();
+      Alert.alert('Extended', 'Start time and listing expiry were updated.');
+    } catch (error: any) {
+      Alert.alert('Could not extend', error?.message || 'Try again.');
+    } finally {
+      setExtending(false);
+      setExtendPickerVisible(false);
+    }
+  };
+
+  const handleScheduleNextGame = () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    Alert.alert(
+      'Schedule next game?',
+      'Creates an invite-only game next week with this roster. Hidden from Discover.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Schedule',
+          onPress: async () => {
+            setSchedulingNext(true);
+            try {
+              const newId = await scheduleNextGameFromActivity(activity.id);
+              navigation.replace(ROUTES.ACTIVITY.DETAIL as never, { activityId: newId } as never);
+            } catch (error: any) {
+              Alert.alert('Schedule failed', error?.message || 'Could not schedule next game.');
+            } finally {
+              setSchedulingNext(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleShareInvite = async () => {
+    if (!activity?.invite_token) {
+      return;
+    }
+    try {
+      await Share.share({
+        message: `Join my ${activity.sport_type} game on Rally: ${buildGameInviteUrl(activity.invite_token)}`,
+      });
+    } catch {
+      // User dismissed share sheet.
+    }
+  };
+
+  const handleMakeRecurring = () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    Alert.alert(
+      'Make weekly recurring?',
+      'Future “Schedule next game” spins up invite-only games with this roster every week.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Enable',
+          onPress: async () => {
+            setMakingRecurring(true);
+            try {
+              await makeActivityRecurring(activity.id);
+              await refetch();
+              Alert.alert('Recurring enabled', 'Use Schedule next game to spawn the next week.');
+            } catch (err: any) {
+              Alert.alert('Could not enable recurring', err?.message || 'Try again.');
+            } finally {
+              setMakingRecurring(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleSetRsvp = async (status: GameRsvpStatus) => {
+    if (!activity) {
+      return;
+    }
+    setRsvpSaving(true);
+    try {
+      await setGameRsvp(activity.id, status);
+      await refetch();
+    } catch (err: any) {
+      Alert.alert('RSVP failed', err?.message || 'Could not save RSVP.');
+    } finally {
+      setRsvpSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!activity?.id || activity.scheduling_mode !== 'flex') {
@@ -128,7 +368,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       await loadJoinRequests();
       refetch();
     } catch (error: any) {
-      alert(error.message || 'Failed to approve request');
+      Alert.alert('Error', error.message || 'Failed to approve request');
     }
   };
 
@@ -137,7 +377,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       await rejectJoinRequest(requestId);
       await loadJoinRequests();
     } catch (error: any) {
-      alert(error.message || 'Failed to reject request');
+      Alert.alert('Error', error.message || 'Failed to reject request');
     }
   };
 
@@ -169,7 +409,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const handleSubmitReview = async () => {
-    if (!user?.id || !activity?.user_id || user.id === activity.user_id) {
+    if (!user?.id || !activity || !activeReviewTargetId || user.id === activeReviewTargetId) {
       return;
     }
 
@@ -178,16 +418,19 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       await submitPlayerReview({
         activity_id: activity.id,
         reviewer_id: user.id,
-        reviewed_id: activity.user_id,
+        reviewed_id: activeReviewTargetId,
         friendliness_rating: friendliness,
         physicality_rating: physicality,
         overall_vibe_rating: vibe,
         comment: reviewComment.trim() || undefined,
       });
       Alert.alert('Thanks', 'Your review has been submitted.');
-      const updatedStats = await getProfileReviewStats(activity.user_id);
+      const updatedStats = await getProfileReviewStats(activeReviewTargetId);
       setReviewStats(updatedStats);
       setReviewComment('');
+      if (isHost) {
+        setReviewTargetUserId(null);
+      }
     } catch (error: any) {
       Alert.alert('Review failed', error?.message || 'Could not submit review.');
     } finally {
@@ -201,17 +444,54 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     setFinalizing(true);
     try {
-      const result = await finalizeFlexibleActivity(activity.id, activity.location_id || undefined);
-      Alert.alert(
-        'Activity finalized',
-        `Start: ${new Date(result.final_start_time).toLocaleString()}`
-      );
+      await finalizeGameCommitment(activity.id);
+      Alert.alert('Game finalized', 'Roster is locked. See you on court!');
       refetch();
     } catch (error: any) {
-      Alert.alert('Finalize failed', error?.message || 'Could not finalize activity.');
+      Alert.alert('Finalize failed', error?.message || 'Could not finalize game.');
     } finally {
       setFinalizing(false);
     }
+  };
+
+  const handleSetReady = async () => {
+    if (!activity || iAmReady) {
+      return;
+    }
+    setSettingReady(true);
+    try {
+      await setGameReady(activity.id, true);
+      await refetch();
+    } catch (error: any) {
+      Alert.alert('Ready failed', error?.message || 'Could not mark ready.');
+    } finally {
+      setSettingReady(false);
+    }
+  };
+
+  const handleLeaveGame = () => {
+    if (!activity || isHost || isFinalized) {
+      return;
+    }
+    Alert.alert('Leave this game?', 'You will be removed from the roster and game chat.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Leave',
+        style: 'destructive',
+        onPress: async () => {
+          setLeaving(true);
+          try {
+            await leaveGame(activity.id);
+            Alert.alert('Left game', 'You are no longer on this roster.');
+            navigation.goBack();
+          } catch (error: any) {
+            Alert.alert('Could not leave', error?.message || 'Try again.');
+          } finally {
+            setLeaving(false);
+          }
+        },
+      },
+    ]);
   };
 
   const handleOpenGroupChat = async () => {
@@ -220,25 +500,50 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     setOpeningChat(true);
     try {
-      let conversationId = await getActivityGroupConversationId(activity.id);
-      if (!conversationId) {
-        conversationId = await createActivityGroupConversation(activity.id);
-      }
+      const conversationId = await ensureActivityGroupConversation(activity.id);
+      setOpeningChat(false);
       navigation.navigate(ROUTES.CHAT.THREAD as any, {
         conversationId,
-        title: 'Activity Chat',
+        title: activity.location?.name || `${activity.sport_type} game`,
+        activityId: activity.id,
       });
+      if (user?.id) {
+        void trackProductEvent(
+          'activity_chat_opened',
+          { activity_id: activity.id, conversation_id: conversationId },
+          user.id
+        );
+      }
     } catch (error: any) {
-      Alert.alert('Chat unavailable', error?.message || 'Could not open activity chat.');
-    } finally {
       setOpeningChat(false);
+      Alert.alert('Chat unavailable', error?.message || 'Could not open game chat.');
     }
   };
 
-  if (loading) {
+  if (loading && !activity) {
     return (
       <View style={styles.container}>
         <Text>Loading...</Text>
+      </View>
+    );
+  }
+
+  if (redeemingInvite || (loading && !activity && activityId)) {
+    return (
+      <View style={[styles.container, styles.content]}>
+        <Text style={styles.heroMeta}>{redeemingInvite ? 'Opening invite…' : 'Loading game…'}</Text>
+      </View>
+    );
+  }
+
+  if (error && !activity) {
+    return (
+      <View style={[styles.container, styles.content]}>
+        <Text style={styles.errorTitle}>Could not load game</Text>
+        <Text style={styles.errorBody}>{error.message}</Text>
+        <TouchableOpacity style={styles.utilityButton} onPress={refetch}>
+          <Text style={styles.utilityButtonText}>Try again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -251,36 +556,252 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
+  const detailCopy = getActivityDetailMatchingCopy(
+    activity.sport_type,
+    activity.scheduling_mode
+  );
+
+  const timeLabel = formatActivityTime(activity.start_time, activity.duration);
+  const slotsLabel = (() => {
+    const count = activity.player_count || 1;
+    const openSpots = activity.missing_players ?? 0;
+    if (openSpots > 0) {
+      return `${count} player${count === 1 ? '' : 's'} · ${openSpots} spot${openSpots === 1 ? '' : 's'} open`;
+    }
+    return `${count} player${count === 1 ? '' : 's'}`;
+  })();
+  const showChat = canOpenActivityChat(activity, user?.id);
+  const canScheduleNext = Boolean(isHost && canHostScheduleNextGame(activity, true));
+  const listingActive = isActivityListingActive(activity);
+  const expiresLabel = activity.expires_at
+    ? new Date(activity.expires_at).toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
+    : null;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{activity.sport_type}</Text>
-      <Text style={styles.location}>
-        {activity.location?.name || 'Unknown location'}
-      </Text>
-      <Text style={styles.players}>
-        {activity.player_count} players
-        {activity.missing_players && ` (${activity.missing_players} needed)`}
-      </Text>
-      {activity.user && (
-        <Text style={styles.host}>
-          Host:{' '}
-          {canSeeHostIdentity ? activity.user.username : 'Anonymous player'}
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.heroCard}>
+        <View style={styles.heroTopRow}>
+          <Text style={styles.heroSport}>{activity.sport_type}</Text>
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusBadgeText}>{activity.match_status || 'open'}</Text>
+          </View>
+        </View>
+        <Text style={styles.heroTime}>{timeLabel}</Text>
+        <Text style={styles.heroLocation}>{activity.location?.name || 'Court TBD'}</Text>
+        <Text style={styles.heroMeta}>
+          {slotsLabel} · {detailCopy.statusSchedulingDescriptor}
         </Text>
-      )}
-      <Text style={styles.statusText}>
-        Match status: {activity.match_status || 'open'} ({activity.scheduling_mode || 'fixed'})
-      </Text>
-      {!!activity.preference_deadline && activity.match_status === 'collecting' && (
-        <Text style={styles.deadlineText}>
-          Preference deadline: {new Date(activity.preference_deadline).toLocaleString()}
-        </Text>
+        {!!detailCopy.statusDetailLine && activity.scheduling_mode === 'flex' && (
+          <Text style={styles.statusDetailLine}>{detailCopy.statusDetailLine}</Text>
+        )}
+        {!!activity.preference_deadline && activity.match_status === 'collecting' && (
+          <Text style={styles.deadlineText}>
+            {detailCopy.collectingDeadlineLabel}:{' '}
+            {new Date(activity.preference_deadline).toLocaleString()}
+          </Text>
+        )}
+        {activity.visibility === 'invite_only' ? (
+          <Text style={styles.inviteOnlyText}>Invite-only · hidden from Discover</Text>
+        ) : null}
+        {activity.urgency_level === 'tonight' ? (
+          <Text style={styles.urgentText}>Need players tonight</Text>
+        ) : null}
+        {activity.series_id ? (
+          <Text style={styles.recurringText}>Part of a weekly recurring series</Text>
+        ) : null}
+        {expiresLabel ? (
+          <Text style={styles.expiresText}>
+            {listingActive ? 'Listing open until' : 'Listing ended'}: {expiresLabel}
+          </Text>
+        ) : null}
+        {showChat ? (
+          <TouchableOpacity
+            style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
+            onPress={handleOpenGroupChat}
+            disabled={openingChat}
+          >
+            <Text style={styles.utilityButtonText}>
+              {openingChat ? 'Opening…' : 'Open Game Room'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {canScheduleNext ? (
+          <TouchableOpacity
+            style={[styles.secondaryButton, schedulingNext && styles.utilityButtonDisabled]}
+            onPress={handleScheduleNextGame}
+            disabled={schedulingNext}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {schedulingNext ? 'Scheduling…' : 'Schedule next game'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {isHost && !activity.series_id && activity.status === 'active' ? (
+          <TouchableOpacity
+            style={[styles.secondaryButton, makingRecurring && styles.utilityButtonDisabled]}
+            onPress={handleMakeRecurring}
+            disabled={makingRecurring}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {makingRecurring ? 'Saving…' : 'Make weekly recurring'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {activity.invite_token && (isHost || isApprovedJoiner) ? (
+          <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleShareInvite()}>
+            <Text style={styles.secondaryButtonText}>Share invite link</Text>
+          </TouchableOpacity>
+        ) : null}
+        {isHost && activity.status === 'active' && (
+          <>
+            <TouchableOpacity
+              style={[styles.secondaryButton, extending && styles.utilityButtonDisabled]}
+              onPress={() => setExtendPickerVisible(true)}
+              disabled={extending}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {extending ? 'Updating…' : 'Extend start time'}
+              </Text>
+            </TouchableOpacity>
+            {extendPickerVisible && (
+              <DateTimePicker
+                value={extendStartTime}
+                mode="datetime"
+                minimumDate={new Date()}
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, date) => {
+                  if (Platform.OS === 'android') {
+                    setExtendPickerVisible(false);
+                  }
+                  if (event.type === 'dismissed') {
+                    setExtendPickerVisible(false);
+                    return;
+                  }
+                  if (date) {
+                    setExtendStartTime(date);
+                    if (Platform.OS === 'android') {
+                      handleExtendGame(date);
+                    }
+                  }
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && extendPickerVisible && (
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => handleExtendGame(extendStartTime)}
+                disabled={extending}
+              >
+                <Text style={styles.secondaryButtonText}>Save new time</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
+
+      {activity.status === 'active' ? (
+        <GameRsvpBar
+          activity={activity}
+          userId={user?.id}
+          saving={rsvpSaving}
+          onSetRsvp={(status) => void handleSetRsvp(status)}
+        />
+      ) : null}
+
+      <View style={styles.participantsSection}>
+        <Text style={styles.sectionTitle}>Players</Text>
+        {activity.user && (
+          <TouchableOpacity
+            style={styles.participantRow}
+            onPress={() =>
+              canSeeHostIdentity || isHost
+                ? openPlayerProfile(activity.user!, 'Host')
+                : undefined
+            }
+            disabled={!canSeeHostIdentity && !isHost}
+          >
+            <View style={styles.participantAvatar}>
+              <Text style={styles.participantAvatarText}>
+                {(canSeeHostIdentity || isHost ? activity.user.username : '?').slice(0, 1).toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.participantInfo}>
+              <Text style={styles.participantName}>
+                {canSeeHostIdentity || isHost ? activity.user.username : 'Host'}
+              </Text>
+              <Text style={styles.participantRole}>Host</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+        {approvedParticipants.map((req) =>
+          req.user ? (
+            <TouchableOpacity
+              key={req.id}
+              style={styles.participantRow}
+              onPress={() => openPlayerProfile(req.user!, 'Player')}
+            >
+              <View style={styles.participantAvatar}>
+                <Text style={styles.participantAvatarText}>
+                  {req.user.username.slice(0, 1).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.participantInfo}>
+                <Text style={styles.participantName}>{req.user.username}</Text>
+                <Text style={styles.participantRole}>
+                  Joined{req.ready_at ? ' · Ready' : ''}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          ) : null
+        )}
+      </View>
+
+      {!isHost && !isApprovedJoiner && (
+        <View style={styles.ctaBlock}>
+          <JoinRequestButton activity={activity} onRequestSent={refetch} />
+        </View>
       )}
 
-      {!isHost && <JoinRequestButton activity={activity} onRequestSent={refetch} />}
+      {!isHost && isApprovedJoiner && !isFinalized && (
+        <View style={styles.ctaRow}>
+          <TouchableOpacity
+            style={[
+              styles.secondaryButton,
+              styles.ctaRowButton,
+              (iAmReady || settingReady) && styles.utilityButtonDisabled,
+            ]}
+            onPress={handleSetReady}
+            disabled={iAmReady || settingReady}
+          >
+            <Text style={styles.secondaryButtonText}>
+              {iAmReady ? 'Ready ✓' : settingReady ? 'Saving...' : 'Mark Ready'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.leaveButton, styles.ctaRowButton, leaving && styles.utilityButtonDisabled]}
+            onPress={handleLeaveGame}
+            disabled={leaving}
+          >
+            <Text style={styles.leaveButtonText}>{leaving ? 'Leaving...' : 'Leave game'}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isApprovedJoiner && !isHost && isFinalized && (
+        <Text style={styles.inGameText}>You're in this game (finalized)</Text>
+      )}
 
       {!isHost && activity.scheduling_mode === 'flex' && (
         <View style={styles.preferenceCard}>
-          <Text style={styles.preferenceTitle}>Submit Your Preference</Text>
+          <Text style={styles.preferenceTitle}>{detailCopy.preferenceCardTitle}</Text>
+          {!!detailCopy.preferenceCardSubtitle && (
+            <Text style={styles.preferenceSubtitle}>{detailCopy.preferenceCardSubtitle}</Text>
+          )}
           <TextInput
             style={styles.input}
             value={earliestStartText}
@@ -337,34 +858,26 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             disabled={submittingPreference}
           >
             <Text style={styles.utilityButtonText}>
-              {submittingPreference ? 'Submitting...' : 'Submit Availability'}
+              {submittingPreference ? 'Submitting...' : detailCopy.submitPreferenceButtonLabel}
             </Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {isHost && activity.scheduling_mode === 'flex' && activity.match_status !== 'finalized' && (
+      {isHost && !isFinalized && (
         <TouchableOpacity
           style={[styles.utilityButton, finalizing && styles.utilityButtonDisabled]}
           onPress={handleFinalizeMatch}
           disabled={finalizing}
         >
           <Text style={styles.utilityButtonText}>
-            {finalizing ? 'Finalizing...' : 'Finalize Best Match'}
+            {finalizing ? 'Finalizing...' : 'Finalize game (lock roster)'}
           </Text>
         </TouchableOpacity>
       )}
 
-      {activity.match_status === 'finalized' && (
-        <TouchableOpacity
-          style={[styles.utilityButton, openingChat && styles.utilityButtonDisabled]}
-          onPress={handleOpenGroupChat}
-          disabled={openingChat}
-        >
-          <Text style={styles.utilityButtonText}>
-            {openingChat ? 'Opening...' : 'Open Activity Chat'}
-          </Text>
-        </TouchableOpacity>
+      {isFinalized && (
+        <Text style={styles.finalizedBanner}>Roster locked — game is finalized</Text>
       )}
 
       <View style={styles.reviewPanel}>
@@ -375,9 +888,35 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             ? ` • Score: ${reviewStats.visible_score.toFixed(2)}`
             : ' • Score hidden until 5 reviews'}
         </Text>
-        {!isHost && (
+        {canShowReviewForm && activeReviewTargetId && user?.id !== activeReviewTargetId && (
           <>
-            <Text style={styles.reviewMeta}>Rate host vibe after the match:</Text>
+            {isHost && approvedParticipants.length > 1 && (
+              <View style={styles.inlineRow}>
+                {approvedParticipants.map((participant) => (
+                  <TouchableOpacity
+                    key={participant.user_id}
+                    style={[
+                      styles.inlineChip,
+                      activeReviewTargetId === participant.user_id && styles.inlineChipSelected,
+                    ]}
+                    onPress={() => setReviewTargetUserId(participant.user_id)}
+                  >
+                    <Text
+                      style={[
+                        styles.inlineChipText,
+                        activeReviewTargetId === participant.user_id &&
+                          styles.inlineChipTextSelected,
+                      ]}
+                    >
+                      {participant.user?.username || 'Player'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+            <Text style={styles.reviewMeta}>
+              {isHost ? 'Rate your player after the match:' : 'Rate host vibe after the match:'}
+            </Text>
             <View style={styles.inlineRow}>
               {[1, 2, 3, 4, 5].map((value) => (
                 <TouchableOpacity
@@ -444,6 +983,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           </>
         )}
+        {activity && !canShowReviewForm && activity.status === 'completed' && (
+          <Text style={styles.reviewMeta}>
+            Reviews open about 2 hours after the scheduled game ends.
+          </Text>
+        )}
       </View>
 
       {isHost && (
@@ -452,76 +996,256 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           {loadingRequests ? (
             <Text>Loading requests...</Text>
           ) : joinRequests.length === 0 ? (
-            <Text style={styles.emptyText}>No pending requests</Text>
+            <Text style={styles.emptyText}>
+              No pending requests. New requests appear here in real time while this screen is open.
+              Background push works on a physical device after preview (see post-preview testing
+              backlog).
+            </Text>
           ) : (
-            <FlatList
-              data={joinRequests}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <View style={styles.requestItem}>
+            joinRequests.map((item) => (
+              <View key={item.id} style={styles.requestItem}>
+                <TouchableOpacity
+                  style={styles.requestUserTap}
+                  disabled={!item.user}
+                  onPress={() => item.user && openPlayerProfile(item.user, 'Requested to join')}
+                >
                   <Text style={styles.requestUser}>
-                    {activity.match_status === 'finalized'
+                    {isHost || activity.match_status === 'finalized'
                       ? item.user?.username || 'Unknown user'
                       : 'Anonymous player'}
                   </Text>
-                  <View style={styles.requestActions}>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.approveButton]}
-                      onPress={() => handleApprove(item.id)}
-                    >
-                      <Text style={styles.actionButtonText}>Approve</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.rejectButton]}
-                      onPress={() => handleReject(item.id)}
-                    >
-                      <Text style={styles.actionButtonText}>Reject</Text>
-                    </TouchableOpacity>
-                  </View>
+                </TouchableOpacity>
+                <View style={styles.requestActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.approveButton]}
+                    onPress={() => handleApprove(item.id)}
+                  >
+                    <Text style={styles.actionButtonText}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.rejectButton]}
+                    onPress={() => handleReject(item.id)}
+                  >
+                    <Text style={styles.actionButtonText}>Reject</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-            />
+              </View>
+            ))
           )}
         </View>
       )}
-    </View>
+
+      <PlayerProfileModal
+        visible={!!profilePlayer}
+        player={profilePlayer}
+        onClose={() => setProfilePlayer(null)}
+        currentUserId={user?.id}
+        contextType="activity"
+        contextId={activityId}
+        showNoShow={Boolean(isHost && canShowReviewForm)}
+      />
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f2f4f7',
+  },
+  content: {
     padding: 16,
-    backgroundColor: '#fff',
+    paddingBottom: 32,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     marginBottom: 8,
+    color: '#111',
   },
-  location: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 8,
-  },
-  players: {
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  host: {
+  errorBody: {
     fontSize: 14,
-    color: '#999',
-    marginBottom: 10,
+    color: '#666',
+    marginBottom: 16,
   },
-  statusText: {
+  heroCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#e8ecf0',
+  },
+  heroTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  heroSport: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#111',
+  },
+  statusBadge: {
+    backgroundColor: '#e8f1ff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0057c2',
+    textTransform: 'capitalize',
+  },
+  heroTime: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222',
+  },
+  heroLocation: {
+    marginTop: 6,
+    fontSize: 15,
+    color: '#444',
+  },
+  heroMeta: {
+    marginTop: 8,
     fontSize: 13,
     color: '#666',
-    marginBottom: 6,
+  },
+  participantsSection: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#e8ecf0',
+  },
+  participantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  participantAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  participantAvatarText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 16,
+  },
+  participantInfo: {
+    marginLeft: 12,
+    flex: 1,
+  },
+  participantName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111',
+  },
+  participantRole: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 2,
+  },
+  ctaBlock: {
+    marginBottom: 12,
+  },
+  statusDetailLine: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 8,
+    lineHeight: 17,
   },
   deadlineText: {
     fontSize: 12,
     color: '#b45309',
     marginBottom: 12,
+  },
+  expiresText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  inviteOnlyText: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#555',
+  },
+  urgentText: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#b42318',
+  },
+  recurringText: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1a6535',
+  },
+  gameRoomButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  secondaryButton: {
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#007AFF',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  ctaRow: {
+    flexDirection: 'row',
+    marginTop: 8,
+  },
+  ctaRowButton: {
+    flex: 1,
+    marginTop: 0,
+    marginHorizontal: 4,
+  },
+  leaveButton: {
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  leaveButtonText: {
+    color: '#dc2626',
+    fontWeight: '600',
+  },
+  finalizedBanner: {
+    marginTop: 10,
+    fontSize: 13,
+    color: '#1a6535',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  inGameText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#1a6535',
+    fontWeight: '600',
+  },
+  secondaryButtonText: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
   utilityButton: {
     backgroundColor: '#1a73e8',
@@ -550,6 +1274,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     marginBottom: 8,
+  },
+  preferenceSubtitle: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 10,
+    lineHeight: 17,
   },
   input: {
     borderWidth: 1,
@@ -598,10 +1328,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   requestsSection: {
-    marginTop: 24,
-    paddingTop: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    marginTop: 8,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e8ecf0',
+  },
+  requestUserTap: {
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,

@@ -1,4 +1,27 @@
 {
   "name": "RallyApp",
-  "displayName": "RallyApp"
+  "displayName": "RallyApp",
+  "expo": {
+    "name": "RallyApp",
+    "slug": "rallyapp",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.rallyapp",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.rallyapp",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c8adc581-8790-4de6-8c81-c4a49d291ffe"
+      }
+    },
+    "owner": "kendrewpoon"
+  }
 }

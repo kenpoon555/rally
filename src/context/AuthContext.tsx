@@ -3,7 +3,10 @@ import { Linking, Platform } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { User } from '../types/user';
-import { getCurrentUser, getUserById, createUserProfile } from '../services/userService';
+import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
+import { navigationRef } from '../navigation/navigationRef';
+import { parseAppDeepLink } from '../navigation/deepLinking';
+import { ROUTES } from '../constants/routes';
 
 interface AuthContextType {
   user: User | null;
@@ -13,9 +16,11 @@ interface AuthContextType {
   signInWithPhone: (phone: string) => Promise<void>;
   verifyPhone: (phone: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 const EMAIL_REDIRECT_TO = 'rallyapp://auth/callback';
 
 const parseAuthParamsFromUrl = (url: string): Record<string, string> => {
@@ -84,7 +89,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               username: metadataUsername || fallbackUsername,
               email: authUser.email || undefined,
               phone: authUser.phone || undefined,
-              preferred_sports: [],
             });
           } catch (createProfileError: any) {
             // Signup can still be successful if DB trigger already created profile.
@@ -103,11 +107,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Profile not found after auto-create attempt.');
       }
 
+      userData = await ensureUserDefaultSport(userData);
+
       setUser(userData);
       // Do not block auth/navigation on notification setup.
       // On Android, defer notification init so the main UI can mount first (avoids native crash when Firebase is not fully configured).
       const runNotificationInit = async () => {
-        if (Platform.OS === 'android') return;
         try {
           const { initializeNotificationsForUser } = require('../services/notificationService');
           const previousCleanup = notificationCleanupRef.current;
@@ -127,7 +132,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           );
         }
       };
-      runNotificationInit();
+      if (Platform.OS === 'android') {
+        setTimeout(runNotificationInit, 800);
+      } else {
+        runNotificationInit();
+      }
     } catch (error: any) {
       console.error('Error loading user:', error);
       // Re-throw so sign-in/signup show clear message.
@@ -187,6 +196,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const handleAuthDeepLink = async (url: string) => {
       try {
+        const parsed = parseAppDeepLink(url);
+        if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
+          navigationRef.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+            activityId: parsed.activityId,
+          } as never);
+          return;
+        }
+        if (parsed.type === 'invite' && parsed.inviteToken && navigationRef.isReady()) {
+          navigationRef.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+            inviteToken: parsed.inviteToken,
+          } as never);
+          return;
+        }
+
         const params = parseAuthParamsFromUrl(url);
 
         if (params.access_token && params.refresh_token) {
@@ -323,7 +346,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await createUserProfile(data.user.id, {
         username,
         email,
-        preferred_sports: [],
       });
     } catch (profileError: any) {
       console.warn('Profile create retry path used during signup:', profileError?.message || profileError);
@@ -363,7 +385,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await createUserProfile(data.user.id, {
           username: phone.replace(/\D/g, '').slice(-8), // Use last 8 digits as username
           phone,
-          preferred_sports: [],
         });
       }
       await loadUser(data.user.id);
@@ -376,7 +397,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setNotificationCleanup(null);
     }
 
-    if (user?.id && Platform.OS !== 'android') {
+    if (user?.id) {
       try {
         const { getDeviceToken, unregisterDeviceToken } = require('../services/notificationService');
         const token = await getDeviceToken();
@@ -393,6 +414,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  const refreshUser = useCallback(async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    if (!authUser?.id) {
+      setUser(null);
+      return;
+    }
+    const profile = await getUserById(authUser.id);
+    if (profile) {
+      setUser(profile);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -403,6 +438,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signInWithPhone,
         verifyPhone,
         signOut,
+        refreshUser,
       }}
     >
       {children}

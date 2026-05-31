@@ -1,3 +1,6 @@
+# APNs key (secret; upload to Firebase once, then store backup elsewhere)
+*.p8
+
 # OSX
 #
 .DS_Store
@@ -40,6 +43,7 @@ local.properties
 node_modules/
 npm-debug.log
 yarn-error.log
+ios-build.log
 
 # fastlane
 #

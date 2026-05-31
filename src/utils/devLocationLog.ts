@@ -1,5 +1,5 @@
 /**
- * In-dev-only log store for [Location] messages so they can be shown in-app
+ * In-dev-only log store for [Location] / [Discover] messages so they can be shown in-app
  * when Metro/DevTools aren't available (e.g. terminal controlled by another agent).
  */
 
@@ -32,6 +32,10 @@ export function subscribeLocationLog(callback: () => void): () => void {
   return () => {
     listeners.delete(callback);
   };
+}
+
+export function addDiscoverLog(message: string, ...args: unknown[]) {
+  addLocationLog(`[Discover] ${message}`, ...args);
 }
 
 export function clearLocationLog() {

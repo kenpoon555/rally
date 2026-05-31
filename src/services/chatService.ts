@@ -1,5 +1,9 @@
 import { supabase } from './api/supabase';
 import { ChatMessage, Conversation, ConversationMember } from '../types/chat';
+import { Activity } from '../types/activity';
+import { usersAreBlocked } from './safetyService';
+import { consumeRateLimit } from './rateLimitService';
+import { trackProductEvent } from './analyticsService';
 
 const withRetry = async <T>(action: () => Promise<T>, retries: number = 1): Promise<T> => {
   let lastError: unknown;
@@ -16,7 +20,17 @@ const withRetry = async <T>(action: () => Promise<T>, retries: number = 1): Prom
   throw lastError instanceof Error ? lastError : new Error('Unknown chat service failure');
 };
 
-export const getOrCreateDirectConversation = async (targetUserId: string): Promise<string> => {
+export const getOrCreateDirectConversation = async (
+  targetUserId: string,
+  currentUserId?: string
+): Promise<string> => {
+  if (currentUserId) {
+    if (await usersAreBlocked(currentUserId, targetUserId)) {
+      throw new Error('You cannot message this user.');
+    }
+    await consumeRateLimit('chat_create', currentUserId);
+  }
+
   const { data, error } = await withRetry(() =>
     supabase.rpc('get_or_create_direct_conversation', {
       target_user_id: targetUserId,
@@ -34,23 +48,33 @@ export const getOrCreateDirectConversation = async (targetUserId: string): Promi
   return data as string;
 };
 
-export const createActivityGroupConversation = async (activityId: string): Promise<string> => {
+export const ensureActivityGroupConversation = async (activityId: string): Promise<string> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    await consumeRateLimit('chat_create', user.id);
+  }
+
   const { data, error } = await withRetry(() =>
-    supabase.rpc('create_activity_group_conversation', {
+    supabase.rpc('ensure_activity_group_conversation', {
       target_activity_id: activityId,
     })
   );
 
   if (error) {
-    throw new Error(`Failed to create activity group chat: ${error.message}`);
+    throw new Error(`Failed to open game chat: ${error.message}`);
   }
 
   if (!data) {
-    throw new Error('No conversation id returned for activity group chat.');
+    throw new Error('No conversation id returned for game chat.');
   }
 
   return data as string;
 };
+
+/** @deprecated Use ensureActivityGroupConversation */
+export const createActivityGroupConversation = ensureActivityGroupConversation;
 
 export const getActivityGroupConversationId = async (
   activityId: string
@@ -88,7 +112,18 @@ export const getMyConversations = async (userId: string): Promise<Conversation[]
     .from('conversation_members')
     .select(
       `
-      conversation:conversations(*)
+      conversation:conversations(
+        *,
+        activity:activities(
+          id,
+          sport_type,
+          start_time,
+          duration,
+          status,
+          player_count,
+          location:activity_locations(name)
+        )
+      )
     `
     )
     .eq('user_id', userId)
@@ -98,7 +133,7 @@ export const getMyConversations = async (userId: string): Promise<Conversation[]
     throw new Error(`Failed to load conversations: ${error.message}`);
   }
 
-  const rows = (data || []) as { conversation: Conversation }[];
+  const rows = (data || []) as { conversation: Conversation & { activity?: Activity | null } }[];
   return rows
     .map((row) => row.conversation)
     .filter(Boolean)
@@ -153,6 +188,25 @@ export const sendConversationMessage = async (
     throw new Error('Message cannot be empty.');
   }
 
+  const { data: members, error: membersErr } = await supabase
+    .from('conversation_members')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .eq('is_active', true);
+
+  if (membersErr) {
+    throw new Error(`Failed to verify conversation: ${membersErr.message}`);
+  }
+
+  for (const member of members || []) {
+    const otherId = member.user_id as string;
+    if (otherId !== senderId && (await usersAreBlocked(senderId, otherId))) {
+      throw new Error('You cannot message this conversation because of a block.');
+    }
+  }
+
+  await consumeRateLimit('chat_message', senderId);
+
   const { data, error } = await withRetry(() =>
     supabase
       .from('messages')
@@ -170,7 +224,32 @@ export const sendConversationMessage = async (
     throw new Error(`Failed to send message: ${error.message}`);
   }
 
+  await trackProductEvent(
+    'message_sent',
+    { conversation_id: conversationId, message_id: (data as ChatMessage).id },
+    senderId
+  );
+
   return data as ChatMessage;
+};
+
+export const getConversationPeerUserIds = async (
+  conversationId: string,
+  currentUserId: string
+): Promise<string[]> => {
+  const { data, error } = await supabase
+    .from('conversation_members')
+    .select('user_id')
+    .eq('conversation_id', conversationId)
+    .eq('is_active', true);
+
+  if (error) {
+    throw new Error(`Failed to load conversation members: ${error.message}`);
+  }
+
+  return (data || [])
+    .map((row) => row.user_id as string)
+    .filter((id) => id !== currentUserId);
 };
 
 export const markConversationRead = async (

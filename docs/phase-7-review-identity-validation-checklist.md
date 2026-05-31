@@ -27,6 +27,8 @@ Use this checklist to validate anonymous-until-confirmed identity behavior and p
 
 ## Case 1: Identity remains hidden before confirmation
 
+| Status | Notes |
+
 Steps:
 
 1. Account B discovers an activity that is not finalized.
@@ -42,6 +44,8 @@ Failure signals:
 - Full username/photo visible to non-confirmed participants.
 
 ## Case 2: Identity reveals after confirmation/finalization
+
+| Status | Notes |
 
 Steps:
 
@@ -60,6 +64,8 @@ Failure signals:
 
 ## Case 3: Friends always see friend identity
 
+| Status | Notes |
+
 Steps:
 
 1. Ensure Account A and B are accepted friends.
@@ -74,6 +80,8 @@ Failure signals:
 - Friend identity remains hidden even with accepted friendship.
 
 ## Case 4: Review submission constraints
+
+| Status | Notes |
 
 Steps:
 
@@ -92,6 +100,8 @@ Failure signals:
 
 ## Case 5: Review visibility threshold (5+)
 
+| Status | Notes |
+
 Steps:
 
 1. For a target account, create 1-4 valid review rows.
@@ -109,6 +119,8 @@ Failure signals:
 - Score remains hidden after 5 valid reviews.
 
 ## Case 6: Review access controls
+
+| Status | Notes |
 
 Steps:
 

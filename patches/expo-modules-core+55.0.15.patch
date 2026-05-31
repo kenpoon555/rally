@@ -1,0 +1,51 @@
+diff --git a/node_modules/expo-modules-core/ExpoModulesCore.podspec b/node_modules/expo-modules-core/ExpoModulesCore.podspec
+--- a/node_modules/expo-modules-core/ExpoModulesCore.podspec
++++ b/node_modules/expo-modules-core/ExpoModulesCore.podspec
+@@ -83,7 +83,7 @@ Pod::Spec.new do |s|
+     :osx => '11.0',
+     :tvos => '15.1'
+   }
+-  s.swift_version  = '6.0'
++  s.swift_version  = '5.9'
+   s.source         = { git: 'https://github.com/expo/expo.git' }
+   s.static_framework = true
+   s.header_dir     = 'ExpoModulesCore'
+diff --git a/node_modules/expo-modules-core/ios/Core/Views/ViewDefinition.swift b/node_modules/expo-modules-core/ios/Core/Views/ViewDefinition.swift
+--- a/node_modules/expo-modules-core/ios/Core/Views/ViewDefinition.swift
++++ b/node_modules/expo-modules-core/ios/Core/Views/ViewDefinition.swift
+@@ -118,7 +118,8 @@ extension ConcurrentFunctionDefinition: ViewDefinitionFunctionElement {
+   public typealias ViewType = FirstArgType
+ }
+ 
+-extension UIView: @MainActor AnyArgument {
++@MainActor
++extension UIView: AnyArgument {
+   public static func getDynamicType() -> AnyDynamicType {
+     return DynamicViewType(innerType: Self.self)
+   }
+diff --git a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift
+--- a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift
++++ b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIHostingView.swift
+@@ -42,7 +42,8 @@ public enum ExpoSwiftUI {
+   /**
+    A hosting view that renders a SwiftUI view inside the UIKit view hierarchy.
+    */
+-  public final class HostingView<Props: ViewProps, ContentView: View<Props>>: ExpoView, @MainActor AnyExpoSwiftUIHostingView {
++  @MainActor
++  public final class HostingView<Props: ViewProps, ContentView: View<Props>>: ExpoView, AnyExpoSwiftUIHostingView {
+     /**
+      Props object that stores all the props for this particular view.
+      It's an environment object that is observed by the content view.
+diff --git a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
+--- a/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
++++ b/node_modules/expo-modules-core/ios/Core/Views/SwiftUI/SwiftUIVirtualView.swift
+@@ -193,7 +193,8 @@
+ 
+ // MARK: - ViewWrapper
+ 
+-extension ExpoSwiftUI.SwiftUIVirtualView: @MainActor ExpoSwiftUI.ViewWrapper {
++@MainActor
++extension ExpoSwiftUI.SwiftUIVirtualView: ExpoSwiftUI.ViewWrapper {
+   func getWrappedView() -> Any {
+     if let wrapper = contentView as? ExpoSwiftUI.ViewWrapper {
+       return wrapper.getWrappedView()

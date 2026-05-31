@@ -1,0 +1,41 @@
+# Pull requests → fast checks only (no EAS build, saves time/cost).
+# Merge to `preview` → deploy-preview.yml runs tests + EAS builds.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main, preview]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Test & lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests + lint
+        run: npm run verify
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Check EAS preview env (Supabase keys)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: bash ./scripts/check-eas-preview-env.sh
