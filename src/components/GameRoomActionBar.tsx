@@ -25,6 +25,7 @@ import {
   rejectJoinRequest,
   scheduleNextGameFromActivity,
   setGameReady,
+  updateActivity,
 } from '../services/activityService';
 import { supabase } from '../services/api/supabase';
 import { JoinRequest } from '../types/activity';
@@ -63,7 +64,8 @@ type GameRoomContextValue = {
   settingReady: boolean;
   leaving: boolean;
   onOpenDetails?: () => void;
-  onFindPlayers?: (sportType: string) => void;
+  handlePublishToDiscover: () => void;
+  publishingToDiscover: boolean;
   handleApprove: (requestId: string) => Promise<void>;
   handleReject: (requestId: string) => Promise<void>;
   handleSetReady: () => Promise<void>;
@@ -91,7 +93,6 @@ function useGameRoomContext(): GameRoomContextValue {
 type ProviderProps = {
   activityId: string;
   onOpenDetails?: () => void;
-  onFindPlayers?: (sportType: string) => void;
   onLeftGame?: () => void;
   onScheduledNextGame?: (newActivityId: string) => void;
   children: React.ReactNode;
@@ -100,7 +101,6 @@ type ProviderProps = {
 export const GameRoomProvider: React.FC<ProviderProps> = ({
   activityId,
   onOpenDetails,
-  onFindPlayers,
   onLeftGame,
   onScheduledNextGame,
   children,
@@ -113,6 +113,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [schedulingNext, setSchedulingNext] = useState(false);
+  const [publishingToDiscover, setPublishingToDiscover] = useState(false);
   const [groupName, setGroupName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -329,6 +330,40 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const hostUsername = activity?.user?.username || 'Host';
   const canScheduleNext = Boolean(activity && canHostScheduleNextGame(activity, isHost));
 
+  const handlePublishToDiscover = useCallback(() => {
+    if (!activity || !isHost || activity.visibility !== 'invite_only') {
+      return;
+    }
+    const openSpots = activity.missing_players ?? 0;
+    Alert.alert(
+      'List on Discover?',
+      `Anyone nearby can request to join (${openSpots} spot${openSpots === 1 ? '' : 's'} open). You can still approve who gets in.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'List on Discover',
+          onPress: async () => {
+            setPublishingToDiscover(true);
+            try {
+              await updateActivity(activity.id, { visibility: 'nearby' });
+              await refetch();
+              Alert.alert(
+                'Listed on Discover',
+                'Your game now appears on Discover for players nearby. Share the invite link if you want to fill spots faster.'
+              );
+            } catch (error: unknown) {
+              const message =
+                error instanceof Error ? error.message : 'Could not update visibility.';
+              Alert.alert('Could not list game', message);
+            } finally {
+              setPublishingToDiscover(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [activity, isHost, refetch]);
+
   const value: GameRoomContextValue = {
     activityId,
     activity,
@@ -353,7 +388,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     settingReady,
     leaving,
     onOpenDetails,
-    onFindPlayers,
+    handlePublishToDiscover,
+    publishingToDiscover,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -492,7 +528,8 @@ export const GameRoomFooter: React.FC = () => {
     settingReady,
     leaving,
     onOpenDetails,
-    onFindPlayers,
+    handlePublishToDiscover,
+    publishingToDiscover,
     handleApprove,
     handleReject,
     handleSetReady,
@@ -544,8 +581,11 @@ export const GameRoomFooter: React.FC = () => {
   const showPlayerActions = !isFinalized && !isHost && isApprovedJoiner;
   const showHostFinalize = !isFinalized && isHost;
   const showPending = isHost && !isFinalized && pendingRequests.length > 0;
-  const showFindPlayers =
-    isHost && !isFinalized && (activity.missing_players ?? 0) > 0 && Boolean(onFindPlayers);
+  const showListOnDiscover =
+    isHost &&
+    !isFinalized &&
+    activity.visibility === 'invite_only' &&
+    (activity.missing_players ?? 0) > 0;
 
   if (isFinalized) {
     return (
@@ -587,14 +627,18 @@ export const GameRoomFooter: React.FC = () => {
           </Text>
         </View>
       ) : null}
-      {showFindPlayers ? (
+      {showListOnDiscover ? (
         <TouchableOpacity
-          style={[styles.primaryBtn, styles.scheduleBtn]}
-          onPress={() => onFindPlayers?.(activity.sport_type)}
+          style={[styles.primaryBtn, styles.scheduleBtn, publishingToDiscover && styles.btnDisabled]}
+          onPress={handlePublishToDiscover}
+          disabled={publishingToDiscover}
         >
           <Text style={styles.primaryBtnText}>
-            Find players ({activity.missing_players} spot
-            {activity.missing_players === 1 ? '' : 's'} open)
+            {publishingToDiscover
+              ? 'Listing…'
+              : `List on Discover (${activity.missing_players} spot${
+                  activity.missing_players === 1 ? '' : 's'
+                } open)`}
           </Text>
         </TouchableOpacity>
       ) : null}

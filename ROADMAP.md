@@ -112,6 +112,7 @@ Priority order based on device QA:
 4. [x] **Discover role** — Hide joined/finalized/invite-only from feed.
 5. [x] **Empty states** — Chats + My Games CTAs.
 6. [ ] **Remove dev diagnostics** from production builds (pipeline panel, debugger warnings).
+7. [ ] **Stage 1 trust & safety** — report/block, admin suspend (see `open_items.md` Stage 1; ahead of Stage 4 monetization).
 7. [x] **Hide Map** from navigation for beta; inline Create Game court picker only.
 
 See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
