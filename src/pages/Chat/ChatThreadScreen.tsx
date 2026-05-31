@@ -24,6 +24,7 @@ import {
 import { ChatMessage } from '../../types/chat';
 import { trackProductEvent } from '../../services/analyticsService';
 import { getUserById } from '../../services/userService';
+import { usersAreBlocked } from '../../services/safetyService';
 import SafetyActionsSheet from '../../components/SafetyActionsSheet';
 import {
   GameRoomFooter,
@@ -146,6 +147,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [peerUserId, setPeerUserId] = useState<string | null>(null);
   const [peerUsername, setPeerUsername] = useState<string | null>(null);
+  const [blockedThread, setBlockedThread] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(activityId);
 
@@ -176,6 +178,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!user?.id) {
       setPeerUserId(null);
       setPeerUsername(null);
+      setBlockedThread(false);
       return;
     }
     getConversationPeerUserIds(conversationId, user.id)
@@ -193,8 +196,19 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       .catch(() => {
         setPeerUserId(null);
         setPeerUsername(null);
+        setBlockedThread(false);
       });
   }, [conversationId, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id || !peerUserId || isGameRoom) {
+      setBlockedThread(false);
+      return;
+    }
+    usersAreBlocked(user.id, peerUserId)
+      .then((blocked) => setBlockedThread(blocked))
+      .catch(() => setBlockedThread(false));
+  }, [isGameRoom, peerUserId, user?.id]);
 
   useEffect(() => {
     navigation.setOptions({
@@ -250,7 +264,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [conversationId, user?.id]);
 
-  const canSend = useMemo(() => !!user?.id && draft.trim().length > 0 && !sending, [draft, sending, user?.id]);
+  const canSend = useMemo(
+    () => !!user?.id && draft.trim().length > 0 && !sending && !blockedThread,
+    [blockedThread, draft, sending, user?.id]
+  );
 
   const handleSend = async () => {
     if (!user?.id || !canSend) {
@@ -327,6 +344,14 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       ) : (
         chatBody
       )}
+
+      {!isGameRoom && blockedThread ? (
+        <View style={styles.blockedBanner}>
+          <Text style={styles.blockedBannerText}>
+            Messaging is disabled because one of you has blocked the other.
+          </Text>
+        </View>
+      ) : null}
 
       {user?.id && peerUserId && peerUsername ? (
         <SafetyActionsSheet
@@ -459,6 +484,21 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontWeight: '600',
     fontSize: 15,
+  },
+  blockedBanner: {
+    marginHorizontal: 12,
+    marginBottom: 10,
+    backgroundColor: '#fff3e8',
+    borderWidth: 1,
+    borderColor: '#ffd2a8',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  blockedBannerText: {
+    color: '#8a4b08',
+    fontSize: 13,
+    lineHeight: 18,
   },
 });
 

@@ -6,6 +6,7 @@ import { RegularGroup } from '../types/regularGroup';
 import { getMyGames, MyGameEntry, MyGameRole } from '../services/activityService';
 import { getMyConversations, getUnreadConversationCounts } from '../services/chatService';
 import { getMyRegularGroups } from '../services/regularGroupService';
+import { getBlockedUserIds } from '../services/safetyService';
 import { getUserFriends } from '../services/friendsService';
 import { supabase } from '../services/api/supabase';
 import { useSupabaseRealtimeReload } from './useSupabaseRealtimeReload';
@@ -96,6 +97,7 @@ function buildChatInbox(params: {
   friends: Friend[];
   unreadCounts: Record<string, number>;
   directPeerMap: Record<string, string>;
+  blockedUserIds: Set<string>;
 }): ChatInboxItem[] {
   const convoByActivityId = new Map<string, Conversation>();
   const directConvos = params.conversations.filter((c) => c.conversation_type === 'friend_direct');
@@ -146,21 +148,28 @@ function buildChatInbox(params: {
     return new Date(b.activity.start_time).getTime() - new Date(a.activity.start_time).getTime();
   });
 
-  const friendItems: FriendChatInboxItem[] = params.friends.map((friend) => {
-    const friendId = friend.friend?.id || friend.friend_id;
-    const username = friend.friend?.username || 'Friend';
-    const convo = directConvoByFriendId.get(friendId);
-    return {
-      kind: 'friend',
-      key: `friend-${friendId}`,
-      userId: friendId,
-      username,
-      conversationId: convo?.id ?? null,
-      unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
-      title: `@${username}`,
-      subtitle: convo ? 'Friend chat' : 'Start a conversation',
-    };
-  });
+  const friendItems: FriendChatInboxItem[] = params.friends.reduce<FriendChatInboxItem[]>(
+    (acc, friend) => {
+      const friendId = friend.friend?.id || friend.friend_id;
+      if (params.blockedUserIds.has(friendId)) {
+        return acc;
+      }
+      const username = friend.friend?.username || 'Friend';
+      const convo = directConvoByFriendId.get(friendId);
+      acc.push({
+        kind: 'friend',
+        key: `friend-${friendId}`,
+        userId: friendId,
+        username,
+        conversationId: convo?.id ?? null,
+        unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
+        title: `@${username}`,
+        subtitle: convo ? 'Friend chat' : 'Start a conversation',
+      });
+      return acc;
+    },
+    []
+  );
 
   friendItems.sort((a, b) => a.username.localeCompare(b.username));
 
@@ -217,11 +226,12 @@ export function useChatInbox(userId: string | undefined) {
     setLoading(true);
     setErrorText(null);
     try {
-      const [games, conversations, friends, unreadCounts] = await Promise.all([
+      const [games, conversations, friends, unreadCounts, blockedIds] = await Promise.all([
         getMyGames(userId),
         getMyConversations(userId),
         getUserFriends(userId),
         getUnreadConversationCounts(userId),
+        getBlockedUserIds(userId),
       ]);
 
       let groups: RegularGroup[] = [];
@@ -239,6 +249,7 @@ export function useChatInbox(userId: string | undefined) {
         friends,
         unreadCounts,
         directPeerMap,
+        blockedUserIds: new Set(blockedIds),
       });
 
       setItems(inbox);
