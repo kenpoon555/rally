@@ -4,6 +4,7 @@ export const ROUTES = {
     SIGNUP: 'Signup',
   },
   HOME: {
+    DYNAMIC: 'DynamicHome',
     MAIN: 'Home',
     MAP: 'Map',
   },

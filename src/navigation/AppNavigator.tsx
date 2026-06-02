@@ -18,6 +18,7 @@ import SignupScreen from '../pages/Auth/SignupScreen';
 
 // Home Screens
 import HomeScreen from '../pages/Home/HomeScreen';
+import DynamicHomeScreen from '../pages/Home/DynamicHomeScreen';
 
 // Activity Screens
 import ActivityDetailScreen from '../pages/Activity/ActivityDetailScreen';
@@ -41,6 +42,7 @@ const Tab = createBottomTabNavigator();
 type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { focused: TabIconName; unfocused: TabIconName }> = {
+  [ROUTES.HOME.DYNAMIC]: { focused: 'home', unfocused: 'home-outline' },
   [ROUTES.CHAT.TAB]: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
   [ROUTES.MY_GAMES.TAB]: { focused: 'calendar', unfocused: 'calendar-outline' },
   [ROUTES.HOME.MAIN]: { focused: 'search', unfocused: 'search-outline' },
@@ -79,7 +81,7 @@ const MainTabs = () => {
 
   return (
     <Tab.Navigator
-      initialRouteName={ROUTES.CHAT.TAB}
+      initialRouteName={ROUTES.HOME.DYNAMIC}
       screenOptions={({ route }) => ({
         headerShown: false,
         lazy: true,
@@ -96,6 +98,11 @@ const MainTabs = () => {
         },
       })}
     >
+      <Tab.Screen
+        name={ROUTES.HOME.DYNAMIC}
+        component={DynamicHomeScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
       <Tab.Screen
         name={ROUTES.CHAT.TAB}
         component={ChatListScreen}
@@ -182,7 +189,7 @@ export const AppNavigator = () => {
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#fff',
+          backgroundColor: colors.background,
         }}
       >
         <ActivityIndicator size="large" color={PRIMARY_COLOR} />

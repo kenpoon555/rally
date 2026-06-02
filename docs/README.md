@@ -1,13 +1,16 @@
 # RallyApp docs index
 
-Last updated: 2026-05-30
+Last updated: 2026-06-01
 
-## Source of truth
+## Source of truth (read these first)
 
 | Doc | Purpose |
 |-----|---------|
-| [../ROADMAP.md](../ROADMAP.md) | Engineering phases + current build status |
-| [../../open_items.md](../../open_items.md) | Business roadmap (Stages 0–7) |
+| [VISION.md](../VISION.md) | Mission, principles, beta positioning, defer list |
+| [ROADMAP.md](../ROADMAP.md) | Engineering phases + shipped status + beta phase order |
+| [../../open_items.md](../../open_items.md) | Business roadmap (Stages 0–7), immediate priority table |
+| [NEXT.md](./NEXT.md) | Current sprint checklist + blockers |
+| [AGENT_HANDOFF_FULL_CONTEXT.md](./AGENT_HANDOFF_FULL_CONTEXT.md) | Full agent handoff (infra, migrations, iOS install) |
 
 ## Shipped stages
 

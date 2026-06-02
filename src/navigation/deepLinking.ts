@@ -9,6 +9,7 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
     screens: {
       MainTabs: {
         screens: {
+          [ROUTES.HOME.DYNAMIC]: 'home',
           [ROUTES.CHAT.TAB]: 'chats',
           [ROUTES.HOME.MAIN]: 'discover',
           [ROUTES.MY_GAMES.TAB]: 'games',

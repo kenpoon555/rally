@@ -6,6 +6,8 @@
  * See docs/sport-matching-profiles.md.
  */
 
+import { CONFIG } from './config';
+
 export enum SportType {
   PICKLEBALL = 'Pickleball',
   BASKETBALL = 'Basketball',
@@ -246,6 +248,38 @@ export function openSpotsFromTotalPlayers(totalPlayers: number): number {
 
 export function totalPlayersFromOpenSpots(openSpots: number): number {
   return Math.max(1, openSpots + 1);
+}
+
+/** Niche launch sports — fewer seeded courts; search wider on Create Game. */
+export function usesWideCourtSearch(sportName: string): boolean {
+  const meta = getSportMetadata(sportName);
+  if (!meta?.launchEnabled) {
+    return false;
+  }
+  return Boolean(
+    meta.partnerDependent ||
+      meta.name === SportType.VOLLEYBALL ||
+      meta.name === SportType.SQUASH ||
+      meta.name === SportType.RACQUETBALL ||
+      meta.name === SportType.TABLE_TENNIS ||
+      meta.name === SportType.ULTIMATE
+  );
+}
+
+/** Radii to try in order when loading courts for Create Game (meters). */
+export function getCourtSearchRadiiForSport(sportName: string): number[] {
+  if (usesWideCourtSearch(sportName)) {
+    return [
+      CONFIG.WIDER_COURT_RADIUS_M,
+      CONFIG.NICHE_COURT_RADIUS_M,
+      CONFIG.MAX_COURT_RADIUS_M,
+    ];
+  }
+  return [
+    CONFIG.NEARBY_COURT_RADIUS_M,
+    CONFIG.WIDER_COURT_RADIUS_M,
+    CONFIG.NICHE_COURT_RADIUS_M,
+  ];
 }
 
 export function getCreateGameSubtitle(sportName: string): string {

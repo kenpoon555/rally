@@ -42,7 +42,7 @@ import {
   isGameChatInPostGameGrace,
   activityHasOpenSpots,
 } from '../utils/activityHelpers';
-import { colors } from '../constants/theme';
+import { colors, spacing } from '../constants/theme';
 import { GAME_CHAT_ARCHIVE_GRACE_HOURS } from '../constants/gameChat';
 import { getRegularGroupById } from '../services/regularGroupService';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';

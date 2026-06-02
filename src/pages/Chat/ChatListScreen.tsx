@@ -24,30 +24,11 @@ import {
 import { ROUTES } from '../../constants/routes';
 import { useUserPlayMode } from '../../hooks/useUserPlayMode';
 import { MyGameEntry } from '../../services/activityService';
-import { Button, Chip, EmptyState, ScreenHeader } from '../../components/ui';
+import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
 import { SportIcon } from '../../components/SportIcon';
+import { NextUpCard } from '../../components/home/NextUpCard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../../constants/theme';
-
-function formatRelativeStart(startTime?: string | null): string {
-  if (!startTime) {
-    return 'Time TBD';
-  }
-  const diffMs = new Date(startTime).getTime() - Date.now();
-  if (diffMs <= 0) {
-    return 'Happening now';
-  }
-  const minutes = Math.round(diffMs / 60000);
-  if (minutes < 60) {
-    return `In ${minutes} min`;
-  }
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) {
-    return `In ${hours} hr${hours === 1 ? '' : 's'}`;
-  }
-  const days = Math.round(hours / 24);
-  return `In ${days} day${days === 1 ? '' : 's'}`;
-}
 
 type TabParamList = {
   Home: undefined;
@@ -219,51 +200,17 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
       return null;
     }
 
-    if (nextGame) {
-      const busy = openingKey === `next-${nextGame.activity.id}`;
-      const court = nextGame.activity.location?.name || 'Court TBD';
-      return (
-        <View style={styles.nextUpCard}>
-          <Text style={styles.nextUpLabel}>NEXT UP</Text>
-          <Text style={styles.nextUpTitle}>
-            {nextGame.activity.sport_type} · {court}
-          </Text>
-          <Text style={styles.nextUpTime}>{formatRelativeStart(nextGame.activity.start_time)}</Text>
-          <Button
-            title={busy ? 'Opening…' : 'Open Game Room'}
-            variant="secondary"
-            size="sm"
-            onPress={() => void openActivityRoom(nextGame)}
-            disabled={busy}
-            loading={busy}
-            style={styles.nextUpCtaButton}
-          />
-        </View>
-      );
-    }
-
-    const group = regularGroups[0];
-    if (!group) {
-      return null;
-    }
-    const isGroupHost = group.host_id === user?.id;
     return (
-      <View style={styles.nextUpCard}>
-        <Text style={styles.nextUpLabel}>YOUR CREW</Text>
-        <Text style={styles.nextUpTitle}>{group.name}</Text>
-        <Text style={styles.nextUpTime}>No game on the calendar yet.</Text>
-        {isGroupHost && group.source_activity_id ? (
-          <Button
-            title="Schedule next"
-            variant="secondary"
-            size="sm"
-            onPress={() => openGroupSourceDetails(group.source_activity_id as string)}
-            style={styles.nextUpCtaButton}
-          />
-        ) : (
-          <Text style={styles.nextUpWaiting}>Waiting for the host to schedule the next game.</Text>
-        )}
-      </View>
+      <NextUpCard
+        nextGame={nextGame}
+        fallbackGroup={regularGroups[0] ?? null}
+        currentUserId={user?.id}
+        onOpenGameRoom={(entry) => void openActivityRoom(entry)}
+        onScheduleNext={openGroupSourceDetails}
+        openingGameId={
+          nextGame && openingKey === `next-${nextGame.activity.id}` ? nextGame.activity.id : null
+        }
+      />
     );
   };
 
@@ -512,39 +459,6 @@ const styles = StyleSheet.create({
   emptyList: {
     flexGrow: 1,
     justifyContent: 'center',
-  },
-  nextUpCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  nextUpLabel: {
-    ...typography.label,
-    color: 'rgba(255,255,255,0.85)',
-  },
-  nextUpTitle: {
-    marginTop: spacing.xs + 2,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textInverse,
-  },
-  nextUpTime: {
-    marginTop: 2,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  nextUpCtaButton: {
-    marginTop: spacing.md,
-    alignSelf: 'flex-start',
-  },
-  nextUpWaiting: {
-    marginTop: spacing.md,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
-    lineHeight: 18,
   },
 });
 

@@ -140,13 +140,10 @@ This project follows the agent-based architecture defined in `.agents/` director
 
 ## Documentation Notes
 
-- Active product docs are kept at top level: `ROADMAP.md`, `VISION.md`, and this `README.md`.
+- **Canonical trilogy:** [VISION.md](./VISION.md) · [ROADMAP.md](./ROADMAP.md) · [../open_items.md](../open_items.md)
+- **Current sprint:** [docs/NEXT.md](./docs/NEXT.md)
+- **Doc index:** [docs/README.md](./docs/README.md) · repo hub [../README.md](../README.md)
 - Older setup and troubleshooting docs are archived in `docs/archive/`.
-- Auth test checklist: `docs/archive/auth-profile-validation-checklist.md` (archived; revisit if needed).
-- Phase 3 validation checklist: `docs/phase-3-partner-matching-validation-checklist.md`.
-- Phase 4 notification checklist: `docs/phase-4-notifications-validation-checklist.md`.
-- Release readiness checklist: `docs/release-readiness-checklist.md`.
-- V2-V4 backlog: `docs/v2-v4-implementation-backlog.md`.
 
 ## License
 

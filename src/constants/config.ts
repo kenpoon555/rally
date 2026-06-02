@@ -43,6 +43,10 @@ export const CONFIG = {
   NEARBY_COURT_RADIUS_M: 5000,
   /** Court search when none within NEARBY_COURT_RADIUS_M (meters). */
   WIDER_COURT_RADIUS_M: 25000,
+  /** Niche sports (squash, ultimate, etc.) — search wider metro area on Create Game. */
+  NICHE_COURT_RADIUS_M: 60000,
+  /** Last resort court search for rare sports (meters). */
+  MAX_COURT_RADIUS_M: 120000,
   /** Discover feed radius (meters). LA beta — wide enough to cover the metro from one GPS fix. */
   DISCOVERY_RADIUS_M: 60000,
   /** Wider radius for games a friend hosts or joined (meters). */

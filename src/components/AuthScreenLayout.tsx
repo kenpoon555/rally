@@ -8,8 +8,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography } from '../../constants/theme';
-import { APP_NAME, APP_TAGLINE } from '../../constants/brand';
+import { colors, spacing, typography } from '../constants/theme';
+import { APP_NAME, APP_TAGLINE } from '../constants/brand';
 import { RallyMark } from './RallyMark';
 
 type Props = {
