@@ -131,7 +131,7 @@ Priority order:
 7. [x] **Hide Map** from navigation for beta.
 8. [ ] **Dynamic Home** — Next Up, active Game Rooms, group RSVP summary, host CTAs (replaces scattered empty states).
 9. [ ] **LA beta positioning** — in-app copy + partner/city interest CTA.
-10. [ ] **Mini tournaments inside Regulars** — Phase 2.5 (see below).
+10. [ ] **Mini tournaments inside Regulars** — Phase 2.5 MVP shipped (migration 029); apply on preview + device QA
 11. [ ] **Stage 1 trust & safety** polish — report/block, admin suspend (partial shipped).
 
 See `../open_items.md` for business stages 4–7 (monetization gated on crew replay).

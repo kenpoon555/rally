@@ -24,17 +24,19 @@ import { ROUTES } from '../../constants/routes';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
 import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
-import { SHOW_LOCATION_DEBUG_PANEL, SHOW_DISCOVER_PIPELINE_PANEL } from '../../constants/devFlags';
+import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
 import { getCurrentLocation } from '../../services/locationService';
 import { colors, PRIMARY_COLOR, radius, spacing, typography } from '../../constants/theme';
 import { Button, ScreenHeader } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
-import DiscoverPipelinePanel from '../../components/DiscoverPipelinePanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
 import { shouldShowInDiscoverFeed, sortDiscoverFeedActivities } from '../../utils/activityHelpers';
 import { getBlockedUserIds } from '../../services/safetyService';
 import { getUserFriends } from '../../services/friendsService';
+import { getMyRegularGroups } from '../../services/regularGroupService';
+import { RegularGroup } from '../../types/regularGroup';
+import { DiscoverEmptyState } from '../../components/discover/DiscoverEmptyState';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -91,8 +93,6 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const discoverTitle = `${selectedSport} near you`;
 
-  const emptyGamesLabel = `No ${selectedSport.toLowerCase()} games nearby yet`;
-
   const handleSportFilter = useCallback(
     async (sport: string) => {
       setSelectedSport(sport);
@@ -122,9 +122,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   );
   const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
+  const [crewForEmpty, setCrewForEmpty] = useState<RegularGroup | null>(null);
 
   const visibleActivities = useMemo(() => {
     return sortedActivities
@@ -134,14 +134,22 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const showInitialLoading = loading && visibleActivities.length === 0;
 
-  const onboardingTips = useMemo(
-    () => [
-      'Turn on location to see courts and games near you.',
-      'Pull down to refresh the list.',
-      'No games yet? Create the first game nearby.',
-    ],
-    []
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || visibleActivities.length > 0) {
+        return;
+      }
+      getMyRegularGroups(user.id)
+        .then((groups) => {
+          const match =
+            groups.find((group) => group.sport_type === effectiveSportFilter) ?? groups[0] ?? null;
+          setCrewForEmpty(match);
+        })
+        .catch(() => setCrewForEmpty(null));
+    }, [user?.id, visibleActivities.length, effectiveSportFilter])
   );
+
+  const sportLabel = getSportMetadata(selectedSport)?.shortLabel ?? selectedSport;
 
   useEffect(() => {
     if (!user?.id) {
@@ -191,7 +199,6 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleRefresh = async () => {
     await fetchLocation();
     await refetch();
-    setHasFetchedOnce(true);
   };
 
   useEffect(() => {
@@ -330,54 +337,23 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           )}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              {SHOW_DISCOVER_PIPELINE_PANEL && (
-                <DiscoverPipelinePanel
-                  userId={user?.id}
-                  latitude={location?.latitude}
-                  longitude={location?.longitude}
-                  sportType={effectiveSportFilter}
-                  activitiesCount={activities.length}
-                  visibleCount={visibleActivities.length}
-                  discoverLoading={loading}
-                  discoverError={discoverError?.message ?? null}
-                  authLoading={authLoading}
-                />
-              )}
-              <Text style={styles.emptyTitle}>
-                {discoverError ? 'Could not load games' : emptyGamesLabel}
-              </Text>
-              <Text style={styles.emptyText}>
-                {discoverError
-                  ? discoverError.message
-                  : 'No open games nearby yet. Host one at your court, or share a Regulars link so your crew can join the next game.'}
-              </Text>
-              {!discoverError && (
-                <View style={styles.tipList}>
-                  {onboardingTips.map((tip) => (
-                    <Text key={tip} style={styles.tipText}>
-                      • {tip}
-                    </Text>
-                  ))}
-                </View>
-              )}
-              <View style={styles.ctaRow}>
-                {discoverError ? (
-                  <TouchableOpacity style={styles.primaryCta} onPress={() => refetch()}>
-                    <Text style={styles.primaryCtaText}>Try again</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.primaryCta} onPress={openCreateGame}>
-                    <Text style={styles.primaryCtaText}>Create Game</Text>
-                  </TouchableOpacity>
-                )}
+            discoverError ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>Could not load games</Text>
+                <Text style={styles.emptyText}>{discoverError.message}</Text>
+                <TouchableOpacity style={styles.primaryCta} onPress={() => refetch()}>
+                  <Text style={styles.primaryCtaText}>Try again</Text>
+                </TouchableOpacity>
               </View>
-              {!hasFetchedOnce && !discoverError && (
-                <Text style={styles.helperText}>
-                  New areas stay empty until someone creates the first game.
-                </Text>
-              )}
-            </View>
+            ) : (
+              <DiscoverEmptyState
+                sportLabel={sportLabel}
+                regularGroup={crewForEmpty}
+                onCreateGame={openCreateGame}
+                onInviteFriends={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
+                onOpenChats={() => navigation.navigate(ROUTES.CHAT.TAB as never)}
+              />
+            )
           }
         />
       )}

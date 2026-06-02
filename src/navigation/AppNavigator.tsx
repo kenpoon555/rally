@@ -31,6 +31,7 @@ import ChatListScreen from '../pages/Chat/ChatListScreen';
 import ChatThreadScreen from '../pages/Chat/ChatThreadScreen';
 import MyGamesScreen from '../pages/Games/MyGamesScreen';
 import AdminScreen from '../pages/Admin/AdminScreen';
+import MiniTournamentScreen from '../pages/Tournament/MiniTournamentScreen';
 import { linking } from './deepLinking';
 import TosAcceptanceGate from '../components/TosAcceptanceGate';
 import { needsLegalAcceptance } from '../services/userService';
@@ -167,6 +168,11 @@ const MainStack = () => {
         name={ROUTES.ADMIN.MAIN}
         component={AdminScreen}
         options={{ title: 'Admin' }}
+      />
+      <Stack.Screen
+        name={ROUTES.TOURNAMENT.MINI}
+        component={MiniTournamentScreen}
+        options={{ title: 'Mini tournament' }}
       />
     </Stack.Navigator>
   );

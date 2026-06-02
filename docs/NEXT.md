@@ -94,7 +94,8 @@ Full matrix: [physical-device-beta-test.md](physical-device-beta-test.md)
 - Payments / fee split
 - Multi-city expansion (interest CTA only)
 - [x] **Dynamic Home** — Next Up, active Game Rooms, LA beta banner, host CTAs (2026-06-01)
-- [ ] Mini tournaments inside Regulars — Phase 2.5 (see ROADMAP)
+- [x] **Discover empty CTAs** — Create Game, Share Regulars link, Invite friends (2026-06-01)
+- [ ] **Mini tournaments** — migration 029 + UI shipped; apply migration on preview Supabase
 
 ---
 

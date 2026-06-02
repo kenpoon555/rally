@@ -26,7 +26,7 @@ export const ROUTES = {
     LIST: 'ChatList',
     THREAD: 'ChatThread',
   },
-  ADMIN: {
-    MAIN: 'Admin',
+  TOURNAMENT: {
+    MINI: 'MiniTournament',
   },
 } as const;
