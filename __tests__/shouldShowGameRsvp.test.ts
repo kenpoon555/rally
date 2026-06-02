@@ -1,20 +1,33 @@
-import { shouldShowGameRsvp } from '../src/utils/activityHelpers';
+import { needsConfirmPlaying, shouldShowGameRsvp } from '../src/utils/activityHelpers';
 
 describe('shouldShowGameRsvp', () => {
-  it('always hides RSVP (removed from product)', () => {
+  it('is disabled (RSVP removed from product)', () => {
     expect(
       shouldShowGameRsvp({
-        regular_group_id: 'group-1',
-        series_id: 'series-1',
-        match_status: 'open',
-      })
-    ).toBe(false);
-    expect(
-      shouldShowGameRsvp({
-        regular_group_id: null,
+        regular_group_id: 'g1',
         series_id: null,
         match_status: 'open',
+        status: 'active',
       })
     ).toBe(false);
+  });
+});
+
+describe('needsConfirmPlaying', () => {
+  it('returns true when approved but not ready on crew game', () => {
+    expect(
+      needsConfirmPlaying(
+        {
+          regular_group_id: 'g1',
+          status: 'active',
+          match_status: 'open',
+          user_id: 'host',
+          join_requests: [
+            { user_id: 'u2', status: 'approved', ready_at: null },
+          ],
+        } as never,
+        'u2'
+      )
+    ).toBe(true);
   });
 });

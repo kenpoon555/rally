@@ -26,7 +26,7 @@ Last updated: 2026-06-01
 - Core success metric for MVP: a user can discover, join, and play with a partner in minutes.
 - Next success metric: a group can converge on the best time/location with minimal coordination overhead.
 - **UX north star (2026-05-31):** **Chat-first coordination** — users live in game lobbies; Discover fills empty slots.
-- **Future tab simplification:** `Home | Discover | Host | Chats | Profile` once Dynamic Home ships (today: 5 tabs below).
+- **Tab bar (2026-06-01):** `Home | Discover | Host | Chats | Profile` — My Games and Friends are stack screens from Profile/Home.
 - **Beta strategy (2026-05-31):** **Prove retention before monetization.** North-star: **`analytics_crew_lifecycle.retained`** (% of Regulars groups with ≥1 replay).
 - **Beta market:** Los Angeles — badminton + pickleball primary; 10 sports in catalog.
 
@@ -34,11 +34,13 @@ Last updated: 2026-06-01
 
 | Order | Tab | Role |
 |-------|-----|------|
-| 1 | **Chats** | Primary hub — game lobbies + friend DMs |
-| 2 | **My Games** | Upcoming / Past / Hosting → Game Room |
-| 3 | **Discover** | Find open games to join |
-| 4 | **Friends** | Social graph + DMs |
-| 5 | **Profile** | Identity, trust, settings |
+| 1 | **Home** | Dynamic Home — Next Up, Regulars crews, active Game Rooms, explorer CTAs |
+| 2 | **Discover** | Find open games in LA (badminton/pickleball beta) |
+| 3 | **Host** | Create Game (fast path) |
+| 4 | **Chats** | Game lobbies + friend DMs; Next Up RSVP hint for crew games |
+| 5 | **Profile** | Identity, trust, My Games / Friends / Regulars crews, founder copy |
+
+**Stack (not tabs):** My Games, Friends, Activity Detail, Regulars crew, mini tournament.
 
 **Map:** Hidden for beta (not in tab bar or navigation). Court picker on Create Game uses inline map only.
 
@@ -129,11 +131,11 @@ Priority order:
 5. [x] **Empty states** — Chats + My Games CTAs.
 6. [x] **Remove dev diagnostics** from production builds — `devFlags.ts` (2026-05-31).
 7. [x] **Hide Map** from navigation for beta.
-8. [ ] **Dynamic Home** — Next Up, active Game Rooms, group RSVP summary, host CTAs (replaces scattered empty states).
-9. [ ] **LA beta positioning** — in-app copy + partner/city interest CTA.
-10. [ ] **Mini tournaments inside Regulars** — Phase 2.5 MVP shipped (migration 029); apply on preview + device QA
-11. [ ] **Stage 1 trust & safety** polish — report/block, admin suspend (partial shipped).
-
+8. [x] **Dynamic Home** — Next Up, active Game Rooms, confirm-playing hint, host CTAs, Regulars crews (2026-06-01).
+9. [x] **LA beta positioning** — Discover subtitle, auth chips, founder copy on Home/Profile (2026-06-01).
+10. [x] **Mini tournaments inside Regulars** — MVP + migration 029 on preview; device QA pending.
+11. [x] **Crew group chat** — One `crew_group` thread per Regulars crew; session cards; Join / I'm in / Lock roster; migration 030 (2026-06-02).
+12. [ ] **Stage 1 trust & safety** polish — report/block, admin suspend (partial shipped).
 See `../open_items.md` for business stages 4–7 (monetization gated on crew replay).
 
 ## Beta phases (product review — execution order)
@@ -142,7 +144,7 @@ See `../open_items.md` for business stages 4–7 (monetization gated on crew rep
 
 - Preview build on tester phones (iOS ad hoc = register UDID + reprovision + rebuild).
 - Migrations 026–028 applied; dev panels hidden in preview.
-- Auth, Discover, Create, Game Room, group RSVP, push on physical devices.
+- Auth, Discover, Create, Game Room, crew chat + ready/lock, push on physical devices.
 
 ### Phase 1: Closed beta liquidity (LA)
 
@@ -151,7 +153,7 @@ See `../open_items.md` for business stages 4–7 (monetization gated on crew rep
 
 ### Phase 2: Regulars retention loop
 
-- Crew invite, group RSVP, schedule next game, cost note, announcements, attendance/reviews.
+- Crew invite, one crew chat, schedule next game, Join / I'm in / Lock roster, cost note, announcements, attendance/reviews.
 - Exit: 3+ Regulars groups; 2+ schedule next game; 20%+ games → another game.
 
 ### Phase 2.5: Regulars mini tournaments *(next major feature after retention basics)*

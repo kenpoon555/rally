@@ -219,12 +219,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             return;
           }
           try {
-            const { activityId } = await joinGroupAndNextGame(parsed.groupInviteToken);
+            const { activityId, conversationId, groupId, joinedGame, joinGameError } =
+              await joinGroupAndNextGame(parsed.groupInviteToken);
+            if (joinGameError === 'full') {
+              Alert.alert(
+                'Joined crew',
+                "You're in the crew. The next game is full — tap Join when a spot opens."
+              );
+            }
+            if (conversationId && navigationRef.isReady()) {
+              (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+                conversationId,
+                activityId: activityId ?? undefined,
+                groupId,
+                title: 'Crew chat',
+              });
+              return;
+            }
             if (activityId && navigationRef.isReady()) {
               try {
-                const conversationId = await ensureActivityGroupConversation(activityId);
+                const gameConvoId = await ensureActivityGroupConversation(activityId);
                 (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
-                  conversationId,
+                  conversationId: gameConvoId,
                   activityId,
                 });
                 return;
@@ -232,7 +248,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // Joined the crew but couldn't open the room — fall back to a confirmation.
               }
             }
-            Alert.alert('Joined crew', "You're in! Your next game will show up in Chats.");
+            if (joinedGame) {
+              Alert.alert('Joined crew', "You're in! Your next game will show up in Chats.");
+            } else if (!joinGameError) {
+              Alert.alert('Joined crew', "You're in the crew. Open Chats when a game is scheduled.");
+            }
           } catch (err: any) {
             Alert.alert('Group invite', err?.message || 'Could not join group.');
           }

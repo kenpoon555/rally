@@ -1,9 +1,10 @@
-export type ConversationType = 'activity_group' | 'friend_direct';
+export type ConversationType = 'activity_group' | 'friend_direct' | 'crew_group';
 
 export interface Conversation {
   id: string;
   conversation_type: ConversationType;
   activity_id?: string | null;
+  regular_group_id?: string | null;
   created_by: string;
   title?: string | null;
   pinned_announcement?: string | null;
@@ -11,6 +12,16 @@ export interface Conversation {
   pinned_announcement_by?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface ConversationActivity {
+  id: string;
+  conversation_id: string;
+  activity_id: string;
+  position: number;
+  is_current: boolean;
+  created_at: string;
+  activity?: import('./activity').Activity | null;
 }
 
 export interface ConversationMember {
@@ -33,4 +44,5 @@ export interface ChatMessage {
   updated_at: string;
   edited_at?: string | null;
   deleted_at?: string | null;
+  activity_id?: string | null;
 }

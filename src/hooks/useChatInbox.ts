@@ -4,7 +4,7 @@ import { Conversation } from '../types/chat';
 import { Friend } from '../types/friends';
 import { RegularGroup } from '../types/regularGroup';
 import { getMyGames, MyGameEntry, MyGameRole } from '../services/activityService';
-import { getMyConversations, getUnreadConversationCounts } from '../services/chatService';
+import { getMyConversations, getUnreadConversationCounts, getLastMessagePreviews } from '../services/chatService';
 import { getMyRegularGroups } from '../services/regularGroupService';
 import { getBlockedUserIds } from '../services/safetyService';
 import { getUserFriends } from '../services/friendsService';
@@ -24,6 +24,7 @@ export type GroupChatInboxItem = {
   unread: number;
   title: string;
   subtitle: string;
+  lastMessageAt: string | null;
 };
 
 export type GameChatInboxItem = {
@@ -37,6 +38,7 @@ export type GameChatInboxItem = {
   title: string;
   subtitle: string;
   statusLabel: string;
+  lastMessageAt: string | null;
 };
 
 export type FriendChatInboxItem = {
@@ -48,6 +50,7 @@ export type FriendChatInboxItem = {
   unread: number;
   title: string;
   subtitle: string;
+  lastMessageAt: string | null;
 };
 
 export type ChatInboxItem = GroupChatInboxItem | GameChatInboxItem | FriendChatInboxItem;
@@ -90,22 +93,42 @@ async function buildDirectConversationPeerMap(
   return map;
 }
 
+function previewForConversation(
+  conversationId: string | null | undefined,
+  previews: Record<string, { content: string; created_at: string }>,
+  fallback: string
+): { subtitle: string; lastMessageAt: string | null } {
+  if (!conversationId || !previews[conversationId]) {
+    return { subtitle: fallback, lastMessageAt: null };
+  }
+  const preview = previews[conversationId];
+  return {
+    subtitle: preview.content,
+    lastMessageAt: preview.created_at,
+  };
+}
+
 function buildChatInbox(params: {
   games: { active: MyGameEntry[]; past: MyGameEntry[] };
   groups: RegularGroup[];
   conversations: Conversation[];
   friends: Friend[];
   unreadCounts: Record<string, number>;
+  messagePreviews: Record<string, { content: string; created_at: string }>;
   directPeerMap: Record<string, string>;
   blockedUserIds: Set<string>;
 }): ChatInboxItem[] {
   const convoByActivityId = new Map<string, Conversation>();
+  const convoByGroupId = new Map<string, Conversation>();
   const directConvos = params.conversations.filter((c) => c.conversation_type === 'friend_direct');
   const directConvoByFriendId = new Map<string, Conversation>();
 
   for (const convo of params.conversations) {
     if (convo.conversation_type === 'activity_group' && convo.activity_id) {
       convoByActivityId.set(convo.activity_id, convo);
+    }
+    if (convo.conversation_type === 'crew_group' && convo.regular_group_id) {
+      convoByGroupId.set(convo.regular_group_id, convo);
     }
   }
 
@@ -119,18 +142,28 @@ function buildChatInbox(params: {
   const gameItems: GameChatInboxItem[] = [];
   const appendGame = (entry: MyGameEntry, isPast: boolean) => {
     const { activity, role } = entry;
+    if (activity.regular_group_id) {
+      return;
+    }
     const convo = convoByActivityId.get(activity.id);
+    const convoId = convo?.id ?? null;
+    const preview = previewForConversation(
+      convoId,
+      params.messagePreviews,
+      formatActivityTime(activity.start_time, activity.duration)
+    );
     gameItems.push({
       kind: 'game',
       key: `game-${activity.id}`,
       activity,
       role,
-      conversationId: convo?.id ?? null,
+      conversationId: convoId,
       unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
       isPast,
       title: gameTitle(activity),
-      subtitle: formatActivityTime(activity.start_time, activity.duration),
+      subtitle: preview.subtitle,
       statusLabel: getGameStatusLabel(activity),
+      lastMessageAt: preview.lastMessageAt ?? activity.start_time ?? null,
     });
   };
 
@@ -148,30 +181,37 @@ function buildChatInbox(params: {
     return new Date(b.activity.start_time).getTime() - new Date(a.activity.start_time).getTime();
   });
 
+  const seenFriendIds = new Set<string>();
   const friendItems: FriendChatInboxItem[] = params.friends.reduce<FriendChatInboxItem[]>(
     (acc, friend) => {
       const friendId = friend.friend?.id || friend.friend_id;
-      if (params.blockedUserIds.has(friendId)) {
+      if (!friendId || params.blockedUserIds.has(friendId) || seenFriendIds.has(friendId)) {
         return acc;
       }
+      seenFriendIds.add(friendId);
       const username = friend.friend?.username || 'Friend';
       const convo = directConvoByFriendId.get(friendId);
+      const convoId = convo?.id ?? null;
+      const preview = previewForConversation(
+        convoId,
+        params.messagePreviews,
+        'Start a conversation'
+      );
       acc.push({
         kind: 'friend',
         key: `friend-${friendId}`,
         userId: friendId,
         username,
-        conversationId: convo?.id ?? null,
+        conversationId: convoId,
         unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
         title: `@${username}`,
-        subtitle: convo ? 'Friend chat' : 'Start a conversation',
+        subtitle: preview.subtitle,
+        lastMessageAt: preview.lastMessageAt,
       });
       return acc;
     },
     []
   );
-
-  friendItems.sort((a, b) => a.username.localeCompare(b.username));
 
   const activeByGroupId = new Map<string, Activity>();
   for (const entry of params.games.active) {
@@ -190,34 +230,40 @@ function buildChatInbox(params: {
 
   const groupItems: GroupChatInboxItem[] = params.groups.map((group) => {
     const nextActivity = activeByGroupId.get(group.id) ?? null;
-    const convo = nextActivity ? convoByActivityId.get(nextActivity.id) : undefined;
+    const crewConvo = convoByGroupId.get(group.id);
+    const convoId = crewConvo?.id ?? null;
+    const fallback = nextActivity
+      ? `Next: ${formatActivityTime(nextActivity.start_time, nextActivity.duration)}`
+      : 'Tap to open crew chat';
+    const preview = previewForConversation(convoId, params.messagePreviews, fallback);
     return {
       kind: 'group',
       key: `group-${group.id}`,
       group,
       nextActivity,
-      conversationId: convo?.id ?? null,
-      unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
+      conversationId: convoId,
+      unread: crewConvo ? params.unreadCounts[crewConvo.id] || 0 : 0,
       title: group.name,
-      subtitle: nextActivity
-        ? `Next: ${formatActivityTime(nextActivity.start_time, nextActivity.duration)}`
-        : 'No game scheduled yet',
+      subtitle: preview.subtitle,
+      lastMessageAt: preview.lastMessageAt ?? nextActivity?.start_time ?? null,
     };
   });
 
   groupItems.sort((a, b) => a.group.name.localeCompare(b.group.name));
 
-  /** When a game belongs to a Regulars crew, the group row already covers it — drop the duplicate game row. */
-  const groupNextActivityIds = new Set(
-    groupItems
-      .map((item) => item.nextActivity?.id)
-      .filter((id): id is string => Boolean(id))
-  );
-  const dedupedGameItems = gameItems.filter(
-    (item) => !groupNextActivityIds.has(item.activity.id)
-  );
+  const dedupedGameItems = gameItems;
 
-  return [...groupItems, ...dedupedGameItems, ...friendItems];
+  const allItems = [...groupItems, ...dedupedGameItems, ...friendItems];
+  allItems.sort((a, b) => {
+    const aTime = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0;
+    const bTime = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0;
+    if (aTime !== bTime) {
+      return bTime - aTime;
+    }
+    return a.title.localeCompare(b.title);
+  });
+
+  return allItems;
 }
 
 export function useChatInbox(userId: string | undefined) {
@@ -252,12 +298,15 @@ export function useChatInbox(userId: string | undefined) {
       }
 
       const directPeerMap = await buildDirectConversationPeerMap(userId, conversations);
+      const conversationIds = conversations.map((c) => c.id);
+      const messagePreviews = await getLastMessagePreviews(conversationIds);
       const inbox = buildChatInbox({
         games,
         groups,
         conversations,
         friends,
         unreadCounts,
+        messagePreviews,
         directPeerMap,
         blockedUserIds: new Set(blockedIds),
       });
@@ -277,7 +326,7 @@ export function useChatInbox(userId: string | undefined) {
 
 export function useChatInboxWithRealtime(userId: string | undefined) {
   const inbox = useChatInbox(userId);
-  useSupabaseRealtimeReload(['activities', 'join_requests'], inbox.load, Boolean(userId));
+  useSupabaseRealtimeReload(['activities', 'join_requests', 'messages'], inbox.load, Boolean(userId));
   return inbox;
 }
 

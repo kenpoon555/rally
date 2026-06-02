@@ -147,27 +147,10 @@ export const getActivityById = async (activityId: string): Promise<Activity | nu
     console.error('Error fetching join requests for activity:', joinError);
   }
 
-  const { data: rsvpRows, error: rsvpError } = await supabase
-    .from('activity_rsvps')
-    .select(
-      `
-      activity_id,
-      user_id,
-      status,
-      updated_at,
-      user:profiles!activity_rsvps_user_id_fkey(id, username)
-    `
-    )
-    .eq('activity_id', activityId);
-
-  if (rsvpError) {
-    console.error('Error fetching RSVPs for activity:', rsvpError);
-  }
-
   return {
     ...(data as Activity),
     join_requests: (joinRows || []) as Activity['join_requests'],
-    rsvps: (rsvpRows || []) as ActivityRsvp[],
+    rsvps: [],
   };
 };
 

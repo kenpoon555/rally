@@ -6,11 +6,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocation } from '../../hooks/useLocation';
 import { useUserPlayMode } from '../../hooks/useUserPlayMode';
 import { ensureActivityGroupConversation } from '../../services/chatService';
 import { MyGameEntry } from '../../services/activityService';
@@ -20,13 +22,13 @@ import { BetaMarketBanner } from '../../components/home/BetaMarketBanner';
 import { NextUpCard } from '../../components/home/NextUpCard';
 import { ActiveGameRoomRow } from '../../components/home/ActiveGameRoomRow';
 import { colors, spacing, typography } from '../../constants/theme';
+import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
+import { needsConfirmPlaying } from '../../utils/activityHelpers';
 
 type TabParamList = {
   DynamicHome: undefined;
   Chats: undefined;
-  MyGames: undefined;
   Home: undefined;
-  Friends: undefined;
   Profile: undefined;
 };
 
@@ -36,6 +38,7 @@ const MAX_ROOM_ROWS = 5;
 
 const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { location, fetchLocation } = useLocation(false);
   const { mode, loading, activeGames, regularGroups, nextGame, refetch } = useUserPlayMode(
     user?.id
   );
@@ -45,7 +48,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       refetch();
-    }, [refetch])
+      void fetchLocation();
+    }, [refetch, fetchLocation])
   );
 
   const openGameRoom = async (entry: MyGameEntry) => {
@@ -72,16 +76,17 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     } as never);
   };
 
-  const openCreateGame = () => {
+  const openCreateGame = () =>
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
-  };
+  const openDiscover = () => navigation.navigate(ROUTES.HOME.MAIN as never);
+  const openChats = () => navigation.navigate(ROUTES.CHAT.TAB as never);
+  const openFriends = () =>
+    navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never);
 
-  const openDiscover = () => {
-    navigation.navigate(ROUTES.HOME.MAIN as never);
-  };
-
-  const openChats = () => {
-    navigation.navigate(ROUTES.CHAT.TAB as never);
+  const openCrew = (groupId: string) => {
+    navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+      groupId,
+    } as never);
   };
 
   const handleRefresh = async () => {
@@ -104,12 +109,17 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     [activeGames]
   );
 
+  const needsConfirm = Boolean(
+    nextGame &&
+      needsConfirmPlaying(nextGame.activity, user?.id)
+  );
+
   const subtitle =
     mode === 'regular'
-      ? 'Your next game, active rooms, and host tools — all in one place.'
-      : 'Find a game in LA or host one for your crew.';
+      ? 'Next up, your crews, and active Game Rooms.'
+      : 'Find a game in LA, host one, or start a Regulars crew.';
 
-  const showExplorerEmpty = mode === 'explorer' && !loading;
+  const showExplorerEmpty = mode === 'explorer' && !loading && regularGroups.length === 0;
 
   return (
     <View style={styles.container}>
@@ -126,14 +136,38 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
         >
           <BetaMarketBanner />
 
-          {mode === 'regular' ? (
+          {needsConfirm ? (
+            <View style={styles.rsvpNeededCard}>
+              <Text style={styles.rsvpNeededTitle}>Confirm you're playing</Text>
+              <Text style={styles.rsvpNeededBody}>
+                Your crew game is coming up. Open Chats and tap I'm in on the game card.
+              </Text>
+            </View>
+          ) : null}
+
+          {mode === 'explorer' ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Get started</Text>
+              <View style={styles.actionRow}>
+                <Button title="Host a Game" size="sm" onPress={openCreateGame} />
+                <Button title="Discover" variant="accent" size="sm" onPress={openDiscover} />
+              </View>
+              <Button title="Invite friends" variant="secondary" size="sm" onPress={openFriends} />
+            </View>
+          ) : null}
+
+          {nextGame || regularGroups[0] ? (
             <NextUpCard
               nextGame={nextGame}
               fallbackGroup={regularGroups[0] ?? null}
               currentUserId={user?.id}
+              userLocation={location}
               onOpenGameRoom={(entry) => void openGameRoom(entry)}
               onScheduleNext={openActivityDetails}
               openingGameId={openingGameId}
+              footerHint={
+                needsConfirm ? "Crew game — tap I'm in in Chats" : undefined
+              }
             />
           ) : null}
 
@@ -150,10 +184,10 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
               ))}
               {activeGames.length > MAX_ROOM_ROWS ? (
                 <Button
-                  title="See all in My Games"
+                  title="See all games"
                   variant="ghost"
                   size="sm"
-                  onPress={() => navigation.navigate(ROUTES.MY_GAMES.TAB as never)}
+                  onPress={openChats}
                   style={styles.sectionLink}
                 />
               ) : null}
@@ -162,30 +196,41 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>
-              {hostingCount > 0 ? `Hosting ${hostingCount} upcoming` : 'Host or find a game'}
+              {hostingCount > 0 ? `Hosting ${hostingCount} upcoming` : 'Quick actions'}
             </Text>
             <View style={styles.actionRow}>
-              <Button title="Create Game" size="sm" onPress={openCreateGame} />
+              <Button title="Host" size="sm" onPress={openCreateGame} />
               <Button title="Discover" variant="accent" size="sm" onPress={openDiscover} />
             </View>
-            {mode === 'regular' ? (
-              <Button
-                title="Open Chats"
-                variant="ghost"
-                size="sm"
-                onPress={openChats}
-                style={styles.ghostLink}
-              />
-            ) : null}
           </View>
+
+          {regularGroups.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Your crews</Text>
+              {regularGroups.slice(0, 4).map((group) => (
+                <TouchableOpacity
+                  key={group.id}
+                  style={styles.crewRow}
+                  onPress={() => openCrew(group.id)}
+                >
+                  <Text style={styles.crewName}>{group.name}</Text>
+                  <Text style={styles.crewMeta}>
+                    {group.sport_type} · Crew · mini tournaments
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+
+          <Text style={styles.founder}>{FOUNDER_BENEFITS_COPY}</Text>
 
           {showExplorerEmpty ? (
             <EmptyState
               icon="🏸"
               title="No games yet"
-              message="Discover open games in LA or create one and share the invite link with your crew."
+              message="Discover open games in LA or host one and share the invite link with your crew."
               primaryAction={{ label: 'Browse Discover', onPress: openDiscover }}
-              secondaryAction={{ label: 'Create Game', onPress: openCreateGame }}
+              secondaryAction={{ label: 'Host a Game', onPress: openCreateGame }}
             />
           ) : null}
         </ScrollView>
@@ -224,11 +269,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  ghostLink: {
-    alignSelf: 'flex-start',
-    marginLeft: spacing.lg,
-    marginTop: spacing.xs,
+  crewRow: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  crewName: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  crewMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  rsvpNeededCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  rsvpNeededTitle: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  rsvpNeededBody: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  founder: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
 });
 

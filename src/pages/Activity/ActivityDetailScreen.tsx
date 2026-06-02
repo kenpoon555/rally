@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
+import { ensureCrewConversation } from '../../services/chatService';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
@@ -78,8 +80,9 @@ type MainStackParamList = {
   MainTabs: undefined;
   ActivityDetail: { activityId?: string; inviteToken?: string; fromGameRoom?: boolean };
   CreateActivity: undefined;
-  ChatThread: { conversationId: string; title?: string; activityId?: string };
+  ChatThread: { conversationId: string; title?: string; activityId?: string; groupId?: string };
   MiniTournament: { tournamentId: string };
+  RegularsCrew: { groupId: string };
 };
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
@@ -124,7 +127,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [savingCostNote, setSavingCostNote] = useState(false);
   const [groupTournaments, setGroupTournaments] = useState<MiniTournament[]>([]);
   const [creatingTournament, setCreatingTournament] = useState(false);
-
   const isHost = user && activity && user.id === activity.user_id;
   const myJoinRequest = useMemo(
     () => (activity?.join_requests || []).find((r) => r.user_id === user?.id),
@@ -422,7 +424,17 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           )
         : await scheduleNextGameFromActivity(activity.id, startIso);
       setSchedulePickerVisible(false);
-      (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
+      if (activity.regular_group_id) {
+        const conversationId = await ensureCrewConversation(activity.regular_group_id);
+        navigation.navigate(ROUTES.CHAT.THREAD as never, {
+          conversationId,
+          activityId: newId,
+          groupId: activity.regular_group_id,
+          title: regularGroup?.name ?? 'Crew chat',
+        } as never);
+      } else {
+        (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
+      }
     } catch (error: any) {
       Alert.alert('Schedule failed', error?.message || 'Could not schedule next game.');
     } finally {
@@ -524,6 +536,15 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   const openMiniTournament = (tournamentId: string) => {
     navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
+  };
+
+  const openRegularsCrew = () => {
+    if (!regularGroup?.id) {
+      return;
+    }
+    navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+      groupId: regularGroup.id,
+    } as never);
   };
 
   const handleReportCourt = () => {
@@ -748,8 +769,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       setOpeningChat(false);
       navigation.navigate(ROUTES.CHAT.THREAD as any, {
         conversationId,
-        title: activity.location?.name || `${activity.sport_type} game`,
+        title: activity.regular_group_id
+          ? regularGroup?.name || `${activity.sport_type} crew`
+          : activity.location?.name || `${activity.sport_type} game`,
         activityId: activity.id,
+        groupId: activity.regular_group_id ?? undefined,
       });
       if (user?.id) {
         void trackProductEvent(
@@ -866,7 +890,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <Text style={styles.recurringText}>Part of a weekly recurring series</Text>
         ) : null}
         {regularGroup ? (
-          <Text style={styles.regularGroupText}>Regulars: {regularGroup.name}</Text>
+          <TouchableOpacity onPress={openRegularsCrew}>
+            <Text style={styles.regularGroupText}>Regulars: {regularGroup.name} →</Text>
+          </TouchableOpacity>
         ) : null}
         {!isHost && activity.cost_note ? (
           <Text style={styles.costNoteText}>Cost: {activity.cost_note}</Text>
@@ -907,7 +933,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             disabled={openingChat}
           >
             <Text style={styles.utilityButtonText}>
-              {openingChat ? 'Opening…' : 'Open Game Room'}
+              {openingChat
+                ? 'Opening…'
+                : activity.regular_group_id
+                  ? 'Open crew chat'
+                  : 'Open Game Room'}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -931,16 +961,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
             {schedulePickerVisible ? (
               <View style={styles.schedulePickerBlock}>
-                <DateTimePicker
+                <ScheduleDateTimePicker
+                  visible={schedulePickerVisible}
                   value={nextStartTime}
-                  mode="datetime"
-                  minimumDate={new Date()}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(_, date) => {
-                    if (date) {
-                      setNextStartTime(date);
-                    }
-                  }}
+                  onChange={setNextStartTime}
                 />
                 <View style={styles.schedulePickerRow}>
                   <TouchableOpacity onPress={() => setSchedulePickerVisible(false)}>
@@ -1181,7 +1205,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               <View style={styles.participantInfo}>
                 <Text style={styles.participantName}>{req.user.username}</Text>
                 <Text style={styles.participantRole}>
-                  {req.ready_at ? 'Ready' : isFinalized ? 'Joined' : 'Waiting to mark ready'}
+                  {req.ready_at ? "In ✓" : isFinalized ? 'Joined' : 'Tap I\'m in'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -1197,7 +1221,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {!isHost && isApprovedJoiner && !isFinalized && showChat ? (
         <Text style={styles.gameRoomHint}>
-          Open Game Room to mark ready, chat with your crew, or leave this game.
+          Open crew chat to tap I'm in, chat with your crew, or leave this game.
         </Text>
       ) : null}
 
@@ -1213,7 +1237,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             disabled={iAmReady || settingReady}
           >
             <Text style={styles.secondaryButtonText}>
-              {iAmReady ? 'Ready ✓' : settingReady ? 'Saving...' : 'Mark Ready'}
+              {iAmReady ? "You're in ✓" : settingReady ? 'Saving...' : "I'm in"}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1311,7 +1335,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           disabled={finalizing}
         >
           <Text style={styles.utilityButtonText}>
-            {finalizing ? 'Finalizing...' : 'Finalize game (lock roster)'}
+            {finalizing ? 'Locking...' : 'Lock roster'}
           </Text>
         </TouchableOpacity>
       ) : null}

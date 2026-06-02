@@ -37,6 +37,7 @@ import { getUserFriends } from '../../services/friendsService';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { DiscoverEmptyState } from '../../components/discover/DiscoverEmptyState';
+import { BETA_REGION } from '../../constants/betaRegion';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -91,7 +92,8 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [routeSportFilter]);
 
-  const discoverTitle = `${selectedSport} near you`;
+  const discoverTitle = `Discover ${selectedSport}`;
+  const discoverSubtitle = `Near ${BETA_REGION.name} · Tonight · open games you can join`;
 
   const handleSportFilter = useCallback(
     async (sport: string) => {
@@ -240,12 +242,13 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         </ErrorBoundary>
       )}
       <View style={styles.header}>
-        <ScreenHeader
-          title={discoverTitle}
-          subtitle="Find a game or host one at a nearby court. Distances are approximate until you join."
-        />
+        <ScreenHeader title={discoverTitle} subtitle={discoverSubtitle} />
         <View style={styles.actionRow}>
-          <Button title="Create Game" size="sm" onPress={openCreateGame} />
+          <Button
+            title="Host a Game"
+            size="sm"
+            onPress={openCreateGame}
+          />
           <Button title="Join nearest" variant="accent" size="sm" onPress={handleJoinNearest} />
         </View>
         <Text style={styles.preferenceHint}>

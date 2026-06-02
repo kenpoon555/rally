@@ -1,5 +1,6 @@
 export const ROUTES = {
   AUTH: {
+    WELCOME: 'Welcome',
     LOGIN: 'Login',
     SIGNUP: 'Signup',
   },
@@ -8,9 +9,15 @@ export const ROUTES = {
     MAIN: 'Home',
     MAP: 'Map',
   },
+  HOST: {
+    TAB: 'Host',
+  },
   ACTIVITY: {
     DETAIL: 'ActivityDetail',
     CREATE: 'CreateActivity',
+  },
+  REGULAR_GROUP: {
+    CREW: 'RegularsCrew',
   },
   FRIENDS: {
     LIST: 'Friends',
@@ -28,5 +35,8 @@ export const ROUTES = {
   },
   TOURNAMENT: {
     MINI: 'MiniTournament',
+  },
+  ADMIN: {
+    MAIN: 'Admin',
   },
 } as const;

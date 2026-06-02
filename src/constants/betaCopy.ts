@@ -7,6 +7,9 @@ export const BETA_COPY = {
   contactEmail: 'kunyupoon495@gmail.com',
 } as const;
 
+export const FOUNDER_BENEFITS_COPY =
+  'Active beta testers, hosts, and city partners may receive Founding Member benefits after launch.';
+
 export function buildBetaContactMailto(): string {
   const subject = encodeURIComponent('Rally beta — host / partner interest');
   const body = encodeURIComponent(

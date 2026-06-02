@@ -10,7 +10,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '../constants/theme';
 import { APP_NAME, APP_TAGLINE } from '../constants/brand';
+import { BETA_COPY } from '../constants/betaCopy';
 import { RallyMark } from './RallyMark';
+import { colors as themeColors, spacing as themeSpacing, typography as themeTypography } from '../constants/theme';
 
 type Props = {
   title: string;
@@ -35,6 +37,11 @@ export function AuthScreenLayout({ title, subtitle, children }: Props) {
           <RallyMark size="lg" style={styles.logoMark} />
           <Text style={styles.brandName}>{APP_NAME}</Text>
           <Text style={styles.tagline}>{APP_TAGLINE}</Text>
+          <Text style={styles.betaLine}>{BETA_COPY.headline}</Text>
+          <View style={styles.sportRow}>
+            <Text style={styles.sportChip}>Badminton</Text>
+            <Text style={styles.sportChip}>Pickleball</Text>
+          </View>
         </View>
 
         <View style={styles.formCard}>
@@ -73,6 +80,27 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  betaLine: {
+    ...typography.caption,
+    marginTop: themeSpacing.md,
+    color: themeColors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  sportRow: {
+    flexDirection: 'row',
+    gap: themeSpacing.sm,
+    marginTop: themeSpacing.sm,
+  },
+  sportChip: {
+    ...themeTypography.label,
+    color: themeColors.primaryDark,
+    backgroundColor: themeColors.primaryLight,
+    paddingHorizontal: themeSpacing.sm,
+    paddingVertical: themeSpacing.xs,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   formCard: {
     backgroundColor: colors.surface,

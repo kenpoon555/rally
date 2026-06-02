@@ -1,4 +1,5 @@
 import { supabase } from './api/supabase';
+import { Activity } from '../types/activity';
 import { RegularGroup } from '../types/regularGroup';
 import { trackProductEvent } from './analyticsService';
 
@@ -39,8 +40,10 @@ export const joinRegularGroupViaInvite = async (inviteToken: string): Promise<st
 
 export interface JoinGroupResult {
   groupId: string;
-  /** Soonest upcoming game the invitee was joined to, if any. */
   activityId: string | null;
+  conversationId: string | null;
+  joinedGame: boolean;
+  joinGameError: string | null;
 }
 
 /** Unified invite: join the Regulars crew and its next scheduled game in one call. */
@@ -51,7 +54,13 @@ export const joinGroupAndNextGame = async (inviteToken: string): Promise<JoinGro
   if (error) {
     throw new Error(error.message);
   }
-  const result = (data ?? {}) as { group_id?: string; activity_id?: string | null };
+  const result = (data ?? {}) as {
+    group_id?: string;
+    activity_id?: string | null;
+    conversation_id?: string | null;
+    joined_game?: boolean;
+    join_game_error?: string | null;
+  };
   if (!result.group_id) {
     throw new Error('Group invite could not be redeemed');
   }
@@ -60,7 +69,20 @@ export const joinGroupAndNextGame = async (inviteToken: string): Promise<JoinGro
     activity_id: result.activity_id ?? null,
     via: 'group_and_next_game',
   });
-  return { groupId: result.group_id, activityId: result.activity_id ?? null };
+  return {
+    groupId: result.group_id,
+    activityId: result.activity_id ?? null,
+    conversationId: result.conversation_id ?? null,
+    joinedGame: Boolean(result.joined_game),
+    joinGameError: result.join_game_error ?? null,
+  };
+};
+
+export const joinCrewGame = async (activityId: string): Promise<void> => {
+  const { error } = await supabase.rpc('join_crew_game', { p_activity_id: activityId });
+  if (error) {
+    throw new Error(error.message);
+  }
 };
 
 export const getRegularGroupById = async (groupId: string): Promise<RegularGroup | null> => {
@@ -89,6 +111,48 @@ export const isRegularGroupMember = async (
   return Boolean(data);
 };
 
+export interface RegularGroupMemberRow {
+  group_id: string;
+  user_id: string;
+  role: string;
+  joined_at: string;
+  user?: { id: string; username: string };
+}
+
+export const getRegularGroupMembers = async (
+  groupId: string
+): Promise<RegularGroupMemberRow[]> => {
+  const { data, error } = await supabase
+    .from('regular_group_members')
+    .select('group_id, user_id, role, joined_at')
+    .eq('group_id', groupId)
+    .order('joined_at', { ascending: true });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const rows = (data ?? []) as RegularGroupMemberRow[];
+  if (rows.length === 0) {
+    return [];
+  }
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in(
+      'id',
+      rows.map((row) => row.user_id)
+    );
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+  const nameById = new Map(
+    (profiles ?? []).map((row) => [row.id as string, row.username as string])
+  );
+  return rows.map((row) => ({
+    ...row,
+    user: { id: row.user_id, username: nameById.get(row.user_id) ?? 'Player' },
+  }));
+};
+
 export const getMyRegularGroups = async (userId: string): Promise<RegularGroup[]> => {
   const { data: memberships, error: memberError } = await supabase
     .from('regular_group_members')
@@ -112,4 +176,55 @@ export const getMyRegularGroups = async (userId: string): Promise<RegularGroup[]
     throw new Error(error.message);
   }
   return (data ?? []) as RegularGroup[];
+};
+
+/** Soonest active upcoming game for a crew. */
+export const getUpcomingCrewActivity = async (
+  groupId: string
+): Promise<Activity | null> => {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('activities')
+    .select(
+      `
+      *,
+      location:activity_locations(id, name, sport_type, location),
+      join_requests(id, user_id, status, ready_at, user:profiles(id, username)),
+      user:profiles(id, username)
+    `
+    )
+    .eq('regular_group_id', groupId)
+    .eq('status', 'active')
+    .gte('start_time', now)
+    .order('start_time', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as Activity | null) ?? null;
+};
+
+export const getCrewActivities = async (groupId: string): Promise<Activity[]> => {
+  const { data, error } = await supabase
+    .from('activities')
+    .select(
+      `
+      *,
+      location:activity_locations(id, name, sport_type, location),
+      join_requests(id, user_id, status, ready_at, user:profiles(id, username)),
+      user:profiles(id, username)
+    `
+    )
+    .eq('regular_group_id', groupId)
+    .order('start_time', { ascending: false })
+    .limit(20);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as Activity[];
 };

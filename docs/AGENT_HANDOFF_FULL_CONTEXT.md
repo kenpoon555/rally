@@ -113,9 +113,9 @@ User asked to **skip formal QA** and build liquidity features (cost note, announ
 **Client files (main):**
 
 - `src/components/GameRoomAnnouncementBanner.tsx` — cost + pinned banner in chat
-- `src/components/GameRsvpBar.tsx` — `allowGroupRsvp` for group members
-- `src/components/GameRoomActionBar.tsx` — datetime picker for next game; group schedule; RSVP in footer
-- `src/pages/Activity/ActivityDetailScreen.tsx` — cost note editor; schedule picker; group RSVP
+- `src/components/CrewGameSessionCard.tsx` / `CrewChatSessionList.tsx` — per-session Join / I'm in / Lock roster in crew chat
+- `src/components/GameRoomActionBar.tsx` — datetime picker for next game; crew schedule; I'm in / Lock roster footer
+- `src/pages/Activity/ActivityDetailScreen.tsx` — cost note editor; schedule picker; crew chat link (no RSVP)
 - `src/pages/Activity/CreateActivityScreen.tsx` — cost note on create
 - `src/pages/Chat/ChatThreadScreen.tsx` — banner above messages
 - `src/services/activityService.ts` — `scheduleGroupNextGame`, `cost_note` on create
@@ -211,13 +211,14 @@ Apply order through **028** on preview project; session confirmed **025** applie
 | 022 | `join_group_and_next_game` |
 | 023 | Fix RLS recursion on group members |
 | 024 | Admin report queue triage |
-| 025 | Cost note, pinned announcement, group RSVP, schedule_group_next_game |
+| 025 | Cost note, pinned announcement, group RSVP (superseded for crews by 030), schedule_group_next_game |
+| 030 | `crew_group` conversation, `conversation_activities`, `ensure_crew_conversation`, `join_crew_game` |
 | 026 | Crew retention funnel |
 | 027 | Entitlements and court freshness |
 | 028 | Roster capacity approve |
 
 **RPCs the app calls (non-exhaustive):**  
-`set_game_rsvp`, `set_game_room_announcement`, `schedule_group_next_game`, `schedule_next_game_from_activity`, `spawn_series_occurrence`, `join_group_and_next_game`, `create_regular_group_from_activity`, `is_regular_group_member`, `ensure_activity_group_conversation`, `finalize_game_commitment`, `can_view_profile_identity` (reviews/profile; not lobby mask).
+`ensure_crew_conversation`, `link_activity_to_crew_chat`, `join_crew_game`, `set_game_room_announcement`, `schedule_group_next_game`, `schedule_next_game_from_activity`, `spawn_series_occurrence`, `join_group_and_next_game`, `create_regular_group_from_activity`, `is_regular_group_member`, `ensure_activity_group_conversation`, `set_game_ready`, `finalize_game_commitment`, `can_view_profile_identity` (reviews/profile; not lobby mask).
 
 ---
 
@@ -238,7 +239,7 @@ Apply order through **028** on preview project; session confirmed **025** applie
 |--------|----------------|-------|
 | Discover | `HomeScreen.tsx` | Empty state mentions host + Regulars link |
 | Create game | `CreateActivityScreen.tsx` | Cost note in advanced; “Need players tonight” |
-| Activity Detail | `ActivityDetailScreen.tsx` | Modal from Game Room; cost note, RSVP, schedule next |
+| Activity Detail | `ActivityDetailScreen.tsx` | Modal from Game Room; cost note, I'm in / Lock roster, schedule next |
 | Game Room | `ChatThreadScreen.tsx` + `GameRoomActionBar.tsx` | Header, footer, announcement banner |
 | Chats inbox | `ChatListScreen.tsx` | Next up card; hide empty when card shown |
 | Profile | `ProfileScreen.tsx` | v2 settings hub |
@@ -249,18 +250,18 @@ Apply order through **028** on preview project; session confirmed **025** applie
 
 ---
 
-## 9. Large-group RSVP scenario (50-person crew, 8 court spots)
+## 9. Large crew scenario (50-person crew, 8 court spots)
 
-**User story:** WhatsApp group of ~50; host posts “8 want badminton?” — members RSVP without all being approved joiners.
+**User story:** WhatsApp group of ~50; host posts “8 want badminton?” — members join the session card without a pending request.
 
 **How it works:**
 
 1. Host has **Regulars group** linked to activities (`regular_group_id`).
-2. Host schedules game with capacity e.g. **8** (`player_count` + `missing_players` or `schedule_group_next_game(p_player_count := 8)`).
-3. Any **group member** sees **GameRsvpBar** with `allowGroupRsvp` — Going/Maybe/Can't go.
-4. DB enforces max **going** = capacity − 1 (host slot).
-5. Host still **finalizes roster** for who actually plays; RSVP is signal, not auto-approve all 50.
-6. Members can open Game Room chat via updated `ensure_activity_group_conversation`.
+2. Host schedules game with capacity e.g. **8** (`schedule_group_next_game(p_player_count := 8)`).
+3. One **crew_group** chat per group; each game is a **session card** in that thread (`conversation_activities`).
+4. Crew members tap **Join** on the card → `join_crew_game` (approved roster slot, capacity enforced).
+5. Players tap **I'm in** (`set_game_ready`); host **Lock roster** (`finalize_game_commitment`).
+6. Discover one-offs still use **join request** + per-activity `activity_group` chat.
 
 ---
 
@@ -306,7 +307,7 @@ Apply order through **028** on preview project; session confirmed **025** applie
 Full JSONL (tool calls stripped in export):  
 `/Users/kenpoon/.cursor/projects/Users-kenpoon-Rally/agent-transcripts/d1921bee-e88b-44d2-ba3b-d1ad5e4a0a1a/d1921bee-e88b-44d2-ba3b-d1ad5e4a0a1a.jsonl`
 
-Search keywords: `cost_note`, `anonymous`, `device:create`, `5303a5d`, `754cc2c`, `Regulars`, `GameRsvpBar`.
+Search keywords: `cost_note`, `anonymous`, `device:create`, `5303a5d`, `754cc2c`, `Regulars`, `crew_group`, `join_crew_game`.
 
 ---
 

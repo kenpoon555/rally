@@ -37,6 +37,7 @@ import {
   resolvePreferredSportForLaunch,
   SportType,
 } from '../../constants/sports';
+import { ScreenHeader } from '../../components/ui';
 import { createActivity } from '../../services/activityService';
 import { buildGameInviteUrl } from '../../navigation/deepLinking';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
@@ -496,7 +497,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.subtitle}>{getCreateGameSubtitle(sportType)}</Text>
+        <ScreenHeader title="Host a Game" subtitle={getCreateGameSubtitle(sportType)} />
 
         {showSportPicker ? (
           <View style={[styles.section, { marginTop: 8 }]}>
