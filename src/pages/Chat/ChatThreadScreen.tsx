@@ -17,11 +17,18 @@ import {
   getConversationMessages,
   getConversationPeerUserIds,
   getConversationById,
+  getCrewConversationActivities,
   markConversationRead,
   sendConversationMessage,
   subscribeToConversationMessages,
 } from '../../services/chatService';
-import { ChatMessage } from '../../types/chat';
+import { ChatMessage, Conversation } from '../../types/chat';
+import { getRegularGroupById, joinCrewGame } from '../../services/regularGroupService';
+import {
+  finalizeGameCommitment,
+  setGameReady,
+} from '../../services/activityService';
+import { CrewChatSessionList } from '../../components/CrewChatSessionList';
 import { trackProductEvent } from '../../services/analyticsService';
 import { getUserById } from '../../services/userService';
 import { usersAreBlocked } from '../../services/safetyService';
@@ -42,13 +49,22 @@ type MainStackParamList = {
   CreateActivity: undefined;
   Profile: undefined;
   ChatList: undefined;
-  ChatThread: { conversationId: string; title?: string; activityId?: string };
+  ChatThread: {
+    conversationId: string;
+    title?: string;
+    activityId?: string;
+    groupId?: string;
+  };
 };
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ChatThread'>;
 
 const GameRoomChatBody: React.FC<{
   isGameRoom: boolean;
+  isCrewChat: boolean;
+  conversationId: string;
+  bannerIsHost: boolean;
+  crewSessionsHeader: React.ReactNode | null;
   userId?: string;
   messages: ChatMessage[];
   loading: boolean;
@@ -61,6 +77,10 @@ const GameRoomChatBody: React.FC<{
   onRefresh: () => void;
 }> = ({
   isGameRoom,
+  isCrewChat,
+  conversationId,
+  bannerIsHost,
+  crewSessionsHeader,
   userId,
   messages,
   loading,
@@ -78,11 +98,13 @@ const GameRoomChatBody: React.FC<{
 
   return (
   <>
-    {isGameRoom && gameRoom?.activity ? (
+    {isCrewChat && crewSessionsHeader}
+    {isCrewChat || (isGameRoom && gameRoom?.activity) ? (
       <GameRoomAnnouncementBanner
-        activityId={gameRoom.activity.id}
-        isHost={gameRoom.isHost}
-        costNote={gameRoom.activity.cost_note}
+        conversationId={isCrewChat ? conversationId : undefined}
+        activityId={gameRoom?.activity?.id}
+        isHost={bannerIsHost}
+        costNote={gameRoom?.activity?.cost_note}
       />
     ) : null}
     {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
@@ -99,7 +121,9 @@ const GameRoomChatBody: React.FC<{
         !loading && !errorText ? (
           <Text style={styles.emptyHint}>
             {isGameRoom
-              ? 'Coordinate here — say hi and tap Mark Ready when you can make it.'
+              ? isCrewChat
+                ? 'Crew chat — say hi and tap I\'m in on the game card when you can make it.'
+                : 'Coordinate here — tap I\'m in when you can make it.'
               : 'No messages yet. Say hi!'}
           </Text>
         ) : null
@@ -147,7 +171,7 @@ const GameRoomChatBody: React.FC<{
 };
 
 const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { conversationId, title, activityId } = route.params;
+  const { conversationId, title, activityId, groupId } = route.params;
   const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
@@ -158,23 +182,70 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [peerUsername, setPeerUsername] = useState<string | null>(null);
   const [blockedThread, setBlockedThread] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
-  const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(activityId);
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [crewSessions, setCrewSessions] = useState<Awaited<
+    ReturnType<typeof getCrewConversationActivities>
+  >>([]);
+  const [focusedActivityId, setFocusedActivityId] = useState<string | undefined>(activityId);
+  const [busyActivityId, setBusyActivityId] = useState<string | null>(null);
+  const [crewHostId, setCrewHostId] = useState<string | null>(null);
 
-  const isGameRoom = Boolean(resolvedActivityId);
+  const isCrewChat = conversation?.conversation_type === 'crew_group';
+  const resolvedActivityId = isCrewChat ? focusedActivityId : focusedActivityId;
+  const isGameRoom = Boolean(isCrewChat ? focusedActivityId : resolvedActivityId);
+
+  const reloadCrewSessions = useCallback(async () => {
+    const sessions = await getCrewConversationActivities(conversationId);
+    setCrewSessions(sessions);
+    const now = Date.now();
+    const upcoming = sessions
+      .filter((s) => {
+        const a = s.activity;
+        if (!a || a.status !== 'active') {
+          return false;
+        }
+        const endMs = new Date(a.start_time).getTime() + (a.duration ?? 60) * 60 * 1000;
+        return endMs >= now;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.activity!.start_time).getTime() - new Date(b.activity!.start_time).getTime()
+      );
+    const current =
+      sessions.find((s) => s.is_current) ?? upcoming[0] ?? sessions[sessions.length - 1];
+    if (!focusedActivityId && current?.activity_id) {
+      setFocusedActivityId(current.activity_id);
+    }
+    return sessions;
+  }, [conversationId, focusedActivityId]);
 
   useEffect(() => {
-    if (activityId) {
-      setResolvedActivityId(activityId);
+    const resolvedGroupId = groupId ?? conversation?.regular_group_id;
+    if (!isCrewChat || !resolvedGroupId) {
+      setCrewHostId(null);
       return;
     }
+    getRegularGroupById(resolvedGroupId)
+      .then((g) => setCrewHostId(g?.host_id ?? null))
+      .catch(() => setCrewHostId(null));
+  }, [groupId, conversation?.regular_group_id, isCrewChat]);
+
+  useEffect(() => {
     getConversationById(conversationId)
-      .then((convo) => {
-        if (convo?.activity_id) {
-          setResolvedActivityId(convo.activity_id);
+      .then(async (convo) => {
+        setConversation(convo);
+        if (convo?.conversation_type === 'crew_group') {
+          await reloadCrewSessions();
+          return;
+        }
+        if (activityId) {
+          setFocusedActivityId(activityId);
+        } else if (convo?.activity_id) {
+          setFocusedActivityId(convo.activity_id);
         }
       })
       .catch(() => undefined);
-  }, [activityId, conversationId]);
+  }, [activityId, conversationId, reloadCrewSessions]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -310,9 +381,76 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
+  const focusedSession = crewSessions.find((s) => s.activity_id === focusedActivityId);
+  const bannerIsHost =
+    Boolean(user?.id && crewHostId && user.id === crewHostId) ||
+    focusedSession?.activity?.user_id === user?.id;
+
   const chatBody = (
     <GameRoomChatBody
       isGameRoom={isGameRoom}
+      isCrewChat={isCrewChat}
+      conversationId={conversationId}
+      bannerIsHost={bannerIsHost}
+      crewSessionsHeader={
+        isCrewChat ? (
+          <CrewChatSessionList
+            sessions={crewSessions}
+            focusedActivityId={focusedActivityId}
+            userId={user?.id}
+            busyActivityId={busyActivityId}
+            onFocusActivity={(id) => setFocusedActivityId(id)}
+            onJoin={async (act) => {
+              setBusyActivityId(act.id);
+              try {
+                await joinCrewGame(act.id);
+                await reloadCrewSessions();
+              } catch (error: unknown) {
+                Alert.alert(
+                  'Join failed',
+                  error instanceof Error ? error.message : 'Could not join.'
+                );
+              } finally {
+                setBusyActivityId(null);
+              }
+            }}
+            onConfirmIn={async (act) => {
+              setBusyActivityId(act.id);
+              try {
+                await setGameReady(act.id, true);
+                await reloadCrewSessions();
+              } catch (error: unknown) {
+                Alert.alert(
+                  "Couldn't save",
+                  error instanceof Error ? error.message : 'Try again.'
+                );
+              } finally {
+                setBusyActivityId(null);
+              }
+            }}
+            onLockRoster={async (act) => {
+              setBusyActivityId(act.id);
+              try {
+                await finalizeGameCommitment(act.id);
+                await reloadCrewSessions();
+              } catch (error: unknown) {
+                Alert.alert(
+                  'Lock failed',
+                  error instanceof Error ? error.message : 'Try again.'
+                );
+              } finally {
+                setBusyActivityId(null);
+              }
+            }}
+            onOpenDetails={(act) =>
+              navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                activityId: act.id,
+                fromGameRoom: true,
+              } as never)
+            }
+          />
+        ) : null
+      }
       userId={user?.id}
       messages={messages}
       loading={loading}
@@ -342,13 +480,19 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             } as never)
           }
           onLeftGame={() => navigation.goBack()}
-          onScheduledNextGame={(newActivityId) =>
-            navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-              activityId: newActivityId,
-            } as never)
-          }
+          onScheduledNextGame={async (newActivityId) => {
+            if (isCrewChat) {
+              await reloadCrewSessions();
+              setFocusedActivityId(newActivityId);
+              await loadMessages();
+            } else {
+              navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                activityId: newActivityId,
+              } as never);
+            }
+          }}
         >
-          <GameRoomHeader />
+          {!isCrewChat ? <GameRoomHeader /> : null}
           {chatBody}
         </GameRoomProvider>
       ) : (

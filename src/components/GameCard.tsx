@@ -20,6 +20,7 @@ import {
 } from '../utils/activityHelpers';
 import { colors, PRIMARY_COLOR, radius, shadows, spacing, typography, AVATAR_PALETTE } from '../constants/theme';
 import { formatApproximateDistance } from '../utils/approximateLocation';
+import { PlayerTrustLine } from './PlayerTrustLine';
 
 // ── Sport icon ────────────────────────────────────────────────────────────────
 
@@ -249,7 +250,15 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
             ) : (
               <Text style={styles.noParticipants}>Be the first to join</Text>
             )}
-            <Text style={styles.hostLabel}>Host: {hostLabel}</Text>
+            <View style={styles.hostBlock}>
+              <Text style={styles.hostLabel}>Host: {hostLabel}</Text>
+              {activity.user_id ? (
+                <PlayerTrustLine userId={activity.user_id} style={styles.trustLine} />
+              ) : null}
+            </View>
+            {activity.cost_note ? (
+              <Text style={styles.costPreview}>Cost: {activity.cost_note}</Text>
+            ) : null}
           </View>
         </View>
       </TouchableOpacity>
@@ -471,10 +480,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#bbb',
   },
+  hostBlock: {
+    marginTop: 2,
+  },
   hostLabel: {
     fontSize: 12,
     fontWeight: '400',
     color: '#999',
+  },
+  trustLine: {
+    marginTop: 2,
+  },
+  costPreview: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#3d3418',
+    fontWeight: '600',
   },
   // Join button
   joinRow: {

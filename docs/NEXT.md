@@ -26,6 +26,8 @@ Prove the **free retention loop** before any paid feature work:
 Discover → join → Game Room chat → play → Regulars crew → replay (crew_replayed)
 ```
 
+**Next builds (from product review):** Dynamic Home · LA beta copy + partner CTA · Mini tournaments inside Regulars.
+
 North-star metric: **`analytics_crew_lifecycle.retained`** (% of Regulars groups with ≥1 replay). See [stage-2-cost-metrics.md](stage-2-cost-metrics.md).
 
 ---
@@ -47,7 +49,9 @@ When the build lands → run **Post-preview testing backlog** only; do not start
 
 ## Shipped this sprint (no device required to merge)
 
-- [x] RSVP removed product-wide
+- [x] **Group RSVP for Regulars crews** (migration 025) — one-off Discover games still use join + Ready
+- [x] Cost note + pinned Game Room announcements (025)
+- [x] App icon master + native mipmaps (2026-06-01)
 - [x] **Rate Players** star-rating redesign
 - [x] Crew analytics: `regular_group_created`, `crew_invite_redeemed`, `crew_replayed`
 - [x] Dev diagnostics gated (`devFlags.ts` — off in preview/prod)
@@ -85,10 +89,13 @@ Full matrix: [physical-device-beta-test.md](physical-device-beta-test.md)
 
 ## Explicitly not next (gated)
 
-- Teams / leagues UI (seed from Regulars when retention proven)
+- Full Teams / Leagues UI (Regulars crews are the team unit until Stage 6)
 - Organizer Pro / Player Plus paywalls
-- Waitlist (Stage 4)
-- In-app analytics dashboard (query SQL views for now)
+- Payments / fee split
+- Multi-city expansion (interest CTA only)
+- [x] **Dynamic Home** — Next Up, active Game Rooms, LA beta banner, host CTAs (2026-06-01)
+- [x] **Discover empty CTAs** — Create Game, Share Regulars link, Invite friends (2026-06-01)
+- [ ] **Mini tournaments** — migration 029 + UI shipped; apply migration on preview Supabase
 
 ---
 
@@ -96,9 +103,10 @@ Full matrix: [physical-device-beta-test.md](physical-device-beta-test.md)
 
 | Doc | Purpose |
 |-----|---------|
+| **[VISION.md](../VISION.md)** | Mission, principles, beta copy |
+| **[ROADMAP.md](../ROADMAP.md)** | Engineering phases, beta phase order |
+| **[open_items.md](../../open_items.md)** | Business model, immediate priority table |
 | **[NEXT.md](NEXT.md)** | This file — current sprint + blockers |
-| [ROADMAP.md](../ROADMAP.md) | Engineering phases, shipped features, UX backlog |
-| [open_items.md](../../open_items.md) | Business model, Stages 0–7, monetization gates |
 | [stage-2-cost-metrics.md](stage-2-cost-metrics.md) | Rate limits, funnel SQL, crew retention queries |
 | [stage-2.5-game-commitment.md](stage-2.5-game-commitment.md) | Finalize, Ready, leave, flakes |
 | [stage-3-organizer-recurring.md](stage-3-organizer-recurring.md) | Recurring, invites, My Games |

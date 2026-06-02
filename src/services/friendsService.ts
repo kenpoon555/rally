@@ -99,7 +99,16 @@ export const getUserFriends = async (userId: string): Promise<Friend[]> => {
     };
   });
 
-  return normalized;
+  const byFriendId = new Map<string, Friend>();
+  for (const row of normalized) {
+    const friendId = row.friend?.id || row.friend_id;
+    if (!friendId || byFriendId.has(friendId)) {
+      continue;
+    }
+    byFriendId.set(friendId, row);
+  }
+
+  return Array.from(byFriendId.values());
 };
 
 /**

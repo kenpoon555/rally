@@ -9,11 +9,15 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
     screens: {
       MainTabs: {
         screens: {
-          [ROUTES.CHAT.TAB]: 'chats',
+          [ROUTES.HOME.DYNAMIC]: 'home',
           [ROUTES.HOME.MAIN]: 'discover',
-          [ROUTES.MY_GAMES.TAB]: 'games',
+          [ROUTES.CHAT.TAB]: 'chats',
+          [ROUTES.PROFILE.MAIN]: 'profile',
         },
       },
+      [ROUTES.MY_GAMES.TAB]: 'games',
+      [ROUTES.FRIENDS.LIST]: 'friends',
+      [ROUTES.REGULAR_GROUP.CREW]: 'crew/:groupId',
       [ROUTES.ACTIVITY.DETAIL]: 'game/:activityId',
       [ROUTES.ACTIVITY.CREATE]: 'create',
     },

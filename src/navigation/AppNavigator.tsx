@@ -12,24 +12,22 @@ import { ROUTES } from '../constants/routes';
 import { getTotalUnreadCount } from '../services/chatService';
 import { colors, PRIMARY_COLOR } from '../constants/theme';
 
-// Auth Screens
+import WelcomeScreen from '../pages/Auth/WelcomeScreen';
 import LoginScreen from '../pages/Auth/LoginScreen';
 import SignupScreen from '../pages/Auth/SignupScreen';
-
-// Home Screens
 import HomeScreen from '../pages/Home/HomeScreen';
-
-// Activity Screens
-import ActivityDetailScreen from '../pages/Activity/ActivityDetailScreen';
+import DynamicHomeScreen from '../pages/Home/DynamicHomeScreen';
 import CreateActivityScreen from '../pages/Activity/CreateActivityScreen';
-
-// Friends Screen
+import ActivityDetailScreen from '../pages/Activity/ActivityDetailScreen';
 import FriendsScreen from '../pages/Friends/FriendsScreen';
 import ProfileScreen from '../pages/Profile/ProfileScreen';
 import ChatListScreen from '../pages/Chat/ChatListScreen';
 import ChatThreadScreen from '../pages/Chat/ChatThreadScreen';
 import MyGamesScreen from '../pages/Games/MyGamesScreen';
 import AdminScreen from '../pages/Admin/AdminScreen';
+import MiniTournamentScreen from '../pages/Tournament/MiniTournamentScreen';
+import RegularsCrewScreen from '../pages/Regulars/RegularsCrewScreen';
+import { OnboardingModal } from '../components/OnboardingModal';
 import { linking } from './deepLinking';
 import TosAcceptanceGate from '../components/TosAcceptanceGate';
 import { needsLegalAcceptance } from '../services/userService';
@@ -41,21 +39,22 @@ const Tab = createBottomTabNavigator();
 type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { focused: TabIconName; unfocused: TabIconName }> = {
-  [ROUTES.CHAT.TAB]: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
-  [ROUTES.MY_GAMES.TAB]: { focused: 'calendar', unfocused: 'calendar-outline' },
+  [ROUTES.HOME.DYNAMIC]: { focused: 'home', unfocused: 'home-outline' },
   [ROUTES.HOME.MAIN]: { focused: 'search', unfocused: 'search-outline' },
-  [ROUTES.FRIENDS.LIST]: { focused: 'people', unfocused: 'people-outline' },
+  [ROUTES.CHAT.TAB]: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
   [ROUTES.PROFILE.MAIN]: { focused: 'person', unfocused: 'person-outline' },
 };
 
-const AuthStack = () => {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name={ROUTES.AUTH.LOGIN} component={LoginScreen} />
-      <Stack.Screen name={ROUTES.AUTH.SIGNUP} component={SignupScreen} />
-    </Stack.Navigator>
-  );
-};
+const AuthStack = () => (
+  <Stack.Navigator
+    initialRouteName={ROUTES.AUTH.WELCOME}
+    screenOptions={{ headerShown: false }}
+  >
+    <Stack.Screen name={ROUTES.AUTH.WELCOME} component={WelcomeScreen} />
+    <Stack.Screen name={ROUTES.AUTH.LOGIN} component={LoginScreen} />
+    <Stack.Screen name={ROUTES.AUTH.SIGNUP} component={SignupScreen} />
+  </Stack.Navigator>
+);
 
 const MainTabs = () => {
   const { user } = useAuth();
@@ -79,7 +78,7 @@ const MainTabs = () => {
 
   return (
     <Tab.Navigator
-      initialRouteName={ROUTES.CHAT.TAB}
+      initialRouteName={ROUTES.HOME.DYNAMIC}
       screenOptions={({ route }) => ({
         headerShown: false,
         lazy: true,
@@ -97,6 +96,16 @@ const MainTabs = () => {
       })}
     >
       <Tab.Screen
+        name={ROUTES.HOME.DYNAMIC}
+        component={DynamicHomeScreen}
+        options={{ tabBarLabel: 'Home' }}
+      />
+      <Tab.Screen
+        name={ROUTES.HOME.MAIN}
+        component={HomeScreen}
+        options={{ tabBarLabel: 'Discover' }}
+      />
+      <Tab.Screen
         name={ROUTES.CHAT.TAB}
         component={ChatListScreen}
         options={{
@@ -110,21 +119,6 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name={ROUTES.MY_GAMES.TAB}
-        component={MyGamesScreen}
-        options={{ tabBarLabel: 'My Games' }}
-      />
-      <Tab.Screen
-        name={ROUTES.HOME.MAIN}
-        component={HomeScreen}
-        options={{ tabBarLabel: 'Discover' }}
-      />
-      <Tab.Screen
-        name={ROUTES.FRIENDS.LIST}
-        component={FriendsScreen}
-        options={{ tabBarLabel: 'Friends' }}
-      />
-      <Tab.Screen
         name={ROUTES.PROFILE.MAIN}
         component={ProfileScreen}
         options={{ tabBarLabel: 'Profile' }}
@@ -133,37 +127,35 @@ const MainTabs = () => {
   );
 };
 
-const MainStack = () => {
-  return (
-    <Stack.Navigator>
-      <Stack.Screen
-        name="MainTabs"
-        component={MainTabs}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name={ROUTES.ACTIVITY.DETAIL}
-        component={ActivityDetailScreen}
-        options={{ title: 'Activity Details', presentation: 'modal' }}
-      />
-      <Stack.Screen
-        name={ROUTES.ACTIVITY.CREATE}
-        component={CreateActivityScreen}
-        options={{ title: 'Create Game', headerLargeTitle: false }}
-      />
-      <Stack.Screen
-        name={ROUTES.CHAT.THREAD}
-        component={ChatThreadScreen}
-        options={{ title: 'Chat' }}
-      />
-      <Stack.Screen
-        name={ROUTES.ADMIN.MAIN}
-        component={AdminScreen}
-        options={{ title: 'Admin' }}
-      />
-    </Stack.Navigator>
-  );
-};
+const MainStack = () => (
+  <Stack.Navigator>
+    <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
+    <Stack.Screen
+      name={ROUTES.ACTIVITY.DETAIL}
+      component={ActivityDetailScreen}
+      options={{ title: 'Activity Details', presentation: 'modal' }}
+    />
+    <Stack.Screen
+      name={ROUTES.ACTIVITY.CREATE}
+      component={CreateActivityScreen}
+      options={{ title: 'Create Game', headerLargeTitle: false }}
+    />
+    <Stack.Screen name={ROUTES.CHAT.THREAD} component={ChatThreadScreen} options={{ title: 'Chat' }} />
+    <Stack.Screen name={ROUTES.FRIENDS.LIST} component={FriendsScreen} options={{ title: 'Friends' }} />
+    <Stack.Screen name={ROUTES.MY_GAMES.TAB} component={MyGamesScreen} options={{ title: 'My Games' }} />
+    <Stack.Screen
+      name={ROUTES.REGULAR_GROUP.CREW}
+      component={RegularsCrewScreen}
+      options={{ title: 'Crew' }}
+    />
+    <Stack.Screen
+      name={ROUTES.TOURNAMENT.MINI}
+      component={MiniTournamentScreen}
+      options={{ title: 'Mini tournament' }}
+    />
+    <Stack.Screen name={ROUTES.ADMIN.MAIN} component={AdminScreen} options={{ title: 'Admin' }} />
+  </Stack.Navigator>
+);
 
 export const AppNavigator = () => {
   const { user, loading, refreshUser } = useAuth();
@@ -174,6 +166,7 @@ export const AppNavigator = () => {
     user && (!user.tos_accepted_at || user.tos_version !== TOS_VERSION)
   );
   const needsLocationAck = Boolean(user && !user.location_privacy_ack_at);
+  const needsOnboarding = Boolean(user && !user.onboarding_completed);
 
   if (loading) {
     return (
@@ -182,7 +175,7 @@ export const AppNavigator = () => {
           flex: 1,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#fff',
+          backgroundColor: colors.background,
         }}
       >
         <ActivityIndicator size="large" color={PRIMARY_COLOR} />
@@ -190,7 +183,6 @@ export const AppNavigator = () => {
     );
   }
 
-  // Remount navigation when auth mode changes — swapping stacks in one container causes a blank screen on Android.
   const navKey = user ? 'main' : 'auth';
 
   return (
@@ -203,6 +195,13 @@ export const AppNavigator = () => {
           needsTos={needsTos}
           needsLocationAck={needsLocationAck}
           onAccepted={() => refreshUser()}
+        />
+      ) : null}
+      {user && !showLegalGate ? (
+        <OnboardingModal
+          visible={needsOnboarding}
+          userId={user.id}
+          onComplete={() => refreshUser()}
         />
       ) : null}
     </NavigationContainer>

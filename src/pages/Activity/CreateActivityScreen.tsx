@@ -24,17 +24,20 @@ import { CONFIG } from '../../constants/config';
 import { BETA_REGION } from '../../constants/betaRegion';
 import {
   ACTIVITY_DURATIONS,
+  ACTIVITY_VISIBILITY,
   CREATE_ACTIVITY_VISIBILITY,
   ActivityVisibility,
   MVP_DEFAULT_SCHEDULING_MODE,
   getDefaultLaunchSportName,
   getDefaultOpenSpotsForSport,
   getDefaultTotalPlayersForSport,
+  getCourtSearchRadiiForSport,
   getCreateGameSubtitle,
   totalPlayersFromOpenSpots,
   resolvePreferredSportForLaunch,
   SportType,
 } from '../../constants/sports';
+import { ScreenHeader } from '../../components/ui';
 import { createActivity } from '../../services/activityService';
 import { buildGameInviteUrl } from '../../navigation/deepLinking';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
@@ -89,7 +92,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
     (user?.default_duration as (typeof ACTIVITY_DURATIONS)[number]) || 60
   );
   const [visibility, setVisibility] = useState<ActivityVisibility>(
-    (user?.default_visibility as ActivityVisibility) || 'nearby'
+    (user?.default_visibility as ActivityVisibility) || 'friends'
   );
   const [openSpotsText, setOpenSpotsText] = useState(() => {
     const sport = resolvePreferredSportForLaunch(user?.preferred_sports?.[0]);
@@ -129,6 +132,12 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   }, [fetchLocation]);
 
   useEffect(() => {
+    setSelectedLocationId(null);
+    setShowAllCourtsFallback(false);
+    setLocationSearch('');
+  }, [sportType]);
+
+  useEffect(() => {
     const load = async () => {
       if (!location) {
         setLocations([]);
@@ -158,40 +167,73 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
 
       setLoadingLocations(true);
       try {
-        let radius = CONFIG.NEARBY_COURT_RADIUS_M;
-        let near = await getNearbyActivityLocations(
-          location.latitude,
-          location.longitude,
-          radius
-        );
+        const radii = getCourtSearchRadiiForSport(sportType);
+        let near: ActivityLocation[] = [];
+        let matchedRadius = radii[0] ?? CONFIG.NEARBY_COURT_RADIUS_M;
 
-        if (near.length === 0) {
-          radius = CONFIG.WIDER_COURT_RADIUS_M;
+        for (const radius of radii) {
           near = await getNearbyActivityLocations(
             location.latitude,
             location.longitude,
             radius
           );
+          const sportMatches = near.filter(
+            (loc) => loc.sport_type.toLowerCase() === sportType.toLowerCase()
+          );
+          if (sportMatches.length > 0) {
+            matchedRadius = radius;
+            setShowAllCourtsFallback(false);
+            setSelectedLocationId((prev) => {
+              if (prev && sportMatches.some((loc) => loc.id === prev)) {
+                return prev;
+              }
+              return sportMatches[0].id;
+            });
+            break;
+          }
+          matchedRadius = radius;
         }
 
+        const sportMatches = near.filter(
+          (loc) => loc.sport_type.toLowerCase() === sportType.toLowerCase()
+        );
         setLocations(near);
-        setCourtSearchRadiusM(near.length > 0 ? radius : CONFIG.NEARBY_COURT_RADIUS_M);
-        setShowAllCourtsFallback(false);
-        if (near.length > 0) {
-          setSelectedLocationId((prev) => prev || near[0].id);
+        setCourtSearchRadiusM(matchedRadius);
+        setShowAllCourtsFallback(sportMatches.length === 0 && near.length > 0);
+        if (sportMatches.length === 0) {
+          setSelectedLocationId(null);
         }
       } catch (error) {
         console.error('Error loading activity locations:', error);
         setLocations([]);
         setCourtSearchRadiusM(CONFIG.NEARBY_COURT_RADIUS_M);
         setShowAllCourtsFallback(false);
+        setSelectedLocationId(null);
       } finally {
         setLoadingLocations(false);
       }
     };
 
     load();
-  }, [location, showAllCourtsDev]);
+  }, [location, showAllCourtsDev, sportType]);
+
+  useEffect(() => {
+    if (visibility === 'friends') {
+      setNeedPlayersTonight(false);
+    }
+  }, [visibility]);
+
+  const formattedStartTime = useMemo(
+    () =>
+      fixedStartTime.toLocaleString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    [fixedStartTime]
+  );
 
   useEffect(() => {
     if (sports.length > 0 && !sports.some((s) => s.name === sportType)) {
@@ -266,7 +308,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const effectiveSelectedLocationId =
     selectedLocationId && visibleLocations.some((loc) => loc.id === selectedLocationId)
       ? selectedLocationId
-      : visibleLocations[0]?.id ?? null;
+      : sportLocations.length > 0
+        ? sportLocations[0]?.id ?? null
+        : null;
   const selectedLocation = locationsWithDistance.find((l) => l.id === effectiveSelectedLocationId) || null;
 
   const mapRegion = useMemo(() => {
@@ -301,16 +345,25 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         ? 'Turn on location to see courts near you.'
         : 'Waiting for your location… tap Refresh.';
     }
-    if (locations.length === 0) {
-      return `No ${sportType.toLowerCase()} courts near you yet. Add one below, or host at a park you know.`;
-    }
     if (showAllCourtsDev) {
       return 'Showing all courts (dev mode). Distances are from your current location.';
     }
-    if (courtSearchRadiusM === CONFIG.WIDER_COURT_RADIUS_M) {
-      return `No courts within ${CONFIG.NEARBY_COURT_RADIUS_M / 1000} km — showing courts within ${CONFIG.WIDER_COURT_RADIUS_M / 1000} km.`;
+
+    const sportCount = sportLocations.length;
+    const radiusKm = (courtSearchRadiusM / 1000).toFixed(
+      courtSearchRadiusM >= 10000 ? 0 : 1
+    );
+
+    if (sportCount > 0) {
+      return `${sportCount} ${sportType.toLowerCase()} court${sportCount === 1 ? '' : 's'} within ${radiusKm} km.`;
     }
-    return `Courts within ${courtSearchRadiusM / 1000} km of you.`;
+    if (locations.length === 0) {
+      return `No courts within ${radiusKm} km. Add one below, or set emulator location to LA (34.05, -118.24).`;
+    }
+    if (showAllCourtsFallback) {
+      return `No ${sportType.toLowerCase()} courts within ${radiusKm} km — showing other sports to pick or Add a court.`;
+    }
+    return `Searching for ${sportType.toLowerCase()} courts…`;
   }, [
     loadingLocation,
     loadingLocations,
@@ -320,6 +373,8 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
     showAllCourtsDev,
     courtSearchRadiusM,
     sportType,
+    sportLocations.length,
+    showAllCourtsFallback,
   ]);
 
   const selectLocation = (loc: ActivityLocation) => {
@@ -442,7 +497,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.subtitle}>{getCreateGameSubtitle(sportType)}</Text>
+        <ScreenHeader title="Host a Game" subtitle={getCreateGameSubtitle(sportType)} />
 
         {showSportPicker ? (
           <View style={[styles.section, { marginTop: 8 }]}>
@@ -619,14 +674,12 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
             )}
           </View>
 
-          {sportLocations.length === 0 && locationsWithDistance.length > 0 && (
+          {sportLocations.length === 0 && locationsWithDistance.length > 0 && showAllCourtsFallback && (
             <View style={styles.fallbackBanner}>
               <Text style={styles.fallbackBannerText}>
-                No {sportType.toLowerCase()}-tagged courts in this search. You can show other sports temporarily.
+                No {sportType.toLowerCase()} courts in this search — showing other nearby courts.
+                Pick one anyway or tap Add a court to tag a {sportType.toLowerCase()} spot.
               </Text>
-              <TouchableOpacity onPress={() => setShowAllCourtsFallback(true)}>
-                <Text style={styles.linkText}>Show all sports</Text>
-              </TouchableOpacity>
             </View>
           )}
 
@@ -685,8 +738,46 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         />
 
         <TouchableOpacity style={styles.advancedToggle} onPress={() => setShowAdvanced((v) => !v)}>
-          <Text style={styles.linkText}>{showAdvanced ? 'Hide options' : 'Duration & visibility'}</Text>
+          <Text style={styles.linkText}>
+            {showAdvanced ? 'Hide options' : 'Duration & who can see'}
+          </Text>
         </TouchableOpacity>
+
+        <View style={styles.bottomTimeRow}>
+          <View style={styles.bottomTimeCopy}>
+            <Text style={styles.bottomTimeLabel}>Game starts</Text>
+            <Text style={styles.bottomTimeValue}>{formattedStartTime}</Text>
+          </View>
+          <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.linkText}>Change</Text>
+          </TouchableOpacity>
+        </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={fixedStartTime}
+            mode="datetime"
+            minimumDate={new Date()}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={(event, date) => {
+              if (Platform.OS === 'android') {
+                setShowDatePicker(false);
+              }
+              if (event.type === 'dismissed') {
+                setShowDatePicker(false);
+                return;
+              }
+              if (date) {
+                setFixedStartTime(date);
+              }
+            }}
+          />
+        )}
+        {Platform.OS === 'ios' && showDatePicker && (
+          <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+            <Text style={styles.timePickerDone}>Done picking time</Text>
+          </TouchableOpacity>
+        )}
 
         {showAdvanced && (
           <View style={styles.advancedBlock}>
@@ -716,12 +807,17 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                     onPress={() => setVisibility(value)}
                   >
                     <Text style={[styles.optionButtonText, selected && styles.optionButtonTextSelected]}>
-                      {value === 'friends' ? 'Friends' : 'Nearby'}
+                      {value === 'friends' ? 'Friends only' : 'Nearby players'}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
+            <Text style={styles.visibilityHint}>
+              {visibility === 'friends'
+                ? 'Only people you invite can join. Share the link after you publish.'
+                : 'Shows on Discover for players near this court.'}
+            </Text>
             <TextInput
               style={[styles.input, { marginTop: 8 }]}
               value={costNote}
@@ -732,19 +828,28 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         )}
 
-        <TouchableOpacity
-          style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
-          onPress={() => setNeedPlayersTonight((v) => !v)}
-        >
-          <Text
-            style={[
-              styles.urgencyToggleText,
-              needPlayersTonight && styles.urgencyToggleTextSelected,
-            ]}
-          >
-            {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
-          </Text>
-        </TouchableOpacity>
+        {visibility === 'nearby' ? (
+          <>
+            <TouchableOpacity
+              style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
+              onPress={() => setNeedPlayersTonight((v) => !v)}
+            >
+              <Text
+                style={[
+                  styles.urgencyToggleText,
+                  needPlayersTonight && styles.urgencyToggleTextSelected,
+                ]}
+              >
+                {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
+              </Text>
+            </TouchableOpacity>
+            {needPlayersTonight ? (
+              <Text style={styles.urgencyHint}>
+                Adds a TONIGHT badge on Discover so nearby players notice your game faster.
+              </Text>
+            ) : null}
+          </>
+        ) : null}
 
         {!!selectedLocation && (
           <Text style={styles.selectedCourt} numberOfLines={1}>
@@ -950,6 +1055,47 @@ const styles = StyleSheet.create({
   },
   advancedBlock: {
     marginBottom: 6,
+  },
+  bottomTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: colors.primaryLight,
+  },
+  bottomTimeCopy: {
+    flex: 1,
+    paddingRight: spacing.sm,
+  },
+  bottomTimeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  bottomTimeValue: {
+    marginTop: 2,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  visibilityHint: {
+    marginTop: spacing.sm,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
+  },
+  urgencyHint: {
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   urgencyToggle: {
     marginTop: 10,

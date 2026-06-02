@@ -1,9 +1,23 @@
 # RallyApp Roadmap
 
-Last updated: 2026-05-31
+Last updated: 2026-06-01
 
-> **What's next right now?** See **[docs/NEXT.md](docs/NEXT.md)** — blocked on preview build; retention-first beta focus.  
-> **Business / monetization stages:** [open_items.md](../open_items.md)
+> **Canonical docs:** [VISION.md](./VISION.md) · [../open_items.md](../open_items.md) · **[docs/NEXT.md](docs/NEXT.md)** (current sprint).  
+> Product review merged 2026-06-01 (formerly `another_agent_opinion.md`).
+
+## Next focus for building
+
+**Direction:** Dynamic Home + LA badminton/pickleball closed beta + Regulars groups + lightweight in-group mini tournaments.
+
+**Do not build yet:** full Teams, full Leagues, payments/fee-split, multi-city expansion, anonymous lobby identity.
+
+| Build now | Defer |
+|-----------|--------|
+| Dynamic Home (Next Up, active Game Rooms, host CTAs) | Formal Teams schema |
+| LA beta copy + partner/city interest CTA | League seasons / standings |
+| Regulars multi-sport crews | Stripe / IAP payments |
+| Mini tournaments inside Regulars (Phase 2.5) | Audio/video chat |
+| Group RSVP + schedule next game for crews (shipped 025) | Multi-city launch |
 
 ## Product Direction
 
@@ -11,18 +25,22 @@ Last updated: 2026-05-31
 - The app encourages a healthier lifestyle through consistent activity and stronger social trust loops.
 - Core success metric for MVP: a user can discover, join, and play with a partner in minutes.
 - Next success metric: a group can converge on the best time/location with minimal coordination overhead.
-- **UX north star (2026-05-31):** **Chat-first coordination** — users live in game lobbies; Discover is for filling empty slots.
-- **Beta strategy (2026-05-31):** **Prove retention before monetization.** Build the free loop (discover → chat → play → *replay with the same crew*) and instrument it. Paid tiers (Organizer Pro → Player Plus → Leagues) are scaffolded ("monetization-ready") but not built until the crew-replay loop retains. North-star beta metric: **% of Regulars groups that replay** (`analytics_crew_lifecycle.retained`).
+- **UX north star (2026-05-31):** **Chat-first coordination** — users live in game lobbies; Discover fills empty slots.
+- **Tab bar (2026-06-01):** `Home | Discover | Host | Chats | Profile` — My Games and Friends are stack screens from Profile/Home.
+- **Beta strategy (2026-05-31):** **Prove retention before monetization.** North-star: **`analytics_crew_lifecycle.retained`** (% of Regulars groups with ≥1 replay).
+- **Beta market:** Los Angeles — badminton + pickleball primary; 10 sports in catalog.
 
 ## Tab structure (current — 5 tabs)
 
 | Order | Tab | Role |
 |-------|-----|------|
-| 1 | **Chats** | Primary hub — game lobbies + friend DMs |
-| 2 | **My Games** | Upcoming / Past / Hosting → Game Room |
-| 3 | **Discover** | Find open games to join |
-| 4 | **Friends** | Social graph + DMs |
-| 5 | **Profile** | Identity, trust, settings |
+| 1 | **Home** | Dynamic Home — Next Up, Regulars crews, active Game Rooms, explorer CTAs |
+| 2 | **Discover** | Find open games in LA (badminton/pickleball beta) |
+| 3 | **Host** | Create Game (fast path) |
+| 4 | **Chats** | Game lobbies + friend DMs; Next Up RSVP hint for crew games |
+| 5 | **Profile** | Identity, trust, My Games / Friends / Regulars crews, founder copy |
+
+**Stack (not tabs):** My Games, Friends, Activity Detail, Regulars crew, mini tournament.
 
 **Map:** Hidden for beta (not in tab bar or navigation). Court picker on Create Game uses inline map only.
 
@@ -41,7 +59,7 @@ Last updated: 2026-05-31
 | **Create game** | Fixed time + court; flex path exists but de-emphasized in MVP |
 | **Activity detail** | Join / approve / reject, Ready, Finalize, lobby chat, extend start, **player ratings** |
 | **Stage 2.5** | Finalize, Ready, leave, flake score, 72h post-game chat grace |
-| **Stage 3 (partial)** | Recurring series, invite links, tonight urgency, schedule next game (**RSVP removed 2026-05-31**) |
+| **Stage 3 (partial)** | Recurring series, invite links, tonight urgency, schedule next game, **group RSVP for Regulars** (migration 025) |
 | **Push (partial)** | Join, approval, **finalize** — physical device + token required; iOS Simulator = no push |
 
 ### Known gaps (QA found, not fully closed)
@@ -58,15 +76,11 @@ Last updated: 2026-05-31
 - `016` — fix game chat SQL (`conversation_id` ambiguous)
 - `017` — enable Realtime publication for chat + activities
 
-## Decision Lock (2026-02-22)
+## Decision Lock (2026-02-22, updated 2026-06-01)
 
-- Activity creation default moves to **flexible optimization**:
-  - Host provides broad constraints (time window, duration, candidate locations).
-  - Players submit preferences.
-  - System finalizes best time and location.
-- Identity model is **anonymous until confirmed**:
-  - Before confirmation: users see anonymized participant identity.
-  - After confirmation: identities unlock for confirmed participants.
+- Activity creation default moves to **flexible optimization** (advanced path; MVP uses **fastFixed**).
+- **Identity:** real usernames in game threads (anonymous-until-confirmed **deferred** 2026-05-31).
+- **RSVP:** removed for one-off Discover games; **kept for Regulars/recurring crew games** with court capacity cap (migration 025).
 
 ## Pickleball MVP (2026-05-28)
 
@@ -108,18 +122,49 @@ Last updated: 2026-05-31
 
 ## UX Redesign Backlog (recommended — not all built)
 
-Priority order based on device QA:
+Priority order:
 
 1. [x] **Chat-first default** — Chats tab first on launch.
 2. [x] **Single game timeline** — Game Room: chat + roster + Ready/Finalize in one screen.
 3. [x] **Notification clarity** — In-app Realtime alerts; push on join/approve/finalize (devices).
 4. [x] **Discover role** — Hide joined/finalized/invite-only from feed.
 5. [x] **Empty states** — Chats + My Games CTAs.
-6. [x] **Remove dev diagnostics** from production builds — pipeline panel + location debug gated behind `devFlags` (2026-05-31).
-7. [ ] **Stage 1 trust & safety** — report/block, admin suspend (see `open_items.md` Stage 1; ahead of Stage 4 monetization).
-7. [x] **Hide Map** from navigation for beta; inline Create Game court picker only.
+6. [x] **Remove dev diagnostics** from production builds — `devFlags.ts` (2026-05-31).
+7. [x] **Hide Map** from navigation for beta.
+8. [x] **Dynamic Home** — Next Up, active Game Rooms, confirm-playing hint, host CTAs, Regulars crews (2026-06-01).
+9. [x] **LA beta positioning** — Discover subtitle, auth chips, founder copy on Home/Profile (2026-06-01).
+10. [x] **Mini tournaments inside Regulars** — MVP + migration 029 on preview; device QA pending.
+11. [x] **Crew group chat** — One `crew_group` thread per Regulars crew; session cards; Join / I'm in / Lock roster; migration 030 (2026-06-02).
+12. [ ] **Stage 1 trust & safety** polish — report/block, admin suspend (partial shipped).
+See `../open_items.md` for business stages 4–7 (monetization gated on crew replay).
 
-See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
+## Beta phases (product review — execution order)
+
+### Phase 0: Stabilize current beta
+
+- Preview build on tester phones (iOS ad hoc = register UDID + reprovision + rebuild).
+- Migrations 026–028 applied; dev panels hidden in preview.
+- Auth, Discover, Create, Game Room, crew chat + ready/lock, push on physical devices.
+
+### Phase 1: Closed beta liquidity (LA)
+
+- 20–50 active users; 5+ hosted games; 3+ filled through Rally.
+- LA badminton + pickleball copy; recruit real organizers.
+
+### Phase 2: Regulars retention loop
+
+- Crew invite, one crew chat, schedule next game, Join / I'm in / Lock roster, cost note, announcements, attendance/reviews.
+- Exit: 3+ Regulars groups; 2+ schedule next game; 20%+ games → another game.
+
+### Phase 2.5: Regulars mini tournaments *(next major feature after retention basics)*
+
+- Private round-robin inside a Regulars group; badminton/pickleball doubles first.
+- Join tournament, simple match list, manual scores, group leaderboard.
+- Exit: 2+ groups run tournaments without hand-holding.
+
+### Phase 3+: Host power tools → Organizer Pro → Leagues
+
+- Deferred until Phase 2 exit criteria met. See `../open_items.md` Stages 4–7.
 
 ## Master Plan
 
@@ -215,7 +260,7 @@ See `../open_items.md` for business stages 3–7 (recurring, teams, leagues).
 | Read-only past-game chat (72h grace) | **Shipped** |
 | Block join after finalize | **Won't do** |
 | Invite from chat → next game | **Shipped · Stage 3** |
-| Group RSVP | **Removed** (2026-05-31) — replaced by join + Ready |
+| Group RSVP (Regulars crews only) | **Shipped** (migration 025) — one-off games use join + Ready |
 | Recurring + invite-only | **Shipped · Stage 3** (teams schema still Stage 3–4) |
 | My Games tab | **Shipped · Stage 3** |
 
@@ -228,7 +273,8 @@ See `docs/stage-2.5-game-commitment.md`, `docs/stage-3-organizer-recurring.md`, 
 | **3.5a** | Map hidden from navigation (Create Game inline map only) | **Shipped** |
 | **3.5b** | Badminton court seed + invite/recurring smoke test | **Seeded in prod** — QA on device |
 | **3.5c** | Regulars / Groups schema (`regular_groups`, `regular_group_members`) | **Shipped** — host CTA + group invite link |
-| **3.5d** | RSVP removed product-wide (Discover, Game Room, Activity detail, helpers, tests) | **Shipped** (2026-05-31) |
+| **3.5d** | One-off RSVP removed; **group RSVP for Regulars** (025) + cost note + announcements | **Shipped** (2026-05-31) |
+| **3.5h** | App icon (1024 master + iOS/Android mipmaps) | **Shipped** (2026-06-01) |
 | **3.5e** | Player review → **"Rate Players"** redesign (star ratings: Friendliness / Physicality / Vibe) | **Shipped** (2026-05-31) |
 | **3.5f** | Crew retention instrumentation: `regular_group_created`, `crew_invite_redeemed`, `crew_replayed` + `analytics_crew_*` views (migration `026`) | **Shipped** (2026-05-31) |
 | **3.5g** | Game Room player profiles: tap roster / join requests → ratings + trust; inline trust on pending requests | **Shipped** (2026-05-31) |
@@ -263,16 +309,13 @@ Rate limits already protect runaway cost (`docs/stage-2-cost-metrics.md`): 300 d
 ### V2.1 - Match Optimization + Identity Trust
 
 - Flexible activity setup and optimization to reduce host coordination burden.
-- Anonymous-until-confirmed participant identity.
-- Review system with minimum review threshold before score display.
-- Profile + preference center and preference-aware homepage.
-- Activity and friend chat foundation.
+- Rate Players + trust preview (anonymous lobby identity deferred).
+- Profile + preference center; Dynamic Home (planned).
 
 ### V3 - Community Growth + Programs
 
-- Tournament mode foundation and casual competitive formats.
+- **Regulars mini tournaments** (Phase 2.5).
 - Better group orchestration and community retention loops.
-- Local program structure for recurring activity communities.
 - [x] **My Games as first-class tab** (2026-06-01).
 
 ### V4 - Owned Facilities + Membership Vision

@@ -1,5 +1,5 @@
 import { supabase } from './api/supabase';
-import { ChatMessage, Conversation, ConversationMember } from '../types/chat';
+import { ChatMessage, Conversation, ConversationActivity, ConversationMember } from '../types/chat';
 import { Activity } from '../types/activity';
 import { usersAreBlocked } from './safetyService';
 import { consumeRateLimit } from './rateLimitService';
@@ -48,6 +48,30 @@ export const getOrCreateDirectConversation = async (
   return data as string;
 };
 
+export const ensureCrewConversation = async (groupId: string): Promise<string> => {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    await consumeRateLimit('chat_create', user.id);
+  }
+
+  const { data, error } = await withRetry(() =>
+    supabase.rpc('ensure_crew_conversation', { p_group_id: groupId })
+  );
+
+  if (error) {
+    throw new Error(`Failed to open crew chat: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error('No conversation id returned for crew chat.');
+  }
+
+  return data as string;
+};
+
+/** Opens game chat — crew games route to crew_group conversation. */
 export const ensureActivityGroupConversation = async (activityId: string): Promise<string> => {
   const {
     data: { user },
@@ -75,6 +99,62 @@ export const ensureActivityGroupConversation = async (activityId: string): Promi
 
 /** @deprecated Use ensureActivityGroupConversation */
 export const createActivityGroupConversation = ensureActivityGroupConversation;
+
+export const getCrewConversationId = async (groupId: string): Promise<string | null> => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('regular_group_id', groupId)
+    .eq('conversation_type', 'crew_group')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load crew conversation: ${error.message}`);
+  }
+
+  return data?.id || null;
+};
+
+export const getCrewConversationActivities = async (
+  conversationId: string
+): Promise<ConversationActivity[]> => {
+  const { data, error } = await supabase
+    .from('conversation_activities')
+    .select(
+      `
+      id,
+      conversation_id,
+      activity_id,
+      position,
+      is_current,
+      created_at,
+      activity:activities(
+        id,
+        user_id,
+        sport_type,
+        start_time,
+        duration,
+        status,
+        match_status,
+        player_count,
+        missing_players,
+        cost_note,
+        regular_group_id,
+        location:activity_locations(id, name, sport_type),
+        join_requests(id, user_id, status, ready_at, user:profiles(id, username)),
+        user:profiles(id, username)
+      )
+    `
+    )
+    .eq('conversation_id', conversationId)
+    .order('position', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to load crew sessions: ${error.message}`);
+  }
+
+  return (data || []) as ConversationActivity[];
+};
 
 export const getActivityGroupConversationId = async (
   activityId: string
@@ -292,6 +372,56 @@ export const subscribeToConversationMessages = (
     .subscribe();
 };
 
+export const getLastMessagePreviews = async (
+  conversationIds: string[]
+): Promise<Record<string, { content: string; created_at: string }>> => {
+  if (conversationIds.length === 0) {
+    return {};
+  }
+
+  const { data: rpcData, error: rpcError } = await supabase.rpc('get_inbox_message_previews', {
+    p_conversation_ids: conversationIds,
+  });
+
+  if (!rpcError && rpcData) {
+    const previews: Record<string, { content: string; created_at: string }> = {};
+    for (const row of rpcData as {
+      conversation_id: string;
+      content: string;
+      created_at: string;
+    }[]) {
+      previews[row.conversation_id] = {
+        content: row.content,
+        created_at: row.created_at,
+      };
+    }
+    return previews;
+  }
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('conversation_id, content, created_at')
+    .in('conversation_id', conversationIds)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    return {};
+  }
+
+  const previews: Record<string, { content: string; created_at: string }> = {};
+  for (const row of data || []) {
+    const convoId = row.conversation_id as string;
+    if (!previews[convoId]) {
+      previews[convoId] = {
+        content: row.content as string,
+        created_at: row.created_at as string,
+      };
+    }
+  }
+  return previews;
+};
+
 export const getUnreadConversationCounts = async (
   userId: string
 ): Promise<Record<string, number>> => {
@@ -345,9 +475,48 @@ export type ActivityAnnouncement = Pick<
   'pinned_announcement' | 'pinned_announcement_at' | 'pinned_announcement_by'
 >;
 
+export const getConversationAnnouncement = async (
+  conversationId: string
+): Promise<ActivityAnnouncement | null> => {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('pinned_announcement, pinned_announcement_at, pinned_announcement_by')
+    .eq('id', conversationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (data as ActivityAnnouncement) || null;
+};
+
 export const getActivityConversationAnnouncement = async (
   activityId: string
 ): Promise<ActivityAnnouncement | null> => {
+  const { data: activity, error: activityError } = await supabase
+    .from('activities')
+    .select('regular_group_id')
+    .eq('id', activityId)
+    .maybeSingle();
+
+  if (activityError) {
+    throw new Error(activityError.message);
+  }
+
+  if (activity?.regular_group_id) {
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('pinned_announcement, pinned_announcement_at, pinned_announcement_by')
+      .eq('regular_group_id', activity.regular_group_id as string)
+      .eq('conversation_type', 'crew_group')
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+    return (data as ActivityAnnouncement) || null;
+  }
+
   const { data, error } = await supabase
     .from('conversations')
     .select('pinned_announcement, pinned_announcement_at, pinned_announcement_by')
@@ -367,6 +536,19 @@ export const setGameRoomAnnouncement = async (
 ): Promise<void> => {
   const { error } = await supabase.rpc('set_game_room_announcement', {
     p_activity_id: activityId,
+    p_text: text,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const setConversationAnnouncement = async (
+  conversationId: string,
+  text: string | null
+): Promise<void> => {
+  const { error } = await supabase.rpc('set_conversation_announcement', {
+    p_conversation_id: conversationId,
     p_text: text,
   });
   if (error) {

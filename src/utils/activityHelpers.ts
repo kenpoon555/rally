@@ -201,11 +201,50 @@ export function isGameChatReadOnly(
   return Date.now() >= getGameChatArchiveAtMs(activity);
 }
 
-/** RSVP removed — coordination uses Join + Mark Ready only. */
+/** @deprecated RSVP removed — use needsConfirmPlaying */
 export function shouldShowGameRsvp(
-  _activity: Pick<Activity, 'regular_group_id' | 'series_id' | 'match_status'>
+  _activity: Pick<Activity, 'regular_group_id' | 'series_id' | 'match_status' | 'status'>
 ): boolean {
   return false;
+}
+
+/** Show home nudge when on crew game roster but not confirmed in yet. */
+export function needsConfirmPlaying(activity: Activity, userId?: string): boolean {
+  if (!userId || !activity.regular_group_id) {
+    return false;
+  }
+  if (activity.status === 'cancelled' || activity.match_status === 'finalized') {
+    return false;
+  }
+  if (activity.user_id === userId) {
+    return false;
+  }
+  const approved = (activity.join_requests || []).find(
+    (jr) => jr.user_id === userId && jr.status === 'approved'
+  );
+  if (!approved) {
+    return false;
+  }
+  return !approved.ready_at;
+}
+
+export function formatRosterSummary(activity: Activity): string {
+  const approved = getApprovedParticipants(activity).length + 1;
+  const open = activity.missing_players ?? 0;
+  return `${approved} in · ${open} open`;
+}
+
+/** @deprecated */
+export function formatGroupRsvpSummary(activity: Pick<Activity, 'rsvps'>): string {
+  return formatRosterSummary(activity as Activity);
+}
+
+/** @deprecated */
+export function getMyRsvpStatus(
+  _activity: Pick<Activity, 'rsvps'>,
+  _userId?: string
+): string | null {
+  return null;
 }
 
 export function canHostScheduleNextGame(

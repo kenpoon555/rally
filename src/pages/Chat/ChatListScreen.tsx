@@ -11,6 +11,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocation } from '../../hooks/useLocation';
 import {
   ChatInboxFilter,
   ChatInboxItem,
@@ -19,35 +20,19 @@ import {
 } from '../../hooks/useChatInbox';
 import {
   ensureActivityGroupConversation,
+  ensureCrewConversation,
   getOrCreateDirectConversation,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
 import { useUserPlayMode } from '../../hooks/useUserPlayMode';
 import { MyGameEntry } from '../../services/activityService';
-import { Button, Chip, EmptyState, ScreenHeader } from '../../components/ui';
+import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
 import { SportIcon } from '../../components/SportIcon';
+import { NextUpCard } from '../../components/home/NextUpCard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { needsConfirmPlaying } from '../../utils/activityHelpers';
+import { formatInboxMessageDate } from '../../utils/chatHelpers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
-
-function formatRelativeStart(startTime?: string | null): string {
-  if (!startTime) {
-    return 'Time TBD';
-  }
-  const diffMs = new Date(startTime).getTime() - Date.now();
-  if (diffMs <= 0) {
-    return 'Happening now';
-  }
-  const minutes = Math.round(diffMs / 60000);
-  if (minutes < 60) {
-    return `In ${minutes} min`;
-  }
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) {
-    return `In ${hours} hr${hours === 1 ? '' : 's'}`;
-  }
-  const days = Math.round(hours / 24);
-  return `In ${days} day${days === 1 ? '' : 's'}`;
-}
 
 type TabParamList = {
   Home: undefined;
@@ -81,6 +66,7 @@ const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { location, fetchLocation } = useLocation(false);
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
   const { mode, regularGroups, nextGame, refetch: refetchPlayMode } = useUserPlayMode(user?.id);
   const [filter, setFilter] = useState<ChatInboxFilter>('all');
@@ -90,28 +76,20 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     useCallback(() => {
       load();
       refetchPlayMode();
-    }, [load, refetchPlayMode])
+      void fetchLocation();
+    }, [load, refetchPlayMode, fetchLocation])
   );
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
 
-  const nextUpDuplicatesInbox = useMemo(() => {
-    if (!nextGame?.activity.regular_group_id) {
-      return false;
-    }
-    return visibleItems.some(
-      (item) =>
-        item.kind === 'group' &&
-        item.group.id === nextGame.activity.regular_group_id &&
-        item.nextActivity?.id === nextGame.activity.id
-    );
-  }, [nextGame, visibleItems]);
+  const hasNextUpCard = false;
 
-  const hasNextUpCard =
-    mode === 'regular' &&
-    filter !== 'friends' &&
-    !nextUpDuplicatesInbox &&
-    Boolean(nextGame || regularGroups[0]);
+  const nextUpFooterHint = useMemo(() => {
+    if (!nextGame || !needsConfirmPlaying(nextGame.activity, user?.id)) {
+      return undefined;
+    }
+    return "Tap I'm in in your crew chat to confirm you're playing.";
+  }, [nextGame, user?.id]);
 
   const openThread = (
     conversationId: string,
@@ -155,27 +133,21 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const openGroupRow = async (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
-    if (item.nextActivity) {
-      setOpeningKey(item.key);
-      try {
-        const conversationId =
-          item.conversationId || (await ensureActivityGroupConversation(item.nextActivity.id));
-        openThread(conversationId, item.title, item.nextActivity.id);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Could not open Game Room.';
-        Alert.alert('Game Room unavailable', message);
-      } finally {
-        setOpeningKey(null);
-      }
-      return;
+    setOpeningKey(item.key);
+    try {
+      const conversationId =
+        item.conversationId || (await ensureCrewConversation(item.group.id));
+      openThread(
+        conversationId,
+        item.title,
+        item.nextActivity?.id
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open crew chat.';
+      Alert.alert('Chat unavailable', message);
+    } finally {
+      setOpeningKey(null);
     }
-    if (item.group.source_activity_id) {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-        activityId: item.group.source_activity_id,
-      } as never);
-      return;
-    }
-    Alert.alert(item.group.name, 'No game scheduled yet. The host can schedule the next one.');
   };
 
   const handlePress = (item: ChatInboxItem) => {
@@ -219,56 +191,26 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
       return null;
     }
 
-    if (nextGame) {
-      const busy = openingKey === `next-${nextGame.activity.id}`;
-      const court = nextGame.activity.location?.name || 'Court TBD';
-      return (
-        <View style={styles.nextUpCard}>
-          <Text style={styles.nextUpLabel}>NEXT UP</Text>
-          <Text style={styles.nextUpTitle}>
-            {nextGame.activity.sport_type} · {court}
-          </Text>
-          <Text style={styles.nextUpTime}>{formatRelativeStart(nextGame.activity.start_time)}</Text>
-          <Button
-            title={busy ? 'Opening…' : 'Open Game Room'}
-            variant="secondary"
-            size="sm"
-            onPress={() => void openActivityRoom(nextGame)}
-            disabled={busy}
-            loading={busy}
-            style={styles.nextUpCtaButton}
-          />
-        </View>
-      );
-    }
-
-    const group = regularGroups[0];
-    if (!group) {
-      return null;
-    }
-    const isGroupHost = group.host_id === user?.id;
     return (
-      <View style={styles.nextUpCard}>
-        <Text style={styles.nextUpLabel}>YOUR CREW</Text>
-        <Text style={styles.nextUpTitle}>{group.name}</Text>
-        <Text style={styles.nextUpTime}>No game on the calendar yet.</Text>
-        {isGroupHost && group.source_activity_id ? (
-          <Button
-            title="Schedule next"
-            variant="secondary"
-            size="sm"
-            onPress={() => openGroupSourceDetails(group.source_activity_id as string)}
-            style={styles.nextUpCtaButton}
-          />
-        ) : (
-          <Text style={styles.nextUpWaiting}>Waiting for the host to schedule the next game.</Text>
-        )}
-      </View>
+      <NextUpCard
+        nextGame={nextGame}
+        fallbackGroup={regularGroups[0] ?? null}
+        currentUserId={user?.id}
+        userLocation={location}
+        onOpenGameRoom={(entry) => void openActivityRoom(entry)}
+        onScheduleNext={openGroupSourceDetails}
+        openingGameId={
+          nextGame && openingKey === `next-${nextGame.activity.id}` ? nextGame.activity.id : null
+        }
+        footerHint={nextUpFooterHint}
+      />
     );
   };
 
   const renderItem = ({ item }: { item: ChatInboxItem }) => {
     const busy = openingKey === item.key;
+    const hasUnread = item.unread > 0;
+    const dateLabel = formatInboxMessageDate(item.lastMessageAt);
     return (
       <TouchableOpacity
         style={[
@@ -279,21 +221,34 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         onPress={() => handlePress(item)}
         disabled={busy}
       >
+        <ChatRowIcon item={item} />
         <View style={styles.rowMain}>
           <View style={styles.rowTop}>
-            <View style={styles.rowTitleRow}>
-              <ChatRowIcon item={item} />
-              <Text style={styles.rowTitle} numberOfLines={2}>
-                {item.title}
-              </Text>
+            <Text
+              style={[styles.rowTitle, hasUnread && styles.rowTitleUnread]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <View style={styles.rowRight}>
+              {dateLabel ? (
+                <Text style={[styles.rowDate, hasUnread && styles.rowDateUnread]}>{dateLabel}</Text>
+              ) : null}
+              {hasUnread ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {item.unread > 99 ? '99+' : item.unread}
+                  </Text>
+                </View>
+              ) : null}
             </View>
-            {item.unread > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{item.unread}</Text>
-              </View>
-            )}
           </View>
-          <Text style={styles.rowSubtitle}>{item.subtitle}</Text>
+          <Text
+            style={[styles.rowSubtitle, hasUnread && styles.rowSubtitleUnread]}
+            numberOfLines={1}
+          >
+            {item.subtitle}
+          </Text>
           {item.kind === 'game' ? (
             <View style={styles.metaRow}>
               <View style={[styles.chip, item.role === 'host' ? styles.chipHost : styles.chipJoined]}>
@@ -302,11 +257,6 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               <View style={styles.chipMuted}>
                 <Text style={styles.chipText}>{item.statusLabel}</Text>
               </View>
-              {item.isPast ? (
-                <View style={styles.chipMuted}>
-                  <Text style={styles.chipText}>Played</Text>
-                </View>
-              ) : null}
             </View>
           ) : null}
         </View>
@@ -370,7 +320,8 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
                       }
                     : {
                         label: 'Go to Friends',
-                        onPress: () => navigation.navigate(ROUTES.FRIENDS.LIST as never),
+                        onPress: () =>
+                          navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never),
                       }
                 }
                 secondaryAction={
@@ -422,21 +373,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   rowGroup: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.surface,
   },
   rowMain: {
     flex: 1,
-    paddingRight: spacing.sm,
+    minWidth: 0,
   },
   rowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: spacing.sm,
   },
-  rowTitleRow: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+  rowRight: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  rowDate: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  rowDateUnread: {
+    color: colors.primary,
+    fontWeight: '600',
   },
   rowIcon: {
     marginRight: spacing.sm,
@@ -453,11 +413,20 @@ const styles = StyleSheet.create({
   rowTitle: {
     flex: 1,
     ...typography.bodyMedium,
-    paddingRight: spacing.sm,
+    minWidth: 0,
+  },
+  rowTitleUnread: {
+    fontWeight: '700',
+    color: colors.text,
   },
   rowSubtitle: {
     marginTop: spacing.xs,
     ...typography.caption,
+    color: colors.textSecondary,
+  },
+  rowSubtitleUnread: {
+    color: colors.text,
+    fontWeight: '500',
   },
   metaRow: {
     flexDirection: 'row',
@@ -512,39 +481,6 @@ const styles = StyleSheet.create({
   emptyList: {
     flexGrow: 1,
     justifyContent: 'center',
-  },
-  nextUpCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.primary,
-  },
-  nextUpLabel: {
-    ...typography.label,
-    color: 'rgba(255,255,255,0.85)',
-  },
-  nextUpTitle: {
-    marginTop: spacing.xs + 2,
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textInverse,
-  },
-  nextUpTime: {
-    marginTop: 2,
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-  },
-  nextUpCtaButton: {
-    marginTop: spacing.md,
-    alignSelf: 'flex-start',
-  },
-  nextUpWaiting: {
-    marginTop: spacing.md,
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
-    lineHeight: 18,
   },
 });
 

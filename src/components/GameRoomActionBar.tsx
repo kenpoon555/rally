@@ -9,14 +9,13 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { ScheduleDateTimePicker } from './ScheduleDateTimePicker';
 import { useActivity } from '../hooks/useActivities';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -30,7 +29,7 @@ import {
   setGameReady,
   updateActivity,
 } from '../services/activityService';
-import { isRegularGroupMember } from '../services/regularGroupService';
+import { isRegularGroupMember, joinCrewGame } from '../services/regularGroupService';
 import { supabase } from '../services/api/supabase';
 import { JoinRequest } from '../types/activity';
 import {
@@ -42,7 +41,7 @@ import {
   isGameChatInPostGameGrace,
   activityHasOpenSpots,
 } from '../utils/activityHelpers';
-import { colors } from '../constants/theme';
+import { colors, spacing } from '../constants/theme';
 import { GAME_CHAT_ARCHIVE_GRACE_HOURS } from '../constants/gameChat';
 import { getRegularGroupById } from '../services/regularGroupService';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
@@ -89,6 +88,9 @@ type GameRoomContextValue = {
   schedulingNext: boolean;
   viewerId?: string;
   isGroupMember: boolean;
+  isCrewGame: boolean;
+  joiningCrew: boolean;
+  handleJoinCrewGame: () => Promise<void>;
   schedulePickerVisible: boolean;
   nextStartTime: Date;
   setSchedulePickerVisible: (visible: boolean) => void;
@@ -144,6 +146,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     return d;
   });
   const [profilePlayer, setProfilePlayer] = useState<PlayerProfilePreview | null>(null);
+  const [joiningCrew, setJoiningCrew] = useState(false);
 
   const openPlayerProfile = useCallback(
     (
@@ -266,6 +269,24 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     };
   }, [activityId, loadJoinRequests, refetch]);
 
+  const isCrewGame = Boolean(activity?.regular_group_id);
+
+  const handleJoinCrewGame = async () => {
+    if (!activity || !isCrewGame || !isGroupMember) {
+      return;
+    }
+    setJoiningCrew(true);
+    try {
+      await joinCrewGame(activity.id);
+      await refetch();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not join game.';
+      Alert.alert('Join failed', message);
+    } finally {
+      setJoiningCrew(false);
+    }
+  };
+
   const handleApprove = async (requestId: string) => {
     try {
       await approveJoinRequest(requestId, activityId);
@@ -296,8 +317,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
       await setGameReady(activity.id, true);
       await refetch();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Could not mark ready.';
-      Alert.alert('Ready failed', message);
+      const message = error instanceof Error ? error.message : 'Could not confirm.';
+      Alert.alert("Couldn't save", message);
     } finally {
       setSettingReady(false);
     }
@@ -381,20 +402,20 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
       return;
     }
     Alert.alert(
-      'Finalize game?',
-      'Roster will lock. Only confirmed players can stay in the lobby.',
+      'Lock roster?',
+      'Roster will lock. Only confirmed players stay on the court list.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Finalize',
+          text: 'Lock roster',
           onPress: async () => {
             setFinalizing(true);
             try {
               await finalizeGameCommitment(activity.id);
               await refetch();
             } catch (error: unknown) {
-              const message = error instanceof Error ? error.message : 'Could not finalize game.';
-              Alert.alert('Finalize failed', message);
+              const message = error instanceof Error ? error.message : 'Could not lock roster.';
+              Alert.alert('Lock failed', message);
             } finally {
               setFinalizing(false);
             }
@@ -499,6 +520,9 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     setSchedulePickerVisible,
     setNextStartTime,
     confirmScheduleNext,
+    isCrewGame,
+    joiningCrew,
+    handleJoinCrewGame,
   };
 
   return (
@@ -506,17 +530,11 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
       {children}
       {schedulePickerVisible && activity && isHost ? (
         <View style={styles.schedulePickerSheet}>
-          <Text style={styles.schedulePickerTitle}>Next game start time</Text>
-          <DateTimePicker
+          <ScheduleDateTimePicker
+            visible={schedulePickerVisible}
             value={nextStartTime}
-            mode="datetime"
-            minimumDate={new Date()}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(_, date) => {
-              if (date) {
-                setNextStartTime(date);
-              }
-            }}
+            onChange={setNextStartTime}
+            title="Next game start time"
           />
           <View style={styles.schedulePickerActions}>
             <TouchableOpacity
@@ -582,7 +600,11 @@ function RosterAvatar({
     <>
       <View style={[styles.avatar, ready && styles.avatarReady]}>
         <Text style={styles.avatarText}>{label.slice(0, 1).toUpperCase()}</Text>
-        {ready ? <View style={styles.readyDot} /> : null}
+        {ready ? (
+          <View style={styles.readyBadge}>
+            <Text style={styles.readyBadgeText}>✓</Text>
+          </View>
+        ) : null}
         {!ready && waiting ? <View style={styles.waitingDot} /> : null}
       </View>
       <Text style={styles.avatarName} numberOfLines={1}>
@@ -708,6 +730,10 @@ export const GameRoomFooter: React.FC = () => {
     settingReady,
     leaving,
     onOpenDetails,
+    isCrewGame,
+    isGroupMember,
+    joiningCrew,
+    handleJoinCrewGame,
     handlePublishToDiscover,
     publishingToDiscover,
     handleApprove,
@@ -763,7 +789,7 @@ export const GameRoomFooter: React.FC = () => {
 
   const showPlayerActions = !isFinalized && !isHost && isApprovedJoiner;
   const showHostFinalize = !isFinalized && isHost;
-  const showPending = isHost && !isFinalized && pendingRequests.length > 0;
+  const showPending = isHost && !isFinalized && !isCrewGame && pendingRequests.length > 0;
   const showListOnDiscover =
     isHost &&
     !isFinalized &&
@@ -780,19 +806,34 @@ export const GameRoomFooter: React.FC = () => {
     );
   }
 
-  if (!showPlayerActions && !showHostFinalize && !showPending && isPendingJoiner) {
+  if (!showPlayerActions && !showHostFinalize && !showPending && isPendingJoiner && !isCrewGame) {
     return (
       <View style={styles.footer}>
         <View style={styles.waitingStrip}>
-          <Text style={styles.waitingText}>
-            Waiting for the host to approve your join request.
-          </Text>
+          <Text style={styles.waitingText}>Waiting for the host to approve your join request.</Text>
           {onOpenDetails ? (
             <TouchableOpacity onPress={onOpenDetails} style={styles.waitingDetailsBtn}>
               <Text style={styles.waitingDetailsText}>View game details</Text>
             </TouchableOpacity>
           ) : null}
         </View>
+      </View>
+    );
+  }
+
+  const showCrewJoin =
+    isCrewGame && isGroupMember && !isHost && !isApprovedJoiner && !isPendingJoiner && !isFinalized;
+
+  if (showCrewJoin) {
+    return (
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.primaryBtn, joiningCrew && styles.btnDisabled]}
+          onPress={() => void handleJoinCrewGame()}
+          disabled={joiningCrew}
+        >
+          <Text style={styles.primaryBtnText}>{joiningCrew ? 'Joining…' : 'Join game'}</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -902,7 +943,7 @@ export const GameRoomFooter: React.FC = () => {
                 disabled={iAmReady || settingReady}
               >
                 <Text style={styles.primaryBtnText}>
-                  {iAmReady ? 'Ready ✓' : settingReady ? 'Saving…' : 'Mark Ready'}
+                  {iAmReady ? "You're in ✓" : settingReady ? 'Saving…' : "I'm in"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -921,7 +962,7 @@ export const GameRoomFooter: React.FC = () => {
               disabled={finalizing}
             >
               <Text style={styles.primaryBtnText}>
-                {finalizing ? 'Finalizing…' : 'Finalize roster'}
+                {finalizing ? 'Locking…' : 'Lock roster'}
               </Text>
             </TouchableOpacity>
           ) : null}
@@ -1029,16 +1070,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#334',
   },
-  readyDot: {
+  readyBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#34C759',
     borderWidth: 2,
     borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  readyBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 11,
   },
   waitingDot: {
     position: 'absolute',

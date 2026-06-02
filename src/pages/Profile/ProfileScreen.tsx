@@ -35,6 +35,9 @@ import {
   TERMS_SUMMARY,
   WAIVER_TEXT,
 } from '../../constants/legal';
+import { getMyRegularGroups } from '../../services/regularGroupService';
+import { RegularGroup } from '../../types/regularGroup';
+import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
 
 type SettingsRowProps = {
@@ -83,6 +86,7 @@ const ProfileScreen: React.FC = () => {
   const [trustStats, setTrustStats] = useState<ProfileTrustStats | null>(null);
   const [legalModal, setLegalModal] = useState<{ title: string; body: string } | null>(null);
   const [showSportPicker, setShowSportPicker] = useState(false);
+  const [regularGroups, setRegularGroups] = useState<RegularGroup[]>([]);
 
   const usernamePreview = useMemo(() => {
     if (nickname.trim()) {
@@ -194,6 +198,16 @@ const ProfileScreen: React.FC = () => {
     getProfileTrustStats(user.id)
       .then(setTrustStats)
       .catch(() => setTrustStats(null));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setRegularGroups([]);
+      return;
+    }
+    getMyRegularGroups(user.id)
+      .then(setRegularGroups)
+      .catch(() => setRegularGroups([]));
   }, [user?.id]);
 
   const saveNickname = async () => {
@@ -373,12 +387,39 @@ const ProfileScreen: React.FC = () => {
       ) : null}
 
       <View style={styles.sectionCard}>
-        <Text style={styles.groupLabel}>Activity</Text>
+        <Text style={styles.groupLabel}>Social</Text>
+        <SettingsRow
+          label="Friends"
+          value="Add, message, requests"
+          onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
+        />
         <SettingsRow
           label="My games"
           value="Upcoming, past, hosting"
           onPress={() => navigation.navigate(ROUTES.MY_GAMES.TAB as never)}
         />
+      </View>
+
+      {regularGroups.length > 0 ? (
+        <View style={styles.sectionCard}>
+          <Text style={styles.groupLabel}>Your crews</Text>
+          {regularGroups.map((group) => (
+            <SettingsRow
+              key={group.id}
+              label={group.name}
+              value={group.sport_type}
+              onPress={() =>
+                navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                  groupId: group.id,
+                } as never)
+              }
+            />
+          ))}
+        </View>
+      ) : null}
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>Activity</Text>
         <SettingsRow
           label="Default sport"
           value={defaultSport}
@@ -464,6 +505,11 @@ const ProfileScreen: React.FC = () => {
             })
           )
         ) : null}
+      </View>
+
+      <View style={styles.founderCard}>
+        <Text style={styles.founderTitle}>LA beta · founding players</Text>
+        <Text style={styles.founderBody}>{FOUNDER_BENEFITS_COPY}</Text>
       </View>
 
       <View style={styles.sectionCard}>
@@ -765,6 +811,25 @@ const styles = StyleSheet.create({
     color: PRIMARY_COLOR,
     fontWeight: '600',
     fontSize: 15,
+  },
+  founderCard: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  founderTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  founderBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.textSecondary,
   },
   adminButton: {
     marginTop: 4,

@@ -10,17 +10,25 @@ import {
 } from 'react-native';
 import {
   getActivityConversationAnnouncement,
+  getConversationAnnouncement,
+  setConversationAnnouncement,
   setGameRoomAnnouncement,
 } from '../services/chatService';
 import { colors } from '../constants/theme';
 
 type Props = {
-  activityId: string;
+  conversationId?: string;
+  activityId?: string;
   isHost: boolean;
   costNote?: string | null;
 };
 
-const GameRoomAnnouncementBanner: React.FC<Props> = ({ activityId, isHost, costNote }) => {
+const GameRoomAnnouncementBanner: React.FC<Props> = ({
+  conversationId,
+  activityId,
+  isHost,
+  costNote,
+}) => {
   const [pinnedText, setPinnedText] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -30,14 +38,21 @@ const GameRoomAnnouncementBanner: React.FC<Props> = ({ activityId, isHost, costN
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const row = await getActivityConversationAnnouncement(activityId);
-      setPinnedText(row?.pinned_announcement ?? null);
+      if (conversationId) {
+        const row = await getConversationAnnouncement(conversationId);
+        setPinnedText(row?.pinned_announcement ?? null);
+      } else if (activityId) {
+        const row = await getActivityConversationAnnouncement(activityId);
+        setPinnedText(row?.pinned_announcement ?? null);
+      } else {
+        setPinnedText(null);
+      }
     } catch {
       setPinnedText(null);
     } finally {
       setLoading(false);
     }
-  }, [activityId]);
+  }, [activityId, conversationId]);
 
   useEffect(() => {
     void load();
@@ -46,7 +61,11 @@ const GameRoomAnnouncementBanner: React.FC<Props> = ({ activityId, isHost, costN
   const saveAnnouncement = async (text: string | null) => {
     setSaving(true);
     try {
-      await setGameRoomAnnouncement(activityId, text);
+      if (conversationId) {
+        await setConversationAnnouncement(conversationId, text);
+      } else if (activityId) {
+        await setGameRoomAnnouncement(activityId, text);
+      }
       setPinnedText(text);
       setEditing(false);
       setDraft('');

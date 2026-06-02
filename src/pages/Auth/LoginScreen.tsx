@@ -39,7 +39,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <AuthScreenLayout
-      title="Welcome back"
+      title="Log In"
       subtitle="Sign in to open your game lobbies and crew chats."
     >
       <TextField
@@ -69,8 +69,15 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         disabled={loading}
       >
         <Text style={styles.linkText}>
-          New here? <Text style={styles.linkTextBold}>Create an account</Text>
+          New here? <Text style={styles.linkTextBold}>Get Started</Text>
         </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => navigation.navigate(ROUTES.AUTH.WELCOME)}
+        style={styles.linkButton}
+        disabled={loading}
+      >
+        <Text style={styles.linkText}>Back</Text>
       </TouchableOpacity>
     </AuthScreenLayout>
   );

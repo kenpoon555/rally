@@ -41,8 +41,8 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <AuthScreenLayout
-      title="Join Rally"
-      subtitle="Create an account to host games and join nearby players."
+      title="Get Started"
+      subtitle="Create an account to host games and join players in LA."
     >
       <TextField
         label="Username"

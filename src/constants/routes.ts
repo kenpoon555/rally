@@ -1,15 +1,23 @@
 export const ROUTES = {
   AUTH: {
+    WELCOME: 'Welcome',
     LOGIN: 'Login',
     SIGNUP: 'Signup',
   },
   HOME: {
+    DYNAMIC: 'DynamicHome',
     MAIN: 'Home',
     MAP: 'Map',
+  },
+  HOST: {
+    TAB: 'Host',
   },
   ACTIVITY: {
     DETAIL: 'ActivityDetail',
     CREATE: 'CreateActivity',
+  },
+  REGULAR_GROUP: {
+    CREW: 'RegularsCrew',
   },
   FRIENDS: {
     LIST: 'Friends',
@@ -24,6 +32,9 @@ export const ROUTES = {
     TAB: 'Chats',
     LIST: 'ChatList',
     THREAD: 'ChatThread',
+  },
+  TOURNAMENT: {
+    MINI: 'MiniTournament',
   },
   ADMIN: {
     MAIN: 'Admin',

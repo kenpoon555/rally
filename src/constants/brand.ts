@@ -2,4 +2,8 @@
 
 export const APP_NAME = 'Rally';
 
-export const APP_TAGLINE = 'Find your game. Keep your crew.';
+/** Short tagline for compact surfaces (login card, etc.). */
+export const APP_TAGLINE = 'Find people to play with. Fill games. Build regulars.';
+
+export const APP_PROMISE_LINE1 = 'Find people to play with.';
+export const APP_PROMISE_LINE2 = 'Fill games. Build regulars.';
