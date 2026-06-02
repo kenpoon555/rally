@@ -82,18 +82,6 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
 
-  const nextUpDuplicatesInbox = useMemo(() => {
-    if (!nextGame?.activity.regular_group_id) {
-      return false;
-    }
-    return visibleItems.some(
-      (item) =>
-        item.kind === 'group' &&
-        item.group.id === nextGame.activity.regular_group_id &&
-        item.nextActivity?.id === nextGame.activity.id
-    );
-  }, [nextGame, visibleItems]);
-
   const hasNextUpCard = false;
 
   const nextUpFooterHint = useMemo(() => {

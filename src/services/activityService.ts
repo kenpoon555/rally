@@ -3,7 +3,6 @@ import {
   Activity,
   ActivityCandidateLocation,
   ActivityParticipantPreference,
-  ActivityRsvp,
   FinalizedActivityResult,
   GameRsvpStatus,
   JoinRequest,
