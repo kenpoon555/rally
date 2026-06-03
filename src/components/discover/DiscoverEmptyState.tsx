@@ -44,7 +44,7 @@ export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
         <Button title="Create Game" onPress={onCreateGame} fullWidth />
         {regularGroup ? (
           <Button
-            title="Share Regulars link"
+            title="Share Rally link"
             variant="secondary"
             onPress={() => void shareCrewLink()}
             fullWidth

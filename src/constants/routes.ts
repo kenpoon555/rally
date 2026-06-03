@@ -15,6 +15,7 @@ export const ROUTES = {
   ACTIVITY: {
     DETAIL: 'ActivityDetail',
     CREATE: 'CreateActivity',
+    POST_GAME_ATTENDANCE: 'PostGameAttendance',
   },
   REGULAR_GROUP: {
     CREW: 'RegularsCrew',

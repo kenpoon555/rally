@@ -86,6 +86,36 @@ export function countReadyParticipants(
   return { readyCount, rosterCount: approvedParticipants.length + 1 };
 }
 
+/** Mirrors `finalize_game_commitment` readiness rules (host + approved joiners). */
+export type HostLockReadiness = 'ready' | 'waiting_im_in' | 'needs_players';
+
+export function getHostLockReadiness(
+  activity: Activity,
+  approvedParticipants: JoinRequest[] = getApprovedParticipants(activity)
+): HostLockReadiness {
+  /** Host alone — can finalize in DB but should not show "ready to lock" in UI. */
+  if (approvedParticipants.length === 0) {
+    return 'needs_players';
+  }
+
+  const targetTotal = 1 + Math.max(activity.missing_players ?? 1, 0);
+  const approved = approvedParticipants.length + 1;
+  const ready =
+    1 + approvedParticipants.filter((participant) => participant.ready_at).length;
+
+  const canFinalize =
+    (approved >= targetTotal && ready >= targetTotal) ||
+    (approved < targetTotal && ready >= approved);
+
+  if (canFinalize) {
+    return 'ready';
+  }
+  if (approved < targetTotal) {
+    return 'needs_players';
+  }
+  return 'waiting_im_in';
+}
+
 /** Friend-connected games first, then open spots / tonight, then distance. */
 export function sortDiscoverFeedActivities(
   activities: Activity[],

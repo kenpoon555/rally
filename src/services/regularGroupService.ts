@@ -15,7 +15,7 @@ export const createRegularGroupFromActivity = async (
     throw new Error(error.message);
   }
   if (!data) {
-    throw new Error('Failed to create Regulars group');
+    throw new Error('Failed to create Rally');
   }
   void trackProductEvent('regular_group_created', {
     group_id: data,
@@ -78,11 +78,22 @@ export const joinGroupAndNextGame = async (inviteToken: string): Promise<JoinGro
   };
 };
 
-export const joinCrewGame = async (activityId: string): Promise<void> => {
-  const { error } = await supabase.rpc('join_crew_game', { p_activity_id: activityId });
+export type JoinCrewGameResult =
+  | 'joined'
+  | 'already_joined'
+  | 'waitlisted'
+  | 'host';
+
+export const joinCrewGame = async (activityId: string): Promise<JoinCrewGameResult> => {
+  const { data, error } = await supabase.rpc('join_crew_game', { p_activity_id: activityId });
   if (error) {
     throw new Error(error.message);
   }
+  const status = (data as { status?: string } | null)?.status;
+  if (status === 'waitlisted') return 'waitlisted';
+  if (status === 'already_joined') return 'already_joined';
+  if (status === 'host') return 'host';
+  return 'joined';
 };
 
 export const getRegularGroupById = async (groupId: string): Promise<RegularGroup | null> => {
@@ -189,8 +200,8 @@ export const getUpcomingCrewActivity = async (
       `
       *,
       location:activity_locations(id, name, sport_type, location),
-      join_requests(id, user_id, status, ready_at, user:profiles(id, username)),
-      user:profiles(id, username)
+      join_requests(id, user_id, status, ready_at, user:profiles!join_requests_user_id_fkey(id, username)),
+      user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
     `
     )
     .eq('regular_group_id', groupId)
@@ -214,8 +225,8 @@ export const getCrewActivities = async (groupId: string): Promise<Activity[]> =>
       `
       *,
       location:activity_locations(id, name, sport_type, location),
-      join_requests(id, user_id, status, ready_at, user:profiles(id, username)),
-      user:profiles(id, username)
+      join_requests(id, user_id, status, ready_at, user:profiles!join_requests_user_id_fkey(id, username)),
+      user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
     `
     )
     .eq('regular_group_id', groupId)

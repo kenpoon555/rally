@@ -9,6 +9,7 @@ import { parseAppDeepLink } from '../navigation/deepLinking';
 import { joinGroupAndNextGame } from '../services/regularGroupService';
 import { ensureActivityGroupConversation } from '../services/chatService';
 import { ROUTES } from '../constants/routes';
+import { PRODUCT_COPY } from '../constants/productCopy';
 
 interface AuthContextType {
   user: User | null;
@@ -215,7 +216,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             data: { session },
           } = await supabase.auth.getSession();
           if (!session?.user) {
-            Alert.alert('Sign in required', 'Log in to join this Regulars group.');
+            Alert.alert('Sign in required', 'Log in to join this Rally.');
             return;
           }
           try {
@@ -223,8 +224,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               await joinGroupAndNextGame(parsed.groupInviteToken);
             if (joinGameError === 'full') {
               Alert.alert(
-                'Joined crew',
-                "You're in the crew. The next game is full — tap Join when a spot opens."
+                'Joined Rally',
+                "You're in the Rally. The next game is full — tap Join when a spot opens."
               );
             }
             if (conversationId && navigationRef.isReady()) {
@@ -232,7 +233,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 conversationId,
                 activityId: activityId ?? undefined,
                 groupId,
-                title: 'Crew chat',
+                title: PRODUCT_COPY.rallyChat,
               });
               return;
             }

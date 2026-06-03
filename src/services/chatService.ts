@@ -139,10 +139,11 @@ export const getCrewConversationActivities = async (
         player_count,
         missing_players,
         cost_note,
+        session_note,
         regular_group_id,
         location:activity_locations(id, name, sport_type),
-        join_requests(id, user_id, status, ready_at, user:profiles(id, username)),
-        user:profiles(id, username)
+        join_requests(id, user_id, status, ready_at, user:profiles!join_requests_user_id_fkey(id, username)),
+        user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
       )
     `
     )

@@ -40,7 +40,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <AuthScreenLayout
       title="Log In"
-      subtitle="Sign in to open your game lobbies and crew chats."
+      subtitle="Sign in to open your game rooms and Rally chats."
     >
       <TextField
         label="Email"
