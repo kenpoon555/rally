@@ -39,6 +39,11 @@ import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
+import {
+  formatReliabilityLabel,
+  getUserAttendanceStats,
+  UserAttendanceStats,
+} from '../../services/activityService';
 
 type SettingsRowProps = {
   label: string;
@@ -87,6 +92,8 @@ const ProfileScreen: React.FC = () => {
   const [legalModal, setLegalModal] = useState<{ title: string; body: string } | null>(null);
   const [showSportPicker, setShowSportPicker] = useState(false);
   const [regularGroups, setRegularGroups] = useState<RegularGroup[]>([]);
+  const [attendanceStats, setAttendanceStats] = useState<UserAttendanceStats | null>(null);
+  const [savingTimezone, setSavingTimezone] = useState(false);
 
   const usernamePreview = useMemo(() => {
     if (nickname.trim()) {
@@ -107,10 +114,15 @@ const ProfileScreen: React.FC = () => {
   }, [reviewStats]);
 
   const reliabilityLine = useMemo(() => {
+    if (attendanceStats && attendanceStats.committed_sessions > 0) {
+      const label = formatReliabilityLabel(attendanceStats);
+      const detail = `${attendanceStats.confirmed_attended}/${attendanceStats.committed_sessions} locked games attended`;
+      return `${label} · ${detail}`;
+    }
     const flakes = trustStats?.flake_count ?? 0;
     const noShows = trustStats?.no_show_count ?? 0;
     if (flakes === 0 && noShows === 0) {
-      return 'Reliable so far';
+      return 'New player — reliability builds after locked rosters';
     }
     const parts: string[] = [];
     if (noShows > 0) {
@@ -120,7 +132,18 @@ const ProfileScreen: React.FC = () => {
       parts.push(`${flakes} late exit${flakes === 1 ? '' : 's'} before finalize`);
     }
     return parts.join(' · ');
-  }, [trustStats]);
+  }, [attendanceStats, trustStats]);
+
+  const timezoneLabel = useMemo(() => {
+    if (user?.timezone) {
+      return user.timezone.replace(/_/g, ' ');
+    }
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ');
+    } catch {
+      return 'Not set';
+    }
+  }, [user?.timezone]);
 
   const rateablePromptCount = useMemo(
     () => reviewPrompts.filter((p) => p.rateable).length,
@@ -209,6 +232,52 @@ const ProfileScreen: React.FC = () => {
       .then(setRegularGroups)
       .catch(() => setRegularGroups([]));
   }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      setAttendanceStats(null);
+      return;
+    }
+    getUserAttendanceStats(user.id)
+      .then(setAttendanceStats)
+      .catch(() => setAttendanceStats(null));
+  }, [user?.id]);
+
+  const pickTimezone = () => {
+    if (!user?.id) {
+      return;
+    }
+    const options = [
+      { label: 'Pacific (LA)', value: 'America/Los_Angeles' },
+      { label: 'Mountain', value: 'America/Denver' },
+      { label: 'Central', value: 'America/Chicago' },
+      { label: 'Eastern', value: 'America/New_York' },
+      {
+        label: `Use device (${Intl.DateTimeFormat().resolvedOptions().timeZone})`,
+        value: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
+    ];
+    Alert.alert('Time zone', 'Used for game reminders and quiet hours.', [
+      ...options.map((o) => ({
+        text: o.label,
+        onPress: async () => {
+          setSavingTimezone(true);
+          try {
+            await updateUserProfile(user.id, { timezone: o.value });
+            await refreshUser();
+          } catch (error: unknown) {
+            Alert.alert(
+              'Could not save',
+              error instanceof Error ? error.message : 'Try again.'
+            );
+          } finally {
+            setSavingTimezone(false);
+          }
+        },
+      })),
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  };
 
   const saveNickname = async () => {
     if (!user?.id) {
@@ -402,7 +471,7 @@ const ProfileScreen: React.FC = () => {
 
       {regularGroups.length > 0 ? (
         <View style={styles.sectionCard}>
-          <Text style={styles.groupLabel}>Your crews</Text>
+          <Text style={styles.groupLabel}>Your Rallys</Text>
           {regularGroups.map((group) => (
             <SettingsRow
               key={group.id}
@@ -443,6 +512,15 @@ const ProfileScreen: React.FC = () => {
             })}
           </View>
         ) : null}
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>Schedule</Text>
+        <SettingsRow
+          label="Time zone"
+          value={savingTimezone ? 'Saving…' : timezoneLabel}
+          onPress={pickTimezone}
+        />
       </View>
 
       <View style={styles.sectionCard}>

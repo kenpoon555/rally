@@ -53,6 +53,10 @@ import { colors, spacing } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSportIconName } from '../../components/SportIcon';
 import { AddCourtSheet } from '../../components/AddCourtSheet';
+import { PRODUCT_COPY } from '../../constants/productCopy';
+import { getMyRegularGroups } from '../../services/regularGroupService';
+import { RegularGroup } from '../../types/regularGroup';
+import { SHOW_LOCATION_DEBUG } from '../../constants/devFlags';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -66,6 +70,16 @@ type LocationWithDistance = ActivityLocation & { distanceMeters: number | null }
 
 const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user?.id) {
+      setMyRallys([]);
+      return;
+    }
+    getMyRegularGroups(user.id)
+      .then(setMyRallys)
+      .catch(() => setMyRallys([]));
+  }, [user?.id]);
   const { location, loading: loadingLocation, fetchLocation, hasPermission } = useLocation(false);
   const { sports } = useSportsCatalog();
   const launchSportName = sports[0]?.name ?? getDefaultLaunchSportName();
@@ -74,6 +88,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [locations, setLocations] = useState<ActivityLocation[]>([]);
   const [courtSearchRadiusM, setCourtSearchRadiusM] = useState(CONFIG.NEARBY_COURT_RADIUS_M);
   const [showAllCourtsDev, setShowAllCourtsDev] = useState(false);
+  const [myRallys, setMyRallys] = useState<RegularGroup[]>([]);
   const [showAllCourtsFallback, setShowAllCourtsFallback] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -499,6 +514,50 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
       >
         <ScreenHeader title="Host a Game" subtitle={getCreateGameSubtitle(sportType)} />
 
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>What are you hosting?</Text>
+          <View style={[styles.pill, styles.pillSelected, styles.createKindSelected]}>
+            <Text style={[styles.pillText, styles.pillTextSelected]}>{PRODUCT_COPY.publicGame}</Text>
+          </View>
+          <Text style={styles.createKindHint}>
+            Open to discovery — find players for a one-off game.
+          </Text>
+          <TouchableOpacity
+            style={styles.createKindLink}
+            onPress={() => {
+              if (myRallys.length === 0) {
+                Alert.alert(
+                  PRODUCT_COPY.startARally,
+                  'Start a Rally first, then schedule games from Rally chat or your Rally profile.',
+                  [{ text: 'OK' }]
+                );
+                return;
+              }
+              if (myRallys.length === 1) {
+                navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                  groupId: myRallys[0].id,
+                } as never);
+                return;
+              }
+              Alert.alert(
+                'Schedule for a Rally',
+                'Pick a Rally to open its profile and schedule from chat.',
+                myRallys.map((g) => ({
+                  text: g.name,
+                  onPress: () =>
+                    navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                      groupId: g.id,
+                    } as never),
+                }))
+              );
+            }}
+          >
+            <Text style={styles.createKindLinkText}>
+              Scheduling for {PRODUCT_COPY.rally}? Open your Rally instead →
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {showSportPicker ? (
           <View style={[styles.section, { marginTop: 8 }]}>
             <Text style={styles.sectionTitle}>Sport</Text>
@@ -683,7 +742,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           )}
 
-          {__DEV__ && locations.length > 0 && courtSearchRadiusM > 0 && (
+          {SHOW_LOCATION_DEBUG && locations.length > 0 && courtSearchRadiusM > 0 && (
             <TouchableOpacity
               onPress={() => {
                 setShowAllCourtsDev(true);
@@ -1151,6 +1210,23 @@ const styles = StyleSheet.create({
   pillSelected: {
     borderColor: colors.primary,
     backgroundColor: colors.primary,
+  },
+  createKindSelected: {
+    alignSelf: 'flex-start',
+    marginBottom: spacing.xs,
+  },
+  createKindHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  createKindLink: {
+    marginTop: spacing.sm,
+  },
+  createKindLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
   pillText: {
     color: '#333',

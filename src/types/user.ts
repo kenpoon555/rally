@@ -23,6 +23,7 @@ export interface User {
   tos_version?: string | null;
   location_privacy_ack_at?: string | null;
   is_admin?: boolean;
+  timezone?: string | null;
   created_at: string;
   updated_at: string;
 }

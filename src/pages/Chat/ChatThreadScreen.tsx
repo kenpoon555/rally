@@ -29,6 +29,7 @@ import {
   setGameReady,
 } from '../../services/activityService';
 import { CrewChatSessionList } from '../../components/CrewChatSessionList';
+import { PRODUCT_COPY } from '../../constants/productCopy';
 import { trackProductEvent } from '../../services/analyticsService';
 import { getUserById } from '../../services/userService';
 import { usersAreBlocked } from '../../services/safetyService';
@@ -122,7 +123,7 @@ const GameRoomChatBody: React.FC<{
           <Text style={styles.emptyHint}>
             {isGameRoom
               ? isCrewChat
-                ? 'Crew chat — say hi and tap I\'m in on the game card when you can make it.'
+                ? PRODUCT_COPY.rallyChatEmpty
                 : 'Coordinate here — tap I\'m in when you can make it.'
               : 'No messages yet. Say hi!'}
           </Text>
@@ -403,7 +404,13 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             onJoin={async (act) => {
               setBusyActivityId(act.id);
               try {
-                await joinCrewGame(act.id);
+                const result = await joinCrewGame(act.id);
+                if (result === 'waitlisted') {
+                  Alert.alert(
+                    'Waitlist',
+                    'Game is full. You are on the waitlist if a spot opens.'
+                  );
+                }
                 await reloadCrewSessions();
               } catch (error: unknown) {
                 Alert.alert(

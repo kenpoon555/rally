@@ -542,6 +542,62 @@ Use this as the master QA matrix. Run each case on iOS + Android unless marked p
   - `docs/phase-7-review-identity-validation-checklist.md`
   - `docs/phase-8-chat-validation-checklist.md`
 
+## 12) iOS local build stability (IOS-01 / B9)
+
+Use this when `npx react-native run-ios` hangs, fails on Hermes, or Node errors appear in the Xcode build log.
+
+### Prerequisites
+
+- One booted simulator (shut down extras): `xcrun simctl list devices booted`
+- Homebrew Node on PATH: `which node` → prefer `/opt/homebrew/bin/node`
+
+### Fix broken pinned Node (`ios/.xcode.env.local`)
+
+If the file points at an old Cellar path (e.g. `node/22.4.1`) and build logs show missing ICU dylibs:
+
+```bash
+echo 'export NODE_BINARY=/opt/homebrew/bin/node' > ios/.xcode.env.local
+cd ios && pod install && cd ..
+```
+
+### Clean stale Xcode / Metro locks
+
+```bash
+# Kill hung builds (safe on dev machine)
+pkill -f xcodebuild || true
+pkill -f "react-native.*run-ios" || true
+
+cd ios
+rm -rf ~/Library/Developer/Xcode/DerivedData/RallyApp-* 2>/dev/null || true
+pod install
+cd ..
+```
+
+### Run
+
+```bash
+# Terminal 1
+cd RallyApp && npm start
+
+# Terminal 2
+cd RallyApp && npx react-native run-ios
+```
+
+If `run-ios` still hangs, build once then launch manually:
+
+```bash
+cd RallyApp/ios && xcodebuild -workspace RallyApp.xcworkspace -scheme RallyApp -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcrun simctl launch booted com.kenpoon.rallyapp   # use your bundle id from Xcode
+```
+
+### Verify
+
+- [ ] App launches on simulator
+- [ ] Metro serves bundle (curl `http://localhost:8081/status` → packager running)
+- [ ] No dev-only panels in preview/EAS release builds (REL-03)
+
+See also: `docs/QA_BETA_CREW_CHECKLIST.md` §8.12.
+
 ## 11) EAS cloud builds + automated bundle
 
 - **EAS project:** Linked under Expo account; project ID is in `app.json` (`expo.extra.eas.projectId`). Full steps (first-time Android/iOS credentials, preview builds): [eas-build-and-credentials.md](eas-build-and-credentials.md).

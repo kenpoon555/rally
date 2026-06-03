@@ -24,6 +24,7 @@ import {
   getOrCreateDirectConversation,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
+import { PRODUCT_COPY } from '../../constants/productCopy';
 import { useUserPlayMode } from '../../hooks/useUserPlayMode';
 import { MyGameEntry } from '../../services/activityService';
 import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
@@ -88,7 +89,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     if (!nextGame || !needsConfirmPlaying(nextGame.activity, user?.id)) {
       return undefined;
     }
-    return "Tap I'm in in your crew chat to confirm you're playing.";
+    return PRODUCT_COPY.tapImInInRallyChat;
   }, [nextGame, user?.id]);
 
   const openThread = (
@@ -143,7 +144,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         item.nextActivity?.id
       );
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Could not open crew chat.';
+      const message = error instanceof Error ? error.message : 'Could not open Rally chat.';
       Alert.alert('Chat unavailable', message);
     } finally {
       setOpeningKey(null);

@@ -1,8 +1,9 @@
 # What's Next — Rally LA closed beta
 
-Last updated: 2026-05-31
+Last updated: 2026-06-02
 
-**Single checklist for "what do we do now?"** Engineering detail lives in [ROADMAP.md](../ROADMAP.md). Business stages live in [open_items.md](../../open_items.md).
+**Primary "what next" after Track A:** **[WHAT_NEXT.md](./WHAT_NEXT.md)**.  
+This file is the older sprint checklist. Engineering: [ROADMAP.md](../ROADMAP.md). Business: [open_items.md](../../open_items.md).
 
 **Beta market:** Los Angeles — courts seeded metro-wide; dev simulators fall back to central LA when GPS is off.
 
@@ -26,7 +27,7 @@ Prove the **free retention loop** before any paid feature work:
 Discover → join → Game Room chat → play → Regulars crew → replay (crew_replayed)
 ```
 
-**Next builds (from product review):** Dynamic Home · LA beta copy + partner CTA · Mini tournaments inside Regulars.
+**Track A builds (2026-06-02):** Dynamic Home · LA beta copy · Rallys crew loop · 032 on Supabase — **QA now** ([QA_BETA_CREW_CHECKLIST.md](./QA_BETA_CREW_CHECKLIST.md)).
 
 North-star metric: **`analytics_crew_lifecycle.retained`** (% of Regulars groups with ≥1 replay). See [stage-2-cost-metrics.md](stage-2-cost-metrics.md).
 

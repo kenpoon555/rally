@@ -1,35 +1,46 @@
-# Next items (from product + data architecture review)
+# Next items (architecture review + Track A reconciliation)
 
-Items **not** covered in migration `031` / this pass. Use as the backlog for the next sprint.
+Last updated: 2026-06-02
+
+**Superseded for day-to-day:** use **[WHAT_NEXT.md](./WHAT_NEXT.md)** for ordered next steps after QA.
+
+This file keeps the original architecture-review backlog with **status vs Track A build**.
 
 ## Product
 
-1. **Profile attendance %** — Show “Attendance: X%” from `approved + ready_at before lock + not no_show` (view `user_attendance_stats` or client aggregate over last N crew games).
-2. **Merge legacy per-game chat history** — Forward-only beta is OK; optional one-time merge of old `activity_group` messages into `crew_group` threads.
-3. **Session-level vs crew-level pins** — Today: one pinned announcement per crew conversation. If hosts need per-game court notes, add `pinned_announcement` on `conversation_activities` or always show `activities.cost_note` on cards (cost on cards shipped in 031).
-4. **Regulars → Crew naming** — DB still uses `regular_groups`; align all user-facing copy to “crew” and consider table rename later.
-5. **Real routing / court photos** — Out of scope for chat pass; still on roadmap.
-6. **Host schedule UX** — “Schedule next game” from crew screen (`openScheduleNext` on RegularsCrewScreen) if not fully wired.
-7. **Unread / notification** — Crew message on non-current session: optional “activity_id” filter or jump-to-session from push payload.
+| # | Item | Status |
+|---|------|--------|
+| 1 | Profile attendance % | **Done** — `get_user_attendance_stats` + Profile line |
+| 2 | Merge legacy per-game chat history | **Deferred** — A6-3 (risky) |
+| 3 | Session vs crew-level pins | **Done** — `session_note` + crew `pinned_announcement` |
+| 4 | Regulars → Rallys naming | **Done** — user copy; DB unchanged |
+| 5 | Real routing / court photos | Open — roadmap |
+| 6 | Host schedule UX | **Done** — schedule from Rally chat / crew |
+| 7 | Unread / push jump-to-session | Open — polish |
 
 ## Data / platform
 
-8. **Drop `activity_rsvps` table** — RPC deprecated in 031; remove table after confirming no analytics/BI depend on it.
-9. **Orphan `activity_group` cleanup** — Deactivate `conversation_members` on pre-030 per-game crew chats or mark conversations archived.
-10. **Full inbox RPC** — `get_inbox_message_previews` shipped; extend to unread counts + next crew game in one RPC if inbox load becomes slow.
-11. **`profiles.timezone` UI** — Column added in 031; add Profile setting so session labels aren’t LA-default for non-LA users.
-12. **Roster trigger vs RPC** — `sync_activity_roster_counts` trigger may interact with `join_crew_game` / `approve_join_request`; monitor for double-updates under load; add tests.
-13. **Check constraint** — `player_count = 1 + approved_joins` as optional hard guarantee (031 uses trigger reconcile).
-14. **Index on `messages(conversation_id, created_at desc)`** — If inbox/history queries slow at scale.
+| # | Item | Status |
+|---|------|--------|
+| 8 | Drop `activity_rsvps` | **Deferred** — A6-4 |
+| 9 | Orphan `activity_group` cleanup | **Done** — migration 032 |
+| 10 | Full inbox RPC extensions | Open — if perf issue |
+| 11 | `profiles.timezone` UI | **Done** — Profile → Schedule |
+| 12 | Roster trigger vs RPC | Open — monitor under load |
+| 13 | Check constraint player_count | Open — optional |
+| 14 | Index `messages(conversation_id, created_at)` | Open — scale |
 
 ## QA / release
 
-15. **Re-run beta seed** on preview after 031 (`seed_beta_test_data.sql`).
-16. **Device QA** — Schedule 2nd game → same chat; Join without request; I’m in checkmarks; Discover join request unchanged.
-17. **EAS preview rebuild** — Icon assets changed; new iOS/Android builds needed for home-screen icon fix.
+| # | Item | Status |
+|---|------|--------|
+| 15 | Re-run beta seed on preview | Do if QA needs fresh data |
+| 16 | Device QA crew loop | **= [QA_BETA_CREW_CHECKLIST.md](./QA_BETA_CREW_CHECKLIST.md)** |
+| 17 | EAS preview rebuild | Do for TestFlight / icon fix |
 
 ## Review items intentionally deferred
 
 - Full attendance analytics dashboard  
-- Merging old chat histories  
-- TestFlight / production icon marketing variants  
+- Merging old chat histories (A6-3)  
+- TestFlight marketing icon variants  
+- **Phase 3 Guests (A2-2–A2-8)** — see [IMPLEMENT_PLAN.md](./IMPLEMENT_PLAN.md) §A2

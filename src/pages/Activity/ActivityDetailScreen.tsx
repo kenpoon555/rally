@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
+import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ensureCrewConversation } from '../../services/chatService';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useActivity } from '../../hooks/useActivities';
@@ -34,6 +35,7 @@ import {
   makeActivityRecurring,
   joinGameViaInvite,
   updateActivity,
+  setSessionNote,
 } from '../../services/activityService';
 import {
   createRegularGroupFromActivity,
@@ -80,6 +82,7 @@ type MainStackParamList = {
   MainTabs: undefined;
   ActivityDetail: { activityId?: string; inviteToken?: string; fromGameRoom?: boolean };
   CreateActivity: undefined;
+  PostGameAttendance: { activityId: string };
   ChatThread: { conversationId: string; title?: string; activityId?: string; groupId?: string };
   MiniTournament: { tournamentId: string };
   RegularsCrew: { groupId: string };
@@ -125,6 +128,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [nextStartTime, setNextStartTime] = useState(() => new Date());
   const [costNoteDraft, setCostNoteDraft] = useState('');
   const [savingCostNote, setSavingCostNote] = useState(false);
+  const [sessionNoteDraft, setSessionNoteDraft] = useState('');
+  const [savingSessionNote, setSavingSessionNote] = useState(false);
   const [groupTournaments, setGroupTournaments] = useState<MiniTournament[]>([]);
   const [creatingTournament, setCreatingTournament] = useState(false);
   const isHost = user && activity && user.id === activity.user_id;
@@ -376,6 +381,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setCostNoteDraft(activity?.cost_note ?? '');
   }, [activity?.cost_note]);
 
+  useEffect(() => {
+    setSessionNoteDraft(activity?.session_note ?? '');
+  }, [activity?.session_note]);
+
   const handleExtendGame = async (date: Date) => {
     if (!activity) {
       return;
@@ -430,7 +439,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           conversationId,
           activityId: newId,
           groupId: activity.regular_group_id,
-          title: regularGroup?.name ?? 'Crew chat',
+          title: regularGroup?.name
+            ? PRODUCT_COPY.rallyChatTitle(regularGroup.name)
+            : PRODUCT_COPY.rallyChat,
         } as never);
       } else {
         (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
@@ -457,6 +468,28 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
+  const handleSaveSessionNote = async () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    setSavingSessionNote(true);
+    try {
+      await setSessionNote(activity.id, sessionNoteDraft.trim() || null);
+      await refetch();
+    } catch (error: any) {
+      Alert.alert('Session announcement', error?.message || 'Could not save.');
+    } finally {
+      setSavingSessionNote(false);
+    }
+  };
+
+  const showPostGameAttendance = useMemo(() => {
+    if (!activity || !isHost || activity.match_status !== 'finalized') {
+      return false;
+    }
+    return gameEndMs(activity) <= Date.now();
+  }, [activity, isHost]);
+
   const handleShareInvite = async () => {
     if (!activity?.invite_token) {
       return;
@@ -475,7 +508,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     Alert.alert(
-      'Save as Regulars group?',
+      PRODUCT_COPY.saveAsRally,
       'Creates a named crew from this roster. Share the group link so friends join future games together.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -489,7 +522,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               setRegularGroup(group);
               await refetch();
               Alert.alert(
-                'Regulars group saved',
+                PRODUCT_COPY.rallySaved,
                 group?.name ? `"${group.name}" is ready. Share the group invite link next.` : 'Group is ready.'
               );
             } catch (err: any) {
@@ -880,6 +913,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {new Date(activity.preference_deadline).toLocaleString()}
           </Text>
         )}
+        <Text style={styles.gameKindBadge}>
+          {activity.regular_group_id ? PRODUCT_COPY.rallyGame : PRODUCT_COPY.publicGameShort}
+        </Text>
         {activity.visibility === 'invite_only' ? (
           <Text style={styles.inviteOnlyText}>Invite-only · hidden from Discover</Text>
         ) : null}
@@ -891,11 +927,35 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
         {regularGroup ? (
           <TouchableOpacity onPress={openRegularsCrew}>
-            <Text style={styles.regularGroupText}>Regulars: {regularGroup.name} →</Text>
+            <Text style={styles.regularGroupText}>{PRODUCT_COPY.rallyLabel(regularGroup.name)} →</Text>
           </TouchableOpacity>
         ) : null}
         {!isHost && activity.cost_note ? (
           <Text style={styles.costNoteText}>Cost: {activity.cost_note}</Text>
+        ) : null}
+        {!isHost && activity.session_note ? (
+          <Text style={styles.costNoteText}>Session: {activity.session_note}</Text>
+        ) : null}
+        {isHost ? (
+          <View style={styles.costNoteBlock}>
+            <Text style={styles.costNoteLabel}>Session announcement (optional)</Text>
+            <TextInput
+              style={styles.costNoteInput}
+              value={sessionNoteDraft}
+              onChangeText={setSessionNoteDraft}
+              placeholder="e.g. Court 3 · bring cash for lights"
+              maxLength={200}
+            />
+            <TouchableOpacity
+              style={[styles.secondaryButton, savingSessionNote && styles.utilityButtonDisabled]}
+              onPress={() => void handleSaveSessionNote()}
+              disabled={savingSessionNote}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {savingSessionNote ? 'Saving…' : 'Save session announcement'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
         {isHost ? (
           <View style={styles.costNoteBlock}>
@@ -936,7 +996,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               {openingChat
                 ? 'Opening…'
                 : activity.regular_group_id
-                  ? 'Open crew chat'
+                  ? PRODUCT_COPY.openRallyChat
                   : 'Open Game Room'}
             </Text>
           </TouchableOpacity>
@@ -1003,7 +1063,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             disabled={creatingRegularGroup}
           >
             <Text style={styles.secondaryButtonText}>
-              {creatingRegularGroup ? 'Saving…' : 'Save as Regulars group'}
+              {creatingRegularGroup ? 'Saving…' : PRODUCT_COPY.saveAsRallyAction}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -1114,8 +1174,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         flag={ONBOARDING_FLAGS.COACH_REGULARS_SHOWN}
         active={Boolean(isHost && activity.series_id && !activity.regular_group_id)}
         title="Make it official"
-        body="Save these players as a Regulars group and share one link to invite the whole crew."
-        actionLabel="Save as Regulars group"
+        body="Save these players as a Rally and share one link to invite everyone."
+        actionLabel={PRODUCT_COPY.saveAsRallyAction}
         onAction={handleCreateRegularGroup}
       />
 
@@ -1221,7 +1281,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {!isHost && isApprovedJoiner && !isFinalized && showChat ? (
         <Text style={styles.gameRoomHint}>
-          Open crew chat to tap I'm in, chat with your crew, or leave this game.
+          Open Rally chat to tap I'm in, chat with your Rally, or leave this game.
         </Text>
       ) : null}
 
@@ -1343,6 +1403,19 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       {isFinalized && (
         <Text style={styles.finalizedBanner}>Roster locked — game is finalized</Text>
       )}
+
+      {showPostGameAttendance ? (
+        <TouchableOpacity
+          style={styles.utilityButton}
+          onPress={() =>
+            navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE as never, {
+              activityId: activity!.id,
+            } as never)
+          }
+        >
+          <Text style={styles.utilityButtonText}>Record who showed up</Text>
+        </TouchableOpacity>
+      ) : null}
 
       {isHost && (
         <View style={styles.requestsSection}>
@@ -1563,6 +1636,12 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 8,
     marginBottom: 4,
+  },
+  gameKindBadge: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primaryDark,
+    marginTop: spacing.xs,
   },
   inviteOnlyText: {
     marginTop: 6,

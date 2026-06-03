@@ -28,6 +28,7 @@ import { RegularGroup } from '../../types/regularGroup';
 import { MiniTournament } from '../../types/miniTournament';
 import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
 import { ROUTES } from '../../constants/routes';
+import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ensureCrewConversation } from '../../services/chatService';
 import { Button, ScreenHeader } from '../../components/ui';
 import { CrewGameSessionCard } from '../../components/CrewGameSessionCard';
@@ -67,7 +68,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
       setTournaments(t);
       setActivities(acts);
     } catch (error: unknown) {
-      Alert.alert('Crew', error instanceof Error ? error.message : 'Could not load crew.');
+      Alert.alert(PRODUCT_COPY.rally, error instanceof Error ? error.message : 'Could not load Rally.');
     } finally {
       setLoading(false);
     }
@@ -97,14 +98,14 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
       const conversationId = await ensureCrewConversation(groupId);
       navigation.navigate(ROUTES.CHAT.THREAD as never, {
         conversationId,
-        title: group?.name ?? 'Crew chat',
+        title: group?.name ? PRODUCT_COPY.rallyChatTitle(group.name) : PRODUCT_COPY.rallyChat,
         activityId,
         groupId,
       } as never);
     } catch (error: unknown) {
       Alert.alert(
         'Chat unavailable',
-        error instanceof Error ? error.message : 'Could not open crew chat.'
+        error instanceof Error ? error.message : 'Could not open Rally chat.'
       );
     }
   };
@@ -128,7 +129,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
     const sourceId =
       activities.find((a) => a.status === 'active')?.id ?? group?.source_activity_id;
     if (!sourceId) {
-      Alert.alert(group?.name ?? 'Crew', 'No game yet. Host can create the first one from chat.');
+      Alert.alert(group?.name ?? PRODUCT_COPY.rally, 'No game yet. Host can create the first one from chat.');
       return;
     }
     navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId: sourceId } as never);
@@ -164,7 +165,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
       />
 
       <View style={styles.panel}>
-        <Button title="Open crew chat" onPress={() => void openCrewChat(currentActivity?.id)} />
+        <Button title={PRODUCT_COPY.openRallyChat} onPress={() => void openCrewChat(currentActivity?.id)} />
         {isHost ? (
           <Button title="Schedule next game" variant="secondary" size="sm" onPress={openScheduleNext} />
         ) : null}
@@ -200,7 +201,13 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
                 onJoin={async () => {
                   setBusyActivityId(activity.id);
                   try {
-                    await joinCrewGame(activity.id);
+                    const result = await joinCrewGame(activity.id);
+                    if (result === 'waitlisted') {
+                      Alert.alert(
+                        'Waitlist',
+                        'Game is full. You are on the waitlist if a spot opens.'
+                      );
+                    }
                     await load();
                   } catch (e: unknown) {
                     Alert.alert('Join failed', e instanceof Error ? e.message : 'Try again.');
