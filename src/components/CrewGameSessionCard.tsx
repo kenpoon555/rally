@@ -49,6 +49,9 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
           {timeLabel} · {rosterCount} in · {openSpots} open
           {isFinalized ? ' · Roster locked' : ''}
         </Text>
+        {activity.session_note ? (
+          <Text style={styles.sessionNote}>{activity.session_note}</Text>
+        ) : null}
         {activity.cost_note ? (
           <Text style={styles.costNote}>Cost: {activity.cost_note}</Text>
         ) : null}
@@ -116,6 +119,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+  },
+  sessionNote: {
+    ...typography.caption,
+    color: colors.text,
+    marginTop: spacing.xs,
+    fontStyle: 'italic',
   },
   costNote: {
     ...typography.caption,

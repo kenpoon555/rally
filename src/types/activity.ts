@@ -36,6 +36,8 @@ export interface Activity {
   invite_token?: string;
   /** Optional host note (court split, BYO drinks, etc.). */
   cost_note?: string | null;
+  /** Per-session announcement (A4). */
+  session_note?: string | null;
   created_at: string;
   updated_at: string;
   location?: ActivityLocation;
@@ -64,7 +66,7 @@ export interface JoinRequest {
   id: string;
   activity_id: string;
   user_id: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'waitlisted';
   requested_at: string;
   responded_at?: string;
   ready_at?: string | null;

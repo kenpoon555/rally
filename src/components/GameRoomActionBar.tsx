@@ -28,6 +28,7 @@ import {
   scheduleGroupNextGame,
   setGameReady,
   updateActivity,
+  removeFromRoster,
 } from '../services/activityService';
 import { isRegularGroupMember, joinCrewGame } from '../services/regularGroupService';
 import { supabase } from '../services/api/supabase';
@@ -91,6 +92,7 @@ type GameRoomContextValue = {
   isCrewGame: boolean;
   joiningCrew: boolean;
   handleJoinCrewGame: () => Promise<void>;
+  handleRemovePlayer: (userId: string, username: string) => void;
   schedulePickerVisible: boolean;
   nextStartTime: Date;
   setSchedulePickerVisible: (visible: boolean) => void;
@@ -277,8 +279,11 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     }
     setJoiningCrew(true);
     try {
-      await joinCrewGame(activity.id);
+      const result = await joinCrewGame(activity.id);
       await refetch();
+      if (result === 'waitlisted') {
+        Alert.alert('Waitlist', 'Game is full. You are on the waitlist if a spot opens.');
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Could not join game.';
       Alert.alert('Join failed', message);
@@ -401,6 +406,13 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     if (!activity || !isHost) {
       return;
     }
+    if (approvedParticipants.length === 0) {
+      Alert.alert(
+        'Need players first',
+        'Approve at least one joiner (or wait for Rally members to join) before locking the roster.'
+      );
+      return;
+    }
     Alert.alert(
       'Lock roster?',
       'Roster will lock. Only confirmed players stay on the court list.',
@@ -477,6 +489,40 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     );
   }, [activity, isHost, refetch]);
 
+  const handleRemovePlayer = useCallback(
+    (userId: string, username: string) => {
+      if (!activity || !isHost || isFinalized) {
+        return;
+      }
+      Alert.alert(
+        'Remove from roster?',
+        `${username} can re-join if spots open. No penalty before lock.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: () => {
+              void (async () => {
+                try {
+                  await removeFromRoster(activity.id, userId);
+                  await loadJoinRequests();
+                  await refetch();
+                } catch (error: unknown) {
+                  Alert.alert(
+                    'Could not remove',
+                    error instanceof Error ? error.message : 'Try again.'
+                  );
+                }
+              })();
+            },
+          },
+        ]
+      );
+    },
+    [activity, isHost, isFinalized, loadJoinRequests, refetch]
+  );
+
   const value: GameRoomContextValue = {
     activityId,
     activity,
@@ -523,6 +569,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     isCrewGame,
     joiningCrew,
     handleJoinCrewGame,
+    handleRemovePlayer,
   };
 
   return (
@@ -589,12 +636,14 @@ function RosterAvatar({
   waiting,
   role,
   onPress,
+  onLongPress,
 }: {
   label: string;
   ready: boolean;
   waiting?: boolean;
   role?: string;
   onPress?: () => void;
+  onLongPress?: () => void;
 }) {
   const content = (
     <>
@@ -614,9 +663,14 @@ function RosterAvatar({
     </>
   );
 
-  if (onPress) {
+  if (onPress || onLongPress) {
     return (
-      <TouchableOpacity style={styles.avatarWrap} onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity
+        style={styles.avatarWrap}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        activeOpacity={0.7}
+      >
         {content}
       </TouchableOpacity>
     );
@@ -637,6 +691,7 @@ export const GameRoomHeader: React.FC = () => {
     hostUsername,
     hostUser,
     openPlayerProfile,
+    handleRemovePlayer,
     groupName,
     courtName,
     timeLabel,
@@ -707,6 +762,11 @@ export const GameRoomHeader: React.FC = () => {
               ready={Boolean(req.ready_at)}
               waiting={!isFinalized && !req.ready_at}
               onPress={() => openPlayerProfile(req.user!, 'Player')}
+              onLongPress={
+                isHost && !isFinalized
+                  ? () => handleRemovePlayer(req.user_id, req.user!.username)
+                  : undefined
+              }
             />
           ) : null
         )}

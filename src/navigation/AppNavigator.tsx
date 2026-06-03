@@ -19,6 +19,7 @@ import HomeScreen from '../pages/Home/HomeScreen';
 import DynamicHomeScreen from '../pages/Home/DynamicHomeScreen';
 import CreateActivityScreen from '../pages/Activity/CreateActivityScreen';
 import ActivityDetailScreen from '../pages/Activity/ActivityDetailScreen';
+import PostGameAttendanceScreen from '../pages/Activity/PostGameAttendanceScreen';
 import FriendsScreen from '../pages/Friends/FriendsScreen';
 import ProfileScreen from '../pages/Profile/ProfileScreen';
 import ChatListScreen from '../pages/Chat/ChatListScreen';
@@ -140,13 +141,18 @@ const MainStack = () => (
       component={CreateActivityScreen}
       options={{ title: 'Create Game', headerLargeTitle: false }}
     />
+    <Stack.Screen
+      name={ROUTES.ACTIVITY.POST_GAME_ATTENDANCE}
+      component={PostGameAttendanceScreen}
+      options={{ title: 'Attendance' }}
+    />
     <Stack.Screen name={ROUTES.CHAT.THREAD} component={ChatThreadScreen} options={{ title: 'Chat' }} />
     <Stack.Screen name={ROUTES.FRIENDS.LIST} component={FriendsScreen} options={{ title: 'Friends' }} />
     <Stack.Screen name={ROUTES.MY_GAMES.TAB} component={MyGamesScreen} options={{ title: 'My Games' }} />
     <Stack.Screen
       name={ROUTES.REGULAR_GROUP.CREW}
       component={RegularsCrewScreen}
-      options={{ title: 'Crew' }}
+      options={{ title: 'Rally' }}
     />
     <Stack.Screen
       name={ROUTES.TOURNAMENT.MINI}

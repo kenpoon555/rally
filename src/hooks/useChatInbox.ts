@@ -234,7 +234,7 @@ function buildChatInbox(params: {
     const convoId = crewConvo?.id ?? null;
     const fallback = nextActivity
       ? `Next: ${formatActivityTime(nextActivity.start_time, nextActivity.duration)}`
-      : 'Tap to open crew chat';
+      : 'Tap to open Rally chat';
     const preview = previewForConversation(convoId, params.messagePreviews, fallback);
     return {
       kind: 'group',

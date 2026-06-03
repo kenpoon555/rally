@@ -1,10 +1,12 @@
 import { ProfileReviewStats } from '../types/review';
 import { ProfileTrustStats } from '../types/safety';
+import { formatReliabilityLabel, UserAttendanceStats } from '../services/activityService';
 
 /** One-line trust summary for roster rows and join-request previews. */
 export function formatPlayerTrustPreview(
   review: ProfileReviewStats | null | undefined,
-  trust: ProfileTrustStats | null | undefined
+  trust: ProfileTrustStats | null | undefined,
+  attendance?: UserAttendanceStats | null
 ): string {
   const parts: string[] = [];
   const reviewCount = review?.review_count ?? 0;
@@ -20,7 +22,9 @@ export function formatPlayerTrustPreview(
   const flakes = trust?.flake_count ?? 0;
   const noShows = trust?.no_show_count ?? 0;
 
-  if (flakes === 0 && noShows === 0) {
+  if (attendance && attendance.committed_sessions > 0) {
+    parts.push(formatReliabilityLabel(attendance));
+  } else if (flakes === 0 && noShows === 0) {
     if (reviewCount >= 3) {
       parts.push('Reliable');
     }

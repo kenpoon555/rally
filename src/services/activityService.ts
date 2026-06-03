@@ -40,6 +40,7 @@ export const createActivity = async (activityData: {
   candidate_location_ids?: string[];
   urgency_level?: 'normal' | 'tonight';
   cost_note?: string | null;
+  session_note?: string | null;
 }): Promise<Activity> => {
   const { candidate_location_ids, ...basePayload } = activityData;
   const schedulingMode = basePayload.scheduling_mode || 'fixed';
@@ -140,7 +141,7 @@ export const getActivityById = async (activityId: string): Promise<Activity | nu
     `
     )
     .eq('activity_id', activityId)
-    .in('status', ['approved', 'pending']);
+    .in('status', ['approved', 'pending', 'waitlisted']);
 
   if (joinError) {
     console.error('Error fetching join requests for activity:', joinError);
@@ -577,6 +578,40 @@ export const getMyGames = async (userId: string): Promise<MyGamesResult> => {
     }
   }
 
+  const hostIds = hosted.map((a) => a.id);
+  if (hostIds.length > 0) {
+    const { data: hostJoinRows } = await supabase
+      .from('join_requests')
+      .select(
+        `
+        id,
+        activity_id,
+        user_id,
+        status,
+        ready_at,
+        user:profiles!join_requests_user_id_fkey(id, username, profile_photo_url)
+      `
+      )
+      .in('activity_id', hostIds)
+      .in('status', ['approved', 'pending', 'waitlisted']);
+
+    const byActivity = new Map<string, Activity['join_requests']>();
+    for (const row of hostJoinRows || []) {
+      const activityId = row.activity_id as string;
+      const list = byActivity.get(activityId) ?? [];
+      list.push(row);
+      byActivity.set(activityId, list);
+    }
+    for (const entry of entries) {
+      if (entry.role === 'host') {
+        entry.activity = {
+          ...entry.activity,
+          join_requests: byActivity.get(entry.activity.id) ?? [],
+        };
+      }
+    }
+  }
+
   const sorted = sortMyGameEntries(entries);
   return {
     active: sorted.filter(
@@ -914,6 +949,87 @@ export const leaveGame = async (activityId: string): Promise<void> => {
     throw new Error(error.message);
   }
 };
+
+export const setSessionNote = async (activityId: string, note: string | null): Promise<void> => {
+  const { error } = await supabase.rpc('set_session_note', {
+    p_activity_id: activityId,
+    p_note: note ?? '',
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const removeFromRoster = async (
+  activityId: string,
+  userId: string
+): Promise<void> => {
+  const { error } = await supabase.rpc('remove_from_roster', {
+    p_activity_id: activityId,
+    p_user_id: userId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export type UserAttendanceStats = {
+  committed_sessions: number;
+  confirmed_attended: number;
+  reliability_pct: number | null;
+  confidence_band: 'new_player' | 'building' | 'established';
+};
+
+export const getUserAttendanceStats = async (
+  userId?: string
+): Promise<UserAttendanceStats | null> => {
+  const { data, error } = await supabase.rpc('get_user_attendance_stats', {
+    p_user_id: userId ?? undefined,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    return null;
+  }
+  return {
+    committed_sessions: Number(row.committed_sessions ?? 0),
+    confirmed_attended: Number(row.confirmed_attended ?? 0),
+    reliability_pct:
+      row.reliability_pct != null ? Number(row.reliability_pct) : null,
+    confidence_band: (row.confidence_band as UserAttendanceStats['confidence_band']) ?? 'new_player',
+  };
+};
+
+export const submitGameAttendance = async (
+  activityId: string,
+  attendedUserIds: string[]
+): Promise<void> => {
+  const { error } = await supabase.rpc('submit_game_attendance', {
+    p_activity_id: activityId,
+    p_attended_user_ids: attendedUserIds,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export function formatReliabilityLabel(stats: UserAttendanceStats | null): string {
+  if (!stats || stats.committed_sessions === 0) {
+    return 'New player';
+  }
+  if (stats.confidence_band === 'new_player') {
+    return 'New player';
+  }
+  if (stats.confidence_band === 'building') {
+    return 'Building reliability';
+  }
+  if (stats.reliability_pct != null) {
+    return `${stats.reliability_pct}% show-up rate`;
+  }
+  return 'Reliable player';
+}
 
 /** Host creates invite-only follow-up game; seeds roster from source game. */
 export const scheduleNextGameFromActivity = async (

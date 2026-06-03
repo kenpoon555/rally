@@ -1,23 +1,22 @@
 # RallyApp Roadmap
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
-> **Canonical docs:** [VISION.md](./VISION.md) · [../open_items.md](../open_items.md) · **[docs/NEXT.md](docs/NEXT.md)** (current sprint).  
-> Product review merged 2026-06-01 (formerly `another_agent_opinion.md`).
+> **Canonical docs:** [VISION.md](./VISION.md) · [../open_items.md](../open_items.md) · **[docs/WHAT_NEXT.md](docs/WHAT_NEXT.md)** (post–Track A) · [docs/NEXT.md](docs/NEXT.md) (sprint checklist).  
+> Track A build: [IMPLEMENT_PLAN.md](docs/IMPLEMENT_PLAN.md) · [ADVISOR_IMPLEMENTATION_PLAN.md](docs/ADVISOR_IMPLEMENTATION_PLAN.md).
 
-## Next focus for building
+## Next focus (2026-06-02)
 
-**Direction:** Dynamic Home + LA badminton/pickleball closed beta + Regulars groups + lightweight in-group mini tournaments.
+**Engineering:** Track A **shipped** — collective **QA** next. See [docs/WHAT_NEXT.md](docs/WHAT_NEXT.md).
 
-**Do not build yet:** full Teams, full Leagues, payments/fee-split, multi-city expansion, anonymous lobby identity.
+**Do not build yet:** full Teams, Leagues, payments, A7 unified public-as-Rally, **Guests (A2)** until QA + replay metric.
 
-| Build now | Defer |
-|-----------|--------|
-| Dynamic Home (Next Up, active Game Rooms, host CTAs) | Formal Teams schema |
-| LA beta copy + partner/city interest CTA | League seasons / standings |
-| Regulars multi-sport crews | Stripe / IAP payments |
-| Mini tournaments inside Regulars (Phase 2.5) | Audio/video chat |
-| Group RSVP + schedule next game for crews (shipped 025) | Multi-city launch |
+| Shipped (QA) | After QA / retention gate |
+|--------------|---------------------------|
+| Dynamic Home + host lock readiness | Phase 3 Guests (A2) |
+| Rallys copy + crew chat session cards | Discover polish (DISC-01) |
+| session_note, waitlist, attendance/reliability | Organizer Pro (Stage 4) |
+| Migrations 030–032 on preview | Teams / Leagues / payments |
 
 ## Product Direction
 
@@ -26,7 +25,7 @@ Last updated: 2026-06-01
 - Core success metric for MVP: a user can discover, join, and play with a partner in minutes.
 - Next success metric: a group can converge on the best time/location with minimal coordination overhead.
 - **UX north star (2026-05-31):** **Chat-first coordination** — users live in game lobbies; Discover fills empty slots.
-- **Tab bar (2026-06-01):** `Home | Discover | Host | Chats | Profile` — My Games and Friends are stack screens from Profile/Home.
+- **Tab bar (2026-06-01):** `Home | Discover | Chats | Profile` (Host = Create from Home/Discover). **My Games** and **Friends** live under **Profile → Social** (keep there for beta; see WHAT_NEXT for active-user ideas).
 - **Beta strategy (2026-05-31):** **Prove retention before monetization.** North-star: **`analytics_crew_lifecycle.retained`** (% of Regulars groups with ≥1 replay).
 - **Beta market:** Los Angeles — badminton + pickleball primary; 10 sports in catalog.
 
