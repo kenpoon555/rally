@@ -1,0 +1,154 @@
+# Push to `production` → tests, then EAS production builds (Android + iOS in parallel).
+# Does NOT auto-submit to App Store / Play — run submit manually or use workflow_dispatch.
+# Requires: EXPO_TOKEN, EAS production env, Android + iOS production credentials.
+# See docs/github-actions-production.md
+
+name: Deploy production (EAS)
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - android
+          - ios
+      submit:
+        description: Submit finished builds to stores (use after build succeeds)
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: eas-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Tests (fast gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests and lint
+        run: npm run verify
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Check EAS production env (Supabase keys)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: bash ./scripts/check-eas-production-env.sh
+
+  build-android:
+    name: EAS production · Android
+    needs: verify
+    if: >-
+      github.event_name == 'push' ||
+      github.event.inputs.platform == 'all' ||
+      github.event.inputs.platform == 'android'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: eas build --profile production --platform android --non-interactive --no-wait
+      - name: Builds dashboard
+        run: echo "Android → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
+
+  build-ios:
+    name: EAS production · iOS
+    needs: verify
+    if: >-
+      github.event_name == 'push' ||
+      github.event.inputs.platform == 'all' ||
+      github.event.inputs.platform == 'ios'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - run: eas build --profile production --platform ios --non-interactive --no-wait
+      - name: Builds dashboard
+        run: echo "iOS → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
+
+  submit-stores:
+    name: EAS submit (optional)
+    needs: [build-android, build-ios]
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.submit == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+      - run: npm ci
+      - name: Submit Android (latest production build)
+        if: >-
+          github.event.inputs.platform == 'all' ||
+          github.event.inputs.platform == 'android'
+        run: eas submit --profile production --platform android --non-interactive --latest
+      - name: Submit iOS (latest production build)
+        if: >-
+          github.event.inputs.platform == 'all' ||
+          github.event.inputs.platform == 'ios'
+        run: eas submit --profile production --platform ios --non-interactive --latest
+
+  summary:
+    name: Where to ship
+    needs: [build-android, build-ios]
+    if: always() && (needs.build-android.result != 'skipped' || needs.build-ios.result != 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Job summary
+        run: |
+          {
+            echo "## Production build"
+            echo ""
+            echo "| Platform | CI | Dashboard |"
+            echo "|----------|-----|-----------|"
+            echo "| Android | ${{ needs.build-android.result }} | [Expo builds](https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds) |"
+            echo "| iOS | ${{ needs.build-ios.result }} | Same dashboard |"
+            echo ""
+            echo "**Commit:** \`${{ github.sha }}\`"
+            echo ""
+            echo "Store submit is **not** automatic on push. Use **Actions → Deploy production → Run workflow** with **submit** enabled after builds finish, or run \`eas submit\` locally."
+          } >> "$GITHUB_STEP_SUMMARY"

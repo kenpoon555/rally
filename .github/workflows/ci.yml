@@ -1,13 +1,13 @@
 # Pull requests → fast checks only (no EAS build, saves time/cost).
-# Merge to `preview` → deploy-preview.yml runs tests + EAS builds.
+# Merge to `preview` → deploy-preview.yml · merge to `production` → deploy-production.yml
 
 name: CI
 
 on:
   pull_request:
-    branches: [main, preview]
+    branches: [main, preview, production]
   push:
-    branches: [main]
+    branches: [main, production]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
