@@ -1,11 +1,12 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const { getDefaultConfig: getExpoDefaultConfig } = require('expo/metro-config');
 
-/**
- * Metro configuration
- * https://reactnative.dev/docs/metro
- *
- * @type {import('@react-native/metro-config').MetroConfig}
- */
-const config = {};
+const expoConfig = getExpoDefaultConfig(__dirname);
+const rnConfig = getDefaultConfig(__dirname);
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+/** @type {import('metro-config').MetroConfig} */
+module.exports = mergeConfig(rnConfig, expoConfig, {
+  resolver: {
+    useWatchman: false,
+  },
+});

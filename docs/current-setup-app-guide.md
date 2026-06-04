@@ -12,7 +12,7 @@ This document summarizes the current app setup, runtime architecture, near-term 
 - Supabase (Auth + Postgres + Realtime)
 - Firebase Cloud Messaging (push notifications)
 - React Navigation (Auth stack + bottom tabs + activity stack)
-- React Native Geolocation + geofence polling logic
+- expo-location + geofence polling logic (Expo modules required on Android)
 
 ### Product Decisions Locked (V2.1)
 
@@ -48,11 +48,13 @@ Template file: `.env.example`
 
 `console.log` / `console.warn` no longer appear in the Metro terminal. To see them (e.g. `[Location]` debug lines): focus the terminal where Metro is running and press **`j`** to open React Native DevTools, then use the **Console** tab.
 
-### Android emulator: location and why it can time out
+### Android: location and why it now works
 
-**What was wrong:** On the emulator, default "balanced" accuracy often leaves `isLocationAvailable` false, so location times out (see react-native-geolocation-service#296). The app now requests **high accuracy** on Android so the emulator can return a fix.
+**Stack:** Location uses **expo-location** in this React Native (bare) app. For expo-location to work on Android, **Expo modules** must be configured: `expo` package and `expoAutolinking.useExpoModules()` in `android/settings.gradle`. Without that, the app crashes with `EventEmitter` undefined when using location (e.g. Create activity).
 
-**Set mock location:** Extended controls → Location → Enable GPS → Set location (after picking a point) → wait 2–3 s → in app, pull to refresh or tap Retry location. If it still times out, run once from Android Studio (Run) then from CLI; or use a real device (below).
+**How we get location:** `getCurrentPositionAsync` first; if it fails (e.g. emulator), we use `getLastKnownPositionAsync` so a cached or mock location from the last 5 minutes is used. Result: getCurrentPosition succeeds; location is visible in the in-app "Location debug" (dark) panel and Create activity no longer crashes. See [ANDROID-LOCATION-ISSUE-CONTEXT.md](ANDROID-LOCATION-ISSUE-CONTEXT.md) § Resolution.
+
+**Set mock location (emulator):** Extended controls → Location → Enable GPS → Set location (after picking a point) → wait 2–3 s → in app, pull to refresh or tap Retry location. If it still fails, use a real device (below).
 
 ### Testing on a real Android device (not Expo)
 
@@ -60,7 +62,7 @@ This project is **React Native** (no Expo). Do **not** use `expo start`. (1) Pho
 
 ### Android emulator: set mock location (steps)
 
-If you see "permission granted but no location" or getCurrentPosition times out:
+If you see "permission granted but no location" or location doesn’t resolve:
 
 1. Open the emulator **Extended controls** (⋯ or three-dot menu) → **Location**.
 2. Turn **Enable GPS signal** **ON**.
@@ -236,7 +238,44 @@ flowchart TD
 - Populate `.env` from `.env.example` with real Supabase + Places values.
 - Run native dependency sync:
   - iOS: `cd ios && pod install`
-- Validate real device push path (Firebase Console -> device token in `user_device_tokens`).
+- Validate real device push path (Firebase Console -> device token in `user_device_tokens`). See **Validate real-device push path** below.
+
+### Validate real-device push path
+
+**Goal:** Confirm a device token is stored and that a test push sent from Firebase Console is received on the real device.
+
+**Preconditions:** Firebase config files in place; app builds; APNs configured in Firebase for iOS. Use a **real device** (simulator/emulator push is unreliable).
+
+1. **Get a token into `user_device_tokens`**
+   - Run the app on a real device: `npx react-native run-ios` or `npx react-native run-android`.
+   - Sign in with a test account.
+   - Grant notification permission when prompted.
+   - Wait a few seconds for token registration (handled in `AuthContext` / `notificationService`).
+
+2. **Confirm the token is present**
+   - In **Supabase** → **Table Editor** → open `user_device_tokens`.
+   - Or run in **SQL Editor**:
+     ```sql
+     SELECT user_id, device_token, platform, created_at, updated_at
+     FROM user_device_tokens
+     ORDER BY updated_at DESC
+     LIMIT 20;
+     ```
+   - Find the row for your test user and copy the `device_token` value (long string).
+
+3. **Send a test push from Firebase Console**
+   - Open [Firebase Console](https://console.firebase.google.com) → your project.
+   - Go to **Engage** → **Messaging** (or **Build** → **Cloud Messaging**).
+   - Click **Create your first campaign** / **New campaign** → **Firebase Notification messages**.
+   - Enter a **Notification title** and **Notification text** (e.g. "Rally test", "Push path check").
+   - Click **Send test message** (or **Next** until you see test options).
+   - Paste the **device token** from step 2 into the field and add the device, then send the test.
+
+4. **Verify on device**
+   - With the app in foreground, background, or killed: the test notification should appear (and tapping it should open the app if applicable).
+   - **Acceptance:** Token is present in `user_device_tokens` and at least one test push is received on the device. You can then check the task in `docs/TASKS.md` as done.
+
+**Troubleshooting:** If no token appears in `user_device_tokens`, check that Firebase config files are present and that the app requested and was granted notification permission. For iOS, ensure APNs is set up in Firebase (Project settings → Cloud Messaging). For more cases (foreground/background/cold start), use `docs/phase-4-notifications-validation-checklist.md`.
 
 ## V2.1 Foundation (New Priority)
 
@@ -502,3 +541,65 @@ Use this as the master QA matrix. Run each case on iOS + Android unless marked p
   - `docs/phase-6-flexible-matching-validation-checklist.md`
   - `docs/phase-7-review-identity-validation-checklist.md`
   - `docs/phase-8-chat-validation-checklist.md`
+
+## 12) iOS local build stability (IOS-01 / B9)
+
+Use this when `npx react-native run-ios` hangs, fails on Hermes, or Node errors appear in the Xcode build log.
+
+### Prerequisites
+
+- One booted simulator (shut down extras): `xcrun simctl list devices booted`
+- Homebrew Node on PATH: `which node` → prefer `/opt/homebrew/bin/node`
+
+### Fix broken pinned Node (`ios/.xcode.env.local`)
+
+If the file points at an old Cellar path (e.g. `node/22.4.1`) and build logs show missing ICU dylibs:
+
+```bash
+echo 'export NODE_BINARY=/opt/homebrew/bin/node' > ios/.xcode.env.local
+cd ios && pod install && cd ..
+```
+
+### Clean stale Xcode / Metro locks
+
+```bash
+# Kill hung builds (safe on dev machine)
+pkill -f xcodebuild || true
+pkill -f "react-native.*run-ios" || true
+
+cd ios
+rm -rf ~/Library/Developer/Xcode/DerivedData/RallyApp-* 2>/dev/null || true
+pod install
+cd ..
+```
+
+### Run
+
+```bash
+# Terminal 1
+cd RallyApp && npm start
+
+# Terminal 2
+cd RallyApp && npx react-native run-ios
+```
+
+If `run-ios` still hangs, build once then launch manually:
+
+```bash
+cd RallyApp/ios && xcodebuild -workspace RallyApp.xcworkspace -scheme RallyApp -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16' build
+xcrun simctl launch booted com.kenpoon.rallyapp   # use your bundle id from Xcode
+```
+
+### Verify
+
+- [ ] App launches on simulator
+- [ ] Metro serves bundle (curl `http://localhost:8081/status` → packager running)
+- [ ] No dev-only panels in preview/EAS release builds (REL-03)
+
+See also: `docs/QA_BETA_CREW_CHECKLIST.md` §8.12.
+
+## 11) EAS cloud builds + automated bundle
+
+- **EAS project:** Linked under Expo account; project ID is in `app.json` (`expo.extra.eas.projectId`). Full steps (first-time Android/iOS credentials, preview builds): [eas-build-and-credentials.md](eas-build-and-credentials.md).
+- **First cloud build:** Run `npx eas-cli credentials -p android` (and iOS) once so non-interactive builds can sign binaries.
+- **Automated checks (no device):** From `RallyApp/`, run `./scripts/verify-release-bundle.sh` — runs `npm test` and `npm run lint`. Use before tagging preview/production builds.

@@ -1,9 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { Linking, Platform } from 'react-native';
+import { Linking, Platform, Alert } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { User } from '../types/user';
-import { getCurrentUser, getUserById, createUserProfile } from '../services/userService';
+import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
+import { navigationRef } from '../navigation/navigationRef';
+import { parseAppDeepLink } from '../navigation/deepLinking';
+import { joinGroupAndNextGame } from '../services/regularGroupService';
+import { ensureActivityGroupConversation } from '../services/chatService';
+import { ROUTES } from '../constants/routes';
+import { PRODUCT_COPY } from '../constants/productCopy';
 
 interface AuthContextType {
   user: User | null;
@@ -13,9 +19,11 @@ interface AuthContextType {
   signInWithPhone: (phone: string) => Promise<void>;
   verifyPhone: (phone: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 const EMAIL_REDIRECT_TO = 'rallyapp://auth/callback';
 
 const parseAuthParamsFromUrl = (url: string): Record<string, string> => {
@@ -48,15 +56,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const [notificationCleanup, setNotificationCleanup] = useState<(() => void) | null>(null);
   const notificationCleanupRef = useRef<(() => void) | null>(null);
-  const loadUserInProgressRef = useRef<string | null>(null);
+  const loadUserPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
   notificationCleanupRef.current = notificationCleanup;
 
   const loadUser = useCallback(async (userId: string) => {
-    // Deduplicate: checkSession() and onAuthStateChange() both call loadUser for the same session; only run one.
-    if (loadUserInProgressRef.current === userId) {
-      return;
+    // Deduplicate: checkSession() and onAuthStateChange() both call loadUser; share one in-flight promise.
+    const inFlight = loadUserPromisesRef.current.get(userId);
+    if (inFlight) {
+      return inFlight;
     }
-    loadUserInProgressRef.current = userId;
+
+    const run = (async () => {
     try {
       // Prefer fetch by userId (session is already set); getCurrentUser() can be stale/empty right after sign-in.
       let userData = await getUserById(userId);
@@ -84,7 +94,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               username: metadataUsername || fallbackUsername,
               email: authUser.email || undefined,
               phone: authUser.phone || undefined,
-              preferred_sports: [],
             });
           } catch (createProfileError: any) {
             // Signup can still be successful if DB trigger already created profile.
@@ -103,11 +112,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error('Profile not found after auto-create attempt.');
       }
 
+      userData = await ensureUserDefaultSport(userData);
+
       setUser(userData);
       // Do not block auth/navigation on notification setup.
       // On Android, defer notification init so the main UI can mount first (avoids native crash when Firebase is not fully configured).
       const runNotificationInit = async () => {
-        if (Platform.OS === 'android') return;
         try {
           const { initializeNotificationsForUser } = require('../services/notificationService');
           const previousCleanup = notificationCleanupRef.current;
@@ -127,7 +137,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           );
         }
       };
-      runNotificationInit();
+      if (Platform.OS === 'android') {
+        setTimeout(runNotificationInit, 800);
+      } else {
+        runNotificationInit();
+      }
     } catch (error: any) {
       console.error('Error loading user:', error);
       // Re-throw so sign-in/signup show clear message.
@@ -151,8 +165,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       throw new Error('Unable to complete account setup right now. Please try again.');
     } finally {
-      loadUserInProgressRef.current = null;
+      loadUserPromisesRef.current.delete(userId);
     }
+    })();
+
+    loadUserPromisesRef.current.set(userId, run);
+    return run;
   }, []);
 
   const checkSession = useCallback(async () => {
@@ -164,18 +182,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         data: { session },
       } = await supabase.auth.getSession();
       if (session?.user) {
-        const SESSION_LOAD_TIMEOUT_MS = 4000;
-        await Promise.race([
-          loadUser(session.user.id),
-          new Promise<void>((_, reject) =>
-            setTimeout(() => reject(new Error('Session load timeout')), SESSION_LOAD_TIMEOUT_MS)
-          ),
-        ]);
+        // Wait for profile load before leaving bootstrap — avoids login flash + blank main nav on Android.
+        await loadUser(session.user.id);
       }
     } catch (error) {
-      if ((error as any)?.message !== 'Session load timeout') {
-        console.error('Error checking session:', error);
-      }
+      console.error('Error checking session:', error);
     } finally {
       // #region agent log
       sendDebugLog('AuthContext.tsx:setLoadingFalse', 'Auth loading=false', {}, 'H1');
@@ -187,6 +198,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const handleAuthDeepLink = async (url: string) => {
       try {
+        const parsed = parseAppDeepLink(url);
+        if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
+          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
+            activityId: parsed.activityId,
+          });
+          return;
+        }
+        if (parsed.type === 'invite' && parsed.inviteToken && navigationRef.isReady()) {
+          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
+            inviteToken: parsed.inviteToken,
+          });
+          return;
+        }
+        if (parsed.type === 'groupInvite' && parsed.groupInviteToken) {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          if (!session?.user) {
+            Alert.alert('Sign in required', 'Log in to join this Rally.');
+            return;
+          }
+          try {
+            const { activityId, conversationId, groupId, joinedGame, joinGameError } =
+              await joinGroupAndNextGame(parsed.groupInviteToken);
+            if (joinGameError === 'full') {
+              Alert.alert(
+                'Joined Rally',
+                "You're in the Rally. The next game is full — tap Join when a spot opens."
+              );
+            }
+            if (conversationId && navigationRef.isReady()) {
+              (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+                conversationId,
+                activityId: activityId ?? undefined,
+                groupId,
+                title: PRODUCT_COPY.rallyChat,
+              });
+              return;
+            }
+            if (activityId && navigationRef.isReady()) {
+              try {
+                const gameConvoId = await ensureActivityGroupConversation(activityId);
+                (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+                  conversationId: gameConvoId,
+                  activityId,
+                });
+                return;
+              } catch {
+                // Joined the crew but couldn't open the room — fall back to a confirmation.
+              }
+            }
+            if (joinedGame) {
+              Alert.alert('Joined crew', "You're in! Your next game will show up in Chats.");
+            } else if (!joinGameError) {
+              Alert.alert('Joined crew', "You're in the crew. Open Chats when a game is scheduled.");
+            }
+          } catch (err: any) {
+            Alert.alert('Group invite', err?.message || 'Could not join group.');
+          }
+          return;
+        }
+
         const params = parseAuthParamsFromUrl(url);
 
         if (params.access_token && params.refresh_token) {
@@ -323,7 +396,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await createUserProfile(data.user.id, {
         username,
         email,
-        preferred_sports: [],
       });
     } catch (profileError: any) {
       console.warn('Profile create retry path used during signup:', profileError?.message || profileError);
@@ -363,7 +435,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         await createUserProfile(data.user.id, {
           username: phone.replace(/\D/g, '').slice(-8), // Use last 8 digits as username
           phone,
-          preferred_sports: [],
         });
       }
       await loadUser(data.user.id);
@@ -376,7 +447,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setNotificationCleanup(null);
     }
 
-    if (user?.id && Platform.OS !== 'android') {
+    if (user?.id) {
       try {
         const { getDeviceToken, unregisterDeviceToken } = require('../services/notificationService');
         const token = await getDeviceToken();
@@ -393,6 +464,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUser(null);
   };
 
+  const refreshUser = useCallback(async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
+    if (!authUser?.id) {
+      setUser(null);
+      return;
+    }
+    const profile = await getUserById(authUser.id);
+    if (profile) {
+      setUser(profile);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -403,6 +488,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signInWithPhone,
         verifyPhone,
         signOut,
+        refreshUser,
       }}
     >
       {children}

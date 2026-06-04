@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { ACTIVITY_DURATIONS, ActivityDuration } from '../constants/sports';
+import { ACTIVITY_DURATIONS, ActivityDuration, getSportMetadata, resolvePreferredSportForLaunch } from '../constants/sports';
 import { ActivityLocation } from '../types/location';
 import { createActivity } from '../services/activityService';
 import { saveActivityLocation } from '../services/locationService';
 import { useAuth } from '../hooks/useAuth';
 import { useSportsCatalog } from '../hooks/useSportsCatalog';
+import { colors } from '../constants/theme';
 
 interface ActivityConfirmationModalProps {
   visible: boolean;
@@ -31,10 +33,18 @@ const ActivityConfirmationModal: React.FC<ActivityConfirmationModalProps> = ({
 }) => {
   const { user } = useAuth();
   const { sports } = useSportsCatalog();
-  const [sportType, setSportType] = useState<string>(suggestedSport || 'Basketball');
+  const [sportType, setSportType] = useState<string>(() =>
+    resolvePreferredSportForLaunch(suggestedSport)
+  );
   const [duration, setDuration] = useState<ActivityDuration>(60);
   const [visibility, setVisibility] = useState<'friends' | 'nearby'>('nearby');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setSportType(resolvePreferredSportForLaunch(suggestedSport));
+    }
+  }, [visible, suggestedSport]);
 
   const handleConfirm = async () => {
     if (!user || !detectedLocation) return;
@@ -54,21 +64,31 @@ const ActivityConfirmationModal: React.FC<ActivityConfirmationModalProps> = ({
         locationId = savedLocation.id;
       }
 
-      // Create activity
+      const now = new Date();
+      const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+      const meta = getSportMetadata(sportType);
+      const useFlex = meta?.defaultSchedulingMode === 'flex';
+
       await createActivity({
         user_id: user.id,
         location_id: locationId,
         sport_type: sportType,
-        start_time: new Date().toISOString(),
+        start_time: now.toISOString(),
         duration,
         visibility,
+        scheduling_mode: useFlex ? 'flex' : 'fixed',
+        match_status: useFlex ? 'collecting' : 'open',
+        window_start: useFlex ? now.toISOString() : undefined,
+        window_end: useFlex ? windowEnd.toISOString() : undefined,
+        preference_deadline: useFlex ? windowEnd.toISOString() : undefined,
+        candidate_location_ids: useFlex ? [locationId] : undefined,
       });
 
       onActivityCreated();
       onClose();
     } catch (error: any) {
       console.error('Error creating activity:', error);
-      alert(error.message || 'Failed to create activity');
+      Alert.alert('Create failed', error.message || 'Failed to create activity');
     } finally {
       setLoading(false);
     }
@@ -247,7 +267,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   sportButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   sportButtonText: {
     fontSize: 14,
@@ -268,7 +288,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   durationButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   durationButtonText: {
     fontSize: 14,
@@ -289,7 +309,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   visibilityButtonSelected: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   visibilityButtonText: {
     fontSize: 14,
@@ -313,7 +333,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   confirmButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: colors.primary,
   },
   buttonDisabled: {
     opacity: 0.6,

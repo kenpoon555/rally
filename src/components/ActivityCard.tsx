@@ -14,10 +14,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onPress }) => {
   const deadlineText = showDeadline
     ? `Prefs close: ${new Date(activity.preference_deadline as string).toLocaleTimeString()}`
     : null;
-  const hostLabel =
-    activity.scheduling_mode === 'flex' && activity.match_status !== 'finalized'
-      ? 'Anonymous host'
-      : activity.user?.username || 'Unknown host';
+  const hostLabel = activity.user?.username || 'Unknown host';
 
   return (
     <View style={styles.card}>

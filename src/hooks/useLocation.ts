@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, InteractionManager, Platform } from 'react-native';
 import { Location } from '../types/location';
 import {
+  checkLocationPermission,
   getCurrentLocation,
   requestLocationPermission,
   startLocationMonitoring,
@@ -21,6 +22,10 @@ export const useLocation = (autoStart: boolean = false, options?: UseLocationOpt
   const [watchId, setWatchId] = useState<number | null>(null);
   const watchIdRef = useRef<number | null>(null);
   watchIdRef.current = watchId;
+  const locationRef = useRef<Location | null>(null);
+  locationRef.current = location;
+  const loadingRef = useRef(false);
+  loadingRef.current = loading;
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -30,14 +35,43 @@ export const useLocation = (autoStart: boolean = false, options?: UseLocationOpt
     };
   }, []);
 
-  const checkPermission = useCallback(async () => {
-    sendDebugLog('useLocation.ts:checkPermission', 'Location checkPermission started', { autoStart }, 'H2');
-    const granted = await requestLocationPermission();
-    if (__DEV__) addLocationLog('permission check result:', granted);
-    sendDebugLog('useLocation.ts:hasPermission', 'Location permission result', { granted }, 'H2,H5,H8');
-    setHasPermission(granted);
+  const syncPermissionState = useCallback(async () => {
+    sendDebugLog(
+      'useLocation.ts:syncPermissionState',
+      'Passive location permission check started',
+      { autoStart },
+      'H2'
+    );
+    const granted = await checkLocationPermission();
+    if (__DEV__) addLocationLog('permission state:', granted);
+    sendDebugLog(
+      'useLocation.ts:hasPermission',
+      'Passive location permission result',
+      { granted },
+      'H2,H5,H8'
+    );
+    if (mountedRef.current) setHasPermission(granted);
     return granted;
-  }, []);
+  }, [autoStart]);
+
+  const requestPermission = useCallback(async () => {
+    sendDebugLog(
+      'useLocation.ts:requestPermission',
+      'Location permission request started',
+      { autoStart },
+      'H2'
+    );
+    const granted = await requestLocationPermission();
+    if (__DEV__) addLocationLog('permission request result:', granted);
+    sendDebugLog(
+      'useLocation.ts:hasPermission',
+      'Location permission request result',
+      { granted },
+      'H2,H5,H8'
+    );
+    if (mountedRef.current) setHasPermission(granted);
+    return granted;
+  }, [autoStart]);
 
   const fetchLocation = useCallback(async () => {
     setLoading(true);
@@ -45,12 +79,15 @@ export const useLocation = (autoStart: boolean = false, options?: UseLocationOpt
     try {
       let granted = hasPermission === true;
       if (!granted) {
-        granted = await checkPermission();
-        if (!granted) {
-          if (__DEV__) addLocationLog('fetchLocation skipped: no permission');
-          setLoading(false);
-          return;
-        }
+        granted = await syncPermissionState();
+      }
+      if (!granted) {
+        granted = await requestPermission();
+      }
+      if (!granted) {
+        if (__DEV__) addLocationLog('fetchLocation skipped: no permission');
+        setLoading(false);
+        return;
       }
       // On Android, short delay before native getCurrentPosition so we're clearly outside gesture handler (avoids crash).
       if (Platform.OS === 'android') {
@@ -79,7 +116,7 @@ export const useLocation = (autoStart: boolean = false, options?: UseLocationOpt
         setLoading(false);
       }
     }
-  }, [hasPermission, checkPermission]);
+  }, [hasPermission, requestPermission, syncPermissionState]);
 
   const startWatching = useCallback(() => {
     // #region agent log
@@ -110,37 +147,59 @@ export const useLocation = (autoStart: boolean = false, options?: UseLocationOpt
     }
   }, []);
 
-  // On Android with skipPermissionCheckOnMount we do nothing on mount. Otherwise iOS runs immediately; Android deferred.
+  // Sync permission state on mount. On Android we still do a passive check even when
+  // callers want to avoid prompting on screen open, so a previously granted permission
+  // can trigger the one-shot auto-fetch path without waiting for AppState resume.
   useEffect(() => {
-    if (skipPermissionCheckOnMount) return;
     if (Platform.OS === 'android') {
-      const t = setTimeout(checkPermission, 2000);
+      const delayMs = skipPermissionCheckOnMount ? 1200 : 600;
+      const t = setTimeout(() => {
+        if (mountedRef.current) syncPermissionState();
+      }, delayMs);
       return () => clearTimeout(t);
     }
-    checkPermission();
-  }, [skipPermissionCheckOnMount, checkPermission]);
+    syncPermissionState();
+  }, [skipPermissionCheckOnMount, syncPermissionState]);
 
   // Re-check permission when app returns to foreground (e.g. user granted in Settings).
-  // Listener stays active for the component lifetime; cleanup on unmount.
+  // On Android, if permission is now granted and we don't have location yet, trigger one-shot fetch after a short delay (expo-location; safe to call from resume).
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        checkPermission();
-      }
+      if (state !== 'active') return;
+      syncPermissionState().then((granted) => {
+        if (!granted || Platform.OS !== 'android') return;
+        if (locationRef.current !== null || loadingRef.current) return;
+        if (!mountedRef.current) return;
+        if (__DEV__) addLocationLog('resume: permission granted, no location — scheduling fetch (Android)');
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          if (mountedRef.current) fetchLocation();
+        }, 500);
+      });
     });
-    return () => sub.remove();
-  }, [checkPermission]);
+    return () => {
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      sub.remove();
+    };
+  }, [syncPermissionState, fetchLocation]);
 
-  // When we have permission but no location yet, fetch once so the banner clears (iOS only).
-  // On Android we never auto-fetch: getCurrentPosition from effects/timers causes crash. User must pull to refresh.
+  // When permission is already granted but location is still empty, fetch once so the
+  // nearby-content screens can recover without relying entirely on AppState timing.
+  // Android uses a delayed one-shot fetch to stay off the initial mount stack.
   const hasAutoFetchedRef = useRef(false);
   useEffect(() => {
-    if (Platform.OS === 'android') return;
     if (hasPermission !== true || location !== null || loading || hasAutoFetchedRef.current) {
       return;
     }
     hasAutoFetchedRef.current = true;
     if (__DEV__) addLocationLog('auto-fetching (permission granted, no location yet)');
+    if (Platform.OS === 'android') {
+      const t = setTimeout(() => {
+        if (mountedRef.current) fetchLocation();
+      }, 500);
+      return () => clearTimeout(t);
+    }
     fetchLocation();
   }, [hasPermission, location, loading, fetchLocation]);
 

@@ -1,101 +1,156 @@
 # RallyApp Vision
 
-Last updated: 2026-02-21
+Last updated: 2026-06-01
+
+## North star
+
+> I want to play this week, and Rally is the easiest way to make that happen with reliable people.
+
+Everything else supports that sentence. Build the **weekly sports habit** first.
 
 ## Mission
 
-Help people find sports partners faster, reduce friction to start playing, and promote a healthier lifestyle through regular activity.
+Help people find sports partners faster, reduce friction to start playing, and grow into **repeat crews** through chat-first coordination.
 
-## Core Problem
+## Core problem
 
 People want to play sports but often stop because:
 
-- They cannot quickly find a partner.
+- They cannot quickly find a partner or fill a roster.
 - Coordination is slow (time, location, skill level mismatch).
-- Existing apps are high-friction and not action-oriented.
+- One-off games don't turn into weekly habits.
+- Large group chats (e.g. 50-person badminton crews) cannot handle **limited court spots**, attendance, or recurring schedules.
 
-## Product Principles
+## Product bet (near-term wedge)
 
-1. Less friction than chat-first coordination.
-2. Action first: discover -> join -> play.
-3. Local and relevant: nearby options matter most.
-4. Healthy habits over one-time usage.
-5. Community and fun drive retention.
+Existing 50-person badminton/pickleball group chats already work for **communication**. Rally must give those groups what chat cannot do well:
 
-## North Star Experience
+- RSVP into **limited court spots** (Regulars crew games only).
+- Schedule **recurring games** with host-picked date/time.
+- Track **attendance and reliability** (flakes, reviews, trust preview).
+- Run **mini tournaments** inside a crew (Phase 2.5 — not built yet).
+- Rotate partners fairly and keep score history (later).
+- Make the group more fun and competitive without replacing WhatsApp.
+
+**Do not** jump to full Teams, Leagues, payments, or multi-city expansion until the weekly play loop is proven in one market.
+
+## Product principles
+
+1. **Chat-first coordination** — game lobbies are the hub; Discover fills empty slots.
+2. **Hosts create supply** — prioritize invite links, fill spots, schedule next game, attendance, reliability insight.
+3. **Regulars are the retention product** — success = *did a game produce another game with the same crew?*
+4. **Action first:** join → Game Room → play → replay with crew.
+5. **Local and relevant:** one city/region at a time; LA badminton + pickleball for closed beta.
+6. **Community and trust drive retention:** reviews, flakes, safety — reliability shown carefully (positive public signals; harsh penalties private first).
+7. **Connection stays free; coordination monetizes later** — no payments, fee-split, or expensive chat/media until revenue justifies it.
+
+## What we are NOT building yet
+
+| Deferred | Why |
+|----------|-----|
+| Full **Teams** | Regulars crews cover scheduling + chat; formal teams come with **Leagues** (Stage 6). |
+| Full **Leagues** | Need repeating crews and local demand first. |
+| **Payments / fee split** | Stripe, disputes, App Store rules — use **cost note** + settle in person for now. |
+| **Multi-city expansion** | Prove LA loop first; add "Bring Rally to your city" interest CTA only. |
+| **Anonymous identity in lobby** | Deferred (2026-05-31) — show real usernames in game threads like Instagram/LinkedIn DMs. |
+| Audio/video chat, unlimited media | Text-only free tier; compressed photos; rate limits. |
+
+## Beta positioning (LA closed beta)
+
+Use clear expectation-setting in app and welcome copy:
+
+```text
+Rally Beta is currently focused on LA badminton and pickleball.
+
+Want to host games, test Rally with your group, or bring Rally to your city?
+Contact us.
+```
+
+Launch constraint: **1 region · 2 primary sports · 5–10 organizers · 50–200 early players · weekly repeat games.** Expand only after the loop works.
+
+## Founder benefits (careful language)
+
+Do **not** promise "Plus for life" broadly. Use:
+
+```text
+Active beta testers, hosts, and city partners may receive Founding Member benefits after launch.
+Benefits may include extended Plus access, founder badges, host perks, or discounted organizer tools.
+```
+
+Reserve stronger lifetime benefits for verified hosts or city partners who materially help growth.
+
+## North star experience
 
 In under 3 minutes, a user can:
 
-1. Open app and see nearby opportunities.
-2. Pick activity matching sport/time/skill.
-3. Confirm join or invite a friend.
-4. Get to the location and play.
+1. Open app and see **what matters now** (Dynamic Home — *planned*: Next Up, active Game Rooms, host CTAs).
+2. Join or host via Discover / invite link / Regulars crew.
+3. Coordinate in **Game Room** (chat + roster + Ready/Finalize + cost note + pinned announcement).
+4. Host schedules the **next game** or grows a **Regulars group** (multi-sport crews supported).
 
-## Version Strategy
+## Tab structure
 
-## V1 - Partner Finding MVP
+**Current (5 tabs):** Chats → My Games → Discover → Friends → Profile.
 
-Primary goal: make partner discovery and joining effortless.
+**Target simplification (future UX):** `Home | Discover | Host | Chats | Profile` — **Dynamic Home** replaces scattered empty states with Next Up, RSVP, active rooms, and host CTAs. Do not rush a tab rename until Home screen ships.
 
-Key outcomes:
+## Version strategy
 
-- Useful home tabs: Discover, Map, Friends.
-- Clear empty states and call-to-action buttons.
-- Reliable create/join/invite flows.
+### V1 — Partner finding + coordination (now)
 
-## V2 - Presence Intelligence
+- Game Room as primary surface; Activity Details = settings/history modal.
+- Recurring games, invite links, Regulars groups, unified crew invite.
+- **Group RSVP** for Regulars/recurring games only (not one-off Discover games).
+- Cost note + pinned Game Room announcements.
+- LA court seeds; 10 launch sports in catalog; beta copy focuses badminton + pickleball.
 
-Primary goal: improve relevance and real-time coordination.
+### V2 — Match optimization + trust
 
-Key outcomes:
+- Flexible scheduling (advanced Create Game path).
+- Rate Players reviews, flake scores, trust preview on join requests.
+- Player Plus filters when liquidity supports monetization.
 
-- Better coordinate detection and context-aware matching.
-- Show friends that are currently playing somewhere.
-- Timely notifications for invites, nearby matches, and join updates.
+### V2.5 — Regulars mini tournaments (before full Teams)
 
-## V3 - Tournament Fun Layer
+- Private round-robin / doubles mini-bracket **inside a Regulars group**.
+- Manual score entry, simple leaderboard — badminton/pickleball doubles first.
 
-Primary goal: increase engagement through structured competition.
+### V3 — Community + organizer power
 
-Key outcomes:
+- Organizer Pro tools (waitlist, blast, attendance dashboard).
+- Promote strong Regulars into registered teams when **Leagues** launch.
 
-- Tournament creation and joining.
-- Bracket/schedule support for casual and recurring events.
+### V4 — Leagues + competitive ecosystem
 
-## V4 - Social + Competitive Ecosystem
+- Hosted leagues, standings, playoffs, public pages, optional Stripe Connect.
 
-Primary goal: turn Rally into a long-term sport community platform.
-
-Key outcomes:
-
-- Instagram-like profile centered on sports identity.
-- Leaderboards based on activity performance and consistency.
-- Weekly tournaments.
-- Monthly tournaments.
-- Annual tournaments.
-- Country-wise tournaments.
-
-## Success Metrics
+## Success metrics
 
 ### Activation
 
-- Time from signup to first joined activity.
-- Percentage of users who complete first join/invite in first session.
+- Time from signup to first joined or hosted game.
+- First Game Room message sent.
 
-### Engagement
+### Retention (primary beta gate)
 
-- Weekly active players.
-- Number of activities joined per user per week.
-- Friend invites sent and accepted.
+- **`analytics_crew_lifecycle.retained`** — % of Regulars groups with ≥1 replay within 14 days.
+- Same crew plays twice; weekly active hosts with recurring series.
+- 20%+ of completed games lead to another scheduled game (Phase 2 exit target).
 
-### Retention
+### Trust
 
-- 7-day and 30-day retention.
-- Repeat play sessions per user.
-- Tournament participation rate (V3+).
+- Review completion after games; flake rate trending down for repeat players.
 
-## Execution Notes
+### Liquidity (Phase 1 beta)
 
-- Prioritize reliability and useful content on all 3 home tabs before adding advanced social features.
-- Every screen should have a next action so users never feel blocked.
-- Keep onboarding minimal, with progressive hints only when needed.
+- 20–50 active users; 5+ hosted games; 3+ games filled through Rally; 3+ host/partner interest submissions.
+
+## Related docs
+
+| Doc | Role |
+|-----|------|
+| [docs/PRODUCT_DIRECTION.md](./docs/PRODUCT_DIRECTION.md) | **Living product direction** — 3 pillars, engagement philosophy, long-term bets |
+| [ROADMAP.md](./ROADMAP.md) | Engineering phases, shipped status, build backlog |
+| [../open_items.md](../open_items.md) | Business model, Stages 0–7, monetization gates |
+| [docs/archive/SHIPPED_AND_DEFERRED_2026-06.md](./docs/archive/SHIPPED_AND_DEFERRED_2026-06.md) | Frozen shipped/deferred checklist |
+| [docs/FOUNDER_WEEK2_CHECKLIST.md](./docs/FOUNDER_WEEK2_CHECKLIST.md) | Current week ops |

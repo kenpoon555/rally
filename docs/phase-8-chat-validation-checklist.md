@@ -37,6 +37,8 @@ Use this checklist to validate activity group chat and friend direct chat with r
 
 ## Case 1: Activity group conversation auto-create
 
+| Status | Notes |
+
 Steps:
 
 1. Account A finalizes an activity with approved participants.
@@ -55,6 +57,8 @@ Failure signals:
 
 ## Case 2: Friend direct conversation bootstrap
 
+| Status | Notes |
+
 Steps:
 
 1. Ensure Account A and B have accepted friendship.
@@ -71,6 +75,8 @@ Failure signals:
 - New thread created each time for same pair.
 
 ## Case 3: Realtime send/receive
+
+| Status | Notes |
 
 Steps:
 
@@ -90,6 +96,8 @@ Failure signals:
 
 ## Case 4: Membership/RLS enforcement
 
+| Status | Notes |
+
 Steps:
 
 1. Account C attempts to read/send in A/B conversation via UI and SQL client.
@@ -105,6 +113,8 @@ Failure signals:
 - Unauthorized user can read or send.
 
 ## Case 5: Read state and unread indicators
+
+| Status | Notes |
 
 Steps:
 
@@ -122,6 +132,8 @@ Failure signals:
 - Badge count stuck or never increments.
 
 ## Case 6: Leave conversation behavior
+
+| Status | Notes |
 
 Steps:
 

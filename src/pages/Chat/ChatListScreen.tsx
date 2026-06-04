@@ -1,117 +1,344 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../hooks/useAuth';
-import { getMyConversations, getUnreadConversationCounts } from '../../services/chatService';
-import { Conversation } from '../../types/chat';
+import { useLocation } from '../../hooks/useLocation';
+import {
+  ChatInboxFilter,
+  ChatInboxItem,
+  filterChatInbox,
+  useChatInboxWithRealtime,
+} from '../../hooks/useChatInbox';
+import {
+  ensureActivityGroupConversation,
+  ensureCrewConversation,
+  getOrCreateDirectConversation,
+} from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
+import { PRODUCT_COPY } from '../../constants/productCopy';
+import { useUserPlayMode } from '../../hooks/useUserPlayMode';
+import { MyGameEntry } from '../../services/activityService';
+import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
+import { SportIcon } from '../../components/SportIcon';
+import { NextUpCard } from '../../components/home/NextUpCard';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { needsConfirmPlaying } from '../../utils/activityHelpers';
+import { formatInboxMessageDate } from '../../utils/chatHelpers';
+import { colors, radius, spacing, typography } from '../../constants/theme';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  ActivityDetail: { activityId: string };
-  CreateActivity: undefined;
+type TabParamList = {
+  Home: undefined;
+  Chats: undefined;
+  Map: undefined;
+  Friends: undefined;
   Profile: undefined;
-  ChatList: undefined;
-  ChatThread: { conversationId: string; title?: string };
 };
 
-type Props = NativeStackScreenProps<MainStackParamList, 'ChatList'>;
+type Props = BottomTabScreenProps<TabParamList, 'Chats'>;
+
+const FILTERS: { id: ChatInboxFilter; label: string }[] = [
+  { id: 'games', label: 'Games' },
+  { id: 'rallies', label: 'Rallies' },
+  { id: 'friends', label: 'Friends' },
+];
+
+const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
+  if (item.kind === 'game') {
+    return <SportIcon sport={item.activity.sport_type} size="sm" style={styles.rowIcon} />;
+  }
+  if (item.kind === 'group') {
+    return <SportIcon sport={item.group.sport_type} size="sm" style={styles.rowIcon} />;
+  }
+  return (
+    <View style={styles.rowIconFriend}>
+      <MaterialCommunityIcons name="message-text-outline" size={18} color={colors.primaryDark} />
+    </View>
+  );
+};
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [errorText, setErrorText] = useState<string | null>(null);
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const { location, fetchLocation } = useLocation(false);
+  const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
+  const { mode, regularGroups, nextGame, refetch: refetchPlayMode } = useUserPlayMode(user?.id);
+  const [filter, setFilter] = useState<ChatInboxFilter>('games');
+  const [openingKey, setOpeningKey] = useState<string | null>(null);
 
-  const loadConversations = useCallback(async () => {
-    if (!user?.id) {
-      setConversations([]);
-      return;
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      refetchPlayMode();
+      void fetchLocation();
+    }, [load, refetchPlayMode, fetchLocation])
+  );
+
+  const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
+
+  const hasNextUpCard = false;
+
+  const nextUpFooterHint = useMemo(() => {
+    if (!nextGame || !needsConfirmPlaying(nextGame.activity, user?.id)) {
+      return undefined;
     }
-    setLoading(true);
-    setErrorText(null);
-    try {
-      const [rows, unreadMap] = await Promise.all([
-        getMyConversations(user.id),
-        getUnreadConversationCounts(user.id),
-      ]);
-      setConversations(rows);
-      setUnreadCounts(unreadMap);
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-      setErrorText('Could not load chats right now. Pull to retry.');
-    } finally {
-      setLoading(false);
-    }
-  }, [user?.id]);
+    return PRODUCT_COPY.tapImInInRallyChat;
+  }, [nextGame, user?.id]);
 
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
-
-  const openThread = (conversation: Conversation) => {
-    const title =
-      conversation.conversation_type === 'activity_group'
-        ? conversation.title || 'Activity Chat'
-        : 'Direct Chat';
-    navigation.navigate(ROUTES.CHAT.THREAD as any, {
-      conversationId: conversation.id,
+  const openThread = (
+    conversationId: string,
+    title: string,
+    activityId?: string
+  ) => {
+    navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
+      conversationId,
       title,
-    });
+      activityId,
+    } as never);
   };
 
-  if (loading) {
+  const openGameChat = async (item: Extract<ChatInboxItem, { kind: 'game' }>) => {
+    setOpeningKey(item.key);
+    try {
+      const conversationId =
+        item.conversationId || (await ensureActivityGroupConversation(item.activity.id));
+      openThread(conversationId, item.title, item.activity.id);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open game chat.';
+      Alert.alert('Chat unavailable', message);
+    } finally {
+      setOpeningKey(null);
+    }
+  };
+
+  const openFriendChat = async (item: Extract<ChatInboxItem, { kind: 'friend' }>) => {
+    setOpeningKey(item.key);
+    try {
+      const conversationId =
+        item.conversationId ||
+        (await getOrCreateDirectConversation(item.userId, user?.id));
+      openThread(conversationId, `@${item.username}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open chat.';
+      Alert.alert('Chat unavailable', message);
+    } finally {
+      setOpeningKey(null);
+    }
+  };
+
+  const openGroupRow = async (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
+    setOpeningKey(item.key);
+    try {
+      const conversationId =
+        item.conversationId || (await ensureCrewConversation(item.group.id));
+      openThread(
+        conversationId,
+        item.title,
+        item.nextActivity?.id
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open Rally chat.';
+      Alert.alert('Chat unavailable', message);
+    } finally {
+      setOpeningKey(null);
+    }
+  };
+
+  const handlePress = (item: ChatInboxItem) => {
+    if (item.kind === 'group') {
+      void openGroupRow(item);
+      return;
+    }
+    if (item.kind === 'game') {
+      void openGameChat(item);
+      return;
+    }
+    void openFriendChat(item);
+  };
+
+  const openActivityRoom = async (entry: MyGameEntry) => {
+    const key = `next-${entry.activity.id}`;
+    setOpeningKey(key);
+    try {
+      const conversationId = await ensureActivityGroupConversation(entry.activity.id);
+      openThread(
+        conversationId,
+        entry.activity.location?.name || `${entry.activity.sport_type} game`,
+        entry.activity.id
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Could not open Game Room.';
+      Alert.alert('Game Room unavailable', message);
+    } finally {
+      setOpeningKey(null);
+    }
+  };
+
+  const openGroupSourceDetails = (sourceActivityId: string) => {
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+      activityId: sourceActivityId,
+    } as never);
+  };
+
+  const renderNextUp = () => {
+    if (mode !== 'regular' || filter === 'friends') {
+      return null;
+    }
+
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <NextUpCard
+        nextGame={nextGame}
+        fallbackGroup={regularGroups[0] ?? null}
+        currentUserId={user?.id}
+        userLocation={location}
+        onOpenGameRoom={(entry) => void openActivityRoom(entry)}
+        onScheduleNext={openGroupSourceDetails}
+        openingGameId={
+          nextGame && openingKey === `next-${nextGame.activity.id}` ? nextGame.activity.id : null
+        }
+        footerHint={nextUpFooterHint}
+      />
     );
-  }
+  };
+
+  const renderItem = ({ item }: { item: ChatInboxItem }) => {
+    const busy = openingKey === item.key;
+    const hasUnread = item.unread > 0;
+    const dateLabel = formatInboxMessageDate(item.lastMessageAt);
+    return (
+      <TouchableOpacity
+        style={[
+          styles.row,
+          item.kind === 'group' && styles.rowGroup,
+          item.kind === 'game' && item.isPast && styles.rowPast,
+        ]}
+        onPress={() => handlePress(item)}
+        disabled={busy}
+      >
+        <ChatRowIcon item={item} />
+        <View style={styles.rowMain}>
+          <View style={styles.rowTop}>
+            <Text
+              style={[styles.rowTitle, hasUnread && styles.rowTitleUnread]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
+            <View style={styles.rowRight}>
+              {dateLabel ? (
+                <Text style={[styles.rowDate, hasUnread && styles.rowDateUnread]}>{dateLabel}</Text>
+              ) : null}
+              {hasUnread ? (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {item.unread > 99 ? '99+' : item.unread}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+          <Text
+            style={[styles.rowSubtitle, hasUnread && styles.rowSubtitleUnread]}
+            numberOfLines={1}
+          >
+            {item.subtitle}
+          </Text>
+          {item.kind === 'game' ? (
+            <View style={styles.metaRow}>
+              <View style={[styles.chip, item.role === 'host' ? styles.chipHost : styles.chipJoined]}>
+                <Text style={styles.chipText}>{item.role === 'host' ? 'Hosting' : 'Joined'}</Text>
+              </View>
+              <View style={styles.chipMuted}>
+                <Text style={styles.chipText}>{item.statusLabel}</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
+        {busy ? <ActivityIndicator size="small" color={colors.primary} style={styles.rowSpinner} /> : null}
+      </TouchableOpacity>
+    );
+  };
+
+  const emptyCopy =
+    filter === 'games'
+      ? 'No active game rooms. Host or join from Play — archived chat moves to My Games after 2 days.'
+      : filter === 'rallies'
+        ? 'No Rally chats yet. Start a Rally from Today or save a crew from a game.'
+        : 'No friend messages yet. Add friends from Profile.';
 
   return (
     <View style={styles.container}>
-      {errorText && <Text style={styles.errorText}>{errorText}</Text>}
-      <FlatList
-        data={conversations}
-        keyExtractor={(item) => item.id}
-        onRefresh={loadConversations}
-        refreshing={loading}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No chats yet</Text>
-            <Text style={styles.emptyText}>
-              Chat threads appear after opening a friend chat or finalizing an activity chat.
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row} onPress={() => openThread(item)}>
-            <View style={styles.rowTop}>
-              <Text style={styles.rowTitle}>
-                {item.conversation_type === 'activity_group'
-                  ? item.title || 'Activity Chat'
-                  : 'Direct Chat'}
-              </Text>
-              {(unreadCounts[item.id] || 0) > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText}>{unreadCounts[item.id]}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.rowMeta}>
-              {item.conversation_type === 'activity_group' ? 'Group' : 'Friend'}
-            </Text>
-          </TouchableOpacity>
-        )}
+      <ScreenHeader
+        title="Inbox"
+        subtitle="Active game rooms, Rallies, and friends. Past game chat lives in My Games."
       />
+
+      <View style={styles.filterRow}>
+        {FILTERS.map((f) => (
+          <Chip
+            key={f.id}
+            label={f.label}
+            selected={filter === f.id}
+            tone="primary"
+            onPress={() => setFilter(f.id)}
+          />
+        ))}
+      </View>
+
+      {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+
+      {loading && visibleItems.length === 0 ? (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={visibleItems}
+          keyExtractor={(item) => item.key}
+          renderItem={renderItem}
+          onRefresh={load}
+          refreshing={loading}
+          ListHeaderComponent={renderNextUp()}
+          contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
+          ListEmptyComponent={
+            hasNextUpCard ? null : (
+              <EmptyState
+                icon="💬"
+                title="Nothing here yet"
+                message={emptyCopy}
+                primaryAction={
+                  filter !== 'friends'
+                    ? {
+                        label: 'Find a game',
+                        onPress: () => navigation.navigate(ROUTES.HOME.MAIN as never),
+                      }
+                    : {
+                        label: 'Go to Friends',
+                        onPress: () =>
+                          navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never),
+                      }
+                }
+                secondaryAction={
+                  filter !== 'friends'
+                    ? {
+                        label: 'Create game',
+                        onPress: () =>
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never),
+                      }
+                    : undefined
+                }
+              />
+            )
+          }
+        />
+      )}
     </View>
   );
 };
@@ -119,64 +346,142 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.background,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   row: {
-    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  rowPast: {
+    opacity: 0.85,
+    backgroundColor: colors.background,
+  },
+  rowGroup: {
+    backgroundColor: colors.surface,
+  },
+  rowMain: {
+    flex: 1,
+    minWidth: 0,
   },
   rowTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  rowRight: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  rowDate: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  rowDateUnread: {
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  rowIcon: {
+    marginRight: spacing.sm,
+  },
+  rowIconFriend: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
   },
   rowTitle: {
-    fontSize: 16,
+    flex: 1,
+    ...typography.bodyMedium,
+    minWidth: 0,
+  },
+  rowTitleUnread: {
+    fontWeight: '700',
+    color: colors.text,
+  },
+  rowSubtitle: {
+    marginTop: spacing.xs,
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  rowSubtitleUnread: {
+    color: colors.text,
+    fontWeight: '500',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs + 2,
+    marginTop: spacing.sm,
+  },
+  chip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+  },
+  chipHost: {
+    backgroundColor: colors.infoSoft,
+  },
+  chipJoined: {
+    backgroundColor: colors.successSoft,
+  },
+  chipMuted: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+  },
+  chipText: {
+    fontSize: 11,
     fontWeight: '600',
+    color: colors.text,
+  },
+  rowSpinner: {
+    marginLeft: spacing.sm,
   },
   unreadBadge: {
     minWidth: 22,
     borderRadius: 11,
-    backgroundColor: '#ff3b30',
-    paddingHorizontal: 6,
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.xs + 2,
     paddingVertical: 2,
     alignItems: 'center',
   },
   unreadBadgeText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 11,
     fontWeight: '700',
   },
-  rowMeta: {
-    marginTop: 4,
-    fontSize: 12,
-    color: '#666',
-  },
   errorText: {
-    color: '#b42318',
+    color: colors.error,
     fontSize: 12,
-    marginHorizontal: 16,
-    marginTop: 10,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
   },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#666',
+  emptyList: {
+    flexGrow: 1,
+    justifyContent: 'center',
   },
 });
 

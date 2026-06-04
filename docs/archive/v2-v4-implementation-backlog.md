@@ -1,8 +1,14 @@
 # V2-V4 Implementation Backlog
 
-Last updated: 2026-02-23
+Last updated: 2026-04-11
 
 This backlog converts roadmap bullets into delivery-ready epics and stories.
+
+## Sport matching config (source of truth)
+
+- **Profiles:** `partnerFlex` (Phase 1 launch), `fastFixed` (Phase 2), `groupDiscuss` (future).
+- **Runtime mapping:** `SPORT_METADATA` in `src/constants/sports.ts` (`matchingProfile`, `launchEnabled`, `defaultSchedulingMode`).
+- **Docs:** `docs/sport-matching-profiles.md`, `docs/phase2-fast-fixed-matching.md`, `docs/agent-workstreams-sport-matching.md`.
 
 ## Execution Status Snapshot
 

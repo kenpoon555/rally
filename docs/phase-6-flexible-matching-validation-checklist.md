@@ -22,6 +22,8 @@ Run all core cases on both platforms.
 
 ## Case 1: Host creates flexible activity constraints
 
+| Status | Notes |
+
 Steps:
 
 1. Account A opens create activity.
@@ -42,6 +44,8 @@ Failure signals:
 
 ## Case 2: Participants submit preference windows
 
+| Status | Notes |
+
 Steps:
 
 1. Account B/C join flexible activity.
@@ -60,6 +64,8 @@ Failure signals:
 - Preference submission blocked for approved joiners.
 
 ## Case 3: Host finalizes best slot
+
+| Status | Notes |
 
 Steps:
 
@@ -80,6 +86,8 @@ Failure signals:
 
 ## Case 4: Deterministic finalization behavior
 
+| Status | Notes |
+
 Steps:
 
 1. Keep the same preference set.
@@ -95,6 +103,8 @@ Failure signals:
 - Final result changes across repeated runs without input changes.
 
 ## Case 5: Access control on preferences
+
+| Status | Notes |
 
 Steps:
 

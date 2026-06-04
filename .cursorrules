@@ -1,0 +1,63 @@
+# RallyApp — Cursor Rules
+
+## Stack
+- React Native 0.83 (bare workflow) + Expo SDK 55
+- Supabase (PostgreSQL + PostGIS + Auth + Realtime)
+- expo-location (NOT @react-native-community/geolocation)
+- @react-native-firebase/messaging (lazy-loaded — do NOT move init to top level)
+- React Navigation: native-stack + bottom-tabs
+
+## Run commands
+- `npm run ios` / `npm run android` — local dev build
+- `npm start` — Metro bundler (separate terminal)
+- `npm test` — jest
+- `npm run lint` — eslint
+- EAS cloud builds: `npm run eas:build:dev:ios` / `eas:build:dev:android`
+
+## Architecture rules
+
+### Service layer — enforce strictly
+All Supabase calls go through `src/services/`. NEVER query Supabase directly from components.
+- activityService.ts — create/fetch/join activities
+- userService.ts — profile CRUD, device tokens
+- locationService.ts — permissions, position, background
+- chatService.ts — threads, messages, unread counts
+- friendsService.ts — friend requests, listing
+- notificationService.ts — Firebase push tokens, handlers
+- reviewService.ts — post-match reviews
+
+Supabase client: `src/services/api/supabase.ts` (has custom fetch for trailing-slash URL bug + AsyncStorage session).
+
+### Env vars
+- Never hardcode keys. All env vars via `src/constants/config.ts` (uses react-native-config).
+- Copy `.env.example` → `.env`. EAS secrets mirror the same var names.
+
+### Platform differences — critical
+- Android: NO `watchPosition`. Use `getCurrentPositionAsync` + `getLastKnownPositionAsync` fallback.
+- Android 13+: runtime notification permission required.
+- iOS vs Android have different Firebase cold-start timing — Firebase is lazy-loaded intentionally.
+
+### Error handling
+- Always wrap service calls in try-catch using the `debugIngest` utility (`src/utils/debugIngest.ts`).
+- `DevLocationLogPanel` and `debugIngest` are intentional debug infrastructure — do NOT remove.
+
+### Performance
+- Use `React.memo` for list items in ActivityDetail and ChatList.
+
+## Key features
+- **Flexible Activity Mode**: host sets constraints → participants submit time/location preferences → system auto-finalizes
+- **Anonymous-Until-Confirmed**: identity hidden until host approves; friends always see real identity
+- **Deep Link Auth**: `rallyapp://auth/callback` handles Supabase magic links
+- **Profile Auto-Create**: AuthContext creates profile on first auth if missing
+
+## Navigation (`src/navigation/AppNavigator.tsx`)
+- Auth Stack: Login → Signup
+- Main Stack: Bottom tabs (Home/Map/Friends/Profile) + modals (ActivityDetail, CreateActivity, ChatList, ChatThread)
+
+## Design
+- Styling: `StyleSheet.create` preferred. Follow `src/constants/theme.ts` for colors/spacing.
+- Do not create new base components if `src/components/` has a suitable one.
+
+## Task tracking
+- Open tasks: `docs/TASKS.md` — work one task at a time
+- Release blockers are at the top of that file — fix in order: Data correctness → Privacy → Crashes → UX

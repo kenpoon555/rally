@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -9,22 +10,35 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useActivities } from '../../hooks/useActivities';
 import { useGeofence } from '../../hooks/useGeofence';
-import ActivityCard from '../../components/ActivityCard';
+import GameCard from '../../components/GameCard';
 import ActivityConfirmationModal from '../../components/ActivityConfirmationModal';
 import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
-import { getTotalUnreadCount } from '../../services/chatService';
+import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata } from '../../constants/sports';
+import { updateUserProfile } from '../../services/userService';
+import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
 import { getCurrentLocation } from '../../services/locationService';
+import { colors, PRIMARY_COLOR, radius, spacing, typography } from '../../constants/theme';
+import { Button, ScreenHeader } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
+import { shouldShowInDiscoverFeed, sortDiscoverFeedActivities } from '../../utils/activityHelpers';
+import { getBlockedUserIds } from '../../services/safetyService';
+import { getUserFriends } from '../../services/friendsService';
+import { getMyRegularGroups } from '../../services/regularGroupService';
+import { RegularGroup } from '../../types/regularGroup';
+import { DiscoverEmptyState } from '../../components/discover/DiscoverEmptyState';
+import { SportBadge } from '../../components/SportBadge';
+import { BETA_REGION } from '../../constants/betaRegion';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -42,17 +56,17 @@ function runRawLocationTest() {
 }
 
 type TabParamList = {
-  Home: undefined;
-  Map: undefined;
+  Home: { sportFilter?: string; highlightOpenSpots?: boolean } | undefined;
+  Chats: undefined;
+  MyGames: undefined;
   Friends: undefined;
   Profile: undefined;
 };
 
 type Props = BottomTabScreenProps<TabParamList, 'Home'>;
 
-const HomeScreen: React.FC<Props> = ({ navigation }) => {
-  const { user } = useAuth();
-  // Android: no location on load (crashes). Pull to refresh to get location.
+const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { user, loading: authLoading, refreshUser } = useAuth();
   const locState = useLocation(false, { skipPermissionCheckOnMount: Platform.OS === 'android' });
   const location = locState?.location ?? null;
   const fetchLocation = locState?.fetchLocation ?? (async () => {});
@@ -60,245 +74,278 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const locationError = locState?.error;
   const locationLoading = locState?.loading ?? false;
   const { sports } = useSportsCatalog();
-  const [selectedSport, setSelectedSport] = useState<string | null>(null);
-  const { activities, loading, refetch } = useActivities(
-    location || undefined,
-    selectedSport || undefined
-  );
-  const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
-  const [unreadChats, setUnreadChats] = useState(0);
+  const defaultSport = resolveUserDefaultSport(user?.preferred_sports?.[0]);
+  const showSportFilters = sports.length > 1;
+  const [selectedSport, setSelectedSport] = useState(defaultSport);
+  const effectiveSportFilter = selectedSport;
 
-  const filteredSportLabel = selectedSport || 'All sports';
-  const showInitialLoading = loading && activities.length === 0;
-
-  const onboardingTips = useMemo(
-    () => [
-      'Widen your search by allowing location access.',
-      'Try another sport filter to discover more games.',
-      'Create an activity to start the first rally nearby.',
-    ],
-    []
-  );
-
-  const preferenceMismatch = useMemo(() => {
-    const preferred = user?.preferred_sports;
-    if (!selectedSport || !preferred?.length || !Array.isArray(preferred)) {
-      return false;
-    }
-    return !preferred.includes(selectedSport as any);
-  }, [selectedSport, user?.preferred_sports]);
-
-  // No location fetch on mount: Android crashes when getCurrentLocation/permission result runs during the grant flow. User can pull-to-refresh to get location.
+  const preferredSport = user?.preferred_sports?.[0];
   useEffect(() => {
-    const loadUnread = async () => {
-      if (!user?.id) {
-        setUnreadChats(0);
+    setSelectedSport(resolveUserDefaultSport(preferredSport));
+  }, [preferredSport]);
+
+  // "Find players" from a Game Room deep-links here with a sport + open-spots intent.
+  const routeSportFilter = route.params?.sportFilter;
+  const highlightOpenSpots = route.params?.highlightOpenSpots ?? false;
+  useEffect(() => {
+    if (routeSportFilter) {
+      setSelectedSport(resolveUserDefaultSport(routeSportFilter));
+    }
+  }, [routeSportFilter]);
+
+  const discoverTitle = `Play · ${selectedSport}`;
+  const discoverSubtitle = `Near ${BETA_REGION.name} · Tonight · browse timing, spots & who's in`;
+
+  const handleSportFilter = useCallback(
+    async (sport: string) => {
+      setSelectedSport(sport);
+      if (!user?.id || user.preferred_sports?.[0] === sport) {
         return;
       }
       try {
-        const total = await getTotalUnreadCount(user.id);
-        setUnreadChats(total);
+        await updateUserProfile(user.id, {
+          preferred_sports: [sport] as typeof user.preferred_sports,
+        });
+        await refreshUser();
       } catch {
-        setUnreadChats(0);
+        // Filter still applies locally; profile sync can retry from Profile.
       }
-    };
-    loadUnread();
-  }, [user?.id, activities.length]);
+    },
+    [user, refreshUser]
+  );
+
+  const { activities, loading, error: discoverError, refetch } = useActivities(
+    location || undefined,
+    effectiveSportFilter
+  );
+
+  const sortedActivities = useMemo(
+    () => sortDiscoverFeedActivities(activities, location, friendIds, { highlightOpenSpots }),
+    [activities, location, friendIds, highlightOpenSpots]
+  );
+  const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
+  const [crewForEmpty, setCrewForEmpty] = useState<RegularGroup | null>(null);
+
+  const visibleActivities = useMemo(() => {
+    return sortedActivities
+      .filter((a) => !blockedUserIds.has(a.user_id))
+      .filter((a) => shouldShowInDiscoverFeed(a, user?.id));
+  }, [sortedActivities, blockedUserIds, user?.id]);
+
+  const showInitialLoading = loading && visibleActivities.length === 0;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id || visibleActivities.length > 0) {
+        return;
+      }
+      getMyRegularGroups(user.id)
+        .then((groups) => {
+          const match =
+            groups.find((group) => group.sport_type === effectiveSportFilter) ?? groups[0] ?? null;
+          setCrewForEmpty(match);
+        })
+        .catch(() => setCrewForEmpty(null));
+    }, [user?.id, visibleActivities.length, effectiveSportFilter])
+  );
+
+  const sportLabel = getSportMetadata(selectedSport)?.shortLabel ?? selectedSport;
+
+  useEffect(() => {
+    if (!user?.id) {
+      setBlockedUserIds(new Set());
+      setFriendIds(new Set());
+      return;
+    }
+    getBlockedUserIds(user.id)
+      .then((ids) => setBlockedUserIds(new Set(ids)))
+      .catch(() => setBlockedUserIds(new Set()));
+    getUserFriends(user.id)
+      .then((friends) =>
+        setFriendIds(
+          new Set(
+            friends
+              .map((friendship) => friendship.friend?.id || friendship.friend_id)
+              .filter((id): id is string => Boolean(id))
+          )
+        )
+      )
+      .catch(() => setFriendIds(new Set()));
+  }, [user?.id]);
 
   const onGeofenceLocationDetected = useCallback((loc: ActivityLocation) => {
     setDetectedLocation(loc);
     setModalVisible(true);
   }, []);
 
-  // Geofence detection (options ref-stabilized in useGeofence to avoid effect loop on tab switch)
   useGeofence(location, {
     onLocationDetected: onGeofenceLocationDetected,
     enabled: !!location && !!user,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (authLoading) {
+        return;
+      }
+      refetch();
+    }, [authLoading, refetch])
+  );
 
   const handleActivityCreated = () => {
     refetch();
   };
 
   const handleRefresh = async () => {
-    await Promise.all([fetchLocation(), refetch()]);
-    setHasFetchedOnce(true);
+    await fetchLocation();
+    await refetch();
   };
 
-  const openCreateActivity = () => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as any);
-  };
-
-  const openMapTab = () => {
-    navigation.navigate(ROUTES.HOME.MAP as any);
-  };
-
-  const openProfile = () => {
-    navigation.navigate(ROUTES.PROFILE.MAIN as any);
-  };
-
-  const openChats = () => {
-    navigation.navigate(ROUTES.CHAT.LIST as any);
-  };
-
-  const handleQuickMatch = () => {
-    if (activities.length > 0) {
-      navigation.navigate(ROUTES.ACTIVITY.DETAIL as any, {
-        activityId: activities[0].id,
-      });
+  useEffect(() => {
+    if (authLoading) {
       return;
     }
-    openCreateActivity();
+    refetch();
+  }, [authLoading, user?.id, location?.latitude, location?.longitude, refetch]);
+
+  const openCreateGame = () => {
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
+
+  const locationSetupMessage = locationLoading
+    ? 'Finding your location…'
+    : hasPermission && locationError
+      ? locationError.message?.toLowerCase().includes('timed out')
+        ? 'Location timed out. Check that location services are on, then try again.'
+        : locationError.message || "We couldn't read your location. Try again."
+      : hasPermission
+        ? 'Tap below to use your current location for nearby games.'
+        : 'Enable location to see games near you.';
 
   return (
     <View style={styles.container}>
-      <ErrorBoundary fallback={null}>
-        <DevLocationLogPanel onRawTest={runRawLocationTest} />
-      </ErrorBoundary>
+      {SHOW_LOCATION_DEBUG_PANEL && (
+        <ErrorBoundary fallback={null}>
+          <DevLocationLogPanel onRawTest={runRawLocationTest} />
+        </ErrorBoundary>
+      )}
       <View style={styles.header}>
-        <View style={styles.headerTopRow}>
-          <Text style={styles.title}>Discover</Text>
-          <TouchableOpacity style={styles.profileButton} onPress={openProfile}>
-            <Text style={styles.profileButtonText}>Profile</Text>
-          </TouchableOpacity>
+        <ScreenHeader title={discoverTitle} subtitle={discoverSubtitle} />
+        <View style={styles.actionRow}>
+          <Button title="Host a Game" size="sm" onPress={openCreateGame} />
         </View>
-        <Text style={styles.subtitle}>Showing {filteredSportLabel}</Text>
         <Text style={styles.preferenceHint}>
-          Default: {user?.default_duration || 60} min • {user?.default_visibility || 'nearby'}
+          Default sport: {defaultSport} • {user?.default_duration || 60} min •{' '}
+          {user?.default_visibility || 'nearby'}
         </Text>
-        {preferenceMismatch && (
-          <Text style={styles.mismatchHint}>
-            This sport differs from your saved preference. Update in Profile if this is your new default.
-          </Text>
-        )}
-        <TouchableOpacity style={styles.chatsButton} onPress={openChats}>
-          <Text style={styles.chatsButtonText}>
-            Chats{unreadChats > 0 ? ` (${unreadChats})` : ''}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.quickMatchButton} onPress={handleQuickMatch}>
-          <Text style={styles.quickMatchButtonText}>Quick Match</Text>
-        </TouchableOpacity>
       </View>
+
       {!location && (
-        <View style={styles.locationWarningRow}>
-          <Text style={styles.warning}>
-            {locationLoading
-              ? 'Getting location…'
-              : hasPermission && locationError
-                ? locationError.message?.toLowerCase().includes('timed out')
-                  ? 'Location timed out. Set mock location in emulator or use a real device.'
-                  : 'Couldn\'t get coordinates.'
-                : 'Location permission needed to see nearby activities'}
-          </Text>
-          {hasPermission && locationError && !locationLoading && (
+        <View style={styles.locationSetupCard}>
+          <Text style={styles.locationSetupTitle}>Location setup</Text>
+          <Text style={styles.locationSetupBody}>{locationSetupMessage}</Text>
+          {!hasPermission && !locationLoading && (
+            <View style={styles.locationButtonRow}>
+              <TouchableOpacity style={styles.retryLocationButton} onPress={() => fetchLocation()}>
+                <Text style={styles.retryLocationText}>Enable location</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.settingsLocationButton}
+                onPress={() => Linking.openSettings()}
+              >
+                <Text style={styles.settingsLocationText}>Settings</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          {hasPermission && !locationLoading && (
             <TouchableOpacity style={styles.retryLocationButton} onPress={() => fetchLocation()}>
-              <Text style={styles.retryLocationText}>Retry location</Text>
+              <Text style={styles.retryLocationText}>
+                {locationError ? 'Try again' : 'Find my location'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>
       )}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
-        <TouchableOpacity
-          style={[
-            styles.filterChip,
-            selectedSport === null && styles.filterChipSelected,
-          ]}
-          onPress={() => setSelectedSport(null)}
+
+      {discoverError && (
+        <View style={styles.limitBanner}>
+          <Text style={styles.limitBannerText}>{discoverError.message}</Text>
+        </View>
+      )}
+
+      {showSportFilters && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
         >
-          <Text
-            style={[
-              styles.filterChipText,
-              selectedSport === null && styles.filterChipTextSelected,
-            ]}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-        {sports.map((sport) => {
-          const selected = selectedSport === sport.name;
-          return (
-            <TouchableOpacity
-              key={sport.id}
-              style={[styles.filterChip, selected && styles.filterChipSelected]}
-              onPress={() => setSelectedSport(sport.name)}
-            >
-              <Text
-                style={[
-                  styles.filterChipText,
-                  selected && styles.filterChipTextSelected,
-                ]}
-              >
-                {sport.name}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          {sports.map((sport) => {
+            const selected = selectedSport === sport.name;
+            return (
+              <SportBadge
+                key={sport.id}
+                sport={sport.name}
+                variant="filter"
+                selected={selected}
+                onPress={() => void handleSportFilter(sport.name)}
+              />
+            );
+          })}
+        </ScrollView>
+      )}
+
       {showInitialLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1a73e8" />
-          <Text style={styles.loadingText}>Loading nearby activities...</Text>
+          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+          <Text style={styles.loadingText}>Loading nearby games…</Text>
         </View>
       ) : (
-      <FlatList
-        data={activities}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <ActivityCard
-            activity={item}
-            onPress={() =>
-              navigation.navigate('ActivityDetail', {
-                activityId: item.id,
-              } as any)
-            }
-          />
-        )}
-        refreshControl={
-          <RefreshControl refreshing={loading} onRefresh={handleRefresh} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No activities yet nearby</Text>
-            <Text style={styles.emptyText}>
-              Pull to refresh or create one now so others can join.
-            </Text>
-            <View style={styles.tipList}>
-              {onboardingTips.map((tip) => (
-                <Text key={tip} style={styles.tipText}>
-                  - {tip}
-                </Text>
-              ))}
-            </View>
-            <View style={styles.ctaRow}>
-              <TouchableOpacity style={styles.primaryCta} onPress={openCreateActivity}>
-                <Text style={styles.primaryCtaText}>Create Activity</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryCta} onPress={openMapTab}>
-                <Text style={styles.secondaryCtaText}>Open Map</Text>
-              </TouchableOpacity>
-            </View>
-            {!hasFetchedOnce && (
-              <Text style={styles.helperText}>
-                Tip: first load may be empty until more activities are created.
-              </Text>
-            )}
-          </View>
-        }
-      />
+        <FlatList
+          data={visibleActivities}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <GameCard
+              activity={item}
+              userLocation={location}
+              friendIds={friendIds}
+              onPress={() =>
+                navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                  activityId: item.id,
+                } as never)
+              }
+            />
+          )}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
+          ListEmptyComponent={
+            discoverError ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>Could not load games</Text>
+                <Text style={styles.emptyText}>{discoverError.message}</Text>
+                <TouchableOpacity style={styles.primaryCta} onPress={() => refetch()}>
+                  <Text style={styles.primaryCtaText}>Try again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <DiscoverEmptyState
+                sportLabel={sportLabel}
+                regularGroup={crewForEmpty}
+                onCreateGame={openCreateGame}
+                onInviteFriends={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
+                onOpenChats={() => navigation.navigate(ROUTES.CHAT.TAB as never)}
+              />
+            )
+          }
+        />
       )}
+
       <ActivityConfirmationModal
         visible={modalVisible}
         detectedLocation={detectedLocation}
-        suggestedSport={detectedLocation?.sport_type || 'Basketball'}
+        suggestedSport={resolvePreferredSportForLaunch(detectedLocation?.sport_type)}
         onClose={() => {
           setModalVisible(false);
           setDetectedLocation(null);
@@ -312,106 +359,106 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    backgroundColor: '#fff',
+    paddingBottom: spacing.md,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  headerTopRow: {
+  actionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  profileButton: {
-    borderWidth: 1,
-    borderColor: '#d7d7d7',
-    borderRadius: 14,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  profileButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#333',
-  },
-  subtitle: {
-    marginTop: 4,
-    color: '#666',
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    gap: spacing.sm,
   },
   preferenceHint: {
-    marginTop: 4,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
     fontSize: 12,
-    color: '#7a7a7a',
+    color: colors.textTertiary,
   },
-  mismatchHint: {
+  nearbyCourtsLink: {
     marginTop: 6,
-    fontSize: 12,
-    color: '#b45309',
-  },
-  chatsButton: {
-    marginTop: 8,
     alignSelf: 'flex-start',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#007AFF',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
   },
-  chatsButtonText: {
-    color: '#007AFF',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  quickMatchButton: {
-    marginTop: 10,
-    alignSelf: 'flex-start',
-    borderRadius: 8,
-    backgroundColor: '#0b8f55',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  quickMatchButtonText: {
-    color: '#fff',
-    fontWeight: '700',
+  nearbyCourtsLinkText: {
     fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
   },
-  locationWarningRow: {
+  locationSetupCard: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: spacing.md + 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  locationSetupTitle: {
+    ...typography.bodyMedium,
+    marginBottom: spacing.xs + 2,
+  },
+  locationSetupBody: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  locationButtonRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     flexWrap: 'wrap',
+    marginTop: 12,
     gap: 8,
   },
-  warning: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: '#ff9500',
-    backgroundColor: '#fff',
-    flex: 1,
-    minWidth: 0,
-  },
   retryLocationButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
-    marginRight: 12,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primary,
+    borderRadius: radius.sm,
   },
   retryLocationText: {
-    color: '#fff',
+    color: colors.textInverse,
     fontSize: 14,
     fontWeight: '600',
   },
+  settingsLocationButton: {
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  settingsLocationText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  limitBanner: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  limitBannerText: {
+    color: '#8a5a00',
+    fontSize: 14,
+    lineHeight: 20,
+  },
   filterRow: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
   },
   filterChip: {
     borderWidth: 1,
@@ -419,12 +466,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    marginHorizontal: 4,
     backgroundColor: '#fff',
   },
   filterChipSelected: {
-    backgroundColor: '#1a73e8',
-    borderColor: '#1a73e8',
+    backgroundColor: PRIMARY_COLOR,
   },
   filterChipText: {
     color: '#333',
@@ -458,6 +503,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#222',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptyText: {
     fontSize: 16,
@@ -479,13 +525,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   primaryCta: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: PRIMARY_COLOR,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    marginRight: 10,
   },
   primaryCtaText: {
     color: '#fff',
@@ -494,12 +541,12 @@ const styles = StyleSheet.create({
   secondaryCta: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#1a73e8',
+    borderColor: PRIMARY_COLOR,
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
   secondaryCtaText: {
-    color: '#1a73e8',
+    color: PRIMARY_COLOR,
     fontWeight: '700',
   },
   helperText: {

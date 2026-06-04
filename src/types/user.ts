@@ -16,6 +16,14 @@ export interface User {
   onboarding_completed?: boolean;
   review_count?: number;
   visible_review_score?: number | null;
+  is_suspended?: boolean;
+  push_quiet_hours_start?: number | null;
+  push_quiet_hours_end?: number | null;
+  tos_accepted_at?: string | null;
+  tos_version?: string | null;
+  location_privacy_ack_at?: string | null;
+  is_admin?: boolean;
+  timezone?: string | null;
   created_at: string;
   updated_at: string;
 }

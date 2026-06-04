@@ -11,20 +11,23 @@ import MapView, { Marker } from 'react-native-maps';
 import { useLocation } from '../../hooks/useLocation';
 import { useActivities } from '../../hooks/useActivities';
 import { Activity } from '../../types/activity';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { useIsFocused } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ActivityLocation } from '../../types/location';
 import { getNearbyActivityLocations } from '../../services/locationService';
 import { ROUTES } from '../../constants/routes';
+import { useAuth } from '../../hooks/useAuth';
+import { fuzzMapCoordinate } from '../../utils/approximateLocation';
+import { PRIVACY_LOCATION_TEXT } from '../../constants/legal';
+import { colors } from '../../constants/theme';
 
-type TabParamList = {
-  Home: undefined;
-  Map: undefined;
-  Friends: undefined;
-  Profile: undefined;
+type MainStackParamList = {
+  MainTabs: undefined;
+  Map: typeof ROUTES.HOME.MAP;
+  ActivityDetail: { activityId?: string; inviteToken?: string };
+  CreateActivity: undefined;
 };
 
-type Props = BottomTabScreenProps<TabParamList, 'Map'>;
+type Props = NativeStackScreenProps<MainStackParamList, typeof ROUTES.HOME.MAP>;
 
 const FALLBACK_REGION = {
   latitude: 1.3521,
@@ -34,9 +37,10 @@ const FALLBACK_REGION = {
 };
 
 const MapScreen: React.FC<Props> = ({ navigation }) => {
-  const isFocused = useIsFocused();
-  // Skip permission check on mount so opening this tab doesn't touch native location (avoids Android crash). User taps Refresh to get location.
-  const { location, loading: locationLoading, fetchLocation } = useLocation(false, { skipPermissionCheckOnMount: true });
+  const { user } = useAuth();
+  const { location, loading: locationLoading, fetchLocation } = useLocation(false, {
+    skipPermissionCheckOnMount: true,
+  });
   const { activities, loading: activitiesLoading, refetch } = useActivities(location || undefined);
   const [nearbyLocations, setNearbyLocations] = useState<ActivityLocation[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(false);
@@ -91,26 +95,16 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
   const showEmptyOverlay = !loading && !hasActivityPins && !hasLocationPins;
 
   const handleStartHere = () => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as any);
+    navigation.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
   const handleRefresh = async () => {
-    await Promise.all([fetchLocation(), refetch()]);
+    const hadLocation = !!location;
+    await fetchLocation();
+    if (hadLocation) {
+      await refetch();
+    }
   };
-
-  if (!isFocused) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Map</Text>
-          <Text style={styles.subtitle}>Switch to this tab to load the map</Text>
-        </View>
-        <View style={[styles.map, { justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={styles.subtitle}>Map loads when tab is active</Text>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -121,6 +115,7 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
             ? 'Activities and courts near your current area'
             : 'Showing default area until location is available'}
         </Text>
+        <Text style={styles.privacyHint}>{PRIVACY_LOCATION_TEXT}</Text>
       </View>
       <MapView
         key={location ? `${location.latitude.toFixed(4)}-${location.longitude.toFixed(4)}` : 'fallback'}
@@ -131,10 +126,14 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
         {activities.map((activity: Activity) => {
           if (!activity.location?.location?.coordinates) return null;
           const [lng, lat] = activity.location.location.coordinates;
+          const isHost = user?.id === activity.user_id;
+          const coordinate = isHost
+            ? { latitude: lat, longitude: lng }
+            : fuzzMapCoordinate(lat, lng, activity.id);
           return (
             <Marker
               key={activity.id}
-              coordinate={{ latitude: lat, longitude: lng }}
+              coordinate={coordinate}
               title={activity.sport_type}
               description={`${activity.player_count} players`}
             />
@@ -159,7 +158,7 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
 
       {loading && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color="#1a73e8" />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Loading map data...</Text>
         </View>
       )}
@@ -185,7 +184,7 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.bottomHeader}>
           <Text style={styles.bottomTitle}>Nearby Activity Pins</Text>
           <TouchableOpacity onPress={handleStartHere}>
-            <Text style={styles.bottomCta}>Create Activity</Text>
+            <Text style={styles.bottomCta}>Create Game</Text>
           </TouchableOpacity>
         </View>
         <FlatList
@@ -236,6 +235,12 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 13,
   },
+  privacyHint: {
+    marginTop: 6,
+    fontSize: 11,
+    color: '#888',
+    lineHeight: 16,
+  },
   map: {
     flex: 1,
   },
@@ -278,7 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   primaryCta: {
-    backgroundColor: '#1a73e8',
+    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
@@ -289,14 +294,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   secondaryCta: {
-    borderColor: '#1a73e8',
+    borderColor: colors.primary,
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 10,
     paddingHorizontal: 14,
   },
   secondaryCtaText: {
-    color: '#1a73e8',
+    color: colors.primary,
     fontWeight: '700',
   },
   bottomSheet: {
@@ -327,7 +332,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   bottomCta: {
-    color: '#1a73e8',
+    color: colors.primary,
     fontWeight: '700',
     fontSize: 13,
   },
