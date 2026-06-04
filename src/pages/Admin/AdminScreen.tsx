@@ -16,6 +16,7 @@ import {
   setUserSuspended,
   triageReport,
 } from '../../services/adminService';
+import { listAdminProductFeedback, ProductFeedbackRow } from '../../services/feedbackService';
 import {
   AdminReportQueueItem,
   AdminTriageAction,
@@ -58,6 +59,7 @@ function contextLabel(type?: ReportContextType | null): string {
 
 const AdminScreen: React.FC<Props> = () => {
   const [reports, setReports] = useState<AdminReportQueueItem[]>([]);
+  const [feedback, setFeedback] = useState<ProductFeedbackRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyReportId, setBusyReportId] = useState<string | null>(null);
   const [suspendUserId, setSuspendUserId] = useState('');
@@ -66,10 +68,16 @@ const AdminScreen: React.FC<Props> = () => {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setReports(await listAdminReportQueue());
+      const [reportRows, feedbackRows] = await Promise.all([
+        listAdminReportQueue(),
+        listAdminProductFeedback(30),
+      ]);
+      setReports(reportRows);
+      setFeedback(feedbackRows);
     } catch (e: unknown) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Could not load reports.');
+      Alert.alert('Error', e instanceof Error ? e.message : 'Could not load admin data.');
       setReports([]);
+      setFeedback([]);
     } finally {
       setLoading(false);
     }
@@ -156,6 +164,22 @@ const AdminScreen: React.FC<Props> = () => {
       <Text style={styles.subtitle}>
         Review reports with usernames. Suspend closes all pending reports for that user.
       </Text>
+
+      <Text style={styles.sectionTitle}>Beta feedback ({feedback.length})</Text>
+      {feedback.length === 0 ? (
+        <Text style={styles.empty}>No feedback yet.</Text>
+      ) : (
+        feedback.map((row) => (
+          <View key={row.id} style={styles.card}>
+            <Text style={styles.cardTitle}>@{row.username}</Text>
+            <Text style={styles.meta}>
+              {formatReportTime(row.created_at)}
+              {row.screen ? ` · ${row.screen}` : ''}
+            </Text>
+            <Text style={styles.detail}>{row.body}</Text>
+          </View>
+        ))
+      )}
 
       <Text style={styles.sectionTitle}>Pending reports ({reports.length})</Text>
       {loading && reports.length === 0 ? (

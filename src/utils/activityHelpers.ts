@@ -43,6 +43,48 @@ export const getApprovedParticipants = (activity: Activity): JoinRequest[] => {
   return (activity.join_requests || []).filter((r) => r.status === 'approved');
 };
 
+/** Roster strip order: I'm in first, then earlier join requests first. */
+export const sortApprovedRosterParticipants = (participants: JoinRequest[]): JoinRequest[] => {
+  return [...participants].sort((a, b) => {
+    const aReady = a.ready_at ? 1 : 0;
+    const bReady = b.ready_at ? 1 : 0;
+    if (bReady !== aReady) {
+      return bReady - aReady;
+    }
+    const aJoin = new Date(a.requested_at).getTime();
+    const bJoin = new Date(b.requested_at).getTime();
+    return aJoin - bJoin;
+  });
+};
+
+/** Next host if current host exits (ready first, join time asc). */
+export const pickNextHostCandidate = (activity: Activity): JoinRequest | undefined => {
+  const sorted = sortApprovedRosterParticipants(getApprovedParticipants(activity));
+  return sorted[0];
+};
+
+export const getMyJoinRequest = (
+  activity: Activity,
+  userId: string | undefined
+): JoinRequest | undefined => {
+  if (!userId) {
+    return undefined;
+  }
+  return (activity.join_requests || []).find((r) => r.user_id === userId);
+};
+
+/** Open spots from host-declared capacity (missing_players). */
+export const activityHasOpenSpots = (activity: Activity): boolean => {
+  return (activity.missing_players ?? 0) > 0;
+};
+
+export const isUserWaitlistedOnActivity = (
+  activity: Activity,
+  userId: string | undefined
+): boolean => {
+  return getMyJoinRequest(activity, userId)?.status === 'waitlisted';
+};
+
 /** True when a friend hosts or has an approved spot on the game. */
 export function activityHasFriend(activity: Activity, friendIds: Set<string>): boolean {
   if (friendIds.size === 0) {
@@ -297,12 +339,6 @@ export function getActivityTotalSpots(
   activity: Pick<Activity, 'player_count' | 'missing_players'>
 ): number {
   return (activity.player_count ?? 1) + getActivityOpenSpots(activity);
-}
-
-export function activityHasOpenSpots(
-  activity: Pick<Activity, 'missing_players'>
-): boolean {
-  return getActivityOpenSpots(activity) > 0;
 }
 
 /** Nearest games first; activities without coordinates sort to the end. */

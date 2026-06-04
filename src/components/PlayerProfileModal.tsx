@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Image,
   Modal,
   StyleSheet,
   Text,
@@ -29,6 +30,10 @@ interface PlayerProfileModalProps {
   contextType?: ReportContextType;
   contextId?: string;
   showNoShow?: boolean;
+  /** When set, shows a primary action (e.g. open DM from Friends). */
+  onMessage?: () => void;
+  /** When set, shows remove-friend (Friends list context). */
+  onRemoveFriend?: () => void;
 }
 
 const AVATAR_COLORS = ['#b0c4de', '#c4b0de', '#b0deb0', '#deb0b0', '#b0d5de'];
@@ -41,6 +46,8 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   contextType = 'profile',
   contextId,
   showNoShow = false,
+  onMessage,
+  onRemoveFriend,
 }) => {
   const [stats, setStats] = useState<ProfileReviewStats | null>(null);
   const [trustStats, setTrustStats] = useState<ProfileTrustStats | null>(null);
@@ -76,9 +83,13 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose}>
         <TouchableOpacity activeOpacity={1} style={styles.sheet} onPress={() => {}}>
-          <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
+          {player.profile_photo_url ? (
+            <Image source={{ uri: player.profile_photo_url }} style={styles.avatarImage} />
+          ) : (
+            <View style={[styles.avatar, { backgroundColor: avatarBg }]}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          )}
           <Text style={styles.name}>{player.username}</Text>
           {player.roleLabel ? <Text style={styles.role}>{player.roleLabel}</Text> : null}
 
@@ -107,6 +118,24 @@ const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
               ) : null}
             </View>
           )}
+
+          {onMessage ? (
+            <TouchableOpacity
+              style={styles.messageButton}
+              onPress={() => {
+                onClose();
+                onMessage();
+              }}
+            >
+              <Text style={styles.messageButtonText}>Message</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {onRemoveFriend ? (
+            <TouchableOpacity style={styles.removeFriendButton} onPress={onRemoveFriend}>
+              <Text style={styles.removeFriendButtonText}>Remove friend</Text>
+            </TouchableOpacity>
+          ) : null}
 
           {currentUserId && player.id !== currentUserId ? (
             <TouchableOpacity style={styles.safetyButton} onPress={() => setSafetyOpen(true)}>
@@ -158,6 +187,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
   avatarText: {
     fontSize: 24,
     fontWeight: '700',
@@ -194,6 +228,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
     marginTop: 4,
+  },
+  messageButton: {
+    marginTop: 20,
+    width: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  messageButtonText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  removeFriendButton: {
+    marginTop: 12,
+    paddingVertical: 10,
+  },
+  removeFriendButtonText: {
+    color: colors.error,
+    fontSize: 14,
+    fontWeight: '600',
   },
   safetyButton: {
     marginTop: 16,

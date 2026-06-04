@@ -1,7 +1,7 @@
 /** In-app copy for the LA closed beta — keep in sync with VISION.md / open_items.md */
 export const BETA_COPY = {
   marketLabel: 'LA Beta',
-  headline: 'Rally Beta is focused on LA badminton and pickleball.',
+  headline: 'Rally Beta is focused on LA badminton, pickleball, and basketball.',
   body: 'Want to host games, test Rally with your group, or bring Rally to your city?',
   contactCta: 'Contact us',
   contactEmail: 'kunyupoon495@gmail.com',

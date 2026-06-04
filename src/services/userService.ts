@@ -238,10 +238,22 @@ export const needsLegalAcceptance = (user: User | null): boolean => {
 };
 
 export const searchUsers = async (query: string): Promise<User[]> => {
+  const trimmed = query.trim();
+  if (trimmed.length < 2) {
+    return [];
+  }
+
+  // Strip characters that break PostgREST .or() filter strings.
+  const safePattern = trimmed.replace(/[%_,.()"'\\]/g, '');
+  if (!safePattern) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .or(`username.ilike.%${query}%,phone.eq.${query}`)
+    .or(`username.ilike.%${safePattern}%,phone.eq.${trimmed}`)
+    .eq('is_suspended', false)
     .limit(20);
 
   if (error) {

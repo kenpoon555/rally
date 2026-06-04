@@ -40,4 +40,7 @@ export const ROUTES = {
   ADMIN: {
     MAIN: 'Admin',
   },
+  FEEDBACK: {
+    BETA: 'BetaFeedback',
+  },
 } as const;

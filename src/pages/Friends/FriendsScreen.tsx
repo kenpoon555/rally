@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -17,27 +18,27 @@ import {
   sendFriendRequest,
   acceptFriendRequest,
   removeFriend,
-  searchUsers,
 } from '../../services/friendsService';
+import { searchUsers } from '../../services/userService';
 import { Friend } from '../../types/friends';
 import { User } from '../../types/user';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ROUTES } from '../../constants/routes';
 import { getOrCreateDirectConversation } from '../../services/chatService';
-import { Button, Chip, EmptyState, ScreenHeader, TextField } from '../../components/ui';
+import { Avatar, Button, Chip, EmptyState, ScreenHeader, TextField } from '../../components/ui';
 import { colors, radius, spacing } from '../../constants/theme';
+import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
+import { PlayerTrustLine } from '../../components/PlayerTrustLine';
 
-type TabParamList = {
-  Home: undefined;
-  Chats: undefined;
-  Map: undefined;
-  Friends: undefined;
-  Profile: undefined;
+export type FriendsStackParams = {
+  Friends: { openSearch?: boolean } | undefined;
 };
 
-type Props = BottomTabScreenProps<TabParamList, 'Friends'>;
+type Props = NativeStackScreenProps<FriendsStackParams, 'Friends'>;
 
 const FriendsScreen: React.FC<Props> = ({ navigation }) => {
+  const route = useRoute<RouteProp<FriendsStackParams, 'Friends'>>();
   const { user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
@@ -48,6 +49,14 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
+  const [profileContext, setProfileContext] = useState<{
+    player: PlayerProfilePreview;
+    friendshipId?: string;
+  } | null>(null);
+
+  const openProfile = useCallback((player: PlayerProfilePreview, friendshipId?: string) => {
+    setProfileContext({ player, friendshipId });
+  }, []);
 
   const loadFriends = useCallback(async () => {
     if (!user) return;
@@ -84,28 +93,59 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
     await Promise.all([loadFriends(), loadPendingRequests(), loadOutgoingRequests()]);
   }, [user, loadFriends, loadPendingRequests, loadOutgoingRequests]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (route.params?.openSearch) {
+        setActiveTab('search');
+      }
+    }, [route.params?.openSearch])
+  );
+
   useEffect(() => {
     if (!user) return;
     setLoadingInitial(true);
     loadAll().finally(() => setLoadingInitial(false));
   }, [user, loadAll]);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+  const handleSearch = useCallback(async () => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
       setSearchResults([]);
       return;
     }
 
     setLoadingSearch(true);
     try {
-      const results = await searchUsers(searchQuery);
+      const results = await searchUsers(q);
       setSearchResults(results.filter((u) => u.id !== user?.id));
     } catch (error) {
       console.error('Error searching users:', error);
     } finally {
       setLoadingSearch(false);
     }
-  };
+  }, [searchQuery, user?.id]);
+
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (activeTab !== 'search') {
+      return;
+    }
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      void handleSearch();
+    }, 400);
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [activeTab, searchQuery, handleSearch]);
 
   const handleSendRequest = async (friendId: string) => {
     if (!user) return;
@@ -210,22 +250,47 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
           data={friends}
           keyExtractor={(item) => item.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          renderItem={({ item }) => (
-            <View style={styles.friendItem}>
-              <View style={styles.friendInfo}>
-                <Text style={styles.friendName}>{item.friend?.username || 'Unknown'}</Text>
+          renderItem={({ item }) => {
+            const friend = item.friend;
+            const username = friend?.username || 'Unknown';
+            return (
+              <View style={styles.friendItem}>
+                <TouchableOpacity
+                  style={styles.avatarTap}
+                  activeOpacity={0.7}
+                  accessibilityLabel={`View ${username}'s profile`}
+                  onPress={() =>
+                    friend &&
+                    openProfile(
+                      {
+                        id: friend.id,
+                        username: friend.username,
+                        profile_photo_url: friend.profile_photo_url,
+                      },
+                      item.id
+                    )
+                  }
+                >
+                  {friend?.profile_photo_url ? (
+                    <Image source={{ uri: friend.profile_photo_url }} style={styles.rowAvatarImage} />
+                  ) : (
+                    <Avatar name={username} size="md" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.friendRowBody}
+                  activeOpacity={0.7}
+                  accessibilityLabel={`Chat with ${username}`}
+                  onPress={() => handleDirectChat(friend?.id, friend?.username)}
+                >
+                  <View style={styles.friendTextBlock}>
+                    <Text style={styles.friendName}>{username}</Text>
+                    {friend?.id ? <PlayerTrustLine userId={friend.id} style={styles.trustLine} /> : null}
+                  </View>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.removeButton} onPress={() => handleRemove(item.id)}>
-                <Text style={styles.removeButtonText}>Remove</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => handleDirectChat(item.friend?.id, item.friend?.username)}
-              >
-                <Text style={styles.chatButtonText}>Chat</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+            );
+          }}
           ListEmptyComponent={
             <EmptyState
               icon="👥"
@@ -248,14 +313,46 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
               ? item.user?.username || 'Unknown'
               : item.friend?.username || 'Unknown';
 
+            const profile = isIncoming ? item.user : item.friend;
             return (
               <View style={styles.requestItem}>
-                <View style={styles.friendInfo}>
-                  <Text style={styles.requestName}>{label}</Text>
-                  <Text style={styles.requestMeta}>
-                    {isIncoming ? 'Incoming request' : 'Outgoing request'}
-                  </Text>
-                </View>
+                <TouchableOpacity
+                  style={styles.avatarTap}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    profile &&
+                    openProfile({
+                      id: profile.id,
+                      username: profile.username,
+                      profile_photo_url: profile.profile_photo_url,
+                    })
+                  }
+                >
+                  {profile?.profile_photo_url ? (
+                    <Image source={{ uri: profile.profile_photo_url }} style={styles.rowAvatarImage} />
+                  ) : (
+                    <Avatar name={label} size="md" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.friendRowBody}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    profile &&
+                    openProfile({
+                      id: profile.id,
+                      username: profile.username,
+                      profile_photo_url: profile.profile_photo_url,
+                    })
+                  }
+                >
+                  <View style={styles.friendTextBlock}>
+                    <Text style={styles.requestName}>{label}</Text>
+                    <Text style={styles.requestMeta}>
+                      {isIncoming ? 'Incoming request' : 'Outgoing request'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
                 {isIncoming ? (
                   <TouchableOpacity style={styles.acceptButton} onPress={() => handleAccept(item.id)}>
                     <Text style={styles.acceptButtonText}>Accept</Text>
@@ -303,7 +400,39 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <View style={styles.searchItem}>
-                <Text style={styles.searchItemName}>{item.username}</Text>
+                <TouchableOpacity
+                  style={styles.avatarTap}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    openProfile({
+                      id: item.id,
+                      username: item.username,
+                      profile_photo_url: item.profile_photo_url,
+                    })
+                  }
+                >
+                  {item.profile_photo_url ? (
+                    <Image source={{ uri: item.profile_photo_url }} style={styles.rowAvatarImage} />
+                  ) : (
+                    <Avatar name={item.username} size="md" />
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.friendRowBody}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    openProfile({
+                      id: item.id,
+                      username: item.username,
+                      profile_photo_url: item.profile_photo_url,
+                    })
+                  }
+                >
+                  <View style={styles.friendTextBlock}>
+                    <Text style={styles.searchItemName}>{item.username}</Text>
+                    <PlayerTrustLine userId={item.id} style={styles.trustLine} />
+                  </View>
+                </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.addButton}
                   onPress={() => handleSendRequest(item.id)}
@@ -317,15 +446,39 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
                 icon="🔍"
                 title={searchQuery ? 'No users found' : 'Search for players'}
                 message={
-                  searchQuery
-                    ? 'Try a different username.'
-                    : 'Find people by username to send a friend request.'
+                  searchQuery.trim().length < 2
+                    ? 'Type at least 2 characters (username is case-insensitive).'
+                    : searchQuery
+                      ? 'No match — check spelling or ask them to open Profile and confirm their @username.'
+                      : 'Find people by username to send a friend request.'
                 }
               />
             }
           />
         </View>
       )}
+
+      <PlayerProfileModal
+        visible={!!profileContext}
+        player={profileContext?.player ?? null}
+        onClose={() => setProfileContext(null)}
+        currentUserId={user?.id}
+        contextType="profile"
+        onMessage={
+          profileContext
+            ? () => handleDirectChat(profileContext.player.id, profileContext.player.username)
+            : undefined
+        }
+        onRemoveFriend={
+          profileContext?.friendshipId
+            ? () => {
+                const friendshipId = profileContext.friendshipId!;
+                setProfileContext(null);
+                handleRemove(friendshipId);
+              }
+            : undefined
+        }
+      />
     </View>
   );
 };
@@ -358,14 +511,30 @@ const styles = StyleSheet.create({
   tabChip: {
     flexGrow: 0,
   },
-  friendInfo: {
+  avatarTap: {
+    marginRight: spacing.md,
+  },
+  friendRowBody: {
     flex: 1,
+    minWidth: 0,
+  },
+  friendTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rowAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  trustLine: {
+    marginTop: 2,
   },
   friendItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
@@ -375,36 +544,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.text,
   },
-  removeButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    backgroundColor: colors.error,
-    marginLeft: spacing.sm,
-  },
-  removeButtonText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  chatButton: {
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    marginLeft: spacing.sm,
-  },
-  chatButtonText: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
   requestItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
@@ -464,16 +609,17 @@ const styles = StyleSheet.create({
   },
   searchItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
   searchItemName: {
     fontSize: 16,
-    flex: 1,
+    fontWeight: '600',
     color: colors.text,
   },
   addButton: {

@@ -38,6 +38,10 @@ export interface Activity {
   cost_note?: string | null;
   /** Per-session announcement (A4). */
   session_note?: string | null;
+  /** Host headline for Discover (Stage 1). */
+  listing_title?: string | null;
+  /** Stage 1 play intent chip. */
+  play_intent?: string | null;
   created_at: string;
   updated_at: string;
   location?: ActivityLocation;

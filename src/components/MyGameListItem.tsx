@@ -36,7 +36,14 @@ const MyGameListItem: React.FC<MyGameListItemProps> = ({ activity, role, onPress
       <View style={styles.row}>
         <Text style={styles.sport}>{activity.sport_type}</Text>
         <View style={styles.badgeRow}>
-          <Badge label={role === 'host' ? 'Hosting' : 'Joined'} tone={role === 'host' ? 'primary' : 'success'} />
+          <Badge
+            label={
+              role === 'host' ? 'Hosting' : role === 'waitlisted' ? 'Waitlist' : 'Joined'
+            }
+            tone={
+              role === 'host' ? 'primary' : role === 'waitlisted' ? 'accent' : 'success'
+            }
+          />
           <Badge label={statusLabel} tone={statusTone} style={styles.badgeGap} />
           {activity.visibility === 'invite_only' ? (
             <Badge label="Invite" tone="muted" style={styles.badgeGap} />

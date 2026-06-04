@@ -124,7 +124,7 @@ const GameRoomChatBody: React.FC<{
             {isGameRoom
               ? isCrewChat
                 ? PRODUCT_COPY.rallyChatEmpty
-                : 'Coordinate here — tap I\'m in when you can make it.'
+                : PRODUCT_COPY.gameRoomCoordinateHint
               : 'No messages yet. Say hi!'}
           </Text>
         ) : null
@@ -435,6 +435,22 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
                 setBusyActivityId(null);
               }
             }}
+            onUndoImIn={(act) => {
+              setBusyActivityId(act.id);
+              void (async () => {
+                try {
+                  await setGameReady(act.id, false);
+                  await reloadCrewSessions();
+                } catch (error: unknown) {
+                  Alert.alert(
+                    "Couldn't save",
+                    error instanceof Error ? error.message : 'Try again.'
+                  );
+                } finally {
+                  setBusyActivityId(null);
+                }
+              })();
+            }}
             onLockRoster={async (act) => {
               setBusyActivityId(act.id);
               try {
@@ -499,7 +515,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             }
           }}
         >
-          {!isCrewChat ? <GameRoomHeader /> : null}
+          <GameRoomHeader />
           {chatBody}
         </GameRoomProvider>
       ) : (
@@ -538,7 +554,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f7',
+    backgroundColor: colors.background,
   },
   errorText: {
     color: '#b42318',
@@ -560,9 +576,10 @@ const styles = StyleSheet.create({
   },
   emptyHint: {
     textAlign: 'center',
-    color: '#888',
+    color: colors.textTertiary,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
+    paddingHorizontal: spacing.lg,
   },
   messageBubble: {
     maxWidth: '78%',
@@ -609,13 +626,14 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginRight: 8,
-    backgroundColor: '#fafafa',
+    backgroundColor: colors.background,
+    color: colors.text,
     maxHeight: 100,
   },
   sendButton: {

@@ -26,6 +26,7 @@ import ChatListScreen from '../pages/Chat/ChatListScreen';
 import ChatThreadScreen from '../pages/Chat/ChatThreadScreen';
 import MyGamesScreen from '../pages/Games/MyGamesScreen';
 import AdminScreen from '../pages/Admin/AdminScreen';
+import BetaFeedbackScreen from '../pages/Feedback/BetaFeedbackScreen';
 import MiniTournamentScreen from '../pages/Tournament/MiniTournamentScreen';
 import RegularsCrewScreen from '../pages/Regulars/RegularsCrewScreen';
 import { OnboardingModal } from '../components/OnboardingModal';
@@ -99,18 +100,18 @@ const MainTabs = () => {
       <Tab.Screen
         name={ROUTES.HOME.DYNAMIC}
         component={DynamicHomeScreen}
-        options={{ tabBarLabel: 'Home' }}
+        options={{ tabBarLabel: 'Today' }}
       />
       <Tab.Screen
         name={ROUTES.HOME.MAIN}
         component={HomeScreen}
-        options={{ tabBarLabel: 'Discover' }}
+        options={{ tabBarLabel: 'Play' }}
       />
       <Tab.Screen
         name={ROUTES.CHAT.TAB}
         component={ChatListScreen}
         options={{
-          tabBarLabel: chatUnread > 0 ? `Chats (${chatUnread})` : 'Chats',
+          tabBarLabel: 'Inbox',
           tabBarBadge: chatUnread > 0 ? (chatUnread > 9 ? '9+' : chatUnread) : undefined,
         }}
         listeners={{
@@ -122,7 +123,7 @@ const MainTabs = () => {
       <Tab.Screen
         name={ROUTES.PROFILE.MAIN}
         component={ProfileScreen}
-        options={{ tabBarLabel: 'Profile' }}
+        options={{ tabBarLabel: 'You' }}
       />
     </Tab.Navigator>
   );
@@ -134,7 +135,7 @@ const MainStack = () => (
     <Stack.Screen
       name={ROUTES.ACTIVITY.DETAIL}
       component={ActivityDetailScreen}
-      options={{ title: 'Activity Details', presentation: 'modal' }}
+      options={{ title: 'Game card', presentation: 'modal' }}
     />
     <Stack.Screen
       name={ROUTES.ACTIVITY.CREATE}
@@ -160,6 +161,11 @@ const MainStack = () => (
       options={{ title: 'Mini tournament' }}
     />
     <Stack.Screen name={ROUTES.ADMIN.MAIN} component={AdminScreen} options={{ title: 'Admin' }} />
+    <Stack.Screen
+      name={ROUTES.FEEDBACK.BETA}
+      component={BetaFeedbackScreen}
+      options={{ title: 'Beta feedback' }}
+    />
   </Stack.Navigator>
 );
 

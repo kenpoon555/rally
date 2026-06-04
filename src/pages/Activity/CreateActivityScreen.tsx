@@ -37,7 +37,7 @@ import {
   resolvePreferredSportForLaunch,
   SportType,
 } from '../../constants/sports';
-import { ScreenHeader } from '../../components/ui';
+import { Chip, ScreenHeader, TextField } from '../../components/ui';
 import { createActivity } from '../../services/activityService';
 import { buildGameInviteUrl } from '../../navigation/deepLinking';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
@@ -54,6 +54,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSportIconName } from '../../components/SportIcon';
 import { AddCourtSheet } from '../../components/AddCourtSheet';
 import { PRODUCT_COPY } from '../../constants/productCopy';
+import { PLAY_INTENTS, type PlayIntentId } from '../../constants/playIntent';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { SHOW_LOCATION_DEBUG } from '../../constants/devFlags';
@@ -95,6 +96,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [needPlayersTonight, setNeedPlayersTonight] = useState(false);
   const [costNote, setCostNote] = useState('');
+  const [listingTitle, setListingTitle] = useState('');
+  const [playIntent, setPlayIntent] = useState<PlayIntentId | null>('pickup');
+  const [sessionNote, setSessionNote] = useState('');
   const didRequestInitialLocationRef = useRef(false);
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
@@ -417,6 +421,14 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
       Alert.alert('No court selected', 'Pick a court on the map or list first.');
       return;
     }
+    const titleTrimmed = listingTitle.trim();
+    if (titleTrimmed.length < 3) {
+      Alert.alert(
+        'Add a listing title',
+        'Help players understand your game — e.g. "AM training partner" or "Indoor court split $80/hr — need 10".'
+      );
+      return;
+    }
 
     const parsed = Number.parseInt(openSpotsText, 10);
     const missingPlayers = Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
@@ -453,6 +465,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         candidate_location_ids: candidateLocationIds,
         urgency_level: needPlayersTonight ? 'tonight' : 'normal',
         cost_note: costNote.trim() || null,
+        session_note: sessionNote.trim() || null,
+        listing_title: titleTrimmed,
+        play_intent: playIntent,
       });
 
       void setOnboardingFlag(ONBOARDING_FLAGS.HOST_ONBOARDING_COMPLETED);
@@ -513,6 +528,43 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         keyboardShouldPersistTaps="handled"
       >
         <ScreenHeader title="Host a Game" subtitle={getCreateGameSubtitle(sportType)} />
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Listing (shown on Play)</Text>
+          <TextField
+            label="Title"
+            value={listingTitle}
+            onChangeText={setListingTitle}
+            placeholder='e.g. "AM training partner — casual" or "Last minute indoor — $80/hr split"'
+            maxLength={80}
+            style={styles.listingTitleField}
+          />
+          <Text style={styles.fieldHint}>Players see this first when browsing open games.</Text>
+          <Text style={styles.subsectionLabel}>What kind of game?</Text>
+          <View style={styles.intentRow}>
+            {PLAY_INTENTS.map((intent) => (
+              <Chip
+                key={intent.id}
+                label={intent.label}
+                selected={playIntent === intent.id}
+                tone="primary"
+                compact
+                onPress={() => setPlayIntent(intent.id)}
+                style={styles.intentChip}
+              />
+            ))}
+          </View>
+          <TextField
+            label="Details (optional)"
+            value={sessionNote}
+            onChangeText={setSessionNote}
+            placeholder="Court #, skill level, split cost math, etc."
+            maxLength={200}
+            multiline
+            numberOfLines={2}
+            style={styles.sessionNoteField}
+          />
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What are you hosting?</Text>
@@ -988,6 +1040,32 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  listingTitleField: {
+    marginBottom: spacing.xs,
+  },
+  sessionNoteField: {
+    marginTop: spacing.sm,
+  },
+  fieldHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  subsectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  intentRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  intentChip: {
+    marginBottom: 0,
   },
   linkText: {
     color: colors.primary,

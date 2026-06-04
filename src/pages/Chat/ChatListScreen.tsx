@@ -46,8 +46,8 @@ type TabParamList = {
 type Props = BottomTabScreenProps<TabParamList, 'Chats'>;
 
 const FILTERS: { id: ChatInboxFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
   { id: 'games', label: 'Games' },
+  { id: 'rallies', label: 'Rallies' },
   { id: 'friends', label: 'Friends' },
 ];
 
@@ -70,7 +70,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { location, fetchLocation } = useLocation(false);
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
   const { mode, regularGroups, nextGame, refetch: refetchPlayMode } = useUserPlayMode(user?.id);
-  const [filter, setFilter] = useState<ChatInboxFilter>('all');
+  const [filter, setFilter] = useState<ChatInboxFilter>('games');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   useFocusEffect(
@@ -268,16 +268,16 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
   const emptyCopy =
     filter === 'games'
-      ? 'No game chats yet. Host or join a game from Discover — your lobby appears here.'
-      : filter === 'friends'
-        ? 'No friends to message yet. Add friends from the Friends tab.'
-        : 'Your game lobbies and friend chats show up here. Tap a row to open chat.';
+      ? 'No active game rooms. Host or join from Play — archived chat moves to My Games after 2 days.'
+      : filter === 'rallies'
+        ? 'No Rally chats yet. Start a Rally from Today or save a crew from a game.'
+        : 'No friend messages yet. Add friends from Profile.';
 
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Chats"
-        subtitle="Tap your crew or game to open the Game Room."
+        title="Inbox"
+        subtitle="Active game rooms, Rallies, and friends. Past game chat lives in My Games."
       />
 
       <View style={styles.filterRow}>
