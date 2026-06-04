@@ -8,7 +8,7 @@ import {
 import { Activity, JoinRequest } from '../types/activity';
 import { useAuth } from '../hooks/useAuth';
 import JoinRequestButton from './JoinRequestButton';
-import { SportIcon } from './SportIcon';
+import { SportBadge } from './SportBadge';
 import {
   getIntensityFromDuration,
   INTENSITY_CONFIG,
@@ -18,15 +18,10 @@ import {
   getApprovedParticipants,
   activityHasFriend,
 } from '../utils/activityHelpers';
-import { colors, PRIMARY_COLOR, radius, shadows, spacing, typography, AVATAR_PALETTE } from '../constants/theme';
+import { colors, PRIMARY_COLOR, radius, shadows, spacing, AVATAR_PALETTE } from '../constants/theme';
 import { formatApproximateDistance } from '../utils/approximateLocation';
 import { PlayerTrustLine } from './PlayerTrustLine';
-
-// ── Sport icon ────────────────────────────────────────────────────────────────
-
-const SportIconBox: React.FC<{ sport: string }> = ({ sport }) => (
-  <SportIcon sport={sport} size="md" style={styles.iconBox} />
-);
+import { activityListingHeadline, playIntentLabel } from '../constants/playIntent';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -157,7 +152,9 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
   const intensity = getIntensityFromDuration(activity.duration);
   const intensityConfig = INTENSITY_CONFIG[intensity];
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
+  const listingHeadline = activityListingHeadline(activity);
   const locationName = activity.location?.name ?? 'Unknown location';
+  const intentLabel = playIntentLabel(activity.play_intent);
   const missing = activity.missing_players ?? 0;
 
   const distanceMeters =
@@ -182,8 +179,7 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
       {/* ── HEADER ── */}
       <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
         <View style={styles.headerRow}>
-          <SportIconBox sport={activity.sport_type} />
-          <Text style={styles.sportTitle}>{activity.sport_type}</Text>
+          <SportBadge sport={activity.sport_type} style={styles.sportBadge} />
           <View style={styles.badgeGroup}>
             {isHost && (
               <View style={styles.hostingBadge}>
@@ -208,6 +204,15 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
             <StatusBadge status={status} />
           </View>
         </View>
+
+        <Text style={styles.listingHeadline} numberOfLines={2}>
+          {listingHeadline}
+        </Text>
+        {intentLabel ? (
+          <View style={styles.intentBadge}>
+            <Text style={styles.intentBadgeText}>{intentLabel}</Text>
+          </View>
+        ) : null}
 
         {/* ── TIME ── */}
         <View style={[styles.row, styles.divider]}>
@@ -256,6 +261,11 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
                 <PlayerTrustLine userId={activity.user_id} style={styles.trustLine} />
               ) : null}
             </View>
+            {activity.session_note ? (
+              <Text style={styles.sessionPreview} numberOfLines={2}>
+                {activity.session_note}
+              </Text>
+            ) : null}
             {activity.cost_note ? (
               <Text style={styles.costPreview}>Cost: {activity.cost_note}</Text>
             ) : null}
@@ -276,6 +286,32 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  listingHeadline: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.sm,
+    lineHeight: 22,
+  },
+  intentBadge: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+  },
+  intentBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  sessionPreview: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    lineHeight: 18,
+  },
   card: {
     backgroundColor: colors.surface,
     marginHorizontal: spacing.lg,
@@ -293,17 +329,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md + 2,
     paddingVertical: spacing.md + 2,
   },
-  iconBox: {
-    marginRight: spacing.md,
-  },
-  sportTitle: {
+  sportBadge: {
     flex: 1,
-    ...typography.bodyMedium,
+    marginRight: spacing.sm,
   },
   badgeGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 6,
+    flexShrink: 0,
   },
   badge: {
     borderRadius: 10,

@@ -3,6 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { Activity } from '../types/activity';
 import { Button } from './ui';
 import { formatActivityTime } from '../utils/activityHelpers';
+import { PRODUCT_COPY } from '../constants/productCopy';
+import { SportBadge } from './SportBadge';
 import { colors, radius, spacing, typography } from '../constants/theme';
 
 export type CrewGameSessionCardProps = {
@@ -13,9 +15,12 @@ export type CrewGameSessionCardProps = {
   isOnRoster: boolean;
   isReady: boolean;
   isFinalized: boolean;
+  isWaitlisted?: boolean;
+  isFull?: boolean;
   busy?: boolean;
   onJoin?: () => void;
   onConfirmIn?: () => void;
+  onUndoImIn?: () => void;
   onLockRoster?: () => void;
   onOpenDetails?: () => void;
 };
@@ -28,9 +33,12 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   isOnRoster,
   isReady,
   isFinalized,
+  isWaitlisted = false,
+  isFull = false,
   busy,
   onJoin,
   onConfirmIn,
+  onUndoImIn,
   onLockRoster,
   onOpenDetails,
 }) => {
@@ -43,12 +51,17 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   return (
     <View style={[styles.card, isCurrent && styles.cardCurrent, isPast && styles.cardPast]}>
       <TouchableOpacity onPress={onOpenDetails} disabled={!onOpenDetails}>
-        <Text style={styles.sport}>{activity.sport_type}</Text>
+        <SportBadge sport={activity.sport_type} style={styles.sportBadge} />
         <Text style={styles.title}>{court}</Text>
         <Text style={styles.meta}>
-          {timeLabel} · {rosterCount} in · {openSpots} open
+          {timeLabel} · {rosterCount} in ·{' '}
+          {openSpots > 0 ? `${openSpots} open` : PRODUCT_COPY.gameFull}
           {isFinalized ? ' · Roster locked' : ''}
+          {isWaitlisted ? ` · ${PRODUCT_COPY.onWaitlist}` : ''}
         </Text>
+        {isWaitlisted ? (
+          <Text style={styles.waitlistHint}>{PRODUCT_COPY.onWaitlistHint}</Text>
+        ) : null}
         {activity.session_note ? (
           <Text style={styles.sessionNote}>{activity.session_note}</Text>
         ) : null}
@@ -59,8 +72,18 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
 
       {!isPast && showActions ? (
         <View style={styles.actions}>
-          {!isOnRoster && !isHost && onJoin ? (
-            <Button title="Join game" size="sm" onPress={onJoin} disabled={busy} loading={busy} />
+          {isWaitlisted ? (
+            <Text style={styles.waitlistBadge}>{PRODUCT_COPY.onWaitlist}</Text>
+          ) : null}
+          {!isOnRoster && !isWaitlisted && !isHost && onJoin ? (
+            <Button
+              title={isFull ? PRODUCT_COPY.joinWaitlist : 'Join game'}
+              size="sm"
+              variant={isFull ? 'secondary' : 'primary'}
+              onPress={onJoin}
+              disabled={busy}
+              loading={busy}
+            />
           ) : null}
           {isOnRoster && !isReady && !isFinalized && onConfirmIn ? (
             <Button
@@ -70,8 +93,17 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
               disabled={busy}
             />
           ) : null}
-          {isOnRoster && isReady && !isFinalized ? (
-            <Text style={styles.readyLabel}>You're in</Text>
+          {isOnRoster && isReady && !isFinalized && onUndoImIn ? (
+            <Button
+              title={PRODUCT_COPY.undoImIn}
+              size="sm"
+              variant="secondary"
+              onPress={onUndoImIn}
+              disabled={busy}
+            />
+          ) : null}
+          {isOnRoster && isReady && !isFinalized && !onUndoImIn ? (
+            <Text style={styles.readyLabel}>{PRODUCT_COPY.imInConfirm}</Text>
           ) : null}
           {isHost && !isFinalized && onLockRoster ? (
             <Button
@@ -106,9 +138,8 @@ const styles = StyleSheet.create({
   cardPast: {
     opacity: 0.75,
   },
-  sport: {
-    ...typography.label,
-    color: colors.primary,
+  sportBadge: {
+    marginBottom: spacing.xs,
   },
   title: {
     ...typography.bodyMedium,
@@ -143,5 +174,16 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
     color: colors.success,
+  },
+  waitlistHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    lineHeight: 16,
+  },
+  waitlistBadge: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.warning,
   },
 });

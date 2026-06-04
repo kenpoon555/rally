@@ -149,6 +149,8 @@ In under 3 minutes, a user can:
 
 | Doc | Role |
 |-----|------|
+| [docs/PRODUCT_DIRECTION.md](./docs/PRODUCT_DIRECTION.md) | **Living product direction** — 3 pillars, engagement philosophy, long-term bets |
 | [ROADMAP.md](./ROADMAP.md) | Engineering phases, shipped status, build backlog |
 | [../open_items.md](../open_items.md) | Business model, Stages 0–7, monetization gates |
-| [docs/NEXT.md](./docs/NEXT.md) | Current sprint checklist + blockers |
+| [docs/archive/SHIPPED_AND_DEFERRED_2026-06.md](./docs/archive/SHIPPED_AND_DEFERRED_2026-06.md) | Frozen shipped/deferred checklist |
+| [docs/FOUNDER_WEEK2_CHECKLIST.md](./docs/FOUNDER_WEEK2_CHECKLIST.md) | Current week ops |

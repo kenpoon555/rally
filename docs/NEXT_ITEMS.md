@@ -2,7 +2,7 @@
 
 Last updated: 2026-06-02
 
-**Superseded for day-to-day:** use **[WHAT_NEXT.md](./WHAT_NEXT.md)** for ordered next steps after QA.
+**Superseded:** use **[PRODUCT_DIRECTION.md](./PRODUCT_DIRECTION.md)** + **[archive/SHIPPED_AND_DEFERRED_2026-06.md](./archive/SHIPPED_AND_DEFERRED_2026-06.md)**.
 
 This file keeps the original architecture-review backlog with **status vs Track A build**.
 

@@ -10,9 +10,14 @@ import { getBlockedUserIds } from '../services/safetyService';
 import { getUserFriends } from '../services/friendsService';
 import { supabase } from '../services/api/supabase';
 import { useSupabaseRealtimeReload } from './useSupabaseRealtimeReload';
-import { formatActivityTime, getGameStatusLabel } from '../utils/activityHelpers';
+import { activityListingHeadline } from '../constants/playIntent';
+import {
+  formatActivityTime,
+  getGameStatusLabel,
+  isGameChatReadOnly,
+} from '../utils/activityHelpers';
 
-export type ChatInboxFilter = 'all' | 'games' | 'friends';
+export type ChatInboxFilter = 'games' | 'rallies' | 'friends';
 
 export type GroupChatInboxItem = {
   kind: 'group';
@@ -56,8 +61,7 @@ export type FriendChatInboxItem = {
 export type ChatInboxItem = GroupChatInboxItem | GameChatInboxItem | FriendChatInboxItem;
 
 function gameTitle(activity: Activity): string {
-  const court = activity.location?.name;
-  return court ? `${activity.sport_type} · ${court}` : activity.sport_type;
+  return activityListingHeadline(activity);
 }
 
 async function buildDirectConversationPeerMap(
@@ -143,6 +147,9 @@ function buildChatInbox(params: {
   const appendGame = (entry: MyGameEntry, isPast: boolean) => {
     const { activity, role } = entry;
     if (activity.regular_group_id) {
+      return;
+    }
+    if (isGameChatReadOnly(activity)) {
       return;
     }
     const convo = convoByActivityId.get(activity.id);
@@ -332,10 +339,10 @@ export function useChatInboxWithRealtime(userId: string | undefined) {
 
 export function filterChatInbox(items: ChatInboxItem[], filter: ChatInboxFilter): ChatInboxItem[] {
   if (filter === 'games') {
-    return items.filter((item) => item.kind === 'game' || item.kind === 'group');
+    return items.filter((item) => item.kind === 'game');
   }
-  if (filter === 'friends') {
-    return items.filter((item) => item.kind === 'friend');
+  if (filter === 'rallies') {
+    return items.filter((item) => item.kind === 'group');
   }
-  return items;
+  return items.filter((item) => item.kind === 'friend');
 }

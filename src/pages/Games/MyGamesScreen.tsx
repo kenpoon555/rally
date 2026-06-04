@@ -112,7 +112,7 @@ const MyGamesScreen: React.FC = () => {
     >
       <ScreenHeader
         title="My Games"
-        subtitle="Upcoming, past, and games you host."
+        subtitle="Upcoming, past, and hosting. Past games keep archived chat on the activity."
       />
 
       <View style={styles.segmentRow}>
@@ -128,7 +128,7 @@ const MyGamesScreen: React.FC = () => {
       </View>
 
       <TouchableOpacity onPress={() => navigation.navigate(ROUTES.CHAT.TAB as never)}>
-        <Text style={styles.linkText}>Open game chats →</Text>
+        <Text style={styles.linkText}>Active chats in Inbox →</Text>
       </TouchableOpacity>
 
       {loading && entries.length === 0 ? (

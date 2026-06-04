@@ -38,6 +38,9 @@ import {
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
+import { BetaMarketBanner } from '../../components/home/BetaMarketBanner';
+import { PRODUCT_COPY } from '../../constants/productCopy';
+import { Button } from '../../components/ui';
 import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
 import {
   formatReliabilityLabel,
@@ -410,6 +413,8 @@ const ProfileScreen: React.FC = () => {
         </View>
       </View>
 
+      <BetaMarketBanner />
+
       {rateablePromptCount > 0 ? (
         <View style={styles.sectionCard}>
           <TouchableOpacity
@@ -457,9 +462,20 @@ const ProfileScreen: React.FC = () => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Social</Text>
+        <Button
+          title="Add friends"
+          size="sm"
+          onPress={() =>
+            navigation.navigate(ROUTES.FRIENDS.LIST as never, { openSearch: true } as never)
+          }
+          style={styles.addFriendsProfileBtn}
+        />
+        <Text style={styles.addFriendsProfileHint}>
+          Search by username to connect and message
+        </Text>
         <SettingsRow
           label="Friends"
-          value="Add, message, requests"
+          value="Your list, requests, messages"
           onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
         />
         <SettingsRow
@@ -471,7 +487,7 @@ const ProfileScreen: React.FC = () => {
 
       {regularGroups.length > 0 ? (
         <View style={styles.sectionCard}>
-          <Text style={styles.groupLabel}>Your Rallys</Text>
+          <Text style={styles.groupLabel}>{PRODUCT_COPY.yourRallies}</Text>
           {regularGroups.map((group) => (
             <SettingsRow
               key={group.id}
@@ -588,6 +604,17 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.founderCard}>
         <Text style={styles.founderTitle}>LA beta · founding players</Text>
         <Text style={styles.founderBody}>{FOUNDER_BENEFITS_COPY}</Text>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>Beta</Text>
+        <SettingsRow
+          label="Send feedback"
+          value="Founding Member notes"
+          onPress={() =>
+            navigation.navigate(ROUTES.FEEDBACK.BETA as never, { screen: 'Profile' } as never)
+          }
+        />
       </View>
 
       <View style={styles.sectionCard}>
@@ -759,6 +786,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
+  },
+  addFriendsProfileBtn: {
+    marginBottom: spacing.xs,
+  },
+  addFriendsProfileHint: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
   },
   settingsRow: {
     flexDirection: 'row',

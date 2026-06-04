@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { navigateFromNotificationData } from '../navigation/navigationRef';
+import { isFocusedGameRoomActivity } from '../utils/gameRoomFocus';
 
 /**
  * In-app join-request alerts via Supabase Realtime (works on simulators without FCM).
@@ -78,6 +79,9 @@ export function useJoinRequestNotifications(userId: string | undefined): void {
             return;
           }
           if (row.status === 'approved') {
+            if (isFocusedGameRoomActivity(activityId)) {
+              return;
+            }
             Alert.alert("You're in!", 'The host approved your join request.', [
               { text: 'OK', style: 'cancel' },
               { text: 'View game', onPress: () => openActivity(activityId) },

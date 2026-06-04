@@ -14,7 +14,7 @@ import {
   setConversationAnnouncement,
   setGameRoomAnnouncement,
 } from '../services/chatService';
-import { colors } from '../constants/theme';
+import { colors, radius, spacing } from '../constants/theme';
 
 type Props = {
   conversationId?: string;
@@ -166,35 +166,42 @@ const GameRoomAnnouncementBanner: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: '#fff8e6',
+    backgroundColor: colors.surface,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e8d9a8',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
   costRow: {
-    marginBottom: 6,
+    backgroundColor: colors.warningSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
   },
   costLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8a6d1d',
+    color: colors.warning,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 2,
   },
   costText: {
     fontSize: 14,
-    color: '#3d3418',
+    color: colors.text,
     lineHeight: 20,
   },
   pinnedRow: {
-    marginBottom: 4,
+    backgroundColor: colors.infoSoft,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
   },
   pinnedLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8a6d1d',
+    color: colors.info,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginBottom: 2,
@@ -202,7 +209,7 @@ const styles = StyleSheet.create({
   pinnedText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1a1508',
+    color: colors.text,
     lineHeight: 20,
   },
   editLink: {

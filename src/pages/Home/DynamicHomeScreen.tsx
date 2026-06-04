@@ -25,13 +25,13 @@ import { ProductGlossarySheet } from '../../components/ProductGlossarySheet';
 import { MyGameEntry } from '../../services/activityService';
 import { ROUTES } from '../../constants/routes';
 import { Button, EmptyState, ScreenHeader } from '../../components/ui';
-import { BetaMarketBanner } from '../../components/home/BetaMarketBanner';
 import { NextUpCard } from '../../components/home/NextUpCard';
 import { ActiveGameRoomRow } from '../../components/home/ActiveGameRoomRow';
 import { colors, spacing, typography } from '../../constants/theme';
 import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { needsConfirmPlaying } from '../../utils/activityHelpers';
+import { SportBadge } from '../../components/SportBadge';
 
 type TabParamList = {
   DynamicHome: undefined;
@@ -111,10 +111,11 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const otherActiveGames = useMemo(() => {
+    const playable = activeGames.filter((entry) => entry.role !== 'waitlisted');
     if (!nextGame) {
-      return activeGames.slice(0, MAX_ROOM_ROWS);
+      return playable.slice(0, MAX_ROOM_ROWS);
     }
-    return activeGames
+    return playable
       .filter((entry) => entry.activity.id !== nextGame.activity.id)
       .slice(0, MAX_ROOM_ROWS);
   }, [activeGames, nextGame]);
@@ -138,7 +139,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Home" subtitle={subtitle} />
+      <ScreenHeader title="Today" subtitle={subtitle} />
 
       {loading && activeGames.length === 0 && regularGroups.length === 0 ? (
         <View style={styles.centered}>
@@ -149,8 +150,6 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           contentContainerStyle={showExplorerEmpty ? styles.scrollEmpty : undefined}
         >
-          <BetaMarketBanner />
-
           {dashboard.rosterToLock ? (
             <TouchableOpacity
               style={[
@@ -211,6 +210,33 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
 
+          {dashboard.waitlistedGames.length > 0 ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{PRODUCT_COPY.waitlistSectionTitle}</Text>
+              <Text style={styles.waitlistSectionHint}>{PRODUCT_COPY.onWaitlistHint}</Text>
+              {dashboard.waitlistedGames.map((entry) => (
+                <TouchableOpacity
+                  key={entry.activity.id}
+                  style={styles.waitlistRow}
+                  onPress={() => void openGameRoom(entry)}
+                >
+                  <Text style={styles.waitlistRowTitle}>
+                    {entry.activity.sport_type} ·{' '}
+                    {entry.activity.location?.name ?? 'Game'}
+                  </Text>
+                  <Text style={styles.waitlistRowMeta}>{PRODUCT_COPY.onWaitlist}</Text>
+                </TouchableOpacity>
+              ))}
+              <Button
+                title="Discover other games"
+                variant="ghost"
+                size="sm"
+                onPress={openDiscover}
+                style={styles.sectionLink}
+              />
+            </View>
+          ) : null}
+
           {needsConfirm ? (
             <View style={styles.rsvpNeededCard}>
               <Text style={styles.rsvpNeededTitle}>{PRODUCT_COPY.confirmPlayingTitle}</Text>
@@ -223,7 +249,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.sectionTitle}>Get started — LA badminton & pickleball</Text>
               <View style={styles.actionRow}>
                 <Button title="Host a Game" size="sm" onPress={openCreateGame} />
-                <Button title="Discover" variant="accent" size="sm" onPress={openDiscover} />
+                <Button title="Play" variant="accent" size="sm" onPress={openDiscover} />
               </View>
               <Button
                 title={PRODUCT_COPY.startARally}
@@ -244,9 +270,12 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
                   style={styles.nearbyRow}
                   onPress={() => openActivityDetails(game.id)}
                 >
-                  <Text style={styles.nearbyTitle}>
-                    {game.sport_type} · {game.location?.name ?? 'Open game'}
-                  </Text>
+                  <View style={styles.nearbyTitleRow}>
+                    <SportBadge sport={game.sport_type} />
+                    <Text style={styles.nearbyTitle} numberOfLines={1}>
+                      {game.location?.name ?? 'Open game'}
+                    </Text>
+                  </View>
                   <Text style={styles.nearbyMeta}>{PRODUCT_COPY.publicGameShort}</Text>
                 </TouchableOpacity>
               ))}
@@ -297,13 +326,25 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
             <View style={styles.actionRow}>
               <Button title="Host" size="sm" onPress={openCreateGame} />
-              <Button title="Discover" variant="accent" size="sm" onPress={openDiscover} />
+              <Button title="Play" variant="accent" size="sm" onPress={openDiscover} />
             </View>
+            <Button
+              title={PRODUCT_COPY.addFriends}
+              variant="secondary"
+              size="sm"
+              onPress={() =>
+                navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never, {
+                  openSearch: true,
+                } as never)
+              }
+              style={styles.addFriendsBtn}
+            />
+            <Text style={styles.addFriendsHint}>{PRODUCT_COPY.addFriendsHint}</Text>
           </View>
 
           {regularGroups.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{PRODUCT_COPY.yourRallys}</Text>
+              <Text style={styles.sectionTitle}>{PRODUCT_COPY.yourRallies}</Text>
               {regularGroups.slice(0, 4).map((group) => (
                 <TouchableOpacity
                   key={group.id}
@@ -333,7 +374,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
               icon="🏸"
               title="No games yet"
               message="Discover open games in LA or host one and share the invite link with your crew."
-              primaryAction={{ label: 'Browse Discover', onPress: openDiscover }}
+              primaryAction={{ label: 'Browse Play', onPress: openDiscover }}
               secondaryAction={{ label: 'Host a Game', onPress: openCreateGame }}
             />
           ) : null}
@@ -479,13 +520,44 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: spacing.sm,
   },
+  waitlistSectionHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
+  },
+  waitlistRow: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.warningSoft,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  waitlistRowTitle: { ...typography.bodyMedium, color: colors.text },
+  waitlistRowMeta: { ...typography.caption, color: colors.warning, marginTop: spacing.xs },
+  addFriendsBtn: { marginTop: spacing.sm },
+  addFriendsHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    lineHeight: 16,
+  },
   nearbyRow: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  nearbyTitle: { ...typography.bodyMedium, color: colors.text },
+  nearbyTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  nearbyTitle: { ...typography.bodyMedium, color: colors.text, flex: 1 },
   nearbyMeta: { ...typography.caption, color: colors.textSecondary },
 });
 

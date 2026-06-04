@@ -22,7 +22,6 @@ export const BetaMarketBanner: React.FC = () => {
 
 const styles = StyleSheet.create({
   card: {
-    marginHorizontal: spacing.lg,
     marginBottom: spacing.md,
     padding: spacing.lg,
     borderRadius: radius.lg,

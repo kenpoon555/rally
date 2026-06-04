@@ -41,6 +41,8 @@ export const createActivity = async (activityData: {
   urgency_level?: 'normal' | 'tonight';
   cost_note?: string | null;
   session_note?: string | null;
+  listing_title?: string | null;
+  play_intent?: string | null;
 }): Promise<Activity> => {
   const { candidate_location_ids, ...basePayload } = activityData;
   const schedulingMode = basePayload.scheduling_mode || 'fixed';
@@ -136,6 +138,7 @@ export const getActivityById = async (activityId: string): Promise<Activity | nu
       id,
       user_id,
       status,
+      requested_at,
       ready_at,
       user:profiles!join_requests_user_id_fkey(id, username, profile_photo_url)
     `
@@ -518,7 +521,7 @@ export const getUserActivities = async (userId: string): Promise<Activity[]> => 
   return (data || []) as Activity[];
 };
 
-export type MyGameRole = 'host' | 'joined';
+export type MyGameRole = 'host' | 'joined' | 'waitlisted';
 
 export interface MyGameEntry {
   activity: Activity;
@@ -541,7 +544,7 @@ function sortMyGameEntries(entries: MyGameEntry[]): MyGameEntry[] {
  * Hosted games plus games the user joined (approved join requests).
  */
 export const getMyGames = async (userId: string): Promise<MyGamesResult> => {
-  const [hosted, joinRows] = await Promise.all([
+  const [hosted, approvedRows, waitlistedRows] = await Promise.all([
     getUserActivities(userId),
     supabase
       .from('join_requests')
@@ -559,7 +562,24 @@ export const getMyGames = async (userId: string): Promise<MyGamesResult> => {
       .eq('status', 'approved')
       .order('requested_at', { ascending: false })
       .limit(50),
+    supabase
+      .from('join_requests')
+      .select(
+        `
+        activity_id,
+        activity:activities(
+          *,
+          location:activity_locations(*),
+          user:profiles!activities_user_id_fkey(id, username, profile_photo_url)
+        )
+      `
+      )
+      .eq('user_id', userId)
+      .eq('status', 'waitlisted')
+      .order('requested_at', { ascending: false })
+      .limit(20),
   ]);
+  const joinRows = approvedRows;
 
   const entries: MyGameEntry[] = hosted.map((activity) => ({
     activity,
@@ -575,6 +595,17 @@ export const getMyGames = async (userId: string): Promise<MyGamesResult> => {
       }
       seen.add(activity.id);
       entries.push({ activity, role: 'joined' });
+    }
+  }
+
+  if (!waitlistedRows.error && waitlistedRows.data) {
+    for (const row of waitlistedRows.data as { activity_id: string; activity: Activity | null }[]) {
+      const activity = row.activity;
+      if (!activity || seen.has(activity.id)) {
+        continue;
+      }
+      seen.add(activity.id);
+      entries.push({ activity, role: 'waitlisted' });
     }
   }
 
@@ -948,6 +979,29 @@ export const leaveGame = async (activityId: string): Promise<void> => {
   if (error) {
     throw new Error(error.message);
   }
+};
+
+export type HostTransferResult = {
+  cancelled: boolean;
+  new_host_id: string | null;
+  new_host_username?: string | null;
+};
+
+/** Host leaves and passes host to next approved player (ready first, join time asc). */
+export const hostTransferAndExit = async (activityId: string): Promise<HostTransferResult> => {
+  const { data, error } = await supabase.rpc('host_transfer_and_exit', {
+    p_activity_id: activityId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const row = (data || {}) as Record<string, unknown>;
+  return {
+    cancelled: Boolean(row.cancelled),
+    new_host_id: row.new_host_id != null ? String(row.new_host_id) : null,
+    new_host_username:
+      row.new_host_username != null ? String(row.new_host_username) : null,
+  };
 };
 
 export const setSessionNote = async (activityId: string, note: string | null): Promise<void> => {

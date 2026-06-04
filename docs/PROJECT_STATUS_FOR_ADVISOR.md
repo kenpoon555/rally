@@ -1,6 +1,7 @@
 # Rally — project status (minimal context for advisor)
 
-**Last updated:** 2026-06-02  
+**Last updated:** 2026-06-03 (P1 started; QA delegated)  
+**Merged review:** [ADVISOR_REVIEW_MERGED_2026-06-03.md](./ADVISOR_REVIEW_MERGED_2026-06-03.md) (full open items + advisor sequence)  
 **App:** React Native + Supabase (LA badminton/pickleball closed beta)  
 **DB:** Supabase project `casljueycxsqexpkdiuq` · migrations through **032**
 
@@ -80,19 +81,33 @@ Detail: [IMPLEMENT_PLAN.md](./IMPLEMENT_PLAN.md)
 
 1. ~~Rallys screen load failure~~ — FK hints (above)  
 2. ~~False “ready to lock” with empty roster~~ — host-only guard (above)  
-3. Collective QA not yet signed off on two devices  
+3. ~~Collective QA~~ — delegated; engineering signed off for P1  
 
 ---
 
-## What to do next (order)
+## What to do next
 
-1. **Reload app** · re-test Rally profile + Home host card  
-2. **Run** [QA_BETA_CREW_CHECKLIST.md](./QA_BETA_CREW_CHECKLIST.md)  
-3. **Fix** P0 bugs only in built scope  
-4. **Query** `analytics_crew_lifecycle` for replay %  
-5. **Then:** Guests (A2) if retention OK · else recruit more LA hosts  
+**QA:** Delegated to another tester — [QA_BETA_CREW_CHECKLIST.md](./QA_BETA_CREW_CHECKLIST.md). Engineering moves to **P1**.
 
-Full engineering backlog: [WHAT_NEXT.md](./WHAT_NEXT.md) · tickets: [ADVISOR_IMPLEMENTATION_PLAN.md](./ADVISOR_IMPLEMENTATION_PLAN.md) · business: [open_items.md](../../open_items.md)
+**P1 shipped this pass:**
+- **Waitlist UX** — full games show Join waitlist; waitlisted users see Home **Waitlist** section + My games badge + Game Room state  
+- **Add friends** — Home Quick actions + Profile primary button → Friends search tab  
+
+**P1 still open:** replay query, host recruitment, perf RPC, EAS rebuild, waitlist push when spot opens.
+
+**Roster UX (2026-06-03):** Undo **I'm in** + **Leave** before lock; after lock → chat + post-game attendance ([ROSTER_COMMITMENT_POLICY.md](./ROSTER_COMMITMENT_POLICY.md)).
+
+**Pre–v1.0 strategy:** [PRE_V1_BUSINESS_AND_BUILD_PRIORITIES.md](./PRE_V1_BUSINESS_AND_BUILD_PRIORITIES.md) — scaffold ops, defer payments/Teams/Redis until replay gate.
+
+**Week 2 (founder):** [FOUNDER_WEEK2_CHECKLIST.md](./FOUNDER_WEEK2_CHECKLIST.md) — hosts, replay SQL, designer lock, read feedback in Admin.
+
+**Shipped 2026-06-03:** Game room Exit; host pass (ready → join order); beta feedback module — [BETA_FEEDBACK_MODULE.md](./BETA_FEEDBACK_MODULE.md). Apply migration **033**.
+
+**After P1 / QA:** Query replay % → **one** P2 slice (Guests or Discover polish), not parallel platform build.
+
+**Open items (full list):** [ADVISOR_REVIEW_MERGED_2026-06-03.md](./ADVISOR_REVIEW_MERGED_2026-06-03.md) §6  
+
+Also: [WHAT_NEXT.md](./WHAT_NEXT.md) · [ADVISOR_IMPLEMENTATION_PLAN.md](./ADVISOR_IMPLEMENTATION_PLAN.md) · [open_items.md](../../open_items.md)
 
 ---
 

@@ -1,16 +1,20 @@
 # RallyApp docs index
 
-Last updated: 2026-06-01
+Last updated: 2026-06-03
 
 ## Source of truth (read these first)
 
 | Doc | Purpose |
 |-----|---------|
-| [VISION.md](../VISION.md) | Mission, principles, beta positioning, defer list |
-| [ROADMAP.md](../ROADMAP.md) | Engineering phases + shipped status + beta phase order |
-| [../../open_items.md](../../open_items.md) | Business roadmap (Stages 0–7), immediate priority table |
-| [NEXT.md](./NEXT.md) | Current sprint checklist + blockers |
-| [AGENT_HANDOFF_FULL_CONTEXT.md](./AGENT_HANDOFF_FULL_CONTEXT.md) | Full agent handoff (infra, migrations, iOS install) |
+| **[PRODUCT_DIRECTION.md](./PRODUCT_DIRECTION.md)** | **Single living product doc** — mission, 3 pillars, face-first social rules, long-term bets |
+| [VISION.md](../VISION.md) | Principles, beta positioning, version strategy |
+| [ROADMAP.md](../ROADMAP.md) | Engineering phases + shipped status |
+| [../../open_items.md](../../open_items.md) | Business roadmap (Stages 0–7), monetization gates |
+| [archive/SHIPPED_AND_DEFERRED_2026-06.md](./archive/SHIPPED_AND_DEFERRED_2026-06.md) | Frozen checklist of shipped + deferred (Track A) |
+| [FOUNDER_WEEK2_CHECKLIST.md](./FOUNDER_WEEK2_CHECKLIST.md) | Current week ops |
+| [AGENT_HANDOFF_FULL_CONTEXT.md](./AGENT_HANDOFF_FULL_CONTEXT.md) | Agent handoff (infra, migrations, iOS install) |
+
+**Deprecated as parallel planning docs:** [WHAT_NEXT.md](./WHAT_NEXT.md) (pointer only), [ADVISOR_REVIEW_MERGED_2026-06-03.md](./ADVISOR_REVIEW_MERGED_2026-06-03.md), [NEXT_ITEMS.md](./NEXT_ITEMS.md) — use PRODUCT_DIRECTION + archive instead.
 
 ## Shipped stages
 

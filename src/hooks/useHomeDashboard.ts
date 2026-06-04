@@ -23,6 +23,7 @@ export type HostRosterToLock = {
 
 export type HomeDashboardData = {
   rosterToLock: HostRosterToLock | null;
+  waitlistedGames: MyGameEntry[];
   needsCommitmentGames: MyGameEntry[];
   nearbyPublicGames: Activity[];
   hostSummary: {
@@ -66,8 +67,19 @@ export function useHomeDashboard(
     };
   })();
 
+  const waitlistedGames = activeGames.filter(
+    (e) =>
+      e.role === 'waitlisted' &&
+      e.activity.status === 'active' &&
+      e.activity.match_status !== 'finalized'
+  );
+
   const needsCommitmentGames = activeGames.filter(
-    (e) => userId && e.activity.regular_group_id && needsConfirmPlaying(e.activity, userId)
+    (e) =>
+      e.role !== 'waitlisted' &&
+      userId &&
+      e.activity.regular_group_id &&
+      needsConfirmPlaying(e.activity, userId)
   );
 
   const hostSummary = {
@@ -110,6 +122,7 @@ export function useHomeDashboard(
 
   return {
     rosterToLock,
+    waitlistedGames,
     needsCommitmentGames,
     nearbyPublicGames,
     hostSummary,

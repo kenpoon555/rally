@@ -19,6 +19,23 @@ type ActivityRow = Activity & {
   user?: { id: string; username?: string } | null;
 };
 
+export const getReviewsByReviewerForActivity = async (
+  activityId: string,
+  reviewerId: string
+): Promise<{ reviewed_id: string }[]> => {
+  const { data, error } = await supabase
+    .from('player_reviews')
+    .select('reviewed_id')
+    .eq('activity_id', activityId)
+    .eq('reviewer_id', reviewerId);
+
+  if (error) {
+    return [];
+  }
+
+  return (data || []) as { reviewed_id: string }[];
+};
+
 export const submitPlayerReview = async (payload: {
   activity_id: string;
   reviewer_id: string;

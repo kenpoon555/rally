@@ -13,6 +13,7 @@ type Props = {
   onFocusActivity: (activityId: string) => void;
   onJoin: (activity: Activity) => void;
   onConfirmIn: (activity: Activity) => void;
+  onUndoImIn: (activity: Activity) => void;
   onLockRoster: (activity: Activity) => void;
   onOpenDetails: (activity: Activity) => void;
 };
@@ -25,6 +26,7 @@ export const CrewChatSessionList: React.FC<Props> = ({
   onFocusActivity,
   onJoin,
   onConfirmIn,
+  onUndoImIn,
   onLockRoster,
   onOpenDetails,
 }) => {
@@ -43,10 +45,10 @@ export const CrewChatSessionList: React.FC<Props> = ({
       return null;
     }
     const isHost = activity.user_id === userId;
-    const myJoin = activity.join_requests?.find(
-      (jr) => jr.user_id === userId && jr.status === 'approved'
-    );
-    const isOnRoster = isHost || Boolean(myJoin);
+    const myJoin = activity.join_requests?.find((jr) => jr.user_id === userId);
+    const isWaitlisted = myJoin?.status === 'waitlisted';
+    const isOnRoster = isHost || myJoin?.status === 'approved';
+    const isFull = (activity.missing_players ?? 0) <= 0 && !isOnRoster && !isHost;
     const isReady = isHost || Boolean(myJoin?.ready_at);
     const isFinalized = activity.match_status === 'finalized';
     const isCurrent = session.activity_id === focusedActivityId || session.is_current;
@@ -66,9 +68,12 @@ export const CrewChatSessionList: React.FC<Props> = ({
         isOnRoster={isOnRoster}
         isReady={isReady}
         isFinalized={isFinalized}
+        isWaitlisted={isWaitlisted}
+        isFull={isFull}
         busy={busyActivityId === activity.id}
         onJoin={() => onJoin(activity)}
         onConfirmIn={() => onConfirmIn(activity)}
+        onUndoImIn={() => onUndoImIn(activity)}
         onLockRoster={() => onLockRoster(activity)}
         onOpenDetails={() => {
           onFocusActivity(activity.id);

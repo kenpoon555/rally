@@ -60,6 +60,7 @@ import {
   canHostScheduleNextGame,
   countReadyParticipants,
   getParticipantReadyState,
+  isGameChatReadOnly,
 } from '../../utils/activityHelpers';
 import { isActivityListingActive, isReviewWindowOpen, gameEndMs } from '../../utils/activityExpiry';
 import { ActivityCandidateLocation, JoinRequest } from '../../types/activity';
@@ -69,8 +70,10 @@ import {
   ensureActivityGroupConversation,
 } from '../../services/chatService';
 import {
+  getReviewsByReviewerForActivity,
   submitPlayerReview,
 } from '../../services/reviewService';
+import { activityListingHeadline, playIntentLabel } from '../../constants/playIntent';
 import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
 import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
@@ -114,6 +117,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [reviewComment, setReviewComment] = useState('');
   const [reviewTargetUserId, setReviewTargetUserId] = useState<string | null>(null);
   const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewedTargetIds, setReviewedTargetIds] = useState<Set<string>>(new Set());
   const [profilePlayer, setProfilePlayer] = useState<PlayerProfilePreview | null>(null);
   const [extendPickerVisible, setExtendPickerVisible] = useState(false);
   const [extendStartTime, setExtendStartTime] = useState(() => new Date());
@@ -159,35 +163,79 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     [activity]
   );
 
-  /** Reviews belong after a game ends — hide the panel for upcoming / in-progress listings. */
-  const showReviewSection = useMemo(() => {
-    if (!activity) {
-      return false;
+  useEffect(() => {
+    if (!activity?.id || !user?.id) {
+      setReviewedTargetIds(new Set());
+      return;
     }
-    if (canShowReviewForm) {
-      return true;
+    getReviewsByReviewerForActivity(activity.id, user.id).then((rows) => {
+      setReviewedTargetIds(new Set(rows.map((row) => row.reviewed_id)));
+    });
+  }, [activity?.id, user?.id]);
+
+  const pendingReviewTargetIds = useMemo(() => {
+    if (!activity || !user) {
+      return [];
     }
-    if (activity.status === 'completed') {
-      return true;
+    if (isHost) {
+      return approvedParticipants
+        .map((p) => p.user_id)
+        .filter((id) => id !== user.id && !reviewedTargetIds.has(id));
     }
-    const listingEnded =
-      activity.status === 'cancelled' || !isActivityListingActive(activity);
-    return listingEnded && Date.now() >= gameEndMs(activity);
-  }, [activity, canShowReviewForm]);
+    if (
+      activity.user_id &&
+      activity.user_id !== user.id &&
+      !reviewedTargetIds.has(activity.user_id)
+    ) {
+      return [activity.user_id];
+    }
+    return [];
+  }, [activity, user, isHost, approvedParticipants, reviewedTargetIds]);
+
+  useEffect(() => {
+    if (!isHost || pendingReviewTargetIds.length === 0) {
+      return;
+    }
+    if (!reviewTargetUserId || !pendingReviewTargetIds.includes(reviewTargetUserId)) {
+      setReviewTargetUserId(pendingReviewTargetIds[0]);
+    }
+  }, [isHost, pendingReviewTargetIds, reviewTargetUserId]);
 
   const activeReviewTargetId = useMemo(() => {
-    if (!activity || !user) {
+    if (!activity || !user || pendingReviewTargetIds.length === 0) {
       return null;
     }
     if (isHost) {
-      const fallback = approvedParticipants[0]?.user_id || null;
-      if (reviewTargetUserId && approvedParticipants.some((p) => p.user_id === reviewTargetUserId)) {
+      if (reviewTargetUserId && pendingReviewTargetIds.includes(reviewTargetUserId)) {
         return reviewTargetUserId;
       }
-      return fallback;
+      return pendingReviewTargetIds[0];
     }
-    return activity.user_id;
-  }, [activity, user, isHost, approvedParticipants, reviewTargetUserId]);
+    return pendingReviewTargetIds[0];
+  }, [activity, user, isHost, pendingReviewTargetIds, reviewTargetUserId]);
+
+  const listingEndedForReview = useMemo(() => {
+    if (!activity) {
+      return false;
+    }
+    return (
+      activity.status === 'completed' ||
+      activity.status === 'cancelled' ||
+      !isActivityListingActive(activity) ||
+      Date.now() >= gameEndMs(activity)
+    );
+  }, [activity]);
+
+  const showReviewForm = Boolean(
+    canShowReviewForm &&
+      pendingReviewTargetIds.length > 0 &&
+      activeReviewTargetId &&
+      user?.id !== activeReviewTargetId
+  );
+
+  const showReviewWaiting = Boolean(
+    listingEndedForReview && !canShowReviewForm && pendingReviewTargetIds.length > 0
+  );
 
   const openPlayerProfile = (
     player: { id: string; username: string; profile_photo_url?: string },
@@ -724,10 +772,17 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         overall_vibe_rating: vibe,
         comment: reviewComment.trim() || undefined,
       });
-      Alert.alert('Thanks', 'Your rating has been submitted.');
+      setReviewedTargetIds((prev) => new Set([...prev, activeReviewTargetId]));
       setReviewComment('');
-      if (isHost) {
-        setReviewTargetUserId(null);
+      setFriendliness(3);
+      setPhysicality(3);
+      setVibe(3);
+      const remaining = pendingReviewTargetIds.filter((id) => id !== activeReviewTargetId);
+      if (isHost && remaining.length > 0) {
+        setReviewTargetUserId(remaining[0]);
+        Alert.alert('Thanks', 'Rating saved. You can rate another player below.');
+      } else {
+        Alert.alert('Thanks', 'Your rating has been submitted.');
       }
     } catch (error: any) {
       Alert.alert('Rating failed', error?.message || 'Could not submit rating.');
@@ -752,44 +807,62 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleSetReady = async () => {
-    if (!activity || iAmReady) {
+  const applyReady = async (ready: boolean) => {
+    if (!activity) {
       return;
     }
     setSettingReady(true);
     try {
-      await setGameReady(activity.id, true);
+      await setGameReady(activity.id, ready);
       await refetch();
     } catch (error: any) {
-      Alert.alert('Ready failed', error?.message || 'Could not mark ready.');
+      Alert.alert('Ready failed', error?.message || 'Could not update commitment.');
     } finally {
       setSettingReady(false);
     }
+  };
+
+  const handleSetReady = () => {
+    if (!activity || iAmReady) {
+      return;
+    }
+    void applyReady(true);
+  };
+
+  const handleUndoReady = () => {
+    if (!activity || !iAmReady) {
+      return;
+    }
+    void applyReady(false);
   };
 
   const handleLeaveGame = () => {
     if (!activity || isHost || isFinalized) {
       return;
     }
-    Alert.alert('Leave this game?', 'You will be removed from the roster and game chat.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Leave',
-        style: 'destructive',
-        onPress: async () => {
-          setLeaving(true);
-          try {
-            await leaveGame(activity.id);
-            Alert.alert('Left game', 'You are no longer on this roster.');
-            navigation.goBack();
-          } catch (error: any) {
-            Alert.alert('Could not leave', error?.message || 'Try again.');
-          } finally {
-            setLeaving(false);
-          }
+    Alert.alert(
+      PRODUCT_COPY.leaveBeforeLockTitle,
+      iAmReady ? PRODUCT_COPY.leaveBeforeLockCommittedBody : PRODUCT_COPY.leaveBeforeLockBody,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: async () => {
+            setLeaving(true);
+            try {
+              await leaveGame(activity.id);
+              Alert.alert('Left game', 'You are no longer on this roster.');
+              navigation.goBack();
+            } catch (error: any) {
+              Alert.alert('Could not leave', error?.message || 'Try again.');
+            } finally {
+              setLeaving(false);
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const handleOpenGroupChat = async () => {
@@ -874,6 +947,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return `${count} player${count === 1 ? '' : 's'}`;
   })();
   const showChat = canOpenActivityChat(activity, user?.id) || isGroupMember;
+  const chatArchived = isGameChatReadOnly(activity);
+  const wasOnGame =
+    isHost || isApprovedJoiner || Boolean(myJoinRequest) || user?.id === activity.user_id;
   const canScheduleNext = Boolean(isHost && canHostScheduleNextGame(activity, true));
   const listingActive = isActivityListingActive(activity);
   const expiresLabel = activity.expires_at
@@ -894,6 +970,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.statusBadgeText}>{activity.match_status || 'open'}</Text>
           </View>
         </View>
+        {!activity.regular_group_id ? (
+          <>
+            <Text style={styles.heroListingTitle}>
+              {activityListingHeadline(activity)}
+            </Text>
+            {playIntentLabel(activity.play_intent) ? (
+              <Text style={styles.heroIntent}>{playIntentLabel(activity.play_intent)}</Text>
+            ) : null}
+          </>
+        ) : null}
         <Text style={styles.heroTime}>{timeLabel}</Text>
         <Text style={styles.heroLocation}>{activity.location?.name || 'Court TBD'}</Text>
         {activity.location_id && (isHost || isApprovedJoiner) ? (
@@ -986,7 +1072,21 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {listingActive ? 'Listing open until' : 'Listing ended'}: {expiresLabel}
           </Text>
         ) : null}
-        {showChat && !fromGameRoom ? (
+        {chatArchived && wasOnGame && !activity.regular_group_id ? (
+          <>
+            <Text style={styles.gameRoomHint}>{PRODUCT_COPY.archivedRoomHint}</Text>
+            <TouchableOpacity
+              style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
+              onPress={handleOpenGroupChat}
+              disabled={openingChat}
+            >
+              <Text style={styles.utilityButtonText}>
+                {openingChat ? 'Opening…' : PRODUCT_COPY.viewArchivedChat}
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+        {showChat && !chatArchived && !fromGameRoom ? (
           <TouchableOpacity
             style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
             onPress={handleOpenGroupChat}
@@ -1002,7 +1102,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         ) : null}
         {showChat && fromGameRoom ? (
-          <Text style={styles.gameRoomHint}>Use back to return to the Game Room chat.</Text>
+          <Text style={styles.gameRoomHint}>Swipe down or tap back to return to the game room.</Text>
         ) : null}
         {canScheduleNext ? (
           <>
@@ -1179,7 +1279,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         onAction={handleCreateRegularGroup}
       />
 
-      {showReviewSection && canShowReviewForm && activeReviewTargetId && user?.id !== activeReviewTargetId ? (
+      {showReviewForm ? (
         <PlayerReviewForm
           subtitle={
             isHost
@@ -1189,7 +1289,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           players={
             isHost
               ? approvedParticipants
-                  .filter((participant) => participant.user_id !== user?.id)
+                  .filter((participant) =>
+                    pendingReviewTargetIds.includes(participant.user_id)
+                  )
                   .map((participant) => ({
                     userId: participant.user_id,
                     username: participant.user?.username || 'Player',
@@ -1213,7 +1315,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         />
       ) : null}
 
-      {showReviewSection && !canShowReviewForm && activity.status === 'completed' ? (
+      {showReviewWaiting ? (
         <View style={styles.reviewPanel}>
           <Text style={styles.sectionTitle}>Rate Players</Text>
           <Text style={styles.reviewMeta}>
@@ -1287,19 +1389,35 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       {!isHost && isApprovedJoiner && !isFinalized && !showChat ? (
         <View style={styles.ctaRow}>
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              styles.ctaRowButton,
-              (iAmReady || settingReady) && styles.utilityButtonDisabled,
-            ]}
-            onPress={handleSetReady}
-            disabled={iAmReady || settingReady}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {iAmReady ? "You're in ✓" : settingReady ? 'Saving...' : "I'm in"}
-            </Text>
-          </TouchableOpacity>
+          {iAmReady ? (
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                styles.ctaRowButton,
+                settingReady && styles.utilityButtonDisabled,
+              ]}
+              onPress={handleUndoReady}
+              disabled={settingReady}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {settingReady ? 'Saving...' : PRODUCT_COPY.undoImIn}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                styles.ctaRowButton,
+                settingReady && styles.utilityButtonDisabled,
+              ]}
+              onPress={handleSetReady}
+              disabled={settingReady}
+            >
+              <Text style={styles.secondaryButtonText}>
+                {settingReady ? 'Saving...' : PRODUCT_COPY.imIn}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={[styles.leaveButton, styles.ctaRowButton, leaving && styles.utilityButtonDisabled]}
             onPress={handleLeaveGame}
@@ -1311,7 +1429,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       ) : null}
 
       {isApprovedJoiner && !isHost && isFinalized && (
-        <Text style={styles.inGameText}>You're in this game (finalized)</Text>
+        <Text style={styles.inGameText}>{PRODUCT_COPY.afterLockCantLeave}</Text>
       )}
 
       {!isHost && activity.scheduling_mode === 'flex' && (
@@ -1535,6 +1653,19 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     color: colors.text,
+  },
+  heroListingTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginTop: spacing.sm,
+    lineHeight: 24,
+  },
+  heroIntent: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primaryDark,
+    marginTop: spacing.xs,
   },
   statusBadge: {
     backgroundColor: colors.primaryLight,

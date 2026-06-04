@@ -37,6 +37,7 @@ import { getUserFriends } from '../../services/friendsService';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { DiscoverEmptyState } from '../../components/discover/DiscoverEmptyState';
+import { SportBadge } from '../../components/SportBadge';
 import { BETA_REGION } from '../../constants/betaRegion';
 
 function runRawLocationTest() {
@@ -92,8 +93,8 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   }, [routeSportFilter]);
 
-  const discoverTitle = `Discover ${selectedSport}`;
-  const discoverSubtitle = `Near ${BETA_REGION.name} · Tonight · open games you can join`;
+  const discoverTitle = `Play · ${selectedSport}`;
+  const discoverSubtitle = `Near ${BETA_REGION.name} · Tonight · browse timing, spots & who's in`;
 
   const handleSportFilter = useCallback(
     async (sport: string) => {
@@ -214,16 +215,6 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
-  const handleJoinNearest = () => {
-    if (visibleActivities.length > 0) {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-        activityId: visibleActivities[0].id,
-      } as never);
-      return;
-    }
-    openCreateGame();
-  };
-
   const locationSetupMessage = locationLoading
     ? 'Finding your location…'
     : hasPermission && locationError
@@ -244,12 +235,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
       <View style={styles.header}>
         <ScreenHeader title={discoverTitle} subtitle={discoverSubtitle} />
         <View style={styles.actionRow}>
-          <Button
-            title="Host a Game"
-            size="sm"
-            onPress={openCreateGame}
-          />
-          <Button title="Join nearest" variant="accent" size="sm" onPress={handleJoinNearest} />
+          <Button title="Host a Game" size="sm" onPress={openCreateGame} />
         </View>
         <Text style={styles.preferenceHint}>
           Default sport: {defaultSport} • {user?.default_duration || 60} min •{' '}
@@ -298,19 +284,14 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           {sports.map((sport) => {
             const selected = selectedSport === sport.name;
-            const label = getSportMetadata(sport.name)?.shortLabel ?? sport.name;
             return (
-              <TouchableOpacity
+              <SportBadge
                 key={sport.id}
-                style={[styles.filterChip, selected && styles.filterChipSelected]}
+                sport={sport.name}
+                variant="filter"
+                selected={selected}
                 onPress={() => void handleSportFilter(sport.name)}
-              >
-                <Text
-                  style={[styles.filterChipText, selected && styles.filterChipTextSelected]}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
+              />
             );
           })}
         </ScrollView>

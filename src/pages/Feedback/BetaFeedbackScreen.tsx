@@ -1,0 +1,138 @@
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { PRODUCT_COPY } from '../../constants/productCopy';
+import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
+import { submitProductFeedback } from '../../services/feedbackService';
+import { Button } from '../../components/ui';
+import { colors, spacing, typography } from '../../constants/theme';
+
+type MainStackParamList = {
+  BetaFeedback: { screen?: string; activityId?: string } | undefined;
+};
+
+type Props = NativeStackScreenProps<MainStackParamList, 'BetaFeedback'>;
+
+const BetaFeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleSubmit = async () => {
+    const trimmed = body.trim();
+    if (!trimmed) {
+      Alert.alert('Add a note', 'Write at least a few words so we can act on it.');
+      return;
+    }
+    setSending(true);
+    try {
+      await submitProductFeedback(trimmed, route.params?.screen ?? 'BetaFeedback', route.params?.activityId);
+      Alert.alert(PRODUCT_COPY.feedbackThanks, undefined, [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch (e: unknown) {
+      Alert.alert('Could not send', e instanceof Error ? e.message : 'Try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.title}>{PRODUCT_COPY.feedbackTitle}</Text>
+        <Text style={styles.hint}>{PRODUCT_COPY.feedbackHint}</Text>
+        <View style={styles.founderBox}>
+          <Text style={styles.founderTitle}>Founding Member benefits</Text>
+          <Text style={styles.founderBody}>{FOUNDER_BENEFITS_COPY}</Text>
+        </View>
+        <TextInput
+          style={styles.input}
+          value={body}
+          onChangeText={setBody}
+          placeholder={PRODUCT_COPY.feedbackPlaceholder}
+          placeholderTextColor={colors.textSecondary}
+          multiline
+          textAlignVertical="top"
+          maxLength={4000}
+          editable={!sending}
+        />
+        <Text style={styles.counter}>{body.length}/4000</Text>
+        <Button
+          title={sending ? 'Sending…' : PRODUCT_COPY.feedbackSubmit}
+          onPress={() => void handleSubmit()}
+          disabled={sending}
+          loading={sending}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+};
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
+  content: {
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  title: { ...typography.h2, color: colors.text, marginBottom: spacing.sm },
+  hint: {
+    ...typography.body,
+    color: colors.textSecondary,
+    lineHeight: 22,
+    marginBottom: spacing.md,
+  },
+  founderBox: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+  },
+  founderTitle: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  founderBody: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  input: {
+    minHeight: 160,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: spacing.md,
+    fontSize: 16,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  counter: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    textAlign: 'right',
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+  },
+});
+
+export default BetaFeedbackScreen;

@@ -178,9 +178,11 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : (
           activities.slice(0, 8).map((activity) => {
             const isActivityHost = activity.user_id === user?.id;
-            const myJoin = activity.join_requests?.find(
-              (jr) => jr.user_id === user?.id && jr.status === 'approved'
-            );
+            const myJoin = activity.join_requests?.find((jr) => jr.user_id === user?.id);
+            const isWaitlisted = myJoin?.status === 'waitlisted';
+            const isOnRosterApproved = isActivityHost || myJoin?.status === 'approved';
+            const isFull =
+              (activity.missing_players ?? 0) <= 0 && !isOnRosterApproved && !isActivityHost;
             const endMs =
               new Date(activity.start_time).getTime() + (activity.duration ?? 60) * 60 * 1000;
             const showActions =
@@ -194,9 +196,11 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
                 isCurrent={activity.id === currentActivity?.id}
                 showActions={showActions}
                 isHost={isActivityHost}
-                isOnRoster={isActivityHost || Boolean(myJoin)}
-                isReady={isActivityHost || Boolean(myJoin?.ready_at)}
+                isOnRoster={isOnRosterApproved}
+                isReady={isActivityHost || Boolean(myJoin?.ready_at && myJoin.status === 'approved')}
                 isFinalized={activity.match_status === 'finalized'}
+                isWaitlisted={isWaitlisted}
+                isFull={isFull}
                 busy={busyActivityId === activity.id}
                 onJoin={async () => {
                   setBusyActivityId(activity.id);
@@ -223,6 +227,22 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
                   } finally {
                     setBusyActivityId(null);
                   }
+                }}
+                onUndoImIn={() => {
+                  setBusyActivityId(activity.id);
+                  void (async () => {
+                    try {
+                      await setGameReady(activity.id, false);
+                      await load();
+                    } catch (e: unknown) {
+                      Alert.alert(
+                        "Couldn't save",
+                        e instanceof Error ? e.message : 'Try again.'
+                      );
+                    } finally {
+                      setBusyActivityId(null);
+                    }
+                  })();
                 }}
                 onLockRoster={async () => {
                   setBusyActivityId(activity.id);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '../../constants/theme';
 
 type Props = {
@@ -9,8 +10,10 @@ type Props = {
 };
 
 export function ScreenHeader({ title, subtitle, style }: Props) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={[styles.wrap, style]}>
+    <View style={[styles.wrap, { paddingTop: insets.top + spacing.sm }, style]}>
       <Text style={styles.title}>{title}</Text>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
@@ -20,7 +23,6 @@ export function ScreenHeader({ title, subtitle, style }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
     paddingBottom: spacing.sm,
     backgroundColor: colors.surface,
   },

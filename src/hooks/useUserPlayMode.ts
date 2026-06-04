@@ -46,7 +46,9 @@ export function useUserPlayMode(userId?: string): UserPlayModeResult {
   }, [loadGroups]);
 
   const nextGame = useMemo(() => {
-    const withStart = games.active.filter((entry) => entry.activity.start_time);
+    const withStart = games.active.filter(
+      (entry) => entry.role !== 'waitlisted' && entry.activity.start_time
+    );
     if (withStart.length === 0) {
       return games.active[0] ?? null;
     }

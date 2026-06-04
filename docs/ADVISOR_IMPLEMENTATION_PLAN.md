@@ -341,16 +341,24 @@ Quick map from wireframes → phase. Full acceptance in advisor doc §6 checklis
 
 ---
 
-## Advisor §9 build order (aligned to phases)
+## Advisor build order
 
-| Advisor step | Our phases | Covers |
+### §9 original (June 2) — engineering status
+
+| Advisor step | Our phases | Status |
 |--------------|------------|--------|
-| Step 1 Stabilize | **1** | B9, QA, LEGACY, EAS |
-| Step 2 Validate crew pivot | **2** (QA only) | B4, B7, §8.4–8.7 |
-| Step 3 Fix semantics | **0 + 3** | A1–A6 copy/build, B5–B6, C1/ANN-01 |
-| Step 4 Dynamic Home | **4** | B2–B3, C6–C8, §6.1–6.3 |
-| Step 5 Attendance/reliability | **3–4** | A5, C3–C5, POST-01 |
-| Step 6 Mini tournaments | **5** | TOUR-01 (G delay otherwise) |
+| Step 1 Stabilize | **1** | **Now** — QA, EAS, runtime |
+| Step 2 Validate crew pivot | **2** QA | **Now** — §8.4–8.7 |
+| Step 3 Fix semantics | **0** | **Done** ✅ Track A |
+| Step 4 Dynamic Home | **4** | **Done** ✅ |
+| Step 5 Attendance/reliability | **2–4** | **Done** ✅ |
+| Step 6 Mini tournaments | **5** | Skeleton only — after replay gate |
+
+### Updated sequence (June 3 review) — **current focus**
+
+See [ADVISOR_REVIEW_MERGED_2026-06-03.md](./ADVISOR_REVIEW_MERGED_2026-06-03.md) §1–4.
+
+Stabilize runtime → Validate Public + Rally (2 devices) → Data invariants → Polish Home → Confirm attendance → Query replay % → Guests vs LA hosts.
 
 ---
 
