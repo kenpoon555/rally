@@ -82,10 +82,14 @@ Future workflow: merge or push to **`preview`** → CI runs → EAS build starts
 **Recommended git flow**
 
 ```text
-feature/my-change  →  PR into main     (CI must pass)
-main               →  PR into preview  (CI must pass)
-merge preview      →  auto deploy      (install from Expo)
+dev                →  PR into preview      (CI must pass)
+merge preview      →  auto preview EAS     (internal testers)
+preview            →  PR into main         (CI must pass)
+main               →  PR into production   (CI must pass)
+merge production   →  auto production EAS  (store-ready builds; submit manual)
 ```
+
+Production pipeline: [github-actions-production.md](./github-actions-production.md).
 
 You do **not** need unit tests for every screen. Add tests for **logic that broke before** (sport config, distance filter, parsers). Device flows (login, map, push) stay **manual smoke** on the preview build.
 

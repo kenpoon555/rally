@@ -29,9 +29,11 @@
 ## 2. Git branches and deploy flow
 
 ```text
-feature work  →  PR into main     (CI: test + lint only)
-main          →  PR into preview  (CI + optional merge)
-merge/push preview  →  deploy-preview.yml  →  EAS preview Android + iOS
+dev               →  PR into preview       (CI)
+merge/push preview   →  deploy-preview.yml   →  EAS preview Android + iOS
+preview           →  PR into main          (CI)
+main              →  PR into production    (CI)
+merge/push production  →  deploy-production.yml  →  EAS production builds (submit manual)
 ```
 
 | Branch | Role |
@@ -39,6 +41,7 @@ merge/push preview  →  deploy-preview.yml  →  EAS preview Android + iOS
 | `dev` | Active feature branch (user’s day-to-day) |
 | `preview` | Triggers EAS preview builds when updated |
 | `main` | Stable; CI on push, no auto EAS deploy |
+| `production` | Triggers EAS production builds when updated; see [github-actions-production.md](./github-actions-production.md) |
 
 **At handoff time (verify with `git status` / `gh pr list`):**
 
