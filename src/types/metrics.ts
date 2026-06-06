@@ -17,7 +17,11 @@ export type ProductEventName =
   | 'friend_connection_made'
   | 'regular_group_created'
   | 'crew_invite_redeemed'
-  | 'crew_replayed';
+  | 'crew_replayed'
+  | 'poll_created'
+  | 'poll_voted'
+  | 'rotation_generated'
+  | 'recap_shared';
 
 export interface RateLimitResult {
   allowed: boolean;

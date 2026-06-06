@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  Linking,
+  Alert,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
@@ -22,9 +22,10 @@ import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
-import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata } from '../../constants/sports';
+import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata, sortSportsForPlayTab } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
 import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
+import { PLAY_PARTNER_SURFACES_ENABLED } from '../../constants/betaFlags';
 import { getCurrentLocation } from '../../services/locationService';
 import { colors, PRIMARY_COLOR, radius, spacing, typography } from '../../constants/theme';
 import { Button, ScreenHeader } from '../../components/ui';
@@ -37,8 +38,28 @@ import { getUserFriends } from '../../services/friendsService';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { DiscoverEmptyState } from '../../components/discover/DiscoverEmptyState';
-import { SportBadge } from '../../components/SportBadge';
+import { DiscoverErrorState } from '../../components/discover/DiscoverErrorState';
+import { DiscoverSportFilters } from '../../components/discover/DiscoverSportFilters';
+import { toUserErrorMessage } from '../../utils/errorMessages';
 import { BETA_REGION } from '../../constants/betaRegion';
+import { NeedPlayerPostCard } from '../../components/NeedPlayerPostCard';
+import {
+  listNeedPlayerPosts,
+  NEED_PLAYERS_SPORTS,
+  requestNeedPlayerSpot,
+} from '../../services/needPlayersService';
+import { NeedPlayerPost } from '../../types/needPlayer';
+import { PRODUCT_COPY } from '../../constants/productCopy';
+import { SportType } from '../../constants/sports';
+import { FreeAgentPostCard } from '../../components/FreeAgentPostCard';
+import {
+  FREE_AGENT_SPORTS,
+  listFreeAgentPosts,
+} from '../../services/freeAgentService';
+import { FreeAgentPost } from '../../types/freeAgent';
+import { CoachesCarousel } from '../../components/CoachesCarousel';
+import { listCoachListings, listIntroSessions } from '../../services/partnerService';
+import { CoachListing, IntroSession } from '../../types/sportTemplate';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -55,8 +76,17 @@ function runRawLocationTest() {
     });
 }
 
+type DiscoverMode = 'games' | 'free_agents';
+type RouteDiscoverMode = DiscoverMode | 'need_players';
+
 type TabParamList = {
-  Home: { sportFilter?: string; highlightOpenSpots?: boolean } | undefined;
+  Home:
+    | {
+        sportFilter?: string;
+        highlightOpenSpots?: boolean;
+        discoverMode?: RouteDiscoverMode;
+      }
+    | undefined;
   Chats: undefined;
   MyGames: undefined;
   Friends: undefined;
@@ -70,31 +100,56 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const locState = useLocation(false, { skipPermissionCheckOnMount: Platform.OS === 'android' });
   const location = locState?.location ?? null;
   const fetchLocation = locState?.fetchLocation ?? (async () => {});
-  const hasPermission = locState?.hasPermission ?? false;
-  const locationError = locState?.error;
-  const locationLoading = locState?.loading ?? false;
   const { sports } = useSportsCatalog();
-  const defaultSport = resolveUserDefaultSport(user?.preferred_sports?.[0]);
-  const showSportFilters = sports.length > 1;
-  const [selectedSport, setSelectedSport] = useState(defaultSport);
-  const effectiveSportFilter = selectedSport;
-
   const preferredSport = user?.preferred_sports?.[0];
+  const [selectedSport, setSelectedSport] = useState(() => resolveUserDefaultSport(preferredSport));
+  const effectiveSportFilter = selectedSport;
+  const playTabSports = useMemo(
+    () => sortSportsForPlayTab(sports, preferredSport),
+    [sports, preferredSport]
+  );
+
   useEffect(() => {
     setSelectedSport(resolveUserDefaultSport(preferredSport));
   }, [preferredSport]);
 
   // "Find players" from a Game Room deep-links here with a sport + open-spots intent.
   const routeSportFilter = route.params?.sportFilter;
+  const routeDiscoverMode = route.params?.discoverMode;
   const highlightOpenSpots = route.params?.highlightOpenSpots ?? false;
+  const [discoverMode, setDiscoverMode] = useState<DiscoverMode>(() => {
+    if (routeDiscoverMode === 'free_agents') {
+      return 'free_agents';
+    }
+    return 'games';
+  });
+  const [needPosts, setNeedPosts] = useState<NeedPlayerPost[]>([]);
+  const [needLoading, setNeedLoading] = useState(false);
+  const [needError, setNeedError] = useState<string | null>(null);
+  const [requestingPostId, setRequestingPostId] = useState<string | null>(null);
+  const [freeAgentPosts, setFreeAgentPosts] = useState<FreeAgentPost[]>([]);
+  const [freeAgentLoading, setFreeAgentLoading] = useState(false);
+  const [freeAgentError, setFreeAgentError] = useState<string | null>(null);
+  const [coaches, setCoaches] = useState<CoachListing[]>([]);
+  const [introSessions, setIntroSessions] = useState<IntroSession[]>([]);
+  const [partnerOnly, setPartnerOnly] = useState(false);
   useEffect(() => {
     if (routeSportFilter) {
       setSelectedSport(resolveUserDefaultSport(routeSportFilter));
     }
   }, [routeSportFilter]);
+  useEffect(() => {
+    if (routeDiscoverMode === 'free_agents') {
+      setDiscoverMode('free_agents');
+    } else {
+      setDiscoverMode('games');
+    }
+  }, [routeDiscoverMode]);
 
-  const discoverTitle = `Play · ${selectedSport}`;
-  const discoverSubtitle = `Near ${BETA_REGION.name} · Tonight · browse timing, spots & who's in`;
+  const discoverSubtitle =
+    discoverMode === 'free_agents'
+      ? PRODUCT_COPY.playPlayersHint
+      : PRODUCT_COPY.playGamesHint;
 
   const handleSportFilter = useCallback(
     async (sport: string) => {
@@ -114,14 +169,50 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     [user, refreshUser]
   );
 
+  const loadNeedPosts = useCallback(async () => {
+    setNeedLoading(true);
+    setNeedError(null);
+    try {
+      const sportFilter = NEED_PLAYERS_SPORTS.includes(effectiveSportFilter as SportType)
+        ? effectiveSportFilter
+        : null;
+      const posts = await listNeedPlayerPosts(sportFilter);
+      setNeedPosts(posts);
+    } catch (error: unknown) {
+      setNeedError(error instanceof Error ? error.message : 'Could not load posts');
+      setNeedPosts([]);
+    } finally {
+      setNeedLoading(false);
+    }
+  }, [effectiveSportFilter]);
+
+  const loadFreeAgentPosts = useCallback(async () => {
+    setFreeAgentLoading(true);
+    setFreeAgentError(null);
+    try {
+      const sportFilter = FREE_AGENT_SPORTS.includes(effectiveSportFilter as SportType)
+        ? effectiveSportFilter
+        : null;
+      setFreeAgentPosts(await listFreeAgentPosts(sportFilter));
+    } catch (error: unknown) {
+      setFreeAgentError(error instanceof Error ? error.message : 'Could not load free agents');
+      setFreeAgentPosts([]);
+    } finally {
+      setFreeAgentLoading(false);
+    }
+  }, [effectiveSportFilter]);
+
+  const discoverLocation = location ?? BETA_REGION.center;
+
   const { activities, loading, error: discoverError, refetch } = useActivities(
-    location || undefined,
+    discoverLocation,
     effectiveSportFilter
   );
 
   const sortedActivities = useMemo(
-    () => sortDiscoverFeedActivities(activities, location, friendIds, { highlightOpenSpots }),
-    [activities, location, friendIds, highlightOpenSpots]
+    () =>
+      sortDiscoverFeedActivities(activities, discoverLocation, friendIds, { highlightOpenSpots }),
+    [activities, discoverLocation, friendIds, highlightOpenSpots]
   );
   const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -129,11 +220,38 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
   const [crewForEmpty, setCrewForEmpty] = useState<RegularGroup | null>(null);
 
+  const loadPartnersContent = useCallback(async () => {
+    if (!PLAY_PARTNER_SURFACES_ENABLED) {
+      setCoaches([]);
+      setIntroSessions([]);
+      return;
+    }
+    try {
+      const sportFilter = effectiveSportFilter;
+      const [coachRows, introRows] = await Promise.all([
+        listCoachListings(sportFilter),
+        listIntroSessions(sportFilter),
+      ]);
+      setCoaches(coachRows);
+      setIntroSessions(introRows);
+    } catch {
+      setCoaches([]);
+      setIntroSessions([]);
+    }
+  }, [effectiveSportFilter]);
+
+  const recruitingActivityIds = useMemo(
+    () => new Set(needPosts.map((post) => post.activity_id)),
+    [needPosts]
+  );
+
   const visibleActivities = useMemo(() => {
     return sortedActivities
       .filter((a) => !blockedUserIds.has(a.user_id))
-      .filter((a) => shouldShowInDiscoverFeed(a, user?.id));
-  }, [sortedActivities, blockedUserIds, user?.id]);
+      .filter((a) => shouldShowInDiscoverFeed(a, user?.id))
+      .filter((a) => !partnerOnly || Boolean(a.location?.partner_tier))
+      .filter((a) => !recruitingActivityIds.has(a.id));
+  }, [sortedActivities, blockedUserIds, user?.id, partnerOnly, recruitingActivityIds]);
 
   const showInitialLoading = loading && visibleActivities.length === 0;
 
@@ -153,6 +271,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const sportLabel = getSportMetadata(selectedSport)?.shortLabel ?? selectedSport;
+  const discoverErrorMessage = discoverError
+    ? toUserErrorMessage(discoverError, 'Unable to load nearby games right now.')
+    : null;
 
   useEffect(() => {
     if (!user?.id) {
@@ -192,7 +313,15 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         return;
       }
       refetch();
-    }, [authLoading, refetch])
+      if (discoverMode === 'free_agents') {
+        void loadFreeAgentPosts();
+      } else {
+        void loadNeedPosts();
+        if (PLAY_PARTNER_SURFACES_ENABLED) {
+          void loadPartnersContent();
+        }
+      }
+    }, [authLoading, refetch, discoverMode, loadNeedPosts, loadFreeAgentPosts, loadPartnersContent])
   );
 
   const handleActivityCreated = () => {
@@ -201,7 +330,40 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const handleRefresh = async () => {
     await fetchLocation();
-    await refetch();
+    if (discoverMode === 'free_agents') {
+      await loadFreeAgentPosts();
+      return;
+    }
+    await Promise.all([
+      refetch(),
+      loadNeedPosts(),
+      ...(PLAY_PARTNER_SURFACES_ENABLED ? [loadPartnersContent()] : []),
+    ]);
+  };
+
+  const openSportLanding = () => {
+    navigation.getParent()?.navigate(ROUTES.LANDING.SPORT as never, {
+      sportSlug: selectedSport.toLowerCase(),
+    } as never);
+  };
+
+  const handleRequestSpot = async (post: NeedPlayerPost) => {
+    if (!user?.id) {
+      return;
+    }
+    setRequestingPostId(post.id);
+    try {
+      await requestNeedPlayerSpot(post.id);
+      await loadNeedPosts();
+      Alert.alert(
+        'Request sent',
+        'The host will review your request. If accepted, open the game and tap I\'m in.'
+      );
+    } catch (error: unknown) {
+      Alert.alert('Could not request', error instanceof Error ? error.message : 'Try again.');
+    } finally {
+      setRequestingPostId(null);
+    }
   };
 
   useEffect(() => {
@@ -215,15 +377,94 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
-  const locationSetupMessage = locationLoading
-    ? 'Finding your location…'
-    : hasPermission && locationError
-      ? locationError.message?.toLowerCase().includes('timed out')
-        ? 'Location timed out. Check that location services are on, then try again.'
-        : locationError.message || "We couldn't read your location. Try again."
-      : hasPermission
-        ? 'Tap below to use your current location for nearby games.'
-        : 'Enable location to see games near you.';
+  const gamesListHeader = useMemo(
+    () => (
+      <View>
+        {PLAY_PARTNER_SURFACES_ENABLED ? <CoachesCarousel coaches={coaches} /> : null}
+        {PLAY_PARTNER_SURFACES_ENABLED ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterRow}
+          >
+            <TouchableOpacity
+              style={[styles.modeChip, partnerOnly && styles.modeChipSelected]}
+              onPress={() => setPartnerOnly((v) => !v)}
+            >
+              <Text style={[styles.modeChipText, partnerOnly && styles.modeChipTextSelected]}>
+                {PRODUCT_COPY.partnerVenuesFilter}
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        ) : null}
+        {PLAY_PARTNER_SURFACES_ENABLED ? (
+          <TouchableOpacity style={styles.landingLink} onPress={openSportLanding}>
+            <Text style={styles.landingLinkText}>View {sportLabel} landing page</Text>
+          </TouchableOpacity>
+        ) : null}
+        {PLAY_PARTNER_SURFACES_ENABLED && introSessions.length > 0 ? (
+          <View style={styles.introHeader}>
+            <Text style={styles.introTitle}>{PRODUCT_COPY.introSessions}</Text>
+            {introSessions.map((session) => (
+              <TouchableOpacity
+                key={session.id}
+                style={styles.introCard}
+                onPress={() =>
+                  navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                    activityId: session.id,
+                  } as never)
+                }
+              >
+                <Text style={styles.introCardTitle}>
+                  {session.listing_title || `${session.sport_type} intro`}
+                </Text>
+                <Text style={styles.introCardMeta}>
+                  @{session.host_username} · {session.missing_players} spots
+                  {session.location_name ? ` · ${session.location_name}` : ''}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : null}
+        {needPosts.length > 0 ? (
+          <View style={styles.recruitingSection}>
+            <Text style={styles.recruitingTitle}>{PRODUCT_COPY.playRecruitingTitle}</Text>
+            <Text style={styles.recruitingHint}>{PRODUCT_COPY.playRecruitingHint}</Text>
+            {needPosts.map((post) => (
+              <NeedPlayerPostCard
+                key={post.id}
+                post={post}
+                requesting={requestingPostId === post.id}
+                onRequest={() => void handleRequestSpot(post)}
+                onPress={() =>
+                  navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                    activityId: post.activity_id,
+                  } as never)
+                }
+              />
+            ))}
+          </View>
+        ) : null}
+        {visibleActivities.length > 0 ? (
+          <Text style={styles.allGamesLabel}>All open games</Text>
+        ) : null}
+      </View>
+    ),
+    [
+      coaches,
+      partnerOnly,
+      sportLabel,
+      introSessions,
+      needPosts,
+      requestingPostId,
+      visibleActivities.length,
+      openSportLanding,
+      handleRequestSpot,
+      navigation,
+    ]
+  );
+
+  const showHostInHeader = discoverMode === 'games' && visibleActivities.length > 0;
 
   return (
     <View style={styles.container}>
@@ -232,81 +473,105 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           <DevLocationLogPanel onRawTest={runRawLocationTest} />
         </ErrorBoundary>
       )}
-      <View style={styles.header}>
-        <ScreenHeader title={discoverTitle} subtitle={discoverSubtitle} />
-        <View style={styles.actionRow}>
-          <Button title="Host a Game" size="sm" onPress={openCreateGame} />
-        </View>
-        <Text style={styles.preferenceHint}>
-          Default sport: {defaultSport} • {user?.default_duration || 60} min •{' '}
-          {user?.default_visibility || 'nearby'}
-        </Text>
-      </View>
+      <ScreenHeader
+        title="Play"
+        subtitle={discoverSubtitle}
+        showLogo
+        accentColor={colors.accent}
+        right={
+          showHostInHeader ? (
+            <Button title="Host" size="sm" onPress={openCreateGame} />
+          ) : undefined
+        }
+      />
 
-      {!location && (
-        <View style={styles.locationSetupCard}>
-          <Text style={styles.locationSetupTitle}>Location setup</Text>
-          <Text style={styles.locationSetupBody}>{locationSetupMessage}</Text>
-          {!hasPermission && !locationLoading && (
-            <View style={styles.locationButtonRow}>
-              <TouchableOpacity style={styles.retryLocationButton} onPress={() => fetchLocation()}>
-                <Text style={styles.retryLocationText}>Enable location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.settingsLocationButton}
-                onPress={() => Linking.openSettings()}
-              >
-                <Text style={styles.settingsLocationText}>Settings</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {hasPermission && !locationLoading && (
-            <TouchableOpacity style={styles.retryLocationButton} onPress={() => fetchLocation()}>
-              <Text style={styles.retryLocationText}>
-                {locationError ? 'Try again' : 'Find my location'}
+      <View style={styles.modeSegment}>
+        {(['games', 'free_agents'] as const).map((mode) => {
+          const selected = discoverMode === mode;
+          const label = mode === 'games' ? 'Games' : 'Players';
+          return (
+            <TouchableOpacity
+              key={mode}
+              style={[styles.modeChip, selected && styles.modeChipSelected]}
+              onPress={() => {
+                setDiscoverMode(mode);
+                if (mode === 'free_agents') {
+                  void loadFreeAgentPosts();
+                }
+              }}
+            >
+              <Text style={[styles.modeChipText, selected && styles.modeChipTextSelected]}>
+                {label}
               </Text>
             </TouchableOpacity>
-          )}
-        </View>
-      )}
+          );
+        })}
+      </View>
 
-      {discoverError && (
+      <DiscoverSportFilters
+        sports={playTabSports}
+        selectedSport={selectedSport}
+        onSelect={(sport) => void handleSportFilter(sport)}
+      />
+
+      {needError && discoverMode === 'games' ? (
         <View style={styles.limitBanner}>
-          <Text style={styles.limitBannerText}>{discoverError.message}</Text>
+          <Text style={styles.limitBannerText}>
+            {toUserErrorMessage(needError, 'Unable to load recruiting posts right now.')}
+          </Text>
         </View>
-      )}
+      ) : null}
 
-      {showSportFilters && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterRow}
-        >
-          {sports.map((sport) => {
-            const selected = selectedSport === sport.name;
-            return (
-              <SportBadge
-                key={sport.id}
-                sport={sport.name}
-                variant="filter"
-                selected={selected}
-                onPress={() => void handleSportFilter(sport.name)}
+      {freeAgentError && discoverMode === 'free_agents' ? (
+        <View style={styles.limitBanner}>
+          <Text style={styles.limitBannerText}>
+            {toUserErrorMessage(freeAgentError, 'Unable to load available players right now.')}
+          </Text>
+        </View>
+      ) : null}
+
+      {discoverMode === 'free_agents' ? (
+        freeAgentLoading && freeAgentPosts.length === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+            <Text style={styles.loadingText}>Loading available players…</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={freeAgentPosts}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => <FreeAgentPostCard post={item} />}
+            refreshControl={
+              <RefreshControl
+                refreshing={freeAgentLoading}
+                onRefresh={() => void loadFreeAgentPosts()}
               />
-            );
-          })}
-        </ScrollView>
-      )}
-
-      {showInitialLoading ? (
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>No free agents yet</Text>
+                <Text style={styles.emptyText}>
+                  Post your availability from Profile → Free agents.
+                </Text>
+              </View>
+            }
+          />
+        )
+      ) : showInitialLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={PRIMARY_COLOR} />
           <Text style={styles.loadingText}>Loading nearby games…</Text>
         </View>
-      ) : (
+      ) : discoverMode === 'games' ? (
         <FlatList
           data={visibleActivities}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            visibleActivities.length === 0 && styles.listContentEmpty,
+          ]}
+          ListHeaderComponent={gamesListHeader}
           renderItem={({ item }) => (
             <GameCard
               activity={item}
@@ -319,28 +584,37 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               }
             />
           )}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={handleRefresh} />}
+          refreshControl={
+            <RefreshControl refreshing={loading || needLoading} onRefresh={handleRefresh} />
+          }
           ListEmptyComponent={
-            discoverError ? (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>Could not load games</Text>
-                <Text style={styles.emptyText}>{discoverError.message}</Text>
-                <TouchableOpacity style={styles.primaryCta} onPress={() => refetch()}>
-                  <Text style={styles.primaryCtaText}>Try again</Text>
-                </TouchableOpacity>
-              </View>
+            discoverErrorMessage ? (
+              <DiscoverErrorState
+                message={discoverErrorMessage}
+                onRetry={() => void refetch()}
+                retrying={loading}
+                fill
+              />
             ) : (
               <DiscoverEmptyState
+                sport={selectedSport}
                 sportLabel={sportLabel}
                 regularGroup={crewForEmpty}
-                onCreateGame={openCreateGame}
-                onInviteFriends={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
-                onOpenChats={() => navigation.navigate(ROUTES.CHAT.TAB as never)}
+                onHostGame={openCreateGame}
+                onOpenRally={
+                  crewForEmpty
+                    ? () =>
+                        navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                          groupId: crewForEmpty.id,
+                        } as never)
+                    : undefined
+                }
+                fill
               />
             )
           }
         />
-      )}
+      ) : null}
 
       <ActivityConfirmationModal
         visible={modalVisible}
@@ -361,26 +635,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  header: {
-    paddingBottom: spacing.md,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    gap: spacing.sm,
-  },
-  preferenceHint: {
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    fontSize: 12,
-    color: colors.textTertiary,
-  },
   nearbyCourtsLink: {
     marginTop: 6,
     alignSelf: 'flex-start',
@@ -389,54 +643,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.primary,
-  },
-  locationSetupCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-    padding: spacing.md + 2,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  locationSetupTitle: {
-    ...typography.bodyMedium,
-    marginBottom: spacing.xs + 2,
-  },
-  locationSetupBody: {
-    ...typography.caption,
-    color: colors.textSecondary,
-  },
-  locationButtonRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 12,
-    gap: 8,
-  },
-  retryLocationButton: {
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: radius.sm,
-  },
-  retryLocationText: {
-    color: colors.textInverse,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  settingsLocationButton: {
-    paddingHorizontal: spacing.md + 2,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  settingsLocationText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
   },
   limitBanner: {
     marginHorizontal: spacing.md,
@@ -451,6 +657,101 @@ const styles = StyleSheet.create({
     color: '#8a5a00',
     fontSize: 14,
     lineHeight: 20,
+  },
+  modeSegment: {
+    flexDirection: 'row',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    padding: 4,
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modeChip: {
+    flex: 1,
+    alignItems: 'center',
+    borderRadius: radius.pill,
+    paddingVertical: 10,
+    backgroundColor: 'transparent',
+  },
+  modeChipSelected: {
+    backgroundColor: colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  modeChipText: {
+    ...typography.label,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  modeChipTextSelected: {
+    color: colors.primaryDark,
+  },
+  landingLink: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  landingLinkText: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  recruitingSection: {
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  recruitingTitle: {
+    ...typography.label,
+    color: colors.warning,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  recruitingHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 4,
+    marginBottom: spacing.sm,
+  },
+  allGamesLabel: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+  },
+  introHeader: {
+    marginBottom: spacing.md,
+  },
+  introTitle: {
+    ...typography.label,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+  },
+  introCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  introCardTitle: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  introCardMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 4,
   },
   filterRow: {
     flexDirection: 'row',
@@ -492,7 +793,10 @@ const styles = StyleSheet.create({
   },
   listContent: {
     flexGrow: 1,
-    paddingBottom: 16,
+    paddingBottom: spacing.lg,
+  },
+  listContentEmpty: {
+    flexGrow: 1,
   },
   emptyContainer: {
     padding: 24,

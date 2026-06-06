@@ -1,22 +1,21 @@
 # RallyApp Roadmap
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
-> **Canonical docs:** [VISION.md](./VISION.md) · [../open_items.md](../open_items.md) · **[docs/WHAT_NEXT.md](docs/WHAT_NEXT.md)** (post–Track A) · [docs/NEXT.md](docs/NEXT.md) (sprint checklist).  
-> Track A build: [IMPLEMENT_PLAN.md](docs/IMPLEMENT_PLAN.md) · [ADVISOR_IMPLEMENTATION_PLAN.md](docs/ADVISOR_IMPLEMENTATION_PLAN.md).
+> **Strategy:** [docs/vision.md](docs/vision.md) (canonical) · [open_items.md](../open_items.md) · [docs/README.md](docs/README.md)  
+> **Shipped snapshot:** [docs/archive/SHIPPED_AND_DEFERRED_2026-06.md](docs/archive/SHIPPED_AND_DEFERRED_2026-06.md)
 
-## Next focus (2026-06-02)
+## Next focus (2026-06-04)
 
-**Engineering:** Track A **shipped** — collective **QA** next. See [docs/WHAT_NEXT.md](docs/WHAT_NEXT.md).
+**Engineering:** P0 QA on preview → replay SQL → **Phase 1** per vision (poll → rotation → tourney polish).
 
-**Do not build yet:** full Teams, Leagues, payments, A7 unified public-as-Rally, **Guests (A2)** until QA + replay metric.
+**Do not build yet:** Teams, Leagues, payments, rich chat (calls/audio/stickers), public feed — see vision Phase 6 defer list.
 
-| Shipped (QA) | After QA / retention gate |
-|--------------|---------------------------|
-| Dynamic Home + host lock readiness | Phase 3 Guests (A2) |
-| Rallys copy + crew chat session cards | Discover polish (DISC-01) |
-| session_note, waitlist, attendance/reliability | Organizer Pro (Stage 4) |
-| Migrations 030–032 on preview | Teams / Leagues / payments |
+| Now (Phase 0.6) | Next (vision Phase 1) |
+|-----------------|----------------------|
+| Two-device QA, attendance UX discoverability | Availability poll (1.2) |
+| Host recruitment LA | Rotation / pairing (1.3) |
+| `production` EAS pipeline | Mini tourney polish (1.4) |
 
 ## Product Direction
 
@@ -334,7 +333,7 @@ Rate limits already protect runaway cost (`docs/stage-2-cost-metrics.md`): 300 d
 
 ## Validation Sprint Quick Start (Next 2-3 Days)
 
-**Blocked until EAS preview build is on a physical device.** When ready, follow **[docs/NEXT.md](docs/NEXT.md)** and [post-preview-testing-backlog.md](docs/post-preview-testing-backlog.md).
+**Blocked until EAS preview build is on a physical device.** When ready, follow **[docs/WHAT_NEXT.md](docs/WHAT_NEXT.md)** and [archive/post-preview-testing-backlog.md](docs/archive/post-preview-testing-backlog.md).
 
 While waiting:
 

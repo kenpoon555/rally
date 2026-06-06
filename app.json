@@ -16,7 +16,8 @@
     "ios": {
       "bundleIdentifier": "com.rallyapp",
       "supportsTablet": false,
-      "icon": "./assets/branding/icon-1024.png"
+      "icon": "./assets/branding/icon-1024.png",
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.rallyapp",

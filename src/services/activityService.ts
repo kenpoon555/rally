@@ -15,7 +15,12 @@ import { CONFIG } from '../constants/config';
 import { trackProductEvent } from './analyticsService';
 import { consumeRateLimit } from './rateLimitService';
 import { usersAreBlocked } from './safetyService';
-import { notifyHostOfJoinRequest, notifyPlayerOfJoinApproval, notifyGameFinalized } from './pushDispatchService';
+import {
+  notifyHostOfJoinRequest,
+  notifyPlayerOfJoinApproval,
+  notifyGameFinalized,
+  notifyRosterNudge,
+} from './pushDispatchService';
 import { ensureSupabaseSessionReady } from './api/ensureSupabaseSession';
 import { ensureActivityGroupConversation } from './chatService';
 import { activityHasFriend } from '../utils/activityHelpers';
@@ -43,6 +48,7 @@ export const createActivity = async (activityData: {
   session_note?: string | null;
   listing_title?: string | null;
   play_intent?: string | null;
+  is_intro_session?: boolean;
 }): Promise<Activity> => {
   const { candidate_location_ids, ...basePayload } = activityData;
   const schedulingMode = basePayload.scheduling_mode || 'fixed';
@@ -276,30 +282,39 @@ async function queryDiscoverActivities(
  * Get nearby activities
  */
 /**
- * Mark active listings past expires_at (or past start_time when expires_at unset) as completed.
+ * Mark active listings past expires_at (or past start_time when expires_at unset) as completed
+ * and auto-finalize the roster when the play window ends.
  */
 export const expireStaleActivities = async (): Promise<void> => {
   const now = new Date().toISOString();
+  const completeAndFinalize = {
+    status: 'completed' as const,
+    match_status: 'finalized' as const,
+    finalized_at: now,
+    updated_at: now,
+  };
 
   await supabase
     .from('activities')
-    .update({ status: 'completed', updated_at: now })
+    .update(completeAndFinalize)
     .eq('status', 'active')
     .not('expires_at', 'is', null)
-    .lt('expires_at', now);
+    .lt('expires_at', now)
+    .neq('match_status', 'cancelled');
 
   await supabase
     .from('activities')
-    .update({ status: 'completed', updated_at: now })
+    .update(completeAndFinalize)
     .eq('status', 'active')
     .is('expires_at', null)
-    .lt('start_time', now);
+    .lt('start_time', now)
+    .neq('match_status', 'cancelled');
 
-  // Mark completed after scheduled play window ends (enables post-game reviews).
   const { data: activeGames } = await supabase
     .from('activities')
     .select('id, start_time, duration')
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .neq('match_status', 'cancelled');
 
   if (activeGames?.length) {
     const nowMs = Date.now();
@@ -311,13 +326,19 @@ export const expireStaleActivities = async (): Promise<void> => {
     if (toComplete.length > 0) {
       await supabase
         .from('activities')
-        .update({ status: 'completed', updated_at: now })
+        .update(completeAndFinalize)
         .in(
           'id',
           toComplete.map((r) => r.id)
         );
     }
   }
+
+  await supabase
+    .from('activities')
+    .update({ match_status: 'finalized', finalized_at: now, updated_at: now })
+    .eq('status', 'completed')
+    .in('match_status', ['open', 'collecting']);
 };
 
 /**
@@ -743,30 +764,24 @@ export const createJoinRequest = async (
     throw new Error(joinLimitError.message);
   }
 
-  // Check if request already exists
-  const { data: existing } = await supabase
-    .from('join_requests')
-    .select('*')
-    .eq('activity_id', activityId)
-    .eq('user_id', userId)
-    .single();
-
-  if (existing) {
-    return existing as JoinRequest;
+  const { data: requestId, error: requestError } = await supabase.rpc('request_join_activity', {
+    p_activity_id: activityId,
+  });
+  if (requestError) {
+    throw new Error(`Failed to create join request: ${requestError.message}`);
+  }
+  if (!requestId) {
+    throw new Error('Failed to create join request.');
   }
 
   const { data, error } = await supabase
     .from('join_requests')
-    .insert({
-      activity_id: activityId,
-      user_id: userId,
-      status: 'pending',
-    })
-    .select()
+    .select('*')
+    .eq('id', requestId)
     .single();
 
-  if (error) {
-    throw new Error(`Failed to create join request: ${error.message}`);
+  if (error || !data) {
+    throw new Error(`Failed to load join request: ${error?.message ?? 'Unknown error'}`);
   }
 
   try {
@@ -972,6 +987,17 @@ export const setGameReady = async (activityId: string, ready = true): Promise<vo
   }
 };
 
+export const nudgeSessionRoster = async (activityId: string): Promise<number> => {
+  const { data, error } = await supabase.rpc('nudge_session_roster', {
+    p_activity_id: activityId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  await notifyRosterNudge(activityId);
+  return Number(data ?? 0);
+};
+
 export const leaveGame = async (activityId: string): Promise<void> => {
   const { error } = await supabase.rpc('leave_game', {
     p_activity_id: activityId,
@@ -1059,14 +1085,15 @@ export const getUserAttendanceStats = async (
 export const submitGameAttendance = async (
   activityId: string,
   attendedUserIds: string[]
-): Promise<void> => {
-  const { error } = await supabase.rpc('submit_game_attendance', {
+): Promise<string | null> => {
+  const { data, error } = await supabase.rpc('submit_game_attendance', {
     p_activity_id: activityId,
     p_attended_user_ids: attendedUserIds,
   });
   if (error) {
     throw new Error(error.message);
   }
+  return (data as string | null) ?? null;
 };
 
 export function formatReliabilityLabel(stats: UserAttendanceStats | null): string {

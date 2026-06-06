@@ -41,6 +41,30 @@ export async function updateReportStatus(
   }
 }
 
+export type AdminPlatformMetrics = {
+  generated_at: string;
+  dau_today: number;
+  dau_7d: number;
+  active_games: number;
+  games_created_7d: number;
+  joins_approved_7d: number;
+  messages_sent_7d: number;
+  chat_active_users_7d: number;
+  conversations_opened_7d: number;
+  pending_reports: number;
+  feedback_7d: number;
+  rallies_total: number;
+  users_suspended: number;
+};
+
+export async function getAdminPlatformMetrics(): Promise<AdminPlatformMetrics> {
+  const { data, error } = await supabase.rpc('admin_get_platform_metrics');
+  if (error) {
+    throw new Error(`Failed to load metrics: ${error.message}`);
+  }
+  return (data || {}) as AdminPlatformMetrics;
+}
+
 export async function setUserSuspended(userId: string, suspend: boolean): Promise<void> {
   const { error } = await supabase.rpc('admin_set_user_suspended', {
     p_user_id: userId,

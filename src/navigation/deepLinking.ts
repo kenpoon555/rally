@@ -20,6 +20,7 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
       [ROUTES.REGULAR_GROUP.CREW]: 'crew/:groupId',
       [ROUTES.ACTIVITY.DETAIL]: 'game/:activityId',
       [ROUTES.ACTIVITY.CREATE]: 'create',
+      [ROUTES.LANDING.SPORT]: 'la/:sportSlug',
     },
   },
 };
@@ -36,12 +37,17 @@ export function buildGameActivityUrl(activityId: string): string {
   return `${APP_SCHEME}://game/${activityId}`;
 }
 
+export function buildSportLandingUrl(sportSlug: string): string {
+  return `${APP_SCHEME}://la/${sportSlug.toLowerCase()}`;
+}
+
 /** Parse rallyapp://game/:id, rallyapp://invite/:token, rallyapp://auth/callback */
 export function parseAppDeepLink(url: string): {
-  type: 'auth' | 'game' | 'invite' | 'groupInvite' | 'unknown';
+  type: 'auth' | 'game' | 'invite' | 'groupInvite' | 'sportLanding' | 'unknown';
   activityId?: string;
   inviteToken?: string;
   groupInviteToken?: string;
+  sportSlug?: string;
 } {
   try {
     const normalized = url.trim();
@@ -62,6 +68,11 @@ export function parseAppDeepLink(url: string): {
     const gameMatch = normalized.match(/game\/([0-9a-f-]{36})/i);
     if (gameMatch) {
       return { type: 'game', activityId: gameMatch[1] };
+    }
+
+    const landingMatch = normalized.match(/la\/([a-z]+)/i);
+    if (landingMatch) {
+      return { type: 'sportLanding', sportSlug: landingMatch[1].toLowerCase() };
     }
 
     return { type: 'unknown' };

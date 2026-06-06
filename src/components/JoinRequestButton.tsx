@@ -92,9 +92,23 @@ const JoinRequestButton: React.FC<JoinRequestButtonProps> = ({
   }
 
   if (joinStatus === 'rejected') {
+    if (!activityHasOpenSpots(activity)) {
+      return (
+        <View style={styles.container}>
+          <Text style={styles.fullText}>Game full — check back if someone leaves</Text>
+        </View>
+      );
+    }
     return (
       <View style={styles.container}>
-        <Text style={styles.rejectedText}>Host declined your request</Text>
+        <Text style={styles.rejectedText}>Host declined — you can ask again</Text>
+        <Button
+          title="Request again"
+          onPress={handleJoin}
+          loading={loading}
+          fullWidth
+          style={styles.button}
+        />
       </View>
     );
   }

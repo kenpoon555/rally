@@ -8,27 +8,82 @@ type Props = {
   onChange: (date: Date) => void;
   visible: boolean;
   title?: string;
+  onDismiss?: () => void;
+  /** When true, open the Android picker as soon as `visible` becomes true. */
+  autoOpen?: boolean;
 };
 
+function isDismissed(event: DateTimePickerEvent | undefined): boolean {
+  return event?.type === 'dismissed';
+}
+
 /**
- * Android-safe datetime picker. Avoids re-opening the system dialog in a loop
- * by only mounting DateTimePicker while the user explicitly opens it.
+ * Cross-platform datetime picker. Android uses sequential date → time dialogs
+ * because `mode="datetime"` is iOS-only and crashes on unmount in the community picker.
  */
-export const ScheduleDateTimePicker: React.FC<Props> = ({ value, onChange, visible, title }) => {
-  const [androidDialogOpen, setAndroidDialogOpen] = useState(false);
+export const ScheduleDateTimePicker: React.FC<Props> = ({
+  value,
+  onChange,
+  visible,
+  title,
+  onDismiss,
+  autoOpen = false,
+}) => {
+  const [androidStep, setAndroidStep] = useState<'idle' | 'date' | 'time'>('idle');
+  const [draftDate, setDraftDate] = useState(value);
 
   useEffect(() => {
     if (!visible) {
-      setAndroidDialogOpen(false);
+      setAndroidStep('idle');
     }
   }, [visible]);
 
-  const handleChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setAndroidDialogOpen(false);
-      if (event.type === 'dismissed') {
-        return;
-      }
+  useEffect(() => {
+    setDraftDate(value);
+  }, [value]);
+
+  const openAndroidPicker = () => {
+    setDraftDate(new Date(value));
+    setAndroidStep('date');
+  };
+
+  useEffect(() => {
+    if (visible && autoOpen && Platform.OS === 'android' && androidStep === 'idle') {
+      openAndroidPicker();
+    }
+  }, [visible, autoOpen, androidStep]);
+
+  const handleAndroidDate = (event: DateTimePickerEvent, date?: Date) => {
+    if (isDismissed(event)) {
+      setAndroidStep('idle');
+      onDismiss?.();
+      return;
+    }
+    if (date) {
+      const next = new Date(date);
+      next.setHours(value.getHours(), value.getMinutes(), 0, 0);
+      setDraftDate(next);
+      setAndroidStep('time');
+    }
+  };
+
+  const handleAndroidTime = (event: DateTimePickerEvent, date?: Date) => {
+    setAndroidStep('idle');
+    if (isDismissed(event)) {
+      onDismiss?.();
+      return;
+    }
+    if (date) {
+      const combined = new Date(draftDate);
+      combined.setHours(date.getHours(), date.getMinutes(), 0, 0);
+      onChange(combined);
+    }
+  };
+
+  const handleIosChange = (event: DateTimePickerEvent, date?: Date) => {
+    if (isDismissed(event)) {
+      onDismiss?.();
+      return;
     }
     if (date) {
       onChange(date);
@@ -51,17 +106,29 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({ value, onChange, visib
     return (
       <View style={styles.block}>
         {title ? <Text style={styles.title}>{title}</Text> : null}
-        <Text style={styles.valueText}>{formatted}</Text>
-        <TouchableOpacity style={styles.pickBtn} onPress={() => setAndroidDialogOpen(true)}>
-          <Text style={styles.pickBtnText}>Change date & time</Text>
-        </TouchableOpacity>
-        {androidDialogOpen ? (
+        {androidStep === 'idle' ? (
+          <>
+            <Text style={styles.valueText}>{formatted}</Text>
+            <TouchableOpacity style={styles.pickBtn} onPress={openAndroidPicker}>
+              <Text style={styles.pickBtnText}>Change date & time</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+        {androidStep === 'date' ? (
           <DateTimePicker
-            value={value}
-            mode="datetime"
+            value={draftDate}
+            mode="date"
             minimumDate={new Date()}
             display="default"
-            onChange={handleChange}
+            onChange={handleAndroidDate}
+          />
+        ) : null}
+        {androidStep === 'time' ? (
+          <DateTimePicker
+            value={draftDate}
+            mode="time"
+            display="default"
+            onChange={handleAndroidTime}
           />
         ) : null}
       </View>
@@ -76,7 +143,7 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({ value, onChange, visib
         mode="datetime"
         minimumDate={new Date()}
         display="spinner"
-        onChange={handleChange}
+        onChange={handleIosChange}
       />
     </View>
   );

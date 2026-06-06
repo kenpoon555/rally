@@ -38,6 +38,8 @@ export interface Activity {
   cost_note?: string | null;
   /** Per-session announcement (A4). */
   session_note?: string | null;
+  /** Rally-hosted intro night for strangers (5.3). */
+  is_intro_session?: boolean;
   /** Host headline for Discover (Stage 1). */
   listing_title?: string | null;
   /** Stage 1 play intent chip. */

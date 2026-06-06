@@ -16,12 +16,15 @@ import {
   formatDistance,
   getDistanceToActivity,
   getApprovedParticipants,
-  activityHasFriend,
+  getActivityRosterSummary,
+  getFriendsOnActivity,
+  isTonightUrgency,
 } from '../utils/activityHelpers';
 import { colors, PRIMARY_COLOR, radius, shadows, spacing, AVATAR_PALETTE } from '../constants/theme';
 import { formatApproximateDistance } from '../utils/approximateLocation';
 import { PlayerTrustLine } from './PlayerTrustLine';
 import { activityListingHeadline, playIntentLabel } from '../constants/playIntent';
+import { PLAY_PARTNER_SURFACES_ENABLED } from '../constants/betaFlags';
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
@@ -69,32 +72,28 @@ const AvatarCircle: React.FC<{
   );
 };
 
-const AvatarRow: React.FC<{
-  participants: JoinRequest[];
-  isAnonymous: boolean;
-}> = ({ participants, isAnonymous }) => {
+type AvatarFace = { id: string; initials: string; ready?: boolean };
+
+const AvatarRow: React.FC<{ faces: AvatarFace[] }> = ({ faces }) => {
   const MAX_SHOWN = 4;
-  const shown = participants.slice(0, MAX_SHOWN);
-  const overflow = participants.length > MAX_SHOWN ? participants.length - MAX_SHOWN : 0;
+  const shown = faces.slice(0, MAX_SHOWN);
+  const overflow = faces.length > MAX_SHOWN ? faces.length - MAX_SHOWN : 0;
   const totalSlots = shown.length + (overflow > 0 ? 1 : 0);
   const rowWidth = totalSlots > 0 ? 16 * (totalSlots - 1) + 24 : 24;
 
   return (
     <View style={[styles.avatarRow, { width: rowWidth }]}>
-      {shown.map((p, i) => {
-        const initials = isAnonymous
-          ? '?'
-          : (p.user?.username ?? '?')[0].toUpperCase();
-        return <AvatarCircle key={p.id} initials={initials} index={i} />;
-      })}
-      {overflow > 0 && (
-        <AvatarCircle
-          initials=""
-          index={shown.length}
-          isOverflow
-          overflowCount={overflow}
-        />
-      )}
+      {shown.map((face, i) => (
+        <View key={face.id} style={[styles.avatarSlot, { left: i * 16 }]}>
+          <AvatarCircle initials={face.initials} index={0} />
+          {face.ready ? <View style={styles.avatarReadyDot} /> : null}
+        </View>
+      ))}
+      {overflow > 0 ? (
+        <View style={[styles.avatarSlot, { left: shown.length * 16 }]}>
+          <AvatarCircle initials="" index={0} isOverflow overflowCount={overflow} />
+        </View>
+      ) : null}
     </View>
   );
 };
@@ -161,18 +160,35 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
     userLocation ? getDistanceToActivity(activity, userLocation) : null;
 
   const approvedParticipants = getApprovedParticipants(activity);
+  const rosterSummary = getActivityRosterSummary(activity);
+  const isFinalizedForReady = status === 'finalized';
+  const avatarFaces: AvatarFace[] = [
+    {
+      id: `host-${activity.user_id}`,
+      initials: (activity.user?.username ?? 'H')[0].toUpperCase(),
+      ready: true,
+    },
+    ...approvedParticipants.map((p) => ({
+      id: p.id,
+      initials: (p.user?.username ?? '?')[0].toUpperCase(),
+      ready: isFinalizedForReady || Boolean(p.ready_at),
+    })),
+  ];
 
   const hostLabel = activity.user?.username ? `@${activity.user.username}` : 'Unknown host';
 
   const isHost = user?.id === activity.user_id;
   const canShowJoin = !isHost && !!user && !isFinalized && status !== 'cancelled';
 
-  const joinedCountLabel =
-    activity.player_count > 1
-      ? `${activity.player_count - 1} player${activity.player_count - 1 === 1 ? '' : 's'} joined`
-      : null;
-
-  const hasFriendPlaying = friendIds ? activityHasFriend(activity, friendIds) : false;
+  const friendsOnGame = friendIds ? getFriendsOnActivity(activity, friendIds) : [];
+  const friendLine =
+    friendsOnGame.length === 0
+      ? null
+      : friendsOnGame.length === 1
+        ? `@${friendsOnGame[0]} is in`
+        : friendsOnGame.length === 2
+          ? `@${friendsOnGame[0]} & @${friendsOnGame[1]} are in`
+          : `@${friendsOnGame[0]} & ${friendsOnGame.length - 1} friends are in`;
 
   return (
     <View style={styles.card}>
@@ -186,16 +202,28 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
                 <Text style={styles.hostingBadgeText}>YOUR GAME</Text>
               </View>
             )}
-            {hasFriendPlaying && (
+            {friendLine ? (
               <View style={styles.friendBadge}>
-                <Text style={styles.friendBadgeText}>FRIEND PLAYING</Text>
+                <Text style={styles.friendBadgeText} numberOfLines={1}>
+                  {friendLine.toUpperCase()}
+                </Text>
               </View>
-            )}
-            {activity.urgency_level === 'tonight' && (
+            ) : null}
+            {isTonightUrgency(activity) && (
               <View style={styles.urgentBadge}>
                 <Text style={styles.urgentBadgeText}>TONIGHT</Text>
               </View>
             )}
+            {activity.is_intro_session ? (
+              <View style={styles.introBadge}>
+                <Text style={styles.introBadgeText}>INTRO</Text>
+              </View>
+            ) : null}
+            {PLAY_PARTNER_SURFACES_ENABLED && activity.location?.partner_tier ? (
+              <View style={styles.partnerBadge}>
+                <Text style={styles.partnerBadgeText}>PARTNER</Text>
+              </View>
+            ) : null}
             {activity.scheduling_mode === 'flex' && (
               <View style={styles.flexBadge}>
                 <Text style={styles.flexBadgeText}>FLEX</Text>
@@ -246,15 +274,19 @@ const GameCard: React.FC<GameCardProps> = ({ activity, onPress, userLocation, fr
 
         {/* ── WHO'S GOING ── */}
         <View style={[styles.whoSection, styles.divider]}>
-          <Text style={styles.whoHeader}>WHO'S GOING</Text>
+          <View style={styles.whoHeaderRow}>
+            <Text style={styles.whoHeader}>WHO'S GOING</Text>
+            <Text style={styles.rosterMeta}>
+              {rosterSummary.onRoster}/{rosterSummary.capacity} · {rosterSummary.readyCount} ready
+            </Text>
+          </View>
           <View style={styles.whoBody}>
-            {approvedParticipants.length > 0 ? (
-              <AvatarRow participants={approvedParticipants} isAnonymous={false} />
-            ) : joinedCountLabel ? (
-              <Text style={styles.noParticipants}>{joinedCountLabel}</Text>
+            {avatarFaces.length > 0 ? (
+              <AvatarRow faces={avatarFaces} />
             ) : (
               <Text style={styles.noParticipants}>Be the first to join</Text>
             )}
+            {friendLine ? <Text style={styles.friendLine}>{friendLine}</Text> : null}
             <View style={styles.hostBlock}>
               <Text style={styles.hostLabel}>Host: {hostLabel}</Text>
               {activity.user_id ? (
@@ -393,6 +425,28 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.accent,
   },
+  introBadge: {
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  introBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  partnerBadge: {
+    borderRadius: radius.sm,
+    backgroundColor: colors.successSoft,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  partnerBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.success,
+  },
   // Shared row layout
   divider: {
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -479,21 +533,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
+  whoHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    gap: 8,
+  },
   whoHeader: {
     fontSize: 10,
     fontWeight: '700',
     color: '#aaa',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    marginBottom: 8,
+  },
+  rosterMeta: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  friendLine: {
+    marginTop: 6,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  avatarReadyDot: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.success,
+    borderWidth: 2,
+    borderColor: colors.surface,
   },
   whoBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   avatarRow: {
     position: 'relative',
+    height: 24,
+  },
+  avatarSlot: {
+    position: 'absolute',
+    width: 24,
     height: 24,
   },
   avatar: {

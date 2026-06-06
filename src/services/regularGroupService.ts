@@ -1,6 +1,11 @@
 import { supabase } from './api/supabase';
 import { Activity } from '../types/activity';
 import { RegularGroup } from '../types/regularGroup';
+import {
+  AcceptRallyFriendInviteResult,
+  RallyFriendInvite,
+  RallyOutgoingInvite,
+} from '../types/rallyInvite';
 import { trackProductEvent } from './analyticsService';
 
 export const createRegularGroupFromActivity = async (
@@ -106,6 +111,40 @@ export const getRegularGroupById = async (groupId: string): Promise<RegularGroup
     throw new Error(error.message);
   }
   return (data as RegularGroup | null) ?? null;
+};
+
+const RALLY_NAME_MAX = 80;
+
+export const updateRegularGroupName = async (
+  groupId: string,
+  name: string
+): Promise<RegularGroup> => {
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Enter a Rally name.');
+  }
+  if (trimmed.length > RALLY_NAME_MAX) {
+    throw new Error(`Keep the name under ${RALLY_NAME_MAX} characters.`);
+  }
+
+  const { data, error } = await supabase
+    .from('regular_groups')
+    .update({ name: trimmed, updated_at: new Date().toISOString() })
+    .eq('id', groupId)
+    .select('*')
+    .single();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await supabase
+    .from('conversations')
+    .update({ title: trimmed })
+    .eq('regular_group_id', groupId)
+    .eq('conversation_type', 'crew_group');
+
+  return data as RegularGroup;
 };
 
 export const isRegularGroupMember = async (
@@ -238,4 +277,74 @@ export const getCrewActivities = async (groupId: string): Promise<Activity[]> =>
   }
 
   return (data ?? []) as Activity[];
+};
+
+export const inviteFriendToRegularGroup = async (
+  groupId: string,
+  friendUserId: string
+): Promise<string> => {
+  const { data, error } = await supabase.rpc('invite_friend_to_regular_group', {
+    p_group_id: groupId,
+    p_friend_user_id: friendUserId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error('Could not send invite.');
+  }
+  void trackProductEvent('rally_friend_invite_sent', {
+    group_id: groupId,
+    friend_user_id: friendUserId,
+  });
+  return data as string;
+};
+
+export const acceptRegularGroupFriendInvite = async (
+  inviteId: string
+): Promise<AcceptRallyFriendInviteResult> => {
+  const { data, error } = await supabase.rpc('accept_regular_group_friend_invite', {
+    p_invite_id: inviteId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const result = (data ?? {}) as AcceptRallyFriendInviteResult;
+  if (!result.group_id) {
+    throw new Error('Could not accept invite.');
+  }
+  void trackProductEvent('rally_friend_invite_accepted', {
+    group_id: result.group_id,
+    invite_id: inviteId,
+  });
+  return result;
+};
+
+export const declineRegularGroupFriendInvite = async (inviteId: string): Promise<void> => {
+  const { error } = await supabase.rpc('decline_regular_group_friend_invite', {
+    p_invite_id: inviteId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+};
+
+export const listMyPendingRegularGroupInvites = async (): Promise<RallyFriendInvite[]> => {
+  const { data, error } = await supabase.rpc('list_my_pending_regular_group_invites');
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (data ?? []) as RallyFriendInvite[];
+};
+
+export const listRegularGroupOutgoingInvites = async (
+  groupId: string
+): Promise<RallyOutgoingInvite[]> => {
+  const { data, error } = await supabase.rpc('list_regular_group_outgoing_invites', {
+    p_group_id: groupId,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  return (data ?? []) as RallyOutgoingInvite[];
 };

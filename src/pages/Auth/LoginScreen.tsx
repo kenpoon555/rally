@@ -19,7 +19,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [resetting, setResetting] = useState(false);
+  const { signIn, resetPassword } = useAuth();
+  const busy = loading || resetting;
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -37,6 +39,33 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const handleForgotPassword = async () => {
+    const trimmed = email.trim();
+    if (!trimmed) {
+      Alert.alert(
+        'Enter your email',
+        'Type the email on your account, then tap Forgot password again.'
+      );
+      return;
+    }
+
+    setResetting(true);
+    try {
+      await resetPassword(trimmed);
+      Alert.alert(
+        'Check your email',
+        'We sent a password reset link. Open it on this device to set a new password.'
+      );
+    } catch (error: unknown) {
+      Alert.alert(
+        'Could not send reset link',
+        toAuthErrorMessage(error, 'Try again in a few minutes.')
+      );
+    } finally {
+      setResetting(false);
+    }
+  };
+
   return (
     <AuthScreenLayout
       title="Log In"
@@ -49,7 +78,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
-        editable={!loading}
+        editable={!busy}
       />
 
       <TextField
@@ -58,15 +87,23 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
-        editable={!loading}
+        editable={!busy}
       />
 
-      <Button title="Sign in" onPress={handleLogin} loading={loading} fullWidth />
+      <TouchableOpacity
+        onPress={() => void handleForgotPassword()}
+        style={styles.forgotButton}
+        disabled={busy}
+      >
+        <Text style={styles.forgotText}>{resetting ? 'Sending…' : 'Forgot password?'}</Text>
+      </TouchableOpacity>
+
+      <Button title="Sign in" onPress={handleLogin} loading={loading} fullWidth disabled={busy} />
 
       <TouchableOpacity
         onPress={() => navigation.navigate(ROUTES.AUTH.SIGNUP)}
         style={styles.linkButton}
-        disabled={loading}
+        disabled={busy}
       >
         <Text style={styles.linkText}>
           New here? <Text style={styles.linkTextBold}>Get Started</Text>
@@ -75,7 +112,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       <TouchableOpacity
         onPress={() => navigation.navigate(ROUTES.AUTH.WELCOME)}
         style={styles.linkButton}
-        disabled={loading}
+        disabled={busy}
       >
         <Text style={styles.linkText}>Back</Text>
       </TouchableOpacity>
@@ -84,6 +121,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  forgotButton: {
+    alignSelf: 'flex-end',
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  forgotText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+  },
   linkButton: {
     marginTop: spacing.xl,
     alignItems: 'center',

@@ -40,41 +40,44 @@ import { RegularGroup } from '../../types/regularGroup';
 import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { BetaMarketBanner } from '../../components/home/BetaMarketBanner';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { Button } from '../../components/ui';
+import { Button, ScreenHeader } from '../../components/ui';
+import { ProfileTabBar, ProfileTab } from '../../components/profile/ProfileTabBar';
+import { ProfileSettingsRow } from '../../components/profile/ProfileSettingsRow';
+import { ProfileLinkCard } from '../../components/profile/ProfileLinkCard';
 import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
 import {
   formatReliabilityLabel,
   getUserAttendanceStats,
   UserAttendanceStats,
 } from '../../services/activityService';
-
-type SettingsRowProps = {
-  label: string;
-  value?: string;
-  onPress?: () => void;
-  showChevron?: boolean;
-};
-
-const SettingsRow: React.FC<SettingsRowProps> = ({ label, value, onPress, showChevron = true }) => (
-  <TouchableOpacity
-    style={styles.settingsRow}
-    onPress={onPress}
-    disabled={!onPress}
-    activeOpacity={onPress ? 0.7 : 1}
-  >
-    <View style={styles.settingsRowMain}>
-      <Text style={styles.settingsRowLabel}>{label}</Text>
-      {value ? <Text style={styles.settingsRowValue}>{value}</Text> : null}
-    </View>
-    {showChevron && onPress ? <Text style={styles.chevron}>›</Text> : null}
-  </TouchableOpacity>
-);
+import { setProfilePayment, formatPaymentLabel } from '../../services/paymentService';
+import { PreferredPayment } from '../../types/user';
+import { getMyCaptainStatus, submitCaptainApplication } from '../../services/captainService';
+import { CaptainStatusPayload } from '../../types/captain';
+import { SportType } from '../../constants/sports';
+import {
+  cancelFreeAgentPost,
+  createFreeAgentPost,
+  getMyFreeAgentPost,
+  listMyPendingFreeAgentInvites,
+  respondFreeAgentInvite,
+} from '../../services/freeAgentService';
+import { FreeAgentAvailabilityPreset, FreeAgentInvite, MyFreeAgentPost } from '../../types/freeAgent';
+import { formatActivityTime } from '../../utils/activityHelpers';
+import { submitConciergeRequest } from '../../services/conciergeService';
+import { submitCaptainFeedback } from '../../services/captainFeedbackService';
+import {
+  listMyPendingFillInvites,
+  respondFillInvite,
+} from '../../services/fillInService';
+import { FillInvite } from '../../types/fillIn';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user, signOut, refreshUser } = useAuth();
   const { sports } = useSportsCatalog();
   const defaultSport = resolveUserDefaultSport(user?.preferred_sports?.[0]);
+  const [profileTab, setProfileTab] = useState<ProfileTab>('me');
 
   const openActivityDetail = (activityId: string) => {
     navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
@@ -97,6 +100,44 @@ const ProfileScreen: React.FC = () => {
   const [regularGroups, setRegularGroups] = useState<RegularGroup[]>([]);
   const [attendanceStats, setAttendanceStats] = useState<UserAttendanceStats | null>(null);
   const [savingTimezone, setSavingTimezone] = useState(false);
+  const [paymentNote, setPaymentNote] = useState(user?.payment_note ?? '');
+  const [preferredPayment, setPreferredPayment] = useState<PreferredPayment | null>(
+    user?.preferred_payment ?? null
+  );
+  const [savingPayment, setSavingPayment] = useState(false);
+  const [showPaymentEditor, setShowPaymentEditor] = useState(false);
+  const [captainStatus, setCaptainStatus] = useState<CaptainStatusPayload | null>(null);
+  const [captainSport, setCaptainSport] = useState<SportType>('Badminton');
+  const [captainNote, setCaptainNote] = useState('');
+  const [captainGroupId, setCaptainGroupId] = useState<string | null>(null);
+  const [submittingCaptain, setSubmittingCaptain] = useState(false);
+  const [showCaptainForm, setShowCaptainForm] = useState(false);
+  const [myFreeAgentPost, setMyFreeAgentPost] = useState<MyFreeAgentPost | null>(null);
+  const [freeAgentInvites, setFreeAgentInvites] = useState<FreeAgentInvite[]>([]);
+  const [freeAgentSport, setFreeAgentSport] = useState<SportType>('Badminton');
+  const [freeAgentPreset, setFreeAgentPreset] =
+    useState<FreeAgentAvailabilityPreset>('flexible');
+  const [freeAgentNote, setFreeAgentNote] = useState('');
+  const [savingFreeAgent, setSavingFreeAgent] = useState(false);
+  const [showFreeAgentForm, setShowFreeAgentForm] = useState(false);
+  const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
+  const [fillInvites, setFillInvites] = useState<FillInvite[]>([]);
+  const [showConciergeForm, setShowConciergeForm] = useState(false);
+  const [conciergeSport, setConciergeSport] = useState<SportType>('Badminton');
+  const [conciergeArea, setConciergeArea] = useState('');
+  const [conciergeAvailability, setConciergeAvailability] = useState('');
+  const [submittingConcierge, setSubmittingConcierge] = useState(false);
+  const [showCaptainFeedback, setShowCaptainFeedback] = useState(false);
+  const [feedbackSport, setFeedbackSport] = useState<SportType>('Badminton');
+  const [feedbackArea, setFeedbackArea] = useState('host tools');
+  const [feedbackScore, setFeedbackScore] = useState(3);
+  const [feedbackNote, setFeedbackNote] = useState('');
+  const [submittingCaptainFeedback, setSubmittingCaptainFeedback] = useState(false);
+
+  useEffect(() => {
+    setPaymentNote(user?.payment_note ?? '');
+    setPreferredPayment(user?.preferred_payment ?? null);
+  }, [user?.payment_note, user?.preferred_payment]);
 
   const usernamePreview = useMemo(() => {
     if (nickname.trim()) {
@@ -234,6 +275,18 @@ const ProfileScreen: React.FC = () => {
     getMyRegularGroups(user.id)
       .then(setRegularGroups)
       .catch(() => setRegularGroups([]));
+    getMyCaptainStatus()
+      .then(setCaptainStatus)
+      .catch(() => setCaptainStatus(null));
+    getMyFreeAgentPost()
+      .then(setMyFreeAgentPost)
+      .catch(() => setMyFreeAgentPost(null));
+    listMyPendingFreeAgentInvites()
+      .then(setFreeAgentInvites)
+      .catch(() => setFreeAgentInvites([]));
+    listMyPendingFillInvites()
+      .then(setFillInvites)
+      .catch(() => setFillInvites([]));
   }, [user?.id]);
 
   useEffect(() => {
@@ -381,7 +434,23 @@ const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="You"
+        subtitle={
+          profileTab === 'me'
+            ? 'Your player card'
+            : profileTab === 'connect'
+              ? 'Friends, Rallies, and invites'
+              : 'Account and preferences'
+        }
+        showLogo
+        accentColor={colors.primaryDark}
+      />
+      <ProfileTabBar active={profileTab} onChange={setProfileTab} />
+      <ScrollView contentContainerStyle={styles.content}>
+      {profileTab === 'me' ? (
+      <>
       <View style={styles.heroCard}>
         <View style={styles.identityRow}>
           {user?.profile_photo_url ? (
@@ -394,8 +463,21 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.identityTextCol}>
             <Text style={styles.displayName}>{usernamePreview}</Text>
             <Text style={styles.usernameHandle}>@{user?.username || 'player'}</Text>
-            <Text style={styles.trustHero}>{trustHeroLine}</Text>
-            <Text style={styles.reliabilityHero}>{reliabilityLine}</Text>
+          </View>
+        </View>
+
+        <View style={styles.statPillGrid}>
+          <View style={[styles.statPill, styles.statPillRating]}>
+            <Text style={styles.statPillLabel}>Rating</Text>
+            <Text style={styles.statPillValue} numberOfLines={2}>
+              {trustHeroLine}
+            </Text>
+          </View>
+          <View style={[styles.statPill, styles.statPillReliability]}>
+            <Text style={styles.statPillLabel}>Reliability</Text>
+            <Text style={styles.statPillValue} numberOfLines={3}>
+              {reliabilityLine}
+            </Text>
           </View>
         </View>
 
@@ -461,51 +543,8 @@ const ProfileScreen: React.FC = () => {
       ) : null}
 
       <View style={styles.sectionCard}>
-        <Text style={styles.groupLabel}>Social</Text>
-        <Button
-          title="Add friends"
-          size="sm"
-          onPress={() =>
-            navigation.navigate(ROUTES.FRIENDS.LIST as never, { openSearch: true } as never)
-          }
-          style={styles.addFriendsProfileBtn}
-        />
-        <Text style={styles.addFriendsProfileHint}>
-          Search by username to connect and message
-        </Text>
-        <SettingsRow
-          label="Friends"
-          value="Your list, requests, messages"
-          onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
-        />
-        <SettingsRow
-          label="My games"
-          value="Upcoming, past, hosting"
-          onPress={() => navigation.navigate(ROUTES.MY_GAMES.TAB as never)}
-        />
-      </View>
-
-      {regularGroups.length > 0 ? (
-        <View style={styles.sectionCard}>
-          <Text style={styles.groupLabel}>{PRODUCT_COPY.yourRallies}</Text>
-          {regularGroups.map((group) => (
-            <SettingsRow
-              key={group.id}
-              label={group.name}
-              value={group.sport_type}
-              onPress={() =>
-                navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
-                  groupId: group.id,
-                } as never)
-              }
-            />
-          ))}
-        </View>
-      ) : null}
-
-      <View style={styles.sectionCard}>
-        <Text style={styles.groupLabel}>Activity</Text>
-        <SettingsRow
+        <Text style={styles.groupLabel}>Preferences</Text>
+        <ProfileSettingsRow
           label="Default sport"
           value={defaultSport}
           onPress={() => setShowSportPicker((v) => !v)}
@@ -529,10 +568,657 @@ const ProfileScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
+      </>
+      ) : null}
+
+      {profileTab === 'connect' ? (
+      <>
+      <ProfileLinkCard
+        icon="people-outline"
+        title="Friends"
+        subtitle="Add friends, requests, and messages"
+        onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
+      />
+      <ProfileLinkCard
+        icon="search-outline"
+        title="Find friends"
+        subtitle="Search by username"
+        onPress={() =>
+          navigation.navigate(ROUTES.FRIENDS.LIST as never, { openSearch: true } as never)
+        }
+      />
+      <ProfileLinkCard
+        icon="calendar-outline"
+        title="My games"
+        subtitle="Upcoming, past, and hosting"
+        onPress={() => navigation.navigate(ROUTES.MY_GAMES.TAB as never)}
+      />
+
+      {regularGroups.length > 0 ? (
+        <View style={styles.sectionCard}>
+          <Text style={styles.groupLabel}>{PRODUCT_COPY.yourRallies}</Text>
+          {regularGroups.map((group) => (
+            <ProfileSettingsRow
+              key={group.id}
+              label={group.name}
+              value={group.sport_type}
+              onPress={() =>
+                navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                  groupId: group.id,
+                } as never)
+              }
+            />
+          ))}
+        </View>
+      ) : null}
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>{PRODUCT_COPY.captainProgram}</Text>
+        <Text style={styles.hint}>{PRODUCT_COPY.captainProgramHint}</Text>
+        {(captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
+          <Text style={styles.trustHero}>
+            Active captain ·{' '}
+            {(captainStatus?.captains ?? [])
+              .filter((c) => c.status === 'active')
+              .map((c) => c.sport)
+              .join(', ')}
+          </Text>
+        ) : (captainStatus?.applications ?? []).some((a) => a.status === 'pending') ? (
+          <Text style={styles.hint}>
+            Application pending for{' '}
+            {(captainStatus?.applications ?? [])
+              .filter((a) => a.status === 'pending')
+              .map((a) => a.sport)
+              .join(', ')}
+          </Text>
+        ) : (
+          <ProfileSettingsRow
+            label="Apply to be a captain"
+            value={showCaptainForm ? 'Editing…' : 'LA beta'}
+            onPress={() => setShowCaptainForm((v) => !v)}
+          />
+        )}
+        {showCaptainForm &&
+        !(captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
+          <View style={styles.paymentEditor}>
+            <Text style={styles.fieldLabel}>Sport</Text>
+            <View style={styles.quietRow}>
+              {(['Badminton', 'Pickleball', 'Basketball'] as const).map((sport) => {
+                const selected = captainSport === sport;
+                return (
+                  <TouchableOpacity
+                    key={sport}
+                    style={[styles.quietChip, selected && styles.quietChipSelected]}
+                    onPress={() => setCaptainSport(sport)}
+                  >
+                    <Text
+                      style={[styles.quietChipText, selected && styles.quietChipTextSelected]}
+                    >
+                      {sport}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.fieldLabel}>Your typical game</Text>
+            <TextInput
+              style={styles.input}
+              value={captainNote}
+              onChangeText={setCaptainNote}
+              placeholder="e.g. Wed 7pm doubles at Santa Monica"
+              maxLength={200}
+            />
+            {regularGroups.length > 0 ? (
+              <>
+                <Text style={styles.fieldLabel}>Link a Rally (optional)</Text>
+                <View style={styles.quietRow}>
+                  <TouchableOpacity
+                    style={[styles.quietChip, captainGroupId === null && styles.quietChipSelected]}
+                    onPress={() => setCaptainGroupId(null)}
+                  >
+                    <Text
+                      style={[
+                        styles.quietChipText,
+                        captainGroupId === null && styles.quietChipTextSelected,
+                      ]}
+                    >
+                      None
+                    </Text>
+                  </TouchableOpacity>
+                  {regularGroups.map((group) => {
+                    const selected = captainGroupId === group.id;
+                    return (
+                      <TouchableOpacity
+                        key={group.id}
+                        style={[styles.quietChip, selected && styles.quietChipSelected]}
+                        onPress={() => setCaptainGroupId(group.id)}
+                      >
+                        <Text
+                          style={[styles.quietChipText, selected && styles.quietChipTextSelected]}
+                        >
+                          {group.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </>
+            ) : null}
+            <Button
+              title={submittingCaptain ? 'Submitting…' : 'Submit application'}
+              size="sm"
+              onPress={() => {
+                setSubmittingCaptain(true);
+                void (async () => {
+                  try {
+                    await submitCaptainApplication({
+                      sport: captainSport,
+                      typicalGameNote: captainNote,
+                      regularGroupId: captainGroupId,
+                    });
+                    const status = await getMyCaptainStatus();
+                    setCaptainStatus(status);
+                    setShowCaptainForm(false);
+                    Alert.alert(PRODUCT_COPY.captainApplicationSent, 'We review apps weekly in beta.');
+                  } catch (error: unknown) {
+                    Alert.alert(
+                      'Could not submit',
+                      error instanceof Error ? error.message : 'Try again.'
+                    );
+                  } finally {
+                    setSubmittingCaptain(false);
+                  }
+                })();
+              }}
+              disabled={submittingCaptain}
+            />
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>{PRODUCT_COPY.freeAgents}</Text>
+        <Text style={styles.hint}>{PRODUCT_COPY.freeAgentsHint}</Text>
+        {[...freeAgentInvites, ...fillInvites].length > 0 ? (
+          <View style={styles.paymentEditor}>
+            <Text style={styles.fieldLabel}>Game invites</Text>
+            {freeAgentInvites.map((invite) => (
+              <View key={invite.id} style={styles.inviteCard}>
+                <Text style={styles.inviteTitle}>
+                  @{invite.host_username} · {invite.sport_type}
+                </Text>
+                <Text style={styles.hint}>
+                  {formatActivityTime(invite.start_time)}
+                  {invite.location_name ? ` · ${invite.location_name}` : ''} ·{' '}
+                  {invite.open_spots} spot{invite.open_spots === 1 ? '' : 's'}
+                </Text>
+                <View style={styles.inviteActions}>
+                  <Button
+                    title={busyInviteId === invite.id ? '…' : 'Accept'}
+                    size="sm"
+                    onPress={() => {
+                      setBusyInviteId(invite.id);
+                      void (async () => {
+                        try {
+                          await respondFreeAgentInvite(invite.id, true);
+                          const [invites, post] = await Promise.all([
+                            listMyPendingFreeAgentInvites(),
+                            getMyFreeAgentPost(),
+                          ]);
+                          setFreeAgentInvites(invites);
+                          setMyFreeAgentPost(post);
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                            activityId: invite.activity_id,
+                          } as never);
+                        } catch (error: unknown) {
+                          Alert.alert(
+                            'Could not accept',
+                            error instanceof Error ? error.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyInviteId(null);
+                        }
+                      })();
+                    }}
+                    disabled={busyInviteId === invite.id}
+                  />
+                  <Button
+                    title="Decline"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => {
+                      setBusyInviteId(invite.id);
+                      void (async () => {
+                        try {
+                          await respondFreeAgentInvite(invite.id, false);
+                          setFreeAgentInvites(await listMyPendingFreeAgentInvites());
+                        } catch (error: unknown) {
+                          Alert.alert(
+                            'Could not decline',
+                            error instanceof Error ? error.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyInviteId(null);
+                        }
+                      })();
+                    }}
+                    disabled={busyInviteId === invite.id}
+                  />
+                </View>
+              </View>
+            ))}
+            {fillInvites.map((invite) => (
+              <View key={invite.id} style={styles.inviteCard}>
+                <Text style={styles.inviteTitle}>
+                  @{invite.host_username} · {invite.sport_type} (fill-in)
+                </Text>
+                <Text style={styles.hint}>
+                  {formatActivityTime(invite.start_time)}
+                  {invite.location_name ? ` · ${invite.location_name}` : ''}
+                </Text>
+                <View style={styles.inviteActions}>
+                  <Button
+                    title={busyInviteId === invite.id ? '…' : 'Accept'}
+                    size="sm"
+                    onPress={() => {
+                      setBusyInviteId(invite.id);
+                      void (async () => {
+                        try {
+                          await respondFillInvite(invite.id, true);
+                          setFillInvites(await listMyPendingFillInvites());
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                            activityId: invite.activity_id,
+                          } as never);
+                        } catch (error: unknown) {
+                          Alert.alert(
+                            'Could not accept',
+                            error instanceof Error ? error.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyInviteId(null);
+                        }
+                      })();
+                    }}
+                    disabled={busyInviteId === invite.id}
+                  />
+                  <Button
+                    title="Decline"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => {
+                      setBusyInviteId(invite.id);
+                      void (async () => {
+                        try {
+                          await respondFillInvite(invite.id, false);
+                          setFillInvites(await listMyPendingFillInvites());
+                        } catch (error: unknown) {
+                          Alert.alert(
+                            'Could not decline',
+                            error instanceof Error ? error.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyInviteId(null);
+                        }
+                      })();
+                    }}
+                    disabled={busyInviteId === invite.id}
+                  />
+                </View>
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {myFreeAgentPost ? (
+          <View style={styles.paymentEditor}>
+            <Text style={styles.trustHero}>{PRODUCT_COPY.availabilityPosted}</Text>
+            <Text style={styles.hint}>
+              {myFreeAgentPost.sport} · until{' '}
+              {new Date(myFreeAgentPost.expires_at).toLocaleDateString()}
+            </Text>
+            <Button
+              title="Remove from board"
+              variant="ghost"
+              size="sm"
+              onPress={() => {
+                void (async () => {
+                  try {
+                    await cancelFreeAgentPost(myFreeAgentPost.id);
+                    setMyFreeAgentPost(null);
+                  } catch (error: unknown) {
+                    Alert.alert(
+                      'Could not remove',
+                      error instanceof Error ? error.message : 'Try again.'
+                    );
+                  }
+                })();
+              }}
+            />
+          </View>
+        ) : (
+          <>
+            <ProfileSettingsRow
+              label={PRODUCT_COPY.postAvailability}
+              value={showFreeAgentForm ? 'Editing…' : 'LA beta'}
+              onPress={() => setShowFreeAgentForm((v) => !v)}
+            />
+            {showFreeAgentForm ? (
+              <View style={styles.paymentEditor}>
+                <Text style={styles.fieldLabel}>Sport</Text>
+                <View style={styles.quietRow}>
+                  {(['Badminton', 'Pickleball'] as const).map((sport) => {
+                    const selected = freeAgentSport === sport;
+                    return (
+                      <TouchableOpacity
+                        key={sport}
+                        style={[styles.quietChip, selected && styles.quietChipSelected]}
+                        onPress={() => setFreeAgentSport(sport)}
+                      >
+                        <Text
+                          style={[styles.quietChipText, selected && styles.quietChipTextSelected]}
+                        >
+                          {sport}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <Text style={styles.fieldLabel}>Usually available</Text>
+                <View style={styles.quietRow}>
+                  {(['weeknights', 'weekends', 'flexible'] as const).map((preset) => {
+                    const selected = freeAgentPreset === preset;
+                    const label =
+                      preset === 'weeknights'
+                        ? 'Weeknights'
+                        : preset === 'weekends'
+                          ? 'Weekends'
+                          : 'Flexible';
+                    return (
+                      <TouchableOpacity
+                        key={preset}
+                        style={[styles.quietChip, selected && styles.quietChipSelected]}
+                        onPress={() => setFreeAgentPreset(preset)}
+                      >
+                        <Text
+                          style={[styles.quietChipText, selected && styles.quietChipTextSelected]}
+                        >
+                          {label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <Text style={styles.fieldLabel}>Note (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={freeAgentNote}
+                  onChangeText={setFreeAgentNote}
+                  placeholder="Level, areas, doubles vs singles…"
+                  maxLength={120}
+                />
+                <Button
+                  title={savingFreeAgent ? 'Posting…' : 'Post for 2 weeks'}
+                  size="sm"
+                  onPress={() => {
+                    setSavingFreeAgent(true);
+                    void (async () => {
+                      try {
+                        await createFreeAgentPost({
+                          sport: freeAgentSport,
+                          availabilityPreset: freeAgentPreset,
+                          note: freeAgentNote,
+                        });
+                        setMyFreeAgentPost(await getMyFreeAgentPost(freeAgentSport));
+                        setShowFreeAgentForm(false);
+                        Alert.alert(PRODUCT_COPY.availabilityPosted, PRODUCT_COPY.freeAgentsHint);
+                      } catch (error: unknown) {
+                        Alert.alert(
+                          'Could not post',
+                          error instanceof Error ? error.message : 'Try again.'
+                        );
+                      } finally {
+                        setSavingFreeAgent(false);
+                      }
+                    })();
+                  }}
+                  disabled={savingFreeAgent}
+                />
+              </View>
+            ) : null}
+          </>
+        )}
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>{PRODUCT_COPY.concierge}</Text>
+        <Text style={styles.hint}>{PRODUCT_COPY.conciergeHint}</Text>
+        <ProfileSettingsRow
+          label="Request a match"
+          value={showConciergeForm ? 'Editing…' : 'LA beta'}
+          onPress={() => setShowConciergeForm((v) => !v)}
+        />
+        {showConciergeForm ? (
+          <View style={styles.paymentEditor}>
+            <Text style={styles.fieldLabel}>Sport</Text>
+            <View style={styles.quietRow}>
+              {(['Badminton', 'Pickleball', 'Basketball'] as const).map((sport) => (
+                <TouchableOpacity
+                  key={sport}
+                  style={[styles.quietChip, conciergeSport === sport && styles.quietChipSelected]}
+                  onPress={() => setConciergeSport(sport)}
+                >
+                  <Text
+                    style={[
+                      styles.quietChipText,
+                      conciergeSport === sport && styles.quietChipTextSelected,
+                    ]}
+                  >
+                    {sport}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={styles.input}
+              value={conciergeArea}
+              onChangeText={setConciergeArea}
+              placeholder="Area (e.g. West LA, Pasadena)"
+            />
+            <TextInput
+              style={styles.input}
+              value={conciergeAvailability}
+              onChangeText={setConciergeAvailability}
+              placeholder="When you can play (e.g. weeknights)"
+            />
+            <Button
+              title={submittingConcierge ? 'Sending…' : 'Submit request'}
+              size="sm"
+              onPress={() => {
+                setSubmittingConcierge(true);
+                void (async () => {
+                  try {
+                    await submitConciergeRequest({
+                      sport: conciergeSport,
+                      areaNote: conciergeArea,
+                      availabilityNote: conciergeAvailability,
+                    });
+                    setShowConciergeForm(false);
+                    Alert.alert(PRODUCT_COPY.conciergeSent, PRODUCT_COPY.conciergeHint);
+                  } catch (error: unknown) {
+                    Alert.alert(
+                      'Could not submit',
+                      error instanceof Error ? error.message : 'Try again.'
+                    );
+                  } finally {
+                    setSubmittingConcierge(false);
+                  }
+                })();
+              }}
+              disabled={submittingConcierge}
+            />
+          </View>
+        ) : null}
+      </View>
+
+      {(captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
+        <View style={styles.sectionCard}>
+          <Text style={styles.groupLabel}>{PRODUCT_COPY.captainFeedback}</Text>
+          <Text style={styles.hint}>{PRODUCT_COPY.captainFeedbackHint}</Text>
+          <ProfileSettingsRow
+            label="Send sport feedback"
+            value={showCaptainFeedback ? 'Editing…' : 'Captains only'}
+            onPress={() => setShowCaptainFeedback((v) => !v)}
+          />
+          {showCaptainFeedback ? (
+            <View style={styles.paymentEditor}>
+              <Text style={styles.fieldLabel}>Feature area</Text>
+              <TextInput
+                style={styles.input}
+                value={feedbackArea}
+                onChangeText={setFeedbackArea}
+                placeholder="e.g. rotation, nudge, onboarding"
+              />
+              <Text style={styles.fieldLabel}>Friction (1 easy – 5 hard)</Text>
+              <View style={styles.quietRow}>
+                {([1, 2, 3, 4, 5] as const).map((score) => (
+                  <TouchableOpacity
+                    key={score}
+                    style={[styles.quietChip, feedbackScore === score && styles.quietChipSelected]}
+                    onPress={() => setFeedbackScore(score)}
+                  >
+                    <Text
+                      style={[
+                        styles.quietChipText,
+                        feedbackScore === score && styles.quietChipTextSelected,
+                      ]}
+                    >
+                      {score}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TextInput
+                style={styles.input}
+                value={feedbackNote}
+                onChangeText={setFeedbackNote}
+                placeholder="What blocked your crew this week?"
+                multiline
+              />
+              <Button
+                title={submittingCaptainFeedback ? 'Sending…' : 'Send feedback'}
+                size="sm"
+                onPress={() => {
+                  setSubmittingCaptainFeedback(true);
+                  void (async () => {
+                    try {
+                      const activeSport =
+                        (captainStatus?.captains ?? []).find((c) => c.status === 'active')
+                          ?.sport ?? feedbackSport;
+                      await submitCaptainFeedback({
+                        sport: String(activeSport),
+                        featureArea: feedbackArea,
+                        frictionScore: feedbackScore,
+                        note: feedbackNote,
+                      });
+                      setShowCaptainFeedback(false);
+                      setFeedbackNote('');
+                      Alert.alert(PRODUCT_COPY.captainFeedbackSent);
+                    } catch (error: unknown) {
+                      Alert.alert(
+                        'Could not send',
+                        error instanceof Error ? error.message : 'Try again.'
+                      );
+                    } finally {
+                      setSubmittingCaptainFeedback(false);
+                    }
+                  })();
+                }}
+                disabled={submittingCaptainFeedback || !feedbackNote.trim()}
+              />
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+      </>
+      ) : null}
+
+      {profileTab === 'settings' ? (
+      <>
+      <View style={styles.sectionCard}>
+        <Text style={styles.groupLabel}>Payments</Text>
+        <Text style={styles.hint}>
+          Shown to players in your games (not on public Discover). Court fees, Venmo, Zelle, etc.
+        </Text>
+        <ProfileSettingsRow
+          label="How to pay you"
+          value={
+            user?.payment_note
+              ? `${formatPaymentLabel(user.preferred_payment)} · ${user.payment_note}`
+              : 'Not set'
+          }
+          onPress={() => setShowPaymentEditor((v) => !v)}
+        />
+        {showPaymentEditor ? (
+          <View style={styles.paymentEditor}>
+            <Text style={styles.fieldLabel}>Method</Text>
+            <View style={styles.quietRow}>
+              {(['venmo', 'zelle', 'cash', 'paypal', 'other'] as const).map((method) => {
+                const selected = preferredPayment === method;
+                return (
+                  <TouchableOpacity
+                    key={method}
+                    style={[styles.quietChip, selected && styles.quietChipSelected]}
+                    onPress={() => setPreferredPayment(method)}
+                  >
+                    <Text
+                      style={[styles.quietChipText, selected && styles.quietChipTextSelected]}
+                    >
+                      {formatPaymentLabel(method)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.fieldLabel}>Handle or instructions</Text>
+            <TextInput
+              style={styles.input}
+              value={paymentNote}
+              onChangeText={setPaymentNote}
+              placeholder="@you · Zelle email · cash at court"
+              maxLength={80}
+              autoCapitalize="none"
+            />
+            <Button
+              title={savingPayment ? 'Saving…' : 'Save payment info'}
+              size="sm"
+              onPress={() => {
+                if (!user?.id) {
+                  return;
+                }
+                setSavingPayment(true);
+                void (async () => {
+                  try {
+                    await setProfilePayment(paymentNote, preferredPayment);
+                    await refreshUser();
+                    setShowPaymentEditor(false);
+                  } catch (error: unknown) {
+                    Alert.alert(
+                      'Could not save',
+                      error instanceof Error ? error.message : 'Try again.'
+                    );
+                  } finally {
+                    setSavingPayment(false);
+                  }
+                })();
+              }}
+              disabled={savingPayment}
+            />
+          </View>
+        ) : null}
+      </View>
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Schedule</Text>
-        <SettingsRow
+        <ProfileSettingsRow
           label="Time zone"
           value={savingTimezone ? 'Saving…' : timezoneLabel}
           onPress={pickTimezone}
@@ -568,7 +1254,7 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.hint}>
           Report or block from a game or DM (Safety in chat header or player profile).
         </Text>
-        <SettingsRow
+        <ProfileSettingsRow
           label="Blocked users"
           value={
             blockedLoading
@@ -608,7 +1294,7 @@ const ProfileScreen: React.FC = () => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Beta</Text>
-        <SettingsRow
+        <ProfileSettingsRow
           label="Send feedback"
           value="Founding Member notes"
           onPress={() =>
@@ -619,15 +1305,15 @@ const ProfileScreen: React.FC = () => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Legal</Text>
-        <SettingsRow
+        <ProfileSettingsRow
           label="Terms of use"
           onPress={() => setLegalModal({ title: 'Terms of use', body: TERMS_SUMMARY })}
         />
-        <SettingsRow
+        <ProfileSettingsRow
           label="Activity waiver"
           onPress={() => setLegalModal({ title: 'Activity waiver', body: WAIVER_TEXT })}
         />
-        <SettingsRow
+        <ProfileSettingsRow
           label="Location & privacy"
           onPress={() =>
             setLegalModal({ title: 'Location & privacy', body: PRIVACY_LOCATION_TEXT })
@@ -647,6 +1333,8 @@ const ProfileScreen: React.FC = () => {
       <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
         <Text style={styles.signOutText}>Sign out</Text>
       </TouchableOpacity>
+      </>
+      ) : null}
 
       <Modal
         visible={legalModal != null}
@@ -666,7 +1354,8 @@ const ProfileScreen: React.FC = () => {
           </ScrollView>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 };
 
@@ -737,6 +1426,38 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
+  statPillGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  statPill: {
+    flex: 1,
+    minWidth: '46%',
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    gap: 4,
+  },
+  statPillRating: {
+    backgroundColor: colors.primaryLight,
+  },
+  statPillReliability: {
+    backgroundColor: colors.accentSoft,
+  },
+  statPillLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    color: colors.textSecondary,
+  },
+  statPillValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    lineHeight: 18,
+  },
   fieldLabel: {
     fontSize: 13,
     fontWeight: '600',
@@ -747,6 +1468,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  paymentEditor: {
+    marginTop: spacing.sm,
+    gap: spacing.sm,
+  },
+  inviteCard: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginBottom: spacing.sm,
+    backgroundColor: colors.background,
+  },
+  inviteTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  inviteActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
   },
   input: {
     flex: 1,
