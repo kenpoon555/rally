@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
@@ -58,18 +58,29 @@ import { PLAY_INTENTS, type PlayIntentId } from '../../constants/playIntent';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { SHOW_LOCATION_DEBUG } from '../../constants/devFlags';
+import {
+  getDefaultDurationFromTemplate,
+  getDefaultOpenSpotsFromTemplate,
+  getListingTitleHint,
+} from '../../services/sportTemplateService';
 
 type MainStackParamList = {
   MainTabs: undefined;
   ActivityDetail: { activityId: string };
-  CreateActivity: undefined;
+  CreateActivity:
+    | {
+        prefillStartTime?: string;
+        prefillTitle?: string;
+        prefillGroupId?: string;
+      }
+    | undefined;
 };
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CreateActivity'>;
 
 type LocationWithDistance = ActivityLocation & { distanceMeters: number | null };
 
-const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
+const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
 
   useEffect(() => {
@@ -95,6 +106,8 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [saving, setSaving] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [needPlayersTonight, setNeedPlayersTonight] = useState(false);
+  const [isIntroSession, setIsIntroSession] = useState(false);
+  const [titleHint, setTitleHint] = useState<string | null>(null);
   const [costNote, setCostNote] = useState('');
   const [listingTitle, setListingTitle] = useState('');
   const [playIntent, setPlayIntent] = useState<PlayIntentId | null>('pickup');
@@ -131,7 +144,44 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
   const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false);
 
   useEffect(() => {
-    setOpenSpotsText(String(getDefaultOpenSpotsForSport(sportType)));
+    const prefill = route.params?.prefillStartTime;
+    if (prefill) {
+      const parsed = new Date(prefill);
+      if (!Number.isNaN(parsed.getTime())) {
+        setFixedStartTime(parsed);
+        setSchedulingMode('fixed');
+      }
+    }
+    if (route.params?.prefillTitle?.trim()) {
+      setListingTitle(route.params.prefillTitle.trim());
+    }
+    const groupId = route.params?.prefillGroupId;
+    if (groupId) {
+      const rally = myRallys.find((g) => g.id === groupId);
+      if (rally?.default_location_id) {
+        setSelectedLocationId(rally.default_location_id);
+      }
+    }
+  }, [
+    route.params?.prefillStartTime,
+    route.params?.prefillTitle,
+    route.params?.prefillGroupId,
+    myRallys,
+  ]);
+
+  useEffect(() => {
+    void (async () => {
+      const [spots, durationMins, hint] = await Promise.all([
+        getDefaultOpenSpotsFromTemplate(sportType),
+        getDefaultDurationFromTemplate(sportType),
+        getListingTitleHint(sportType),
+      ]);
+      setOpenSpotsText(String(spots));
+      if (ACTIVITY_DURATIONS.includes(durationMins as (typeof ACTIVITY_DURATIONS)[number])) {
+        setDuration(durationMins as (typeof ACTIVITY_DURATIONS)[number]);
+      }
+      setTitleHint(hint);
+    })();
   }, [sportType]);
 
   const rosterTotalPlayers = useMemo(() => {
@@ -468,6 +518,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
         session_note: sessionNote.trim() || null,
         listing_title: titleTrimmed,
         play_intent: playIntent,
+        is_intro_session: isIntroSession && visibility === 'nearby',
       });
 
       void setOnboardingFlag(ONBOARDING_FLAGS.HOST_ONBOARDING_COMPLETED);
@@ -531,6 +582,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Listing (shown on Play)</Text>
+          {titleHint ? <Text style={styles.hintText}>Tip: {titleHint}</Text> : null}
           <TextField
             label="Title"
             value={listingTitle}
@@ -656,31 +708,6 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                 })}
               </Text>
             </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={fixedStartTime}
-                mode="datetime"
-                minimumDate={new Date()}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, date) => {
-                  if (Platform.OS === 'android') {
-                    setShowDatePicker(false);
-                  }
-                  if (event.type === 'dismissed') {
-                    setShowDatePicker(false);
-                    return;
-                  }
-                  if (date) {
-                    setFixedStartTime(date);
-                  }
-                }}
-              />
-            )}
-            {Platform.OS === 'ios' && showDatePicker && (
-              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.timePickerDone}>Done</Text>
-              </TouchableOpacity>
-            )}
           </View>
           <TouchableOpacity
             style={styles.advancedToggle}
@@ -864,31 +891,28 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {showDatePicker && (
-          <DateTimePicker
-            value={fixedStartTime}
-            mode="datetime"
-            minimumDate={new Date()}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={(event, date) => {
-              if (Platform.OS === 'android') {
-                setShowDatePicker(false);
-              }
-              if (event.type === 'dismissed') {
-                setShowDatePicker(false);
-                return;
-              }
-              if (date) {
+        {showDatePicker ? (
+          <>
+            <ScheduleDateTimePicker
+              visible
+              autoOpen
+              value={fixedStartTime}
+              title="Game starts"
+              onChange={(date) => {
                 setFixedStartTime(date);
-              }
-            }}
-          />
-        )}
-        {Platform.OS === 'ios' && showDatePicker && (
-          <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-            <Text style={styles.timePickerDone}>Done picking time</Text>
-          </TouchableOpacity>
-        )}
+                if (Platform.OS === 'android') {
+                  setShowDatePicker(false);
+                }
+              }}
+              onDismiss={() => setShowDatePicker(false)}
+            />
+            {Platform.OS === 'ios' ? (
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.timePickerDone}>Done picking time</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
+        ) : null}
 
         {showAdvanced && (
           <View style={styles.advancedBlock}>
@@ -929,6 +953,16 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation }) => {
                 ? 'Only people you invite can join. Share the link after you publish.'
                 : 'Shows on Discover for players near this court.'}
             </Text>
+            {visibility === 'nearby' ? (
+              <TouchableOpacity
+                style={styles.introToggle}
+                onPress={() => setIsIntroSession((v) => !v)}
+              >
+                <Text style={styles.introToggleText}>
+                  {isIntroSession ? '✓ ' : ''}Intro session (stranger-friendly)
+                </Text>
+              </TouchableOpacity>
+            ) : null}
             <TextInput
               style={[styles.input, { marginTop: 8 }]}
               value={costNote}
@@ -1225,6 +1259,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     lineHeight: 17,
+  },
+  hintText: {
+    fontSize: 12,
+    color: colors.primary,
+    marginBottom: spacing.xs,
+  },
+  introToggle: {
+    marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  introToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
   },
   urgencyHint: {
     marginTop: spacing.xs,

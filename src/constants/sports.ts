@@ -44,6 +44,8 @@ export interface SportMetadata {
   timeStrictness: TimeStrictness;
   defaultSchedulingMode: 'fixed' | 'flex';
   shortLabel?: string;
+  /** Mini round-robin tournaments in Rally crew screens (doubles-style sports only). */
+  miniTournamentEnabled?: boolean;
 }
 
 /** MVP default path: quick fixed games at a court. */
@@ -67,6 +69,7 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     name: SportType.BASKETBALL,
     matchingProfile: 'fastFixed',
     launchEnabled: true,
+    miniTournamentEnabled: false,
     minPlayers: 2,
     defaultTotalPlayers: 8,
     locationStrictness: 'strict',
@@ -115,6 +118,7 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     name: SportType.SOCCER,
     matchingProfile: 'fastFixed',
     launchEnabled: true,
+    miniTournamentEnabled: false,
     minPlayers: 4,
     defaultTotalPlayers: 10,
     locationStrictness: 'moderate',
@@ -166,6 +170,7 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     name: SportType.ULTIMATE,
     matchingProfile: 'groupDiscuss',
     launchEnabled: true,
+    miniTournamentEnabled: false,
     minPlayers: 6,
     defaultTotalPlayers: 14,
     partnerDependent: true,
@@ -207,9 +212,52 @@ export const LAUNCH_SPORT_TYPES = SPORT_TYPES.filter(
   (s) => SPORT_METADATA[s].launchEnabled
 );
 
+/** Play tab filter order — LA beta sports first, then broader launch set. */
+export const PLAY_TAB_SPORT_ORDER: SportType[] = [
+  SportType.PICKLEBALL,
+  SportType.BASKETBALL,
+  SportType.BADMINTON,
+  SportType.TENNIS,
+  SportType.VOLLEYBALL,
+  SportType.SOCCER,
+  SportType.SQUASH,
+  SportType.RACQUETBALL,
+  SportType.TABLE_TENNIS,
+  SportType.ULTIMATE,
+  SportType.RUNNING,
+  SportType.HIKING,
+];
+
+export function sortSportsForPlayTab<T extends { name: string }>(
+  sports: T[],
+  preferredSport?: string | null
+): T[] {
+  const preferred = resolveUserDefaultSport(preferredSport);
+  const orderIndex = new Map(PLAY_TAB_SPORT_ORDER.map((sport, index) => [sport, index]));
+
+  return [...sports].sort((a, b) => {
+    if (a.name === preferred) return -1;
+    if (b.name === preferred) return 1;
+    const ai = orderIndex.get(a.name as SportType) ?? 999;
+    const bi = orderIndex.get(b.name as SportType) ?? 999;
+    return ai - bi;
+  });
+}
+
 export function getSportMetadata(sportName: string): SportMetadata | undefined {
   const match = SPORT_TYPES.find((s) => s === sportName);
   return match ? SPORT_METADATA[match] : undefined;
+}
+
+/** Doubles round-robin mini tournaments (badminton, pickleball, tennis, etc.). */
+export function sportSupportsMiniTournament(sportName: string): boolean {
+  const meta = getSportMetadata(sportName);
+  return meta?.miniTournamentEnabled !== false;
+}
+
+/** Doubles-style court rotation (badminton, pickleball, tennis, etc.). */
+export function sportSupportsRotation(sportName: string): boolean {
+  return sportSupportsMiniTournament(sportName);
 }
 
 /** First launch-enabled sport (default UI selection). */

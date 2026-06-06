@@ -6,7 +6,13 @@ const corsHeaders = {
 };
 
 type PushBody = {
-  type: 'join_request' | 'join_request_approved' | 'game_finalized' | 'review_prompt';
+  type:
+    | 'join_request'
+    | 'join_request_approved'
+    | 'game_finalized'
+    | 'roster_nudge'
+    | 'free_agent_invite'
+    | 'review_prompt';
   activity_id: string;
   target_user_id?: string;
   title?: string;
@@ -147,6 +153,131 @@ Deno.serve(async (req) => {
         });
       }
       recipientUserId = payload.target_user_id;
+    }
+
+    if (payload.type === 'free_agent_invite') {
+      if (user.id !== hostUserId) {
+        return new Response(JSON.stringify({ error: 'Only the host can send free agent invites' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (!payload.target_user_id) {
+        return new Response(JSON.stringify({ error: 'target_user_id required' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const courtName =
+        (activity.location as { name?: string } | null)?.name || 'a court';
+      const title = payload.title || 'Game invite';
+      const body =
+        payload.body ||
+        `A host invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`;
+
+      const { data: tokens } = await admin
+        .from('user_device_tokens')
+        .select('device_token')
+        .eq('user_id', payload.target_user_id);
+
+      let sent = 0;
+      for (const tokenRow of tokens || []) {
+        try {
+          await sendFcmLegacy(serverKey, tokenRow.device_token, title, body, {
+            type: payload.type,
+            activity_id: payload.activity_id,
+          });
+          sent += 1;
+        } catch (e) {
+          console.error('FCM send failed for token:', e);
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, sent }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (payload.type === 'roster_nudge') {
+      if (user.id !== hostUserId) {
+        return new Response(JSON.stringify({ error: 'Only the host can send roster nudges' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (activity.match_status === 'finalized') {
+        return new Response(JSON.stringify({ error: 'Roster is already locked' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: needsNudge } = await admin
+        .from('join_requests')
+        .select('user_id')
+        .eq('activity_id', payload.activity_id)
+        .eq('status', 'approved')
+        .is('ready_at', null);
+
+      const courtName =
+        (activity.location as { name?: string } | null)?.name || 'your game';
+      const title = payload.title || 'Tap I\'m in';
+      const body =
+        payload.body ||
+        `Host is locking roster for ${activity.sport_type} at ${courtName}. Open Rally to confirm.`;
+
+      let sent = 0;
+      for (const row of needsNudge || []) {
+        const joinerId = row.user_id as string;
+        if (joinerId === hostUserId) {
+          continue;
+        }
+
+        const { data: joinerProfile } = await admin
+          .from('profiles')
+          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+          .eq('id', joinerId)
+          .maybeSingle();
+
+        if (joinerProfile?.is_suspended) {
+          continue;
+        }
+
+        const quietStart = joinerProfile?.push_quiet_hours_start as number | null | undefined;
+        const quietEnd = joinerProfile?.push_quiet_hours_end as number | null | undefined;
+        if (quietStart != null && quietEnd != null) {
+          const localHour = new Date().getUTCHours();
+          const inQuiet =
+            quietStart < quietEnd
+              ? localHour >= quietStart && localHour < quietEnd
+              : localHour >= quietStart || localHour < quietEnd;
+          if (inQuiet) {
+            continue;
+          }
+        }
+
+        const { data: tokens } = await admin
+          .from('user_device_tokens')
+          .select('device_token')
+          .eq('user_id', joinerId);
+
+        for (const tokenRow of tokens || []) {
+          try {
+            await sendFcmLegacy(serverKey, tokenRow.device_token, title, body, {
+              type: payload.type,
+              activity_id: payload.activity_id,
+            });
+            sent += 1;
+          } catch (e) {
+            console.error('FCM send failed for token:', e);
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, sent }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (payload.type === 'game_finalized') {

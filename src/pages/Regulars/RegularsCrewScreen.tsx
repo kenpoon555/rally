@@ -1,13 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  RefreshControl,
-  ScrollView,
-  Share,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,26 +14,26 @@ import { useAuth } from '../../hooks/useAuth';
 import {
   getRegularGroupById,
   getRegularGroupMembers,
-  getCrewActivities,
   RegularGroupMemberRow,
 } from '../../services/regularGroupService';
-import {
-  createMiniTournament,
-  getTournamentsForGroup,
-} from '../../services/miniTournamentService';
-import { Activity } from '../../types/activity';
+import { listCrewSessionCards } from '../../services/sessionCardService';
+import { SessionCardPayload } from '../../types/sessionCard';
+import { activityFromSessionCard } from '../../utils/sessionCardHelpers';
+import { getTournamentsForGroup } from '../../services/miniTournamentService';
 import { RegularGroup } from '../../types/regularGroup';
 import { MiniTournament } from '../../types/miniTournament';
-import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
 import { ROUTES } from '../../constants/routes';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ensureCrewConversation } from '../../services/chatService';
-import { Button, ScreenHeader } from '../../components/ui';
-import { CrewGameSessionCard } from '../../components/CrewGameSessionCard';
-import { joinCrewGame } from '../../services/regularGroupService';
-import { finalizeGameCommitment, setGameReady } from '../../services/activityService';
-import { formatRosterSummary } from '../../utils/activityHelpers';
-import { colors, radius, spacing, typography } from '../../constants/theme';
+import { updateRegularGroupName } from '../../services/regularGroupService';
+import { RallyTabBar, RallyHubTab } from '../../components/rally/RallyTabBar';
+import { RallyHubHeader } from '../../components/rally/RallyHubHeader';
+import { InviteFriendsToRallySheet } from '../../components/rally/InviteFriendsToRallySheet';
+import { RallyNextGameCard } from '../../components/rally/RallyNextGameCard';
+import { RallyChatPanel } from '../../components/rally/RallyChatPanel';
+import { RallyPlayPanel } from '../../components/rally/RallyPlayPanel';
+import { RallyCrewPanel } from '../../components/rally/RallyCrewPanel';
+import { colors, spacing } from '../../constants/theme';
 
 export type RegularsCrewStackParams = {
   RegularsCrew: { groupId: string };
@@ -46,27 +44,63 @@ type Props = NativeStackScreenProps<RegularsCrewStackParams, 'RegularsCrew'>;
 const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   const { groupId } = route.params;
   const { user } = useAuth();
+  const [tab, setTab] = useState<RallyHubTab>('chat');
   const [group, setGroup] = useState<RegularGroup | null>(null);
   const [members, setMembers] = useState<RegularGroupMemberRow[]>([]);
   const [tournaments, setTournaments] = useState<MiniTournament[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [sessionCards, setSessionCards] = useState<SessionCardPayload[]>([]);
   const [loading, setLoading] = useState(true);
-  const [creatingTournament, setCreatingTournament] = useState(false);
   const [busyActivityId, setBusyActivityId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [chatLoading, setChatLoading] = useState(true);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  const activities = useMemo(
+    () => sessionCards.map((card) => activityFromSessionCard(card)),
+    [sessionCards]
+  );
+  const upcoming = activities.filter((a) => a.status === 'active');
+  const nextActivity = upcoming[0] ?? null;
+
+  const bootstrapChat = useCallback(async () => {
+    setChatLoading(true);
+    setChatError(null);
+    try {
+      const convoId = await ensureCrewConversation(groupId);
+      setConversationId(convoId);
+    } catch (error: unknown) {
+      setConversationId(null);
+      setChatError(error instanceof Error ? error.message : 'Could not open Rally chat.');
+    } finally {
+      setChatLoading(false);
+    }
+  }, [groupId]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [g, m, t, acts] = await Promise.all([
+      const [g, m, t] = await Promise.all([
         getRegularGroupById(groupId),
         getRegularGroupMembers(groupId),
         getTournamentsForGroup(groupId),
-        getCrewActivities(groupId),
       ]);
       setGroup(g);
       setMembers(m);
       setTournaments(t);
-      setActivities(acts);
+
+      try {
+        setSessionCards(await listCrewSessionCards(groupId));
+      } catch (sessionError: unknown) {
+        setSessionCards([]);
+        const raw =
+          sessionError instanceof Error ? sessionError.message : 'Could not load games.';
+        const message = raw.includes('start_time')
+          ? 'Could not load games for this Rally. Pull down to refresh.'
+          : raw;
+        Alert.alert(PRODUCT_COPY.rally, message);
+      }
     } catch (error: unknown) {
       Alert.alert(PRODUCT_COPY.rally, error instanceof Error ? error.message : 'Could not load Rally.');
     } finally {
@@ -74,66 +108,62 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [groupId]);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([load(), bootstrapChat()]);
+  }, [bootstrapChat, load]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
-    }, [load])
+      void bootstrapChat();
+    }, [bootstrapChat, load])
+  );
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: false,
+    });
+  }, [navigation]);
+
+  const openGameRoom = useCallback(
+    async (activityId: string) => {
+      try {
+        const convoId = conversationId ?? (await ensureCrewConversation(groupId));
+        navigation.navigate(ROUTES.CHAT.THREAD as never, {
+          conversationId: convoId,
+          title: group?.name ? PRODUCT_COPY.rallyChatTitle(group.name) : PRODUCT_COPY.rallyChat,
+          activityId,
+          groupId,
+        } as never);
+      } catch (error: unknown) {
+        Alert.alert(
+          'Chat unavailable',
+          error instanceof Error ? error.message : 'Could not open game room.'
+        );
+      }
+    },
+    [conversationId, group?.name, groupId, navigation]
   );
 
   const isHost = group?.host_id === user?.id;
 
-  const shareInvite = async () => {
-    if (!group?.invite_token) {
-      return;
-    }
-    const url = buildRegularGroupInviteUrl(group.invite_token);
-    await Share.share({
-      message: `Join our ${group.sport_type} crew "${group.name}" on Rally: ${url}`,
-      url,
-    });
-  };
-
-  const openCrewChat = async (activityId?: string) => {
-    try {
-      const conversationId = await ensureCrewConversation(groupId);
-      navigation.navigate(ROUTES.CHAT.THREAD as never, {
-        conversationId,
-        title: group?.name ? PRODUCT_COPY.rallyChatTitle(group.name) : PRODUCT_COPY.rallyChat,
-        activityId,
-        groupId,
-      } as never);
-    } catch (error: unknown) {
-      Alert.alert(
-        'Chat unavailable',
-        error instanceof Error ? error.message : 'Could not open Rally chat.'
-      );
-    }
-  };
-
-  const handleCreateTournament = async () => {
-    setCreatingTournament(true);
-    try {
-      const tournamentId = await createMiniTournament(groupId);
-      navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
-    } catch (error: unknown) {
-      Alert.alert(
-        'Tournament',
-        error instanceof Error ? error.message : 'Could not create tournament.'
-      );
-    } finally {
-      setCreatingTournament(false);
-    }
-  };
-
-  const openScheduleNext = () => {
-    const sourceId =
-      activities.find((a) => a.status === 'active')?.id ?? group?.source_activity_id;
-    if (!sourceId) {
-      Alert.alert(group?.name ?? PRODUCT_COPY.rally, 'No game yet. Host can create the first one from chat.');
-      return;
-    }
-    navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId: sourceId } as never);
-  };
+  const handleRename = useCallback(
+    async (name: string) => {
+      if (!group) {
+        return;
+      }
+      setRenaming(true);
+      try {
+        const updated = await updateRegularGroupName(group.id, name);
+        setGroup(updated);
+      } catch (error: unknown) {
+        throw error instanceof Error ? error : new Error('Try again.');
+      } finally {
+        setRenaming(false);
+      }
+    },
+    [group]
+  );
 
   if (loading && !group) {
     return (
@@ -146,168 +176,83 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   if (!group) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.error}>Crew not found.</Text>
+        <Text style={styles.error}>Rally not found.</Text>
       </View>
     );
   }
 
-  const upcoming = activities.filter((a) => a.status === 'active');
-  const currentActivity = upcoming[0];
-
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={styles.container}
-      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => void load()} />}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
     >
-      <ScreenHeader
-        title={group.name}
-        subtitle={`${group.sport_type} · ${members.length} member${members.length === 1 ? '' : 's'}`}
+      <RallyHubHeader
+        group={group}
+        members={members}
+        isHost={Boolean(isHost)}
+        savingName={renaming}
+        onSaveName={isHost ? handleRename : undefined}
+        onInviteFriends={() => setInviteOpen(true)}
       />
 
-      <View style={styles.panel}>
-        <Button title={PRODUCT_COPY.openRallyChat} onPress={() => void openCrewChat(currentActivity?.id)} />
-        {isHost ? (
-          <Button title="Schedule next game" variant="secondary" size="sm" onPress={openScheduleNext} />
-        ) : null}
-      </View>
+      <InviteFriendsToRallySheet
+        visible={inviteOpen}
+        group={group}
+        members={members}
+        onClose={() => setInviteOpen(false)}
+        onInvited={() => void load()}
+      />
 
-      <Text style={styles.sectionTitle}>Games</Text>
-      <View style={styles.section}>
-        {activities.length === 0 ? (
-          <Text style={styles.hint}>No games yet. Host can schedule from chat or game details.</Text>
-        ) : (
-          activities.slice(0, 8).map((activity) => {
-            const isActivityHost = activity.user_id === user?.id;
-            const myJoin = activity.join_requests?.find((jr) => jr.user_id === user?.id);
-            const isWaitlisted = myJoin?.status === 'waitlisted';
-            const isOnRosterApproved = isActivityHost || myJoin?.status === 'approved';
-            const isFull =
-              (activity.missing_players ?? 0) <= 0 && !isOnRosterApproved && !isActivityHost;
-            const endMs =
-              new Date(activity.start_time).getTime() + (activity.duration ?? 60) * 60 * 1000;
-            const showActions =
-              activity.status === 'active' &&
-              endMs >= Date.now() &&
-              activity.match_status !== 'finalized';
-            return (
-              <CrewGameSessionCard
-                key={activity.id}
-                activity={activity}
-                isCurrent={activity.id === currentActivity?.id}
-                showActions={showActions}
-                isHost={isActivityHost}
-                isOnRoster={isOnRosterApproved}
-                isReady={isActivityHost || Boolean(myJoin?.ready_at && myJoin.status === 'approved')}
-                isFinalized={activity.match_status === 'finalized'}
-                isWaitlisted={isWaitlisted}
-                isFull={isFull}
-                busy={busyActivityId === activity.id}
-                onJoin={async () => {
-                  setBusyActivityId(activity.id);
-                  try {
-                    const result = await joinCrewGame(activity.id);
-                    if (result === 'waitlisted') {
-                      Alert.alert(
-                        'Waitlist',
-                        'Game is full. You are on the waitlist if a spot opens.'
-                      );
-                    }
-                    await load();
-                  } catch (e: unknown) {
-                    Alert.alert('Join failed', e instanceof Error ? e.message : 'Try again.');
-                  } finally {
-                    setBusyActivityId(null);
-                  }
-                }}
-                onConfirmIn={async () => {
-                  setBusyActivityId(activity.id);
-                  try {
-                    await setGameReady(activity.id, true);
-                    await load();
-                  } finally {
-                    setBusyActivityId(null);
-                  }
-                }}
-                onUndoImIn={() => {
-                  setBusyActivityId(activity.id);
-                  void (async () => {
-                    try {
-                      await setGameReady(activity.id, false);
-                      await load();
-                    } catch (e: unknown) {
-                      Alert.alert(
-                        "Couldn't save",
-                        e instanceof Error ? e.message : 'Try again.'
-                      );
-                    } finally {
-                      setBusyActivityId(null);
-                    }
-                  })();
-                }}
-                onLockRoster={async () => {
-                  setBusyActivityId(activity.id);
-                  try {
-                    await finalizeGameCommitment(activity.id);
-                    await load();
-                  } finally {
-                    setBusyActivityId(null);
-                  }
-                }}
-                onOpenDetails={() => void openCrewChat(activity.id)}
-              />
-            );
-          })
-        )}
-        {currentActivity ? (
-          <Text style={styles.hint}>{formatRosterSummary(currentActivity)}</Text>
-        ) : null}
-      </View>
+      {nextActivity && tab === 'chat' ? (
+        <RallyNextGameCard
+          activity={nextActivity}
+          onPress={() => setTab('play')}
+          onOpenGameRoom={() => void openGameRoom(nextActivity.id)}
+        />
+      ) : null}
 
-      <View style={styles.panel}>
-        <Text style={styles.sectionTitleInline}>Invite</Text>
-        <Text style={styles.hint}>Share a link so friends join this crew and the next game.</Text>
-        <Button title="Share crew invite link" variant="ghost" size="sm" onPress={() => void shareInvite()} />
-      </View>
+      <RallyTabBar active={tab} onChange={setTab} />
 
-      <Text style={styles.sectionTitle}>Members</Text>
-      {members.map((member) => (
-        <View key={member.user_id} style={styles.memberRow}>
-          <Text style={styles.memberName}>@{member.user?.username ?? 'player'}</Text>
-          <Text style={styles.memberRole}>{member.role}</Text>
-        </View>
-      ))}
+      {tab === 'chat' ? (
+        <RallyChatPanel
+          groupId={groupId}
+          groupName={group.name}
+          conversationId={conversationId}
+          chatError={chatError}
+          chatLoading={chatLoading}
+          onRetryChat={() => void bootstrapChat()}
+          navigation={navigation}
+        />
+      ) : null}
 
-      <View style={styles.panel}>
-        <Text style={styles.sectionTitleInline}>Mini tournament</Text>
-        {isHost ? (
-          <Button
-            title={creatingTournament ? 'Creating…' : 'Create mini tournament'}
-            variant="secondary"
-            size="sm"
-            onPress={() => void handleCreateTournament()}
-            disabled={creatingTournament}
-          />
-        ) : null}
-        {tournaments.length === 0 ? (
-          <Text style={styles.hint}>No tournaments yet. Host can start a doubles round-robin.</Text>
-        ) : (
-          tournaments.map((tournament) => (
-            <TouchableOpacity
-              key={tournament.id}
-              style={styles.tournamentRow}
-              onPress={() =>
-                navigation.navigate(ROUTES.TOURNAMENT.MINI as never, {
-                  tournamentId: tournament.id,
-                } as never)
-              }
-            >
-              <Text style={styles.tournamentTitle}>{tournament.name}</Text>
-              <Text style={styles.tournamentMeta}>{tournament.status}</Text>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </ScrollView>
+      {tab === 'play' ? (
+        <RallyPlayPanel
+          group={group}
+          sessionCards={sessionCards}
+          tournaments={tournaments}
+          isHost={Boolean(isHost)}
+          busyActivityId={busyActivityId}
+          setBusyActivityId={setBusyActivityId}
+          onReload={refreshAll}
+          navigation={navigation}
+          onOpenGameRoom={(activityId) => void openGameRoom(activityId)}
+        />
+      ) : null}
+
+      {tab === 'crew' ? (
+        <RallyCrewPanel
+          group={group}
+          groupId={groupId}
+          members={members}
+          activities={activities}
+          viewerId={user?.id}
+          isHost={Boolean(isHost)}
+          onReload={refreshAll}
+          onInviteFriends={() => setInviteOpen(true)}
+        />
+      ) : null}
+    </KeyboardAvoidingView>
   );
 };
 
@@ -320,75 +265,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingTop: spacing.xxxl,
   },
   error: {
     color: colors.error,
-  },
-  panel: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.sm,
-  },
-  section: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  sectionTitle: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  sectionTitleInline: {
-    ...typography.label,
-    color: colors.textSecondary,
-  },
-  memberRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  memberName: {
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  memberRole: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'capitalize',
-  },
-  hint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  tournamentRow: {
-    padding: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tournamentTitle: {
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  tournamentMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    textTransform: 'capitalize',
-    marginTop: 2,
   },
 });
 

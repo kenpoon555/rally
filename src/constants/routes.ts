@@ -43,4 +43,7 @@ export const ROUTES = {
   FEEDBACK: {
     BETA: 'BetaFeedback',
   },
+  LANDING: {
+    SPORT: 'SportLanding',
+  },
 } as const;

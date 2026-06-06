@@ -1,5 +1,7 @@
 import { SportType } from '../constants/sports';
 
+export type PreferredPayment = 'venmo' | 'zelle' | 'cash' | 'paypal' | 'other';
+
 export interface User {
   id: string;
   email?: string;
@@ -24,6 +26,8 @@ export interface User {
   location_privacy_ack_at?: string | null;
   is_admin?: boolean;
   timezone?: string | null;
+  payment_note?: string | null;
+  preferred_payment?: PreferredPayment | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,82 +1,74 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { ConversationActivity } from '../types/chat';
-import { Activity } from '../types/activity';
+import { ConversationSessionCard } from '../types/sessionCard';
 import { CrewGameSessionCard } from './CrewGameSessionCard';
 import { colors, spacing, typography } from '../constants/theme';
+import { activityFromSessionCard } from '../utils/sessionCardHelpers';
+import { Activity } from '../types/activity';
 
 type Props = {
-  sessions: ConversationActivity[];
+  sessions: ConversationSessionCard[];
   focusedActivityId: string | undefined;
-  userId?: string;
   busyActivityId?: string | null;
   onFocusActivity: (activityId: string) => void;
   onJoin: (activity: Activity) => void;
   onConfirmIn: (activity: Activity) => void;
   onUndoImIn: (activity: Activity) => void;
   onLockRoster: (activity: Activity) => void;
+  onNudge: (activity: Activity) => void;
   onOpenDetails: (activity: Activity) => void;
 };
 
 export const CrewChatSessionList: React.FC<Props> = ({
   sessions,
   focusedActivityId,
-  userId,
   busyActivityId,
   onFocusActivity,
   onJoin,
   onConfirmIn,
   onUndoImIn,
   onLockRoster,
+  onNudge,
   onOpenDetails,
 }) => {
-  const upcoming = sessions.filter((s) => {
-    const a = s.activity;
-    return a && a.status === 'active';
-  });
+  const upcoming = sessions.filter((s) => s.card.status === 'active');
   const past = sessions.filter((s) => {
-    const a = s.activity;
-    return a && (a.status === 'completed' || a.status === 'cancelled');
+    const status = s.card.status;
+    return status === 'completed' || status === 'cancelled';
   });
 
-  const renderSession = (session: ConversationActivity) => {
-    const activity = session.activity;
-    if (!activity) {
-      return null;
-    }
-    const isHost = activity.user_id === userId;
-    const myJoin = activity.join_requests?.find((jr) => jr.user_id === userId);
-    const isWaitlisted = myJoin?.status === 'waitlisted';
-    const isOnRoster = isHost || myJoin?.status === 'approved';
-    const isFull = (activity.missing_players ?? 0) <= 0 && !isOnRoster && !isHost;
-    const isReady = isHost || Boolean(myJoin?.ready_at);
-    const isFinalized = activity.match_status === 'finalized';
-    const isCurrent = session.activity_id === focusedActivityId || session.is_current;
-    const endMs =
-      new Date(activity.start_time).getTime() + (activity.duration ?? 60) * 60 * 1000;
-    const isUpcoming =
-      activity.status === 'active' && endMs >= Date.now() && activity.match_status !== 'finalized';
-    const showActions = isUpcoming;
+  const renderSession = (session: ConversationSessionCard) => {
+    const card = session.card;
+    const activity = activityFromSessionCard(card);
+    const viewer = card.viewer;
+    const isCurrent =
+      session.activity_id === focusedActivityId || session.is_current;
 
     return (
       <CrewGameSessionCard
-        key={session.activity_id}
+        key={session.conversation_activity_id}
         activity={activity}
         isCurrent={isCurrent}
-        showActions={showActions}
-        isHost={isHost}
-        isOnRoster={isOnRoster}
-        isReady={isReady}
-        isFinalized={isFinalized}
-        isWaitlisted={isWaitlisted}
-        isFull={isFull}
-        busy={busyActivityId === activity.id}
+        showActions={viewer.show_actions}
+        isHost={viewer.is_host}
+        isOnRoster={viewer.is_on_roster}
+        isReady={viewer.is_ready}
+        isFinalized={viewer.is_finalized}
+        isWaitlisted={viewer.is_waitlisted}
+        isFull={viewer.is_full}
+        readyCount={card.ready_count}
+        canLock={viewer.can_lock}
+        lockReadiness={viewer.lock_readiness}
+        waitlistPosition={viewer.waitlist_position}
+        busy={busyActivityId === card.activity_id}
         onJoin={() => onJoin(activity)}
         onConfirmIn={() => onConfirmIn(activity)}
         onUndoImIn={() => onUndoImIn(activity)}
         onLockRoster={() => onLockRoster(activity)}
+        showNudge={viewer.can_nudge}
+        onNudge={() => onNudge(activity)}
         onOpenDetails={() => {
-          onFocusActivity(activity.id);
+          onFocusActivity(card.activity_id);
           onOpenDetails(activity);
         }}
       />

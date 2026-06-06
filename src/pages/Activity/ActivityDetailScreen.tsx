@@ -14,8 +14,8 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
 import { PRODUCT_COPY } from '../../constants/productCopy';
+import { sportSupportsMiniTournament } from '../../constants/sports';
 import { ensureCrewConversation } from '../../services/chatService';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import JoinRequestButton from '../../components/JoinRequestButton';
@@ -52,6 +52,10 @@ import { RegularGroup } from '../../types/regularGroup';
 import { PlayerReviewForm } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
 import { PlayerTrustLine } from '../../components/PlayerTrustLine';
+import { VenueBlock } from '../../components/VenueBlock';
+import { GameRecapCard } from '../../components/GameRecapCard';
+import { getGameRecapIdForActivity } from '../../services/gameRecapService';
+import { HostPaymentHint } from '../../components/HostPaymentHint';
 import { reportCourtIssue, CourtReportType } from '../../services/courtService';
 import { supabase } from '../../services/api/supabase';
 import {
@@ -61,6 +65,8 @@ import {
   countReadyParticipants,
   getParticipantReadyState,
   isGameChatReadOnly,
+  isPastGameActivity,
+  isTonightUrgency,
 } from '../../utils/activityHelpers';
 import { isActivityListingActive, isReviewWindowOpen, gameEndMs } from '../../utils/activityExpiry';
 import { ActivityCandidateLocation, JoinRequest } from '../../types/activity';
@@ -134,6 +140,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [savingCostNote, setSavingCostNote] = useState(false);
   const [sessionNoteDraft, setSessionNoteDraft] = useState('');
   const [savingSessionNote, setSavingSessionNote] = useState(false);
+  const [recapId, setRecapId] = useState<string | null>(null);
   const [groupTournaments, setGroupTournaments] = useState<MiniTournament[]>([]);
   const [creatingTournament, setCreatingTournament] = useState(false);
   const isHost = user && activity && user.id === activity.user_id;
@@ -505,9 +512,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!activity || !isHost) {
       return;
     }
+    const trimmed = costNoteDraft.trim() || null;
+    const current = activity.cost_note?.trim() || null;
+    if (trimmed === current) {
+      return;
+    }
     setSavingCostNote(true);
     try {
-      await updateActivity(activity.id, { cost_note: costNoteDraft.trim() || null });
+      await updateActivity(activity.id, { cost_note: trimmed });
       await refetch();
     } catch (error: any) {
       Alert.alert('Cost note', error?.message || 'Could not save.');
@@ -520,9 +532,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!activity || !isHost) {
       return;
     }
+    const trimmed = sessionNoteDraft.trim() || null;
+    const current = activity.session_note?.trim() || null;
+    if (trimmed === current) {
+      return;
+    }
     setSavingSessionNote(true);
     try {
-      await setSessionNote(activity.id, sessionNoteDraft.trim() || null);
+      await setSessionNote(activity.id, trimmed);
       await refetch();
     } catch (error: any) {
       Alert.alert('Session announcement', error?.message || 'Could not save.');
@@ -537,6 +554,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     return gameEndMs(activity) <= Date.now();
   }, [activity, isHost]);
+
+  useEffect(() => {
+    if (!activity || !isPastGameActivity(activity)) {
+      setRecapId(null);
+      return;
+    }
+    void getGameRecapIdForActivity(activity.id).then(setRecapId);
+  }, [activity?.id, activity?.status, activity?.start_time, activity?.duration, activity]);
 
   const handleShareInvite = async () => {
     if (!activity?.invite_token) {
@@ -950,7 +975,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const chatArchived = isGameChatReadOnly(activity);
   const wasOnGame =
     isHost || isApprovedJoiner || Boolean(myJoinRequest) || user?.id === activity.user_id;
-  const canScheduleNext = Boolean(isHost && canHostScheduleNextGame(activity, true));
+  const isPastGame = isPastGameActivity(activity);
+  const canScheduleNext =
+    !isPastGame && Boolean(isHost && canHostScheduleNextGame(activity, true));
+  const showTonight = !isPastGame && isTonightUrgency(activity);
   const listingActive = isActivityListingActive(activity);
   const expiresLabel = activity.expires_at
     ? new Date(activity.expires_at).toLocaleString(undefined, {
@@ -967,7 +995,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <View style={styles.heroTopRow}>
           <Text style={styles.heroSport}>{activity.sport_type}</Text>
           <View style={styles.statusBadge}>
-            <Text style={styles.statusBadgeText}>{activity.match_status || 'open'}</Text>
+            <Text style={styles.statusBadgeText}>
+              {isPastGame ? 'played' : activity.match_status || 'open'}
+            </Text>
           </View>
         </View>
         {!activity.regular_group_id ? (
@@ -982,18 +1012,30 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
         <Text style={styles.heroTime}>{timeLabel}</Text>
         <Text style={styles.heroLocation}>{activity.location?.name || 'Court TBD'}</Text>
-        {activity.location_id && (isHost || isApprovedJoiner) ? (
+        {isPastGame && recapId ? (
+          <View style={styles.recapWrap}>
+            <GameRecapCard recapId={recapId} />
+          </View>
+        ) : null}
+        {activity.location_id && !isPastGame ? (
+          <VenueBlock locationId={activity.location_id} compact />
+        ) : null}
+        {activity.location_id && !isPastGame && (isHost || isApprovedJoiner) ? (
           <TouchableOpacity onPress={handleReportCourt}>
             <Text style={styles.courtReportLink}>Report court issue</Text>
           </TouchableOpacity>
         ) : null}
-        <Text style={styles.heroMeta}>
-          {slotsLabel} · {detailCopy.statusSchedulingDescriptor}
-        </Text>
-        {!!detailCopy.statusDetailLine && activity.scheduling_mode === 'flex' && (
+        {!isPastGame ? (
+          <Text style={styles.heroMeta}>
+            {slotsLabel} · {detailCopy.statusSchedulingDescriptor}
+          </Text>
+        ) : null}
+        {!isPastGame && !!detailCopy.statusDetailLine && activity.scheduling_mode === 'flex' && (
           <Text style={styles.statusDetailLine}>{detailCopy.statusDetailLine}</Text>
         )}
-        {!!activity.preference_deadline && activity.match_status === 'collecting' && (
+        {!isPastGame &&
+        !!activity.preference_deadline &&
+        activity.match_status === 'collecting' && (
           <Text style={styles.deadlineText}>
             {detailCopy.collectingDeadlineLabel}:{' '}
             {new Date(activity.preference_deadline).toLocaleString()}
@@ -1005,7 +1047,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         {activity.visibility === 'invite_only' ? (
           <Text style={styles.inviteOnlyText}>Invite-only · hidden from Discover</Text>
         ) : null}
-        {activity.urgency_level === 'tonight' ? (
+        {showTonight ? (
           <Text style={styles.urgentText}>Need players tonight</Text>
         ) : null}
         {activity.series_id ? (
@@ -1016,56 +1058,61 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.regularGroupText}>{PRODUCT_COPY.rallyLabel(regularGroup.name)} →</Text>
           </TouchableOpacity>
         ) : null}
-        {!isHost && activity.cost_note ? (
-          <Text style={styles.costNoteText}>Cost: {activity.cost_note}</Text>
+        {!isHost ? (
+          <HostPaymentHint activityId={activity.id} costNote={activity.cost_note} />
         ) : null}
         {!isHost && activity.session_note ? (
           <Text style={styles.costNoteText}>Session: {activity.session_note}</Text>
         ) : null}
-        {isHost ? (
+        {isHost && !isPastGame ? (
           <View style={styles.costNoteBlock}>
-            <Text style={styles.costNoteLabel}>Session announcement (optional)</Text>
+            <Text style={styles.costNoteLabel}>
+              Session announcement (optional)
+              {savingSessionNote ? ' · Saving…' : ''}
+            </Text>
             <TextInput
               style={styles.costNoteInput}
               value={sessionNoteDraft}
               onChangeText={setSessionNoteDraft}
+              onBlur={() => void handleSaveSessionNote()}
               placeholder="e.g. Court 3 · bring cash for lights"
               maxLength={200}
             />
-            <TouchableOpacity
-              style={[styles.secondaryButton, savingSessionNote && styles.utilityButtonDisabled]}
-              onPress={() => void handleSaveSessionNote()}
-              disabled={savingSessionNote}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {savingSessionNote ? 'Saving…' : 'Save session announcement'}
-              </Text>
-            </TouchableOpacity>
           </View>
         ) : null}
-        {isHost ? (
+        {isHost && !isPastGame ? (
           <View style={styles.costNoteBlock}>
-            <Text style={styles.costNoteLabel}>Cost note (optional)</Text>
+            <Text style={styles.costNoteLabel}>
+              Cost note (optional)
+              {savingCostNote ? ' · Saving…' : ''}
+            </Text>
             <TextInput
               style={styles.costNoteInput}
               value={costNoteDraft}
               onChangeText={setCostNoteDraft}
+              onBlur={() => void handleSaveCostNote()}
               placeholder="e.g. ~$8/person court · BYO drinks"
               maxLength={120}
             />
-            <TouchableOpacity
-              style={[styles.secondaryButton, savingCostNote && styles.utilityButtonDisabled]}
-              onPress={() => void handleSaveCostNote()}
-              disabled={savingCostNote}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {savingCostNote ? 'Saving…' : 'Save cost note'}
-              </Text>
-            </TouchableOpacity>
             <Text style={styles.costNoteHint}>
-              Shown in Details and Game Room. Pin a chat announcement from the Game Room.
+              Saves when you leave the field. Shown in Details and Game Room.
             </Text>
           </View>
+        ) : null}
+        {isPastGame && (activity.session_note || activity.cost_note) ? (
+          <View style={styles.pastNotesBlock}>
+            {activity.session_note ? (
+              <Text style={styles.costNoteText}>Session: {activity.session_note}</Text>
+            ) : null}
+            {activity.cost_note ? (
+              <Text style={styles.costNoteText}>Cost: {activity.cost_note}</Text>
+            ) : null}
+          </View>
+        ) : null}
+        {isPastGame && !recapId && isHost && showPostGameAttendance ? (
+          <Text style={styles.pastGameHint}>
+            Record who showed up to generate a shareable recap for your crew.
+          </Text>
         ) : null}
         {expiresLabel ? (
           <Text style={styles.expiresText}>
@@ -1143,7 +1190,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             ) : null}
           </>
         ) : null}
-        {isHost && !activity.series_id && activity.status === 'active' ? (
+        {isHost && !activity.series_id && activity.status === 'active' && !isPastGame ? (
           <TouchableOpacity
             style={[styles.secondaryButton, makingRecurring && styles.utilityButtonDisabled]}
             onPress={handleMakeRecurring}
@@ -1172,7 +1219,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.secondaryButtonText}>Share crew + next game link</Text>
           </TouchableOpacity>
         ) : null}
-        {regularGroup && (isHost || isGroupMember) ? (
+        {regularGroup &&
+        !isPastGame &&
+        sportSupportsMiniTournament(regularGroup.sport_type) &&
+        (isHost || isGroupMember) ? (
           <View style={styles.tournamentBlock}>
             <Text style={styles.tournamentTitle}>Mini tournaments</Text>
             <Text style={styles.tournamentHint}>
@@ -1209,7 +1259,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </TouchableOpacity>
         ) : null}
-        {isHost && activity.status === 'active' && (
+        {isHost && !isPastGame && activity.status === 'active' && (
           <>
             <TouchableOpacity
               style={[styles.secondaryButton, extending && styles.utilityButtonDisabled]}
@@ -1220,29 +1270,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                 {extending ? 'Updating…' : 'Extend start time'}
               </Text>
             </TouchableOpacity>
-            {extendPickerVisible && (
-              <DateTimePicker
+            {extendPickerVisible ? (
+              <ScheduleDateTimePicker
+                visible
+                autoOpen
                 value={extendStartTime}
-                mode="datetime"
-                minimumDate={new Date()}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, date) => {
+                title="New start time"
+                onChange={(date) => {
+                  setExtendStartTime(date);
                   if (Platform.OS === 'android') {
                     setExtendPickerVisible(false);
-                  }
-                  if (event.type === 'dismissed') {
-                    setExtendPickerVisible(false);
-                    return;
-                  }
-                  if (date) {
-                    setExtendStartTime(date);
-                    if (Platform.OS === 'android') {
-                      handleExtendGame(date);
-                    }
+                    void handleExtendGame(date);
                   }
                 }}
+                onDismiss={() => setExtendPickerVisible(false)}
               />
-            )}
+            ) : null}
             {Platform.OS === 'ios' && extendPickerVisible && (
               <TouchableOpacity
                 style={styles.secondaryButton}
@@ -1260,6 +1303,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         flag={ONBOARDING_FLAGS.COACH_RECURRING_SHOWN}
         active={Boolean(
           isHost &&
+            !isPastGame &&
             !activity.series_id &&
             activity.start_time &&
             new Date(activity.start_time).getTime() < Date.now()
@@ -1272,7 +1316,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
       <CoachMark
         flag={ONBOARDING_FLAGS.COACH_REGULARS_SHOWN}
-        active={Boolean(isHost && activity.series_id && !activity.regular_group_id)}
+        active={Boolean(isHost && !isPastGame && activity.series_id && !activity.regular_group_id)}
         title="Make it official"
         body="Save these players as a Rally and share one link to invite everyone."
         actionLabel={PRODUCT_COPY.saveAsRallyAction}
@@ -1842,6 +1886,19 @@ const styles = StyleSheet.create({
   },
   costNoteBlock: {
     marginTop: 10,
+  },
+  recapWrap: {
+    marginTop: spacing.sm,
+  },
+  pastNotesBlock: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  pastGameHint: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   costNoteLabel: {
     fontSize: 13,

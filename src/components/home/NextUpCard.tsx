@@ -10,6 +10,7 @@ import { getDistanceToActivity } from '../../utils/activityHelpers';
 import { formatTravelEstimate } from '../../utils/formatDistance';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
 import { colors, radius, spacing, typography } from '../../constants/theme';
+import type { HostLockReadiness } from '../../utils/activityHelpers';
 
 export interface NextUpCardProps {
   nextGame: MyGameEntry | null;
@@ -20,6 +21,11 @@ export interface NextUpCardProps {
   onScheduleNext: (sourceActivityId: string) => void;
   openingGameId?: string | null;
   footerHint?: string;
+  /** Host lock status when this game is the one needing lock */
+  hostLock?: {
+    readiness: HostLockReadiness;
+    hint: string;
+  };
 }
 
 export const NextUpCard: React.FC<NextUpCardProps> = ({
@@ -31,6 +37,7 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
   onScheduleNext,
   openingGameId,
   footerHint,
+  hostLock,
 }) => {
   const activity = nextGame?.activity;
   const court = activity?.location?.name || 'Court TBD';
@@ -95,6 +102,23 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
           </Text>
           <Text style={styles.time}>{formatRelativeStart(nextGame.activity.start_time)}</Text>
           {travelLabel ? <Text style={styles.travel}>{travelLabel}</Text> : null}
+          {hostLock ? (
+            <View
+              style={[
+                styles.lockChip,
+                hostLock.readiness === 'ready' && styles.lockChipReady,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.lockChipText,
+                  hostLock.readiness === 'ready' && styles.lockChipTextReady,
+                ]}
+              >
+                {hostLock.hint}
+              </Text>
+            </View>
+          ) : null}
           <Button
             title={busy ? 'Opening…' : 'Open Game Room'}
             size="sm"
@@ -206,5 +230,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     lineHeight: 16,
+  },
+  lockChip: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+    backgroundColor: colors.warningSoft,
+    borderWidth: 1,
+    borderColor: colors.warning + '55',
+  },
+  lockChipReady: {
+    backgroundColor: colors.successSoft,
+    borderColor: colors.success + '55',
+  },
+  lockChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    lineHeight: 16,
+  },
+  lockChipTextReady: {
+    color: colors.success,
   },
 });

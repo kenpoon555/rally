@@ -140,8 +140,8 @@ This project follows the agent-based architecture defined in `.agents/` director
 
 ## Documentation Notes
 
-- **Canonical trilogy:** [VISION.md](./VISION.md) · [ROADMAP.md](./ROADMAP.md) · [../open_items.md](../open_items.md)
-- **Current sprint:** [docs/NEXT.md](./docs/NEXT.md)
+- **Canonical docs:** [docs/vision.md](./docs/vision.md) · [ROADMAP.md](./ROADMAP.md) · [../open_items.md](../open_items.md)
+- **This week:** [docs/WHAT_NEXT.md](./docs/WHAT_NEXT.md)
 - **Doc index:** [docs/README.md](./docs/README.md) · repo hub [../README.md](../README.md)
 - Older setup and troubleshooting docs are archived in `docs/archive/`.
 

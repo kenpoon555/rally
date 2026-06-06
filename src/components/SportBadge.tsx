@@ -31,6 +31,12 @@ const SPORT_THEMES: Partial<Record<SportType, SportChipTheme>> = {
     text: '#9A3412',
     iconBg: '#FFE4D4',
   },
+  [SportType.BASKETBALL]: {
+    bg: colors.infoSoft,
+    border: '#BFDBFE',
+    text: '#1E40AF',
+    iconBg: '#DBEAFE',
+  },
   [SportType.BADMINTON]: {
     bg: colors.primaryLight,
     border: '#A8D4C8',
@@ -43,17 +49,53 @@ const SPORT_THEMES: Partial<Record<SportType, SportChipTheme>> = {
     text: '#166534',
     iconBg: '#D4F5E0',
   },
-  [SportType.BASKETBALL]: {
-    bg: colors.infoSoft,
-    border: '#BFDBFE',
-    text: '#1E40AF',
-    iconBg: '#DBEAFE',
-  },
   [SportType.VOLLEYBALL]: {
     bg: '#FEF9C3',
     border: '#FDE68A',
     text: '#854D0E',
     iconBg: '#FEF08A',
+  },
+  [SportType.SOCCER]: {
+    bg: '#ECFDF5',
+    border: '#A7F3D0',
+    text: '#065F46',
+    iconBg: '#D1FAE5',
+  },
+  [SportType.SQUASH]: {
+    bg: '#FFF7ED',
+    border: '#FED7AA',
+    text: '#9A3412',
+    iconBg: '#FFEDD5',
+  },
+  [SportType.RACQUETBALL]: {
+    bg: '#FDF4FF',
+    border: '#E9D5FF',
+    text: '#6B21A8',
+    iconBg: '#F3E8FF',
+  },
+  [SportType.TABLE_TENNIS]: {
+    bg: '#EFF6FF',
+    border: '#BFDBFE',
+    text: '#1D4ED8',
+    iconBg: '#DBEAFE',
+  },
+  [SportType.ULTIMATE]: {
+    bg: '#F0FDFA',
+    border: '#99F6E4',
+    text: '#0F766E',
+    iconBg: '#CCFBF1',
+  },
+  [SportType.RUNNING]: {
+    bg: '#FEF2F2',
+    border: '#FECACA',
+    text: '#991B1B',
+    iconBg: '#FEE2E2',
+  },
+  [SportType.HIKING]: {
+    bg: '#F7FEE7',
+    border: '#D9F99D',
+    text: '#3F6212',
+    iconBg: '#ECFCCB',
   },
 };
 
@@ -155,9 +197,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   filterChip: {
-    paddingVertical: 6,
-    paddingRight: spacing.md,
-    marginRight: spacing.sm,
+    paddingVertical: 8,
+    paddingRight: spacing.md + 2,
+    paddingLeft: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 2,
+    elevation: 1,
   },
   pillLabel: {
     ...typography.caption,
