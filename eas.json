@@ -25,6 +25,15 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "serviceAccountKeyPath": "/Users/kenpoon/.config/rally/eas-play-submit.json",
+        "track": "internal"
+      },
+      "ios": {
+        "appleId": "kunyupoon495@gmail.com",
+        "appleTeamId": "68JKW6NXF6"
+      }
+    }
   }
 }
