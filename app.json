@@ -20,12 +20,13 @@
       "buildNumber": "2"
     },
     "android": {
-      "package": "com.rallyapp",
+      "package": "app.rally.sports",
       "icon": "./assets/branding/icon-1024.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/branding/icon-android-foreground.png",
         "backgroundColor": "#F0F7FF"
-      }
+      },
+      "versionCode": 2
     },
     "extra": {
       "eas": {

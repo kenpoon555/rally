@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:567443883022:android:028f02a143841facac685f",
+        "android_client_info": {
+          "package_name": "app.rally.sports"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsctGdqE6cL7kGPMjes79Y8Sk5ds4xDC4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:567443883022:android:e12a1761fbc70fd3ac685f",
         "android_client_info": {
           "package_name": "com.rallyapp"
