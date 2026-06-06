@@ -11,10 +11,11 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
-import { getApprovedParticipants, submitGameAttendance } from '../../services/activityService';
+import { submitGameAttendance } from '../../services/activityService';
+import { getGameRecap, shareGameRecap } from '../../services/gameRecapService';
 import { Button, ScreenHeader } from '../../components/ui';
 import { colors, spacing, typography } from '../../constants/theme';
-import { formatActivityTime } from '../../utils/activityHelpers';
+import { formatActivityTime, getApprovedParticipants } from '../../utils/activityHelpers';
 
 export type PostGameAttendanceParams = {
   PostGameAttendance: { activityId: string };
@@ -53,10 +54,30 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!activity) return;
     setSaving(true);
     try {
-      await submitGameAttendance(activity.id, Array.from(selected));
-      Alert.alert('Saved', 'Attendance recorded. Thanks for closing the loop.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      const recapId = await submitGameAttendance(activity.id, Array.from(selected));
+      if (recapId) {
+        Alert.alert('Saved', 'Attendance recorded. Share the recap with your crew?', [
+          {
+            text: 'Share recap',
+            onPress: () => {
+              void (async () => {
+                try {
+                  const recap = await getGameRecap(recapId);
+                  await shareGameRecap(recap);
+                } catch {
+                  // Share sheet dismissed or failed — still exit.
+                }
+                navigation.goBack();
+              })();
+            },
+          },
+          { text: 'Done', onPress: () => navigation.goBack() },
+        ]);
+      } else {
+        Alert.alert('Saved', 'Attendance recorded. Thanks for closing the loop.', [
+          { text: 'OK', onPress: () => navigation.goBack() },
+        ]);
+      }
     } catch (error: unknown) {
       Alert.alert(
         'Could not save',

@@ -8,7 +8,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -20,18 +19,25 @@ import {
   ensureCrewConversation,
 } from '../../services/chatService';
 import { useHomeDashboard } from '../../hooks/useHomeDashboard';
-import { buildBetaContactMailto, BETA_COPY } from '../../constants/betaCopy';
 import { ProductGlossarySheet } from '../../components/ProductGlossarySheet';
 import { MyGameEntry } from '../../services/activityService';
 import { ROUTES } from '../../constants/routes';
 import { Button, EmptyState, ScreenHeader } from '../../components/ui';
 import { NextUpCard } from '../../components/home/NextUpCard';
 import { ActiveGameRoomRow } from '../../components/home/ActiveGameRoomRow';
+import { TodayQuickActions } from '../../components/home/TodayQuickActions';
+import { RallyRowCard } from '../../components/home/RallyRowCard';
+import { RallyInviteCard } from '../../components/rally/RallyInviteCard';
+import { PlayTeaserCard } from '../../components/home/PlayTeaserCard';
 import { colors, spacing, typography } from '../../constants/theme';
-import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { needsConfirmPlaying } from '../../utils/activityHelpers';
-import { SportBadge } from '../../components/SportBadge';
+import {
+  acceptRegularGroupFriendInvite,
+  declineRegularGroupFriendInvite,
+  listMyPendingRegularGroupInvites,
+} from '../../services/regularGroupService';
+import { RallyFriendInvite } from '../../types/rallyInvite';
 
 type TabParamList = {
   DynamicHome: undefined;
@@ -53,14 +59,57 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [openingGameId, setOpeningGameId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [glossaryOpen, setGlossaryOpen] = useState(false);
+  const [rallyInvites, setRallyInvites] = useState<RallyFriendInvite[]>([]);
+  const [inviteBusyId, setInviteBusyId] = useState<string | null>(null);
   const dashboard = useHomeDashboard(activeGames, user?.id, location);
+
+  const loadRallyInvites = useCallback(async () => {
+    try {
+      setRallyInvites(await listMyPendingRegularGroupInvites());
+    } catch {
+      setRallyInvites([]);
+    }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       refetch();
       void fetchLocation();
-    }, [refetch, fetchLocation])
+      void loadRallyInvites();
+    }, [refetch, fetchLocation, loadRallyInvites])
   );
+
+  const handleAcceptRallyInvite = async (invite: RallyFriendInvite) => {
+    setInviteBusyId(invite.id);
+    try {
+      const result = await acceptRegularGroupFriendInvite(invite.id);
+      setRallyInvites((prev) => prev.filter((row) => row.id !== invite.id));
+      refetch();
+      openCrew(result.group_id);
+    } catch (error: unknown) {
+      Alert.alert(
+        'Could not join',
+        error instanceof Error ? error.message : 'Try again.'
+      );
+    } finally {
+      setInviteBusyId(null);
+    }
+  };
+
+  const handleDeclineRallyInvite = async (invite: RallyFriendInvite) => {
+    setInviteBusyId(invite.id);
+    try {
+      await declineRegularGroupFriendInvite(invite.id);
+      setRallyInvites((prev) => prev.filter((row) => row.id !== invite.id));
+    } catch (error: unknown) {
+      Alert.alert(
+        'Could not decline',
+        error instanceof Error ? error.message : 'Try again.'
+      );
+    } finally {
+      setInviteBusyId(null);
+    }
+  };
 
   const openGameRoom = async (entry: MyGameEntry) => {
     setOpeningGameId(entry.activity.id);
@@ -95,9 +144,6 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   const openDiscover = () => navigation.navigate(ROUTES.HOME.MAIN as never);
   const openChats = () => navigation.navigate(ROUTES.CHAT.TAB as never);
-  const openFriends = () =>
-    navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never);
-
   const openCrew = (groupId: string) => {
     navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
       groupId,
@@ -107,6 +153,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const handleRefresh = async () => {
     setRefreshing(true);
     refetch();
+    await loadRallyInvites();
     setRefreshing(false);
   };
 
@@ -120,11 +167,6 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
       .slice(0, MAX_ROOM_ROWS);
   }, [activeGames, nextGame]);
 
-  const hostingCount = useMemo(
-    () => activeGames.filter((entry) => entry.role === 'host').length,
-    [activeGames]
-  );
-
   const needsConfirm = Boolean(
     nextGame &&
       needsConfirmPlaying(nextGame.activity, user?.id)
@@ -137,9 +179,30 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const showExplorerEmpty = mode === 'explorer' && !loading && regularGroups.length === 0;
 
+  const rosterLockHint = (item: NonNullable<typeof dashboard.rosterToLock>) => {
+    if (item.readiness === 'ready') {
+      return PRODUCT_COPY.hostLockReady;
+    }
+    if (item.readiness === 'needs_players') {
+      return PRODUCT_COPY.hostLockNeedsPlayers(
+        item.rosterCount,
+        1 + Math.max(item.entry.activity.missing_players ?? 1, 0)
+      );
+    }
+    return PRODUCT_COPY.hostLockWaitingImIn(item.readyCount, item.rosterCount);
+  };
+
+  const lockOnNextUp =
+    dashboard.rosterToLock &&
+    nextGame &&
+    dashboard.rosterToLock.entry.activity.id === nextGame.activity.id;
+
+  const otherRosterToLock =
+    dashboard.rosterToLock && !lockOnNextUp ? dashboard.rosterToLock : null;
+
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Today" subtitle={subtitle} />
+      <ScreenHeader title="Today" subtitle={subtitle} showLogo accentColor={colors.primary} />
 
       {loading && activeGames.length === 0 && regularGroups.length === 0 ? (
         <View style={styles.centered}>
@@ -150,55 +213,33 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           contentContainerStyle={showExplorerEmpty ? styles.scrollEmpty : undefined}
         >
-          {dashboard.rosterToLock ? (
+          {rallyInvites.map((invite) => (
+            <RallyInviteCard
+              key={invite.id}
+              invite={invite}
+              busy={inviteBusyId === invite.id}
+              onAccept={() => void handleAcceptRallyInvite(invite)}
+              onDecline={() => void handleDeclineRallyInvite(invite)}
+            />
+          ))}
+
+          {otherRosterToLock ? (
             <TouchableOpacity
-              style={[
-                styles.rosterLockCard,
-                dashboard.rosterToLock.readiness === 'ready' && styles.rosterLockCardReady,
-              ]}
-              onPress={() => openGameRoom(dashboard.rosterToLock!.entry)}
+              style={styles.rosterLockRow}
+              onPress={() => openGameRoom(otherRosterToLock.entry)}
             >
-              <View style={styles.rosterLockHeader}>
-                <Text style={styles.rosterLockTitle}>
-                  {dashboard.rosterToLock.readiness === 'ready'
-                    ? PRODUCT_COPY.hostLockReady
-                    : 'Roster to lock'}
-                </Text>
-                {dashboard.rosterToLock.readiness === 'ready' ? (
-                  <View style={styles.rosterLockBadge}>
-                    <Text style={styles.rosterLockBadgeText}>Ready</Text>
-                  </View>
-                ) : null}
-              </View>
-              <Text style={styles.rosterLockMeta}>
-                {dashboard.rosterToLock.entry.activity.sport_type}
-                {dashboard.rosterToLock.entry.activity.location?.name
-                  ? ` · ${dashboard.rosterToLock.entry.activity.location.name}`
-                  : ''}
+              <Text style={styles.rosterLockRowTitle} numberOfLines={1}>
+                {otherRosterToLock.readiness === 'ready'
+                  ? PRODUCT_COPY.hostLockReady
+                  : 'Roster to lock'}
+                {' · '}
+                {otherRosterToLock.entry.activity.sport_type}
               </Text>
-              <Text style={styles.rosterLockHint}>
-                {dashboard.rosterToLock.readiness === 'ready'
-                  ? PRODUCT_COPY.hostLockTapToOpen
-                  : dashboard.rosterToLock.readiness === 'needs_players'
-                    ? PRODUCT_COPY.hostLockNeedsPlayers(
-                        dashboard.rosterToLock.rosterCount,
-                        1 + Math.max(dashboard.rosterToLock.entry.activity.missing_players ?? 1, 0)
-                      )
-                    : PRODUCT_COPY.hostLockWaitingImIn(
-                        dashboard.rosterToLock.readyCount,
-                        dashboard.rosterToLock.rosterCount
-                      )}
+              <Text style={styles.rosterLockRowHint} numberOfLines={1}>
+                {rosterLockHint(otherRosterToLock)}
               </Text>
-              {dashboard.hostSummary.hosting > 1 ? (
-                <Text style={styles.hostSummaryInline}>
-                  {dashboard.hostSummary.hosting} hosting
-                  {dashboard.hostSummary.readyToLock > 0
-                    ? ` · ${dashboard.hostSummary.readyToLock} ready to lock`
-                    : ` · ${dashboard.hostSummary.needsLock} need lock`}
-                </Text>
-              ) : null}
             </TouchableOpacity>
-          ) : dashboard.hostSummary.hosting > 0 ? (
+          ) : dashboard.hostSummary.hosting > 0 && !lockOnNextUp ? (
             <View style={styles.hostSummaryCard}>
               <Text style={styles.hostSummaryTitle}>Host summary</Text>
               <Text style={styles.hostSummaryMeta}>
@@ -244,44 +285,6 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
 
-          {mode === 'explorer' ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Get started — LA badminton & pickleball</Text>
-              <View style={styles.actionRow}>
-                <Button title="Host a Game" size="sm" onPress={openCreateGame} />
-                <Button title="Play" variant="accent" size="sm" onPress={openDiscover} />
-              </View>
-              <Button
-                title={PRODUCT_COPY.startARally}
-                variant="secondary"
-                size="sm"
-                onPress={openCreateGame}
-              />
-              <Button title="Invite friends" variant="ghost" size="sm" onPress={openFriends} />
-            </View>
-          ) : null}
-
-          {dashboard.nearbyPublicGames.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Games near you</Text>
-              {dashboard.nearbyPublicGames.map((game) => (
-                <TouchableOpacity
-                  key={game.id}
-                  style={styles.nearbyRow}
-                  onPress={() => openActivityDetails(game.id)}
-                >
-                  <View style={styles.nearbyTitleRow}>
-                    <SportBadge sport={game.sport_type} />
-                    <Text style={styles.nearbyTitle} numberOfLines={1}>
-                      {game.location?.name ?? 'Open game'}
-                    </Text>
-                  </View>
-                  <Text style={styles.nearbyMeta}>{PRODUCT_COPY.publicGameShort}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : null}
-
           {nextGame || regularGroups[0] ? (
             <NextUpCard
               nextGame={nextGame}
@@ -294,8 +297,24 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
               footerHint={
                 needsConfirm ? PRODUCT_COPY.needsImInHint : undefined
               }
+              hostLock={
+                lockOnNextUp && dashboard.rosterToLock
+                  ? {
+                      readiness: dashboard.rosterToLock.readiness,
+                      hint: rosterLockHint(dashboard.rosterToLock),
+                    }
+                  : undefined
+              }
             />
           ) : null}
+
+          <TodayQuickActions
+            actions={[
+              { key: 'play', label: 'Browse Play', icon: 'compass-outline', onPress: openDiscover },
+              { key: 'host', label: 'Host', icon: 'add-circle-outline', onPress: openCreateGame },
+              { key: 'inbox', label: 'Inbox', icon: 'chatbubbles-outline', onPress: openChats },
+            ]}
+          />
 
           {otherActiveGames.length > 0 ? (
             <View style={styles.section}>
@@ -320,53 +339,42 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {hostingCount > 0 ? `Hosting ${hostingCount} upcoming` : 'Quick actions'}
-            </Text>
-            <View style={styles.actionRow}>
-              <Button title="Host" size="sm" onPress={openCreateGame} />
-              <Button title="Play" variant="accent" size="sm" onPress={openDiscover} />
-            </View>
-            <Button
-              title={PRODUCT_COPY.addFriends}
-              variant="secondary"
-              size="sm"
-              onPress={() =>
-                navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never, {
-                  openSearch: true,
-                } as never)
-              }
-              style={styles.addFriendsBtn}
-            />
-            <Text style={styles.addFriendsHint}>{PRODUCT_COPY.addFriendsHint}</Text>
-          </View>
-
           {regularGroups.length > 0 ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{PRODUCT_COPY.yourRallies}</Text>
               {regularGroups.slice(0, 4).map((group) => (
-                <TouchableOpacity
-                  key={group.id}
-                  style={styles.crewRow}
-                  onPress={() => openCrew(group.id)}
-                >
-                  <Text style={styles.crewName}>{group.name}</Text>
-                  <Text style={styles.crewMeta}>
-                    {group.sport_type} · {PRODUCT_COPY.rally} · mini tournaments
-                  </Text>
-                </TouchableOpacity>
+                <RallyRowCard key={group.id} group={group} onPress={() => openCrew(group.id)} />
               ))}
             </View>
           ) : null}
 
-          <TouchableOpacity onPress={() => setGlossaryOpen(true)}>
-            <Text style={styles.glossaryLink}>How Join, I'm in, and Lock roster work →</Text>
-          </TouchableOpacity>
+          {mode !== 'explorer' ? (
+            <PlayTeaserCard
+              nearbyGames={dashboard.nearbyPublicGames}
+              onBrowsePlay={openDiscover}
+              onOpenGame={openActivityDetails}
+            />
+          ) : null}
 
-          <Text style={styles.founder}>{FOUNDER_BENEFITS_COPY}</Text>
-          <TouchableOpacity onPress={() => void Linking.openURL(buildBetaContactMailto())}>
-            <Text style={styles.bringRally}>{BETA_COPY.contactCta} — {PRODUCT_COPY.bringRallyCta}</Text>
+          {mode === 'explorer' ? (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Get started</Text>
+              <Text style={styles.explorerHint}>
+                Find open games on Play first — join a session, then bring your crew into a Rally.
+              </Text>
+              <Button title="Browse Play" size="sm" onPress={openDiscover} />
+              <Button
+                title="Host a game"
+                variant="secondary"
+                size="sm"
+                onPress={openCreateGame}
+                style={styles.explorerSecondaryBtn}
+              />
+            </View>
+          ) : null}
+
+          <TouchableOpacity onPress={() => setGlossaryOpen(true)} style={styles.footerLink}>
+            <Text style={styles.glossaryLink}>How Join, I'm in, and Lock roster work →</Text>
           </TouchableOpacity>
 
           {showExplorerEmpty ? (
@@ -411,27 +419,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginTop: spacing.sm,
   },
-  actionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  crewRow: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  crewName: {
-    ...typography.bodyMedium,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  crewMeta: {
+  explorerHint: {
     ...typography.caption,
     color: colors.textSecondary,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
+  },
+  explorerSecondaryBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
   },
   rsvpNeededCard: {
     marginHorizontal: spacing.lg,
@@ -452,24 +449,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  founder: {
+  footerLink: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  bringRally: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    ...typography.caption,
-    color: colors.primary,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xxl,
   },
   glossaryLink: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
     ...typography.caption,
-    color: colors.primary,
+    color: colors.textTertiary,
+    textAlign: 'center',
   },
   hostSummaryCard: {
     marginHorizontal: spacing.lg,
@@ -482,43 +470,25 @@ const styles = StyleSheet.create({
   },
   hostSummaryTitle: { ...typography.bodyMedium, color: colors.text },
   hostSummaryMeta: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
-  rosterLockCard: {
+  rosterLockRow: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.warningSoft,
-    borderRadius: 12,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.warning,
+    borderColor: colors.border,
   },
-  rosterLockCardReady: {
-    backgroundColor: colors.successSoft,
-    borderColor: colors.success,
-  },
-  rosterLockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  rosterLockTitle: { ...typography.bodyMedium, color: colors.text, flex: 1 },
-  rosterLockBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: 8,
-    backgroundColor: colors.success,
-  },
-  rosterLockBadgeText: { fontSize: 11, fontWeight: '700', color: colors.textInverse },
-  rosterLockMeta: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
-  rosterLockHint: {
+  rosterLockRowTitle: {
     ...typography.caption,
+    fontWeight: '700',
     color: colors.text,
-    marginTop: spacing.xs,
-    lineHeight: 18,
   },
-  hostSummaryInline: {
+  rosterLockRowHint: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
+    marginTop: 2,
   },
   waitlistSectionHint: {
     ...typography.caption,
@@ -538,27 +508,6 @@ const styles = StyleSheet.create({
   },
   waitlistRowTitle: { ...typography.bodyMedium, color: colors.text },
   waitlistRowMeta: { ...typography.caption, color: colors.warning, marginTop: spacing.xs },
-  addFriendsBtn: { marginTop: spacing.sm },
-  addFriendsHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    lineHeight: 16,
-  },
-  nearbyRow: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  nearbyTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  nearbyTitle: { ...typography.bodyMedium, color: colors.text, flex: 1 },
-  nearbyMeta: { ...typography.caption, color: colors.textSecondary },
 });
 
 export default DynamicHomeScreen;

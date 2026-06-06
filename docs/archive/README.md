@@ -1,25 +1,22 @@
-# Archived Documents
+# Archive
 
-These documents were moved from project root to reduce clutter and keep only active planning docs in top-level files.
+Historical docs — **not** day-to-day planning. Active strategy: **[../vision.md](../vision.md)**.
 
-Archived on: 2026-02-21
+## Recently archived (2026-06)
 
-## Moved Files
+| File | Was |
+|------|-----|
+| [PRODUCT_DIRECTION.md](./PRODUCT_DIRECTION.md) | Superseded by vision.md |
+| [QA_BUILD_HANDOFF.md](./QA_BUILD_HANDOFF.md) | Pre–Market Call 02 QA notes |
+| [screen_opinion_2026-06.md](./screen_opinion_2026-06.md) | Long UX review / wireframe notes |
+| [ADVISOR_REVIEW_MERGED_2026-06-03.md](./ADVISOR_REVIEW_MERGED_2026-06-03.md) | Pre-S1 advisor merge |
+| [AGENT_HANDOFF_FULL_CONTEXT.md](./AGENT_HANDOFF_FULL_CONTEXT.md) | Zero-context agent dump |
+| [NEXT.md](./NEXT.md) / [NEXT_ITEMS.md](./NEXT_ITEMS.md) | Old sprint pointers |
 
-- `FIREBASE-CONFIG-SETUP.md` (archived 2026-03-14; Firebase config task done; both plist and google-services.json in place)
-- `auth-profile-validation-checklist.md` (archived 2026-02-27; Cases 4 and 6 passed; revisit if needed)
-- `map-tab-max-update-depth-hypotheses.md` (archived 2026-02-27; root cause fixed in useLocation)
-- `IMMEDIATE_NEXT_STEPS.md`
-- `test-supabase-connection.md`
-- `SUPABASE_TROUBLESHOOTING.md`
-- `FIREBASE_SETUP.md`
-- `GOOGLE_PLACES_SETUP.md`
-- `QUICK_SETUP.md`
-- `SECURITY.md`
-- `SETUP.md`
+**Frozen shipped list:** [SHIPPED_AND_DEFERRED_2026-06.md](./SHIPPED_AND_DEFERRED_2026-06.md)
 
-## Active Top-Level Product Docs
+## Older archive
 
-- `README.md`
-- `ROADMAP.md`
-- `VISION.md`
+Setup guides, Firebase triage, phase validation checklists, smoke tests, stage ship notes — filenames in git history.
+
+**Active docs:** [../README.md](../README.md)

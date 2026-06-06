@@ -11,13 +11,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import {
   getConversationMessages,
   getConversationPeerUserIds,
   getConversationById,
-  getCrewConversationActivities,
   markConversationRead,
   sendConversationMessage,
   subscribeToConversationMessages,
@@ -26,6 +26,7 @@ import { ChatMessage, Conversation } from '../../types/chat';
 import { getRegularGroupById, joinCrewGame } from '../../services/regularGroupService';
 import {
   finalizeGameCommitment,
+  nudgeSessionRoster,
   setGameReady,
 } from '../../services/activityService';
 import { CrewChatSessionList } from '../../components/CrewChatSessionList';
@@ -41,6 +42,14 @@ import {
   useOptionalGameRoom,
 } from '../../components/GameRoomActionBar';
 import GameRoomAnnouncementBanner from '../../components/GameRoomAnnouncementBanner';
+import { AvailabilityPollCard } from '../../components/AvailabilityPollCard';
+import { CreateAvailabilityPollSheet } from '../../components/CreateAvailabilityPollSheet';
+import { getConversationPolls } from '../../services/availabilityPollService';
+import { listConversationSessionCards } from '../../services/sessionCardService';
+import { ConversationSessionCard } from '../../types/sessionCard';
+import { AvailabilityPoll } from '../../types/availabilityPoll';
+import { ChatMessageBubble } from '../../components/chat/ChatMessageBubble';
+import { ChatQuickReplies } from '../../components/chat/ChatQuickReplies';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
 
@@ -76,6 +85,13 @@ const GameRoomChatBody: React.FC<{
   onDraftChange: (text: string) => void;
   onSend: () => void;
   onRefresh: () => void;
+  crewPolls?: AvailabilityPoll[];
+  crewPollsHost?: boolean;
+  onReloadPolls?: () => void;
+  onOpenPollSheet?: () => void;
+  onScheduleFromPoll?: (option: { starts_at: string; label: string }) => void;
+  showQuickReplies?: boolean;
+  onQuickReply?: (text: string) => void;
 }> = ({
   isGameRoom,
   isCrewChat,
@@ -92,6 +108,13 @@ const GameRoomChatBody: React.FC<{
   onDraftChange,
   onSend,
   onRefresh,
+  crewPolls,
+  crewPollsHost = false,
+  onReloadPolls,
+  onOpenPollSheet,
+  onScheduleFromPoll,
+  showQuickReplies = false,
+  onQuickReply,
 }) => {
   const gameRoom = useOptionalGameRoom();
   const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
@@ -100,15 +123,29 @@ const GameRoomChatBody: React.FC<{
   return (
   <>
     {isCrewChat && crewSessionsHeader}
+    {isCrewChat && crewPolls?.length
+      ? crewPolls.map((poll) => (
+          <AvailabilityPollCard
+            key={poll.id}
+            poll={poll}
+            isHost={crewPollsHost}
+            userId={userId}
+            onUpdated={() => onReloadPolls?.()}
+            onScheduleFromOption={onScheduleFromPoll}
+          />
+        ))
+      : null}
     {isCrewChat || (isGameRoom && gameRoom?.activity) ? (
       <GameRoomAnnouncementBanner
         conversationId={isCrewChat ? conversationId : undefined}
         activityId={gameRoom?.activity?.id}
         isHost={bannerIsHost}
         costNote={gameRoom?.activity?.cost_note}
+        showCostNote={false}
       />
     ) : null}
     {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
+    {isGameRoom ? <GameRoomFooter /> : null}
     <FlatList
       style={styles.list}
       contentContainerStyle={messages.length === 0 ? styles.emptyList : styles.listContent}
@@ -129,41 +166,37 @@ const GameRoomChatBody: React.FC<{
           </Text>
         ) : null
       }
-      renderItem={({ item }) => {
-        const mine = item.sender_id === userId;
-        return (
-          <View style={[styles.messageBubble, mine ? styles.myBubble : styles.otherBubble]}>
-            <Text style={[styles.messageText, mine && styles.myMessageText]}>{item.content}</Text>
-            <Text style={[styles.messageMeta, mine && styles.myMessageMeta]}>
-              {new Date(item.created_at).toLocaleTimeString([], {
-                hour: 'numeric',
-                minute: '2-digit',
-              })}
-            </Text>
-          </View>
-        );
-      }}
+      renderItem={({ item }) => (
+        <ChatMessageBubble message={item} isMine={item.sender_id === userId} />
+      )}
     />
 
-    {isGameRoom ? <GameRoomFooter /> : null}
+    {!chatReadOnly && showQuickReplies && onQuickReply ? (
+      <ChatQuickReplies onSelect={onQuickReply} disabled={sending} />
+    ) : null}
 
     {!chatReadOnly ? (
-    <View style={styles.inputRow}>
+    <View style={styles.composer}>
+      {isCrewChat && onOpenPollSheet ? (
+        <TouchableOpacity style={styles.iconBtn} onPress={onOpenPollSheet}>
+          <Ionicons name="bar-chart-outline" size={20} color={colors.textSecondary} />
+        </TouchableOpacity>
+      ) : null}
       <TextInput
         style={styles.input}
         value={draft}
         onChangeText={onDraftChange}
         placeholder={isGameRoom ? 'Message the group…' : 'Type a message…'}
-        multiline={false}
-        returnKeyType="send"
-        onSubmitEditing={canSendMessage ? onSend : undefined}
+        placeholderTextColor={colors.textTertiary}
+        multiline
+        maxLength={2000}
       />
       <TouchableOpacity
-        style={[styles.sendButton, !canSendMessage && styles.sendButtonDisabled]}
+        style={[styles.sendBtn, !canSendMessage && styles.sendBtnDisabled]}
         onPress={onSend}
         disabled={!canSendMessage}
       >
-        <Text style={styles.sendButtonText}>{sending ? '…' : 'Send'}</Text>
+        <Ionicons name="arrow-up" size={18} color={colors.textInverse} />
       </TouchableOpacity>
     </View>
     ) : null}
@@ -184,33 +217,47 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [blockedThread, setBlockedThread] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [crewSessions, setCrewSessions] = useState<Awaited<
-    ReturnType<typeof getCrewConversationActivities>
-  >>([]);
+  const [crewSessions, setCrewSessions] = useState<ConversationSessionCard[]>([]);
   const [focusedActivityId, setFocusedActivityId] = useState<string | undefined>(activityId);
   const [busyActivityId, setBusyActivityId] = useState<string | null>(null);
   const [crewHostId, setCrewHostId] = useState<string | null>(null);
+  const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
+  const [pollSheetOpen, setPollSheetOpen] = useState(false);
 
   const isCrewChat = conversation?.conversation_type === 'crew_group';
   const resolvedActivityId = isCrewChat ? focusedActivityId : focusedActivityId;
   const isGameRoom = Boolean(isCrewChat ? focusedActivityId : resolvedActivityId);
 
+  const reloadCrewPolls = useCallback(async () => {
+    if (!isCrewChat) {
+      setCrewPolls([]);
+      return;
+    }
+    try {
+      const polls = await getConversationPolls(conversationId);
+      setCrewPolls(polls);
+    } catch {
+      setCrewPolls([]);
+    }
+  }, [conversationId, isCrewChat]);
+
   const reloadCrewSessions = useCallback(async () => {
-    const sessions = await getCrewConversationActivities(conversationId);
+    const sessions = await listConversationSessionCards(conversationId);
     setCrewSessions(sessions);
     const now = Date.now();
     const upcoming = sessions
       .filter((s) => {
-        const a = s.activity;
-        if (!a || a.status !== 'active') {
+        const card = s.card;
+        if (card.status !== 'active') {
           return false;
         }
-        const endMs = new Date(a.start_time).getTime() + (a.duration ?? 60) * 60 * 1000;
+        const endMs =
+          new Date(card.start_time).getTime() + (card.duration ?? 60) * 60 * 1000;
         return endMs >= now;
       })
       .sort(
         (a, b) =>
-          new Date(a.activity!.start_time).getTime() - new Date(b.activity!.start_time).getTime()
+          new Date(a.card.start_time).getTime() - new Date(b.card.start_time).getTime()
       );
     const current =
       sessions.find((s) => s.is_current) ?? upcoming[0] ?? sessions[sessions.length - 1];
@@ -237,6 +284,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         setConversation(convo);
         if (convo?.conversation_type === 'crew_group') {
           await reloadCrewSessions();
+          await reloadCrewPolls();
           return;
         }
         if (activityId) {
@@ -246,7 +294,13 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         }
       })
       .catch(() => undefined);
-  }, [activityId, conversationId, reloadCrewSessions]);
+  }, [activityId, conversationId, reloadCrewPolls, reloadCrewSessions]);
+
+  useEffect(() => {
+    if (isCrewChat) {
+      void reloadCrewPolls();
+    }
+  }, [isCrewChat, reloadCrewPolls]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -335,6 +389,9 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         }
         return [...prev, message];
       });
+      if (isCrewChat && (message.message_type === 'system' || message.activity_id)) {
+        void reloadCrewSessions();
+      }
       if (user?.id) {
         markConversationRead(conversationId, user.id).catch(() => null);
       }
@@ -343,35 +400,56 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [conversationId, user?.id]);
+  }, [conversationId, isCrewChat, reloadCrewSessions, user?.id]);
 
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !blockedThread,
     [blockedThread, draft, sending, user?.id]
   );
 
-  const handleSend = async () => {
-    if (!user?.id || !canSend) {
+  const sendContent = async (content: string) => {
+    if (!user?.id || blockedThread || sending) {
       return;
     }
-    const content = draft.trim();
-    setDraft('');
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return;
+    }
     setSending(true);
     try {
-      const sent = await sendConversationMessage(conversationId, user.id, content);
+      const sent = await sendConversationMessage(conversationId, user.id, trimmed);
       setMessages((prev) => {
         if (prev.some((msg) => msg.id === sent.id)) {
           return prev;
         }
         return [...prev, sent];
       });
-    } catch (error: any) {
-      console.error('Send message failed:', error);
-      setDraft(content);
-      Alert.alert('Message not sent', error?.message || 'Could not send message.');
+    } catch (error: unknown) {
+      Alert.alert(
+        'Message not sent',
+        error instanceof Error ? error.message : 'Could not send message.'
+      );
+      throw error;
     } finally {
       setSending(false);
     }
+  };
+
+  const handleSend = async () => {
+    if (!canSend) {
+      return;
+    }
+    const content = draft.trim();
+    setDraft('');
+    try {
+      await sendContent(content);
+    } catch {
+      setDraft(content);
+    }
+  };
+
+  const handleQuickReply = (text: string) => {
+    void sendContent(text);
   };
 
   if (loading && messages.length === 0) {
@@ -386,6 +464,16 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const bannerIsHost =
     Boolean(user?.id && crewHostId && user.id === crewHostId) ||
     focusedSession?.activity?.user_id === user?.id;
+  const resolvedGroupId = groupId ?? conversation?.regular_group_id ?? undefined;
+  const crewPollsHost = Boolean(user?.id && crewHostId && user.id === crewHostId);
+
+  const handleScheduleFromPoll = (option: { starts_at: string; label: string }) => {
+    navigation.navigate(ROUTES.ACTIVITY.CREATE as never, {
+      prefillStartTime: option.starts_at,
+      prefillTitle: option.label,
+      prefillGroupId: resolvedGroupId,
+    } as never);
+  };
 
   const chatBody = (
     <GameRoomChatBody
@@ -398,7 +486,6 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           <CrewChatSessionList
             sessions={crewSessions}
             focusedActivityId={focusedActivityId}
-            userId={user?.id}
             busyActivityId={busyActivityId}
             onFocusActivity={(id) => setFocusedActivityId(id)}
             onJoin={async (act) => {
@@ -465,6 +552,25 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
                 setBusyActivityId(null);
               }
             }}
+            onNudge={async (act) => {
+              setBusyActivityId(act.id);
+              try {
+                const count = await nudgeSessionRoster(act.id);
+                await reloadCrewSessions();
+                await loadMessages();
+                Alert.alert(
+                  PRODUCT_COPY.nudgeRosterSent,
+                  `Reminder sent to ${count} player${count === 1 ? '' : 's'}.`
+                );
+              } catch (error: unknown) {
+                Alert.alert(
+                  'Could not nudge',
+                  error instanceof Error ? error.message : 'Try again.'
+                );
+              } finally {
+                setBusyActivityId(null);
+              }
+            }}
             onOpenDetails={(act) =>
               navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
                 activityId: act.id,
@@ -484,6 +590,13 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       onDraftChange={setDraft}
       onSend={() => void handleSend()}
       onRefresh={() => void loadMessages()}
+      crewPolls={isCrewChat ? crewPolls : undefined}
+      crewPollsHost={crewPollsHost}
+      onReloadPolls={() => void reloadCrewPolls()}
+      onOpenPollSheet={isCrewChat && resolvedGroupId ? () => setPollSheetOpen(true) : undefined}
+      onScheduleFromPoll={isCrewChat ? handleScheduleFromPoll : undefined}
+      showQuickReplies={isCrewChat || isGameRoom}
+      onQuickReply={handleQuickReply}
     />
   );
 
@@ -528,6 +641,19 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             Messaging is disabled because one of you has blocked the other.
           </Text>
         </View>
+      ) : null}
+
+      {isCrewChat && resolvedGroupId ? (
+        <CreateAvailabilityPollSheet
+          visible={pollSheetOpen}
+          groupId={resolvedGroupId}
+          conversationId={conversationId}
+          onClose={() => setPollSheetOpen(false)}
+          onCreated={() => {
+            void reloadCrewPolls();
+            void loadMessages();
+          }}
+        />
       ) : null}
 
       {user?.id && peerUserId && peerUsername ? (
@@ -616,40 +742,50 @@ const styles = StyleSheet.create({
   myMessageMeta: {
     color: colors.primaryLight,
   },
-  inputRow: {
-    padding: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
+  composer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
   },
   input: {
     flex: 1,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginRight: 8,
-    backgroundColor: colors.background,
-    color: colors.text,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: colors.primary,
+    minHeight: 40,
+    maxHeight: 120,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: radius.pill,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    minWidth: 64,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 15,
+    color: colors.text,
+  },
+  sendBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
   },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendButtonText: {
-    color: '#fff',
-    fontWeight: '700',
+  sendBtnDisabled: {
+    opacity: 0.4,
   },
   headerSafety: {
     marginRight: 12,

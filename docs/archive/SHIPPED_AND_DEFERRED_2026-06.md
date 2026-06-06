@@ -1,6 +1,6 @@
 # Shipped & deferred — frozen snapshot (2026-06)
 
-**Purpose:** Archive completed Track A / advisor items so active planning lives in one place: [PRODUCT_DIRECTION.md](../PRODUCT_DIRECTION.md).
+**Purpose:** Archive completed Track A / advisor items. Active planning: [vision.md](../vision.md).
 
 Do not add new work here — append to ROADMAP or FOUNDER_WEEK2_CHECKLIST instead.
 
@@ -33,6 +33,16 @@ Do not add new work here — append to ROADMAP or FOUNDER_WEEK2_CHECKLIST instea
 - Host create: listing title, intent chips, session note on publish
 - Discover `GameCard`: headline, intent badge, session + cost notes
 - Reviews: hide form after submit; section gone when all targets rated
+
+### Game room (2026-06-04)
+- **Game card** modal (was Activity Details); listing title in room header
+- Optimistic **I'm in** / **Not in**; avatar checkmark; no in-room join alert
+- Cost/announcement banner theme; duplicate Leave removed
+- `gameRoomFocus` util for notification suppression
+
+### Deploy pipeline (2026-06-04)
+- `deploy-production.yml` — push to **`production`** → EAS production builds
+- Branch flow: `dev` → `preview` → `main` → `production` ([github-actions-production.md](../github-actions-production.md))
 
 ### UX polish (local / preview)
 - `ScreenHeader` safe area
@@ -78,12 +88,13 @@ Do not add new work here — append to ROADMAP or FOUNDER_WEEK2_CHECKLIST instea
 
 ---
 
-## Open (ops — as of archive date)
+## Open (ops — as of 2026-06-04)
 
-- P0 collective QA on preview (two devices)
-- P0 EAS preview rebuild for testers
+- P0 collective QA on preview (two devices) — PR #7 on preview
+- Merge **dev → preview** (#9 production workflow) → **preview → main** (#8)
+- First **main → production** PR when ready for store-profile builds
 - Query `analytics_crew_lifecycle.retained`
-- Recruit 5–10 LA hosts
-- Pick **one** P2: Guests **or** Discover polish
+- Recruit 5–10 LA hosts with **labeled** listings
+- Pick **one** P2: Guests **or** Stage 1 ideas S1-A/B/C ([PRODUCT_DIRECTION.md](../PRODUCT_DIRECTION.md))
 
 See [FOUNDER_WEEK2_CHECKLIST.md](../FOUNDER_WEEK2_CHECKLIST.md).

@@ -19,6 +19,7 @@ interface AuthContextType {
   signInWithPhone: (phone: string) => Promise<void>;
   verifyPhone: (phone: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -199,6 +200,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const handleAuthDeepLink = async (url: string) => {
       try {
         const parsed = parseAppDeepLink(url);
+        if (parsed.type === 'sportLanding' && parsed.sportSlug && navigationRef.isReady()) {
+          (navigationRef as any).navigate(ROUTES.LANDING.SPORT, {
+            sportSlug: parsed.sportSlug,
+          });
+          return;
+        }
         if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
           (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
             activityId: parsed.activityId,
@@ -441,6 +448,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: EMAIL_REDIRECT_TO,
+    });
+    if (error) {
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     if (notificationCleanup) {
       notificationCleanup();
@@ -488,6 +504,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         signInWithPhone,
         verifyPhone,
         signOut,
+        resetPassword,
         refreshUser,
       }}
     >

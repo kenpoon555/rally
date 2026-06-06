@@ -39,6 +39,42 @@ export async function notifyPlayerOfJoinApproval(
   }
 }
 
+/** Remind approved players who have not tapped I'm in yet. */
+export async function notifyRosterNudge(activityId: string): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      type: 'roster_nudge',
+      activity_id: activityId,
+    },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('Nudge push skipped:', error.message);
+    }
+  }
+}
+
+/** Notify a free agent that a host invited them to a game. */
+export async function notifyFreeAgentInvite(
+  activityId: string,
+  targetUserId: string
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      type: 'free_agent_invite',
+      activity_id: activityId,
+      target_user_id: targetUserId,
+    },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('Free agent invite push skipped:', error.message);
+    }
+  }
+}
+
 /** Notify approved players that the host finalized the roster. */
 export async function notifyGameFinalized(activityId: string): Promise<void> {
   const { error } = await supabase.functions.invoke('send-push', {

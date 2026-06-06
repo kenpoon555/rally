@@ -38,11 +38,12 @@ export interface ChatMessage {
   id: string;
   conversation_id: string;
   sender_id: string;
-  message_type: 'text' | 'system';
+  message_type: 'text' | 'system' | 'recap';
   content: string;
   created_at: string;
   updated_at: string;
   edited_at?: string | null;
   deleted_at?: string | null;
   activity_id?: string | null;
+  recap_id?: string | null;
 }

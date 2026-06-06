@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ROUTES } from '../../constants/routes';
-import { APP_NAME, APP_PROMISE_LINE1, APP_PROMISE_LINE2 } from '../../constants/brand';
+import { APP_NAME, APP_TAGLINE } from '../../constants/brand';
 import { BETA_COPY } from '../../constants/betaCopy';
 import { RallyMark } from '../../components/RallyMark';
 import { Button } from '../../components/ui';
@@ -25,8 +25,7 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.hero}>
         <RallyMark size="lg" style={styles.logo} />
         <Text style={styles.brand}>{APP_NAME}</Text>
-        <Text style={styles.promise}>{APP_PROMISE_LINE1}</Text>
-        <Text style={styles.promise}>{APP_PROMISE_LINE2}</Text>
+        <Text style={styles.promise}>{APP_TAGLINE}</Text>
         <Text style={styles.beta}>{BETA_COPY.headline}</Text>
       </View>
 
@@ -43,11 +42,6 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => navigation.navigate(ROUTES.AUTH.LOGIN)}
         />
       </View>
-
-      <View style={styles.popular}>
-        <Text style={styles.popularLabel}>Popular near you:</Text>
-        <Text style={styles.popularSports}>Badminton · Pickleball</Text>
-      </View>
     </View>
   );
 };
@@ -57,11 +51,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     paddingHorizontal: spacing.xl,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    gap: spacing.xxxl,
   },
   hero: {
     alignItems: 'center',
-    marginTop: spacing.xxl,
   },
   logo: {
     marginBottom: spacing.lg,
@@ -75,7 +69,8 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 26,
+    maxWidth: 300,
   },
   beta: {
     ...typography.caption,
@@ -86,18 +81,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: spacing.md,
-  },
-  popular: {
-    alignItems: 'center',
-  },
-  popularLabel: {
-    ...typography.caption,
-    color: colors.textTertiary,
-  },
-  popularSports: {
-    ...typography.bodyMedium,
-    color: colors.primaryDark,
-    marginTop: spacing.xs,
+    width: '100%',
   },
 });
 

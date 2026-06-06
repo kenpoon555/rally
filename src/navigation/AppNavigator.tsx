@@ -4,13 +4,13 @@ import { NavigationContainer } from '@react-navigation/native';
 import { navigationRef } from './navigationRef';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { useJoinRequestNotifications } from '../hooks/useJoinRequestNotifications';
 import { useGameLifecycleNotifications } from '../hooks/useGameLifecycleNotifications';
 import { ROUTES } from '../constants/routes';
 import { getTotalUnreadCount } from '../services/chatService';
 import { colors, PRIMARY_COLOR } from '../constants/theme';
+import { AppTabBar } from '../components/navigation/AppTabBar';
 
 import WelcomeScreen from '../pages/Auth/WelcomeScreen';
 import LoginScreen from '../pages/Auth/LoginScreen';
@@ -29,6 +29,7 @@ import AdminScreen from '../pages/Admin/AdminScreen';
 import BetaFeedbackScreen from '../pages/Feedback/BetaFeedbackScreen';
 import MiniTournamentScreen from '../pages/Tournament/MiniTournamentScreen';
 import RegularsCrewScreen from '../pages/Regulars/RegularsCrewScreen';
+import SportLandingScreen from '../pages/Landing/SportLandingScreen';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { linking } from './deepLinking';
 import TosAcceptanceGate from '../components/TosAcceptanceGate';
@@ -37,15 +38,6 @@ import { TOS_VERSION } from '../constants/legal';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
-
-type TabIconName = React.ComponentProps<typeof Ionicons>['name'];
-
-const TAB_ICONS: Record<string, { focused: TabIconName; unfocused: TabIconName }> = {
-  [ROUTES.HOME.DYNAMIC]: { focused: 'home', unfocused: 'home-outline' },
-  [ROUTES.HOME.MAIN]: { focused: 'search', unfocused: 'search-outline' },
-  [ROUTES.CHAT.TAB]: { focused: 'chatbubbles', unfocused: 'chatbubbles-outline' },
-  [ROUTES.PROFILE.MAIN]: { focused: 'person', unfocused: 'person-outline' },
-};
 
 const AuthStack = () => (
   <Stack.Navigator
@@ -81,21 +73,11 @@ const MainTabs = () => {
   return (
     <Tab.Navigator
       initialRouteName={ROUTES.HOME.DYNAMIC}
-      screenOptions={({ route }) => ({
+      tabBar={(props) => <AppTabBar {...props} />}
+      screenOptions={{
         headerShown: false,
         lazy: true,
-        tabBarActiveTintColor: PRIMARY_COLOR,
-        tabBarInactiveTintColor: colors.tabInactive,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
-        tabBarIcon: ({ focused, color, size }) => {
-          const icons = TAB_ICONS[route.name];
-          const name = icons ? (focused ? icons.focused : icons.unfocused) : 'ellipse-outline';
-          return <Ionicons name={name} size={size} color={color} />;
-        },
-      })}
+      }}
     >
       <Tab.Screen
         name={ROUTES.HOME.DYNAMIC}
@@ -165,6 +147,11 @@ const MainStack = () => (
       name={ROUTES.FEEDBACK.BETA}
       component={BetaFeedbackScreen}
       options={{ title: 'Beta feedback' }}
+    />
+    <Stack.Screen
+      name={ROUTES.LANDING.SPORT}
+      component={SportLandingScreen}
+      options={{ title: 'Rally' }}
     />
   </Stack.Navigator>
 );

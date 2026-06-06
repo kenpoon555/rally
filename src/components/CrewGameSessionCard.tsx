@@ -6,6 +6,7 @@ import { formatActivityTime } from '../utils/activityHelpers';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import { SportBadge } from './SportBadge';
 import { colors, radius, spacing, typography } from '../constants/theme';
+import { SessionCardLockReadiness } from '../types/sessionCard';
 
 export type CrewGameSessionCardProps = {
   activity: Activity;
@@ -18,10 +19,16 @@ export type CrewGameSessionCardProps = {
   isWaitlisted?: boolean;
   isFull?: boolean;
   busy?: boolean;
+  readyCount?: number;
+  canLock?: boolean;
+  lockReadiness?: SessionCardLockReadiness;
+  waitlistPosition?: number | null;
   onJoin?: () => void;
   onConfirmIn?: () => void;
   onUndoImIn?: () => void;
   onLockRoster?: () => void;
+  onNudge?: () => void;
+  showNudge?: boolean;
   onOpenDetails?: () => void;
 };
 
@@ -36,10 +43,16 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   isWaitlisted = false,
   isFull = false,
   busy,
+  readyCount,
+  canLock = true,
+  lockReadiness,
+  waitlistPosition,
   onJoin,
   onConfirmIn,
   onUndoImIn,
   onLockRoster,
+  onNudge,
+  showNudge = false,
   onOpenDetails,
 }) => {
   const court = activity.location?.name || 'Court TBD';
@@ -47,6 +60,15 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   const rosterCount = activity.player_count ?? 1;
   const openSpots = activity.missing_players ?? 0;
   const isPast = activity.status === 'completed' || activity.status === 'cancelled';
+  const resolvedReadyCount = readyCount ?? rosterCount;
+  const lockHint =
+    isHost && !isFinalized && lockReadiness === 'ready'
+      ? ' · Ready to lock'
+      : isHost && !isFinalized && lockReadiness === 'waiting_im_in'
+        ? ' · Waiting on I\'m in'
+        : isHost && !isFinalized && lockReadiness === 'needs_players'
+          ? ' · Need more players'
+          : '';
 
   return (
     <View style={[styles.card, isCurrent && styles.cardCurrent, isPast && styles.cardPast]}>
@@ -56,8 +78,11 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
         <Text style={styles.meta}>
           {timeLabel} · {rosterCount} in ·{' '}
           {openSpots > 0 ? `${openSpots} open` : PRODUCT_COPY.gameFull}
-          {isFinalized ? ' · Roster locked' : ''}
-          {isWaitlisted ? ` · ${PRODUCT_COPY.onWaitlist}` : ''}
+          {` · ${resolvedReadyCount} ready`}
+          {isFinalized ? ' · Roster locked' : lockHint}
+          {isWaitlisted
+            ? ` · ${PRODUCT_COPY.onWaitlist}${waitlistPosition ? ` #${waitlistPosition}` : ''}`
+            : ''}
         </Text>
         {isWaitlisted ? (
           <Text style={styles.waitlistHint}>{PRODUCT_COPY.onWaitlistHint}</Text>
@@ -105,13 +130,22 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
           {isOnRoster && isReady && !isFinalized && !onUndoImIn ? (
             <Text style={styles.readyLabel}>{PRODUCT_COPY.imInConfirm}</Text>
           ) : null}
+          {isHost && !isFinalized && showNudge && onNudge ? (
+            <Button
+              title={PRODUCT_COPY.nudgeRoster}
+              variant="ghost"
+              size="sm"
+              onPress={onNudge}
+              disabled={busy}
+            />
+          ) : null}
           {isHost && !isFinalized && onLockRoster ? (
             <Button
               title="Lock roster"
               variant="secondary"
               size="sm"
               onPress={onLockRoster}
-              disabled={busy}
+              disabled={busy || !canLock}
             />
           ) : null}
           {busy ? <ActivityIndicator size="small" color={colors.primary} /> : null}

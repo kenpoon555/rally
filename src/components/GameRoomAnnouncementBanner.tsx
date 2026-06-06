@@ -21,6 +21,8 @@ type Props = {
   activityId?: string;
   isHost: boolean;
   costNote?: string | null;
+  /** Hide court fee row — shown elsewhere in game room header */
+  showCostNote?: boolean;
 };
 
 const GameRoomAnnouncementBanner: React.FC<Props> = ({
@@ -28,6 +30,7 @@ const GameRoomAnnouncementBanner: React.FC<Props> = ({
   activityId,
   isHost,
   costNote,
+  showCostNote = true,
 }) => {
   const [pinnedText, setPinnedText] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,7 +80,7 @@ const GameRoomAnnouncementBanner: React.FC<Props> = ({
     }
   };
 
-  const showCost = Boolean(costNote?.trim());
+  const showCost = showCostNote && Boolean(costNote?.trim());
   const showPinned = Boolean(pinnedText?.trim());
   const showBanner = showCost || showPinned;
 

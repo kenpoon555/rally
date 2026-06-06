@@ -20,6 +20,14 @@ export interface ActivityLocation {
   source?: 'seed' | 'user' | 'places' | string;
   last_verified_at?: string | null;
   updated_at?: string | null;
+  address?: string | null;
+  parking_note?: string | null;
+  booking_url?: string | null;
+  busy_notes?: string | null;
+  hours_text?: string | null;
+  partner_tier?: string | null;
+  logo_url?: string | null;
+  promo_note?: string | null;
 }
 
 export interface Geofence {

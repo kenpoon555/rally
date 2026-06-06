@@ -11,6 +11,7 @@ export interface RegularGroup {
   series_id?: string | null;
   source_activity_id?: string | null;
   invite_token: string;
+  is_partner_rally?: boolean;
   created_at: string;
   updated_at: string;
 }

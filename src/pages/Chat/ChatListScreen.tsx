@@ -11,7 +11,6 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../hooks/useAuth';
-import { useLocation } from '../../hooks/useLocation';
 import {
   ChatInboxFilter,
   ChatInboxItem,
@@ -24,14 +23,9 @@ import {
   getOrCreateDirectConversation,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
-import { PRODUCT_COPY } from '../../constants/productCopy';
-import { useUserPlayMode } from '../../hooks/useUserPlayMode';
-import { MyGameEntry } from '../../services/activityService';
 import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
 import { SportIcon } from '../../components/SportIcon';
-import { NextUpCard } from '../../components/home/NextUpCard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { needsConfirmPlaying } from '../../utils/activityHelpers';
 import { formatInboxMessageDate } from '../../utils/chatHelpers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -67,30 +61,17 @@ const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const { location, fetchLocation } = useLocation(false);
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
-  const { mode, regularGroups, nextGame, refetch: refetchPlayMode } = useUserPlayMode(user?.id);
   const [filter, setFilter] = useState<ChatInboxFilter>('games');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       load();
-      refetchPlayMode();
-      void fetchLocation();
-    }, [load, refetchPlayMode, fetchLocation])
+    }, [load])
   );
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
-
-  const hasNextUpCard = false;
-
-  const nextUpFooterHint = useMemo(() => {
-    if (!nextGame || !needsConfirmPlaying(nextGame.activity, user?.id)) {
-      return undefined;
-    }
-    return PRODUCT_COPY.tapImInInRallyChat;
-  }, [nextGame, user?.id]);
 
   const openThread = (
     conversationId: string,
@@ -163,51 +144,6 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     void openFriendChat(item);
   };
 
-  const openActivityRoom = async (entry: MyGameEntry) => {
-    const key = `next-${entry.activity.id}`;
-    setOpeningKey(key);
-    try {
-      const conversationId = await ensureActivityGroupConversation(entry.activity.id);
-      openThread(
-        conversationId,
-        entry.activity.location?.name || `${entry.activity.sport_type} game`,
-        entry.activity.id
-      );
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Could not open Game Room.';
-      Alert.alert('Game Room unavailable', message);
-    } finally {
-      setOpeningKey(null);
-    }
-  };
-
-  const openGroupSourceDetails = (sourceActivityId: string) => {
-    navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-      activityId: sourceActivityId,
-    } as never);
-  };
-
-  const renderNextUp = () => {
-    if (mode !== 'regular' || filter === 'friends') {
-      return null;
-    }
-
-    return (
-      <NextUpCard
-        nextGame={nextGame}
-        fallbackGroup={regularGroups[0] ?? null}
-        currentUserId={user?.id}
-        userLocation={location}
-        onOpenGameRoom={(entry) => void openActivityRoom(entry)}
-        onScheduleNext={openGroupSourceDetails}
-        openingGameId={
-          nextGame && openingKey === `next-${nextGame.activity.id}` ? nextGame.activity.id : null
-        }
-        footerHint={nextUpFooterHint}
-      />
-    );
-  };
-
   const renderItem = ({ item }: { item: ChatInboxItem }) => {
     const busy = openingKey === item.key;
     const hasUnread = item.unread > 0;
@@ -253,7 +189,15 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           {item.kind === 'game' ? (
             <View style={styles.metaRow}>
               <View style={[styles.chip, item.role === 'host' ? styles.chipHost : styles.chipJoined]}>
-                <Text style={styles.chipText}>{item.role === 'host' ? 'Hosting' : 'Joined'}</Text>
+                <Text style={styles.chipText}>
+                  {item.role === 'host'
+                    ? item.isPast
+                      ? 'Hosted'
+                      : 'Hosting'
+                    : item.role === 'waitlisted'
+                      ? 'Waitlist'
+                      : 'Joined'}
+                </Text>
               </View>
               <View style={styles.chipMuted}>
                 <Text style={styles.chipText}>{item.statusLabel}</Text>
@@ -277,19 +221,25 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     <View style={styles.container}>
       <ScreenHeader
         title="Inbox"
-        subtitle="Active game rooms, Rallies, and friends. Past game chat lives in My Games."
+        subtitle="Game rooms, Rallies, and friends."
+        showLogo
+        accentColor={colors.info}
       />
 
       <View style={styles.filterRow}>
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.id}
-            label={f.label}
-            selected={filter === f.id}
-            tone="primary"
-            onPress={() => setFilter(f.id)}
-          />
-        ))}
+        <View style={styles.filterSegment}>
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.id}
+              label={f.label}
+              selected={filter === f.id}
+              tone="primary"
+              compact
+              style={styles.filterChip}
+              onPress={() => setFilter(f.id)}
+            />
+          ))}
+        </View>
       </View>
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
@@ -305,11 +255,9 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           renderItem={renderItem}
           onRefresh={load}
           refreshing={loading}
-          ListHeaderComponent={renderNextUp()}
           contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
-            hasNextUpCard ? null : (
-              <EmptyState
+            <EmptyState
                 icon="💬"
                 title="Nothing here yet"
                 message={emptyCopy}
@@ -335,7 +283,6 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
                     : undefined
                 }
               />
-            )
           }
         />
       )}
@@ -349,11 +296,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   filterRow: {
-    flexDirection: 'row',
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
+    paddingBottom: spacing.md,
     backgroundColor: colors.surface,
+  },
+  filterSegment: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+    padding: 4,
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  filterChip: {
+    flex: 1,
+    alignItems: 'center',
   },
   centered: {
     flex: 1,

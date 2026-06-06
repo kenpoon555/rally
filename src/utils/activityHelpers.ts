@@ -1,6 +1,6 @@
 import { Activity, JoinRequest } from '../types/activity';
 import { calculateDistance } from './distance';
-import { isActivityListingActive, gameEndMs } from './activityExpiry';
+import { isActivityListingActive, gameEndMs, parseActivityTimestamp } from './activityExpiry';
 import { GAME_CHAT_ARCHIVE_GRACE_MS } from '../constants/gameChat';
 
 export type IntensityLevel = 'casual' | 'moderate' | 'intense';
@@ -23,6 +23,56 @@ export const formatActivityTime = (startTime: string, duration: number): string 
   const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   return `${dayStr} · ${timeStr} · ${duration} min`;
 };
+
+/** Host-flagged "tonight" urgency — only while the game is still today and not over. */
+export function isTonightUrgency(
+  activity: Pick<Activity, 'urgency_level' | 'start_time' | 'duration' | 'status'>
+): boolean {
+  if (activity.urgency_level !== 'tonight') {
+    return false;
+  }
+  if (isPastGameActivity(activity)) {
+    return false;
+  }
+  if (!activity.start_time) {
+    return false;
+  }
+  const startMs = parseActivityTimestamp(activity.start_time);
+  if (!Number.isFinite(startMs)) {
+    return false;
+  }
+  const start = new Date(startMs);
+  const now = new Date();
+  const sameCalendarDay =
+    start.getFullYear() === now.getFullYear() &&
+    start.getMonth() === now.getMonth() &&
+    start.getDate() === now.getDate();
+  if (!sameCalendarDay) {
+    return false;
+  }
+  const endMs = gameEndMs(activity);
+  if (!Number.isFinite(endMs)) {
+    return false;
+  }
+  return endMs >= Date.now();
+}
+
+export function isPastGameActivity(
+  activity: Pick<Activity, 'status' | 'start_time' | 'duration'>
+): boolean {
+  if (activity.status === 'completed' || activity.status === 'cancelled') {
+    return true;
+  }
+  if (!activity.start_time) {
+    return false;
+  }
+  const endMs = gameEndMs(activity);
+  if (Number.isFinite(endMs)) {
+    return endMs < Date.now();
+  }
+  const startMs = parseActivityTimestamp(activity.start_time);
+  return Number.isFinite(startMs) && startMs < Date.now();
+}
 
 export const formatDistance = (meters: number): string => {
   if (meters < 1000) return `${Math.round(meters)} m away`;
@@ -87,13 +137,42 @@ export const isUserWaitlistedOnActivity = (
 
 /** True when a friend hosts or has an approved spot on the game. */
 export function activityHasFriend(activity: Activity, friendIds: Set<string>): boolean {
+  return getFriendsOnActivity(activity, friendIds).length > 0;
+}
+
+/** Friend usernames on roster (host + approved), for Discover card copy. */
+export function getFriendsOnActivity(activity: Activity, friendIds: Set<string>): string[] {
   if (friendIds.size === 0) {
-    return false;
+    return [];
   }
-  if (friendIds.has(activity.user_id)) {
-    return true;
+  const names: string[] = [];
+  const hostName = activity.user?.username;
+  if (hostName && friendIds.has(activity.user_id)) {
+    names.push(hostName);
   }
-  return getApprovedParticipants(activity).some((participant) => friendIds.has(participant.user_id));
+  for (const participant of getApprovedParticipants(activity)) {
+    const username = participant.user?.username;
+    if (username && friendIds.has(participant.user_id) && !names.includes(username)) {
+      names.push(username);
+    }
+  }
+  return names;
+}
+
+/** Roster + ready counts for Discover cards (host counts as on roster; ready if locked or I'm in). */
+export function getActivityRosterSummary(activity: Activity): {
+  onRoster: number;
+  capacity: number;
+  readyCount: number;
+} {
+  const approved = getApprovedParticipants(activity);
+  const onRoster = 1 + approved.length;
+  const capacity = Math.max(onRoster, activity.player_count + (activity.missing_players ?? 0));
+  const isFinalized = activity.match_status === 'finalized';
+  const readyCount =
+    1 +
+    approved.filter((p) => isFinalized || Boolean(p.ready_at)).length;
+  return { onRoster, capacity, readyCount };
 }
 
 export type ParticipantReadyState = 'ready' | 'waiting' | 'none';
@@ -180,8 +259,8 @@ export function sortDiscoverFeedActivities(
       }
     }
 
-    const aTonight = a.urgency_level === 'tonight' ? 1 : 0;
-    const bTonight = b.urgency_level === 'tonight' ? 1 : 0;
+    const aTonight = isTonightUrgency(a) ? 1 : 0;
+    const bTonight = isTonightUrgency(b) ? 1 : 0;
     if (aTonight !== bTonight) {
       return bTonight - aTonight;
     }
@@ -230,24 +309,55 @@ export function shouldShowInDiscoverFeed(activity: Activity, userId?: string): b
 
 /** User-facing label for a game row (Played / Open / Expired, etc.). */
 export function getGameStatusLabel(
-  activity: Pick<Activity, 'status' | 'match_status' | 'expires_at' | 'start_time' | 'scheduling_mode' | 'window_end'>
+  activity: Pick<
+    Activity,
+    'status' | 'match_status' | 'expires_at' | 'start_time' | 'scheduling_mode' | 'window_end' | 'duration'
+  >
 ): string {
-  if (activity.status === 'completed') {
-    return 'Played';
-  }
   if (activity.status === 'cancelled') {
     return 'Cancelled';
   }
-  if (!isActivityListingActive(activity)) {
-    return 'Expired';
-  }
+
+  const playWindowEnded =
+    activity.status === 'completed' ||
+    !isActivityListingActive(activity) ||
+    Date.now() >= gameEndMs(activity);
+
   if (activity.match_status === 'finalized') {
+    if (playWindowEnded) {
+      return 'Expired';
+    }
     return 'Finalized';
   }
+
+  if (playWindowEnded) {
+    return 'Expired';
+  }
+
   if (activity.match_status === 'collecting') {
     return 'Collecting';
   }
   return 'Open';
+}
+
+/** Play window ended — roster locked, no further roster changes. */
+export function isExpiredUnlockedGame(
+  activity: Pick<
+    Activity,
+    'status' | 'match_status' | 'expires_at' | 'start_time' | 'scheduling_mode' | 'window_end' | 'duration'
+  >
+): boolean {
+  return getGameStatusLabel(activity) === 'Expired';
+}
+
+/** Play window has ended — post-game chat / schedule next game. */
+export function isPostGameActivity(
+  activity: Pick<Activity, 'status' | 'start_time' | 'duration'>
+): boolean {
+  if (activity.status === 'cancelled') {
+    return false;
+  }
+  return isPastGameActivity(activity);
 }
 
 /** When this game chat becomes read-only (play end + grace). */

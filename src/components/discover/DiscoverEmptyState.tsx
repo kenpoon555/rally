@@ -1,88 +1,196 @@
 import React from 'react';
-import { Share, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../ui';
+import { SportIcon } from '../SportIcon';
 import { RegularGroup } from '../../types/regularGroup';
-import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
+import { PRODUCT_COPY } from '../../constants/productCopy';
 import { BETA_COPY } from '../../constants/betaCopy';
-import { colors, spacing, typography } from '../../constants/theme';
+import { colors, radius, spacing, typography } from '../../constants/theme';
 
 export interface DiscoverEmptyStateProps {
+  sport: string;
   sportLabel: string;
   regularGroup: RegularGroup | null;
-  onCreateGame: () => void;
-  onInviteFriends: () => void;
-  onOpenChats: () => void;
+  onHostGame: () => void;
+  onOpenRally?: () => void;
+  /** Center in remaining list space when used as FlatList empty component. */
+  fill?: boolean;
 }
 
 export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
+  sport,
   sportLabel,
   regularGroup,
-  onCreateGame,
-  onInviteFriends,
-  onOpenChats,
-}) => {
-  const shareCrewLink = async () => {
-    if (!regularGroup?.invite_token) {
-      return;
-    }
-    const url = buildRegularGroupInviteUrl(regularGroup.invite_token);
-    await Share.share({
-      message: `Join our ${regularGroup.sport_type} crew "${regularGroup.name}" on Rally: ${url}`,
-      url,
-    });
-  };
-
-  return (
-    <View style={styles.wrap}>
-      <Text style={styles.icon}>🔍</Text>
-      <Text style={styles.title}>No {sportLabel.toLowerCase()} games nearby</Text>
-      <Text style={styles.message}>
-        {BETA_COPY.headline} Host the first game, share your crew link, or invite friends to fill
-        a court.
-      </Text>
-      <View style={styles.actions}>
-        <Button title="Create Game" onPress={onCreateGame} fullWidth />
-        {regularGroup ? (
-          <Button
-            title="Share Rally link"
-            variant="secondary"
-            onPress={() => void shareCrewLink()}
-            fullWidth
-          />
-        ) : null}
-        <Button title="Invite friends" variant="secondary" onPress={onInviteFriends} fullWidth />
-        {regularGroup ? (
-          <Button title="Open Chats" variant="ghost" onPress={onOpenChats} fullWidth />
-        ) : null}
+  onHostGame,
+  onOpenRally,
+  fill = false,
+}) => (
+  <View style={[styles.wrap, fill && styles.wrapFill]}>
+    <View style={styles.card}>
+      <View style={styles.iconRow}>
+        <SportIcon sport={sport} size="lg" style={styles.sportIcon} />
       </View>
+
+      <Text style={styles.title}>{PRODUCT_COPY.discoverEmptyTitle(sportLabel)}</Text>
+      <Text style={styles.message}>{PRODUCT_COPY.discoverEmptyBody}</Text>
+
+      <View style={styles.steps}>
+        <View style={styles.step}>
+          <View style={styles.stepBadge}>
+            <Text style={styles.stepNumber}>1</Text>
+          </View>
+          <View style={styles.stepBody}>
+            <Text style={styles.stepTitle}>{PRODUCT_COPY.discoverEmptyStepHost}</Text>
+            <Text style={styles.stepHint}>List a time and court — shows up here for nearby players.</Text>
+          </View>
+        </View>
+        <View style={styles.step}>
+          <View style={[styles.stepBadge, styles.stepBadgeMuted]}>
+            <Text style={[styles.stepNumber, styles.stepNumberMuted]}>2</Text>
+          </View>
+          <View style={styles.stepBody}>
+            <Text style={styles.stepTitle}>Invite your crew</Text>
+            <Text style={styles.stepHint}>{PRODUCT_COPY.discoverEmptyStepInvite}</Text>
+          </View>
+        </View>
+      </View>
+
+      <Button title="Host a game" onPress={onHostGame} fullWidth />
+
+      {regularGroup && onOpenRally ? (
+        <TouchableOpacity style={styles.rallyLink} onPress={onOpenRally} activeOpacity={0.8}>
+          <Ionicons name="people" size={18} color={colors.primary} />
+          <View style={styles.rallyLinkBody}>
+            <Text style={styles.rallyLinkTitle}>{PRODUCT_COPY.discoverEmptyOpenRally}</Text>
+            <Text style={styles.rallyLinkName} numberOfLines={1}>
+              {regularGroup.name}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
+        </TouchableOpacity>
+      ) : null}
+
+      <Text style={styles.footnote}>{PRODUCT_COPY.discoverEmptyTrySport}</Text>
+      <Text style={styles.betaLine}>{BETA_COPY.headline}</Text>
     </View>
-  );
-};
+  </View>
+);
 
 const styles = StyleSheet.create({
   wrap: {
-    alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
-  icon: {
-    fontSize: 40,
-    marginBottom: spacing.md,
+  wrapFill: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    minHeight: 360,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  iconRow: {
+    alignItems: 'center',
+  },
+  sportIcon: {
+    backgroundColor: colors.primaryLight,
   },
   title: {
     ...typography.headline,
+    fontSize: 20,
     textAlign: 'center',
-    marginBottom: spacing.sm,
   },
   message: {
-    ...typography.caption,
+    ...typography.body,
+    fontSize: 15,
     textAlign: 'center',
     color: colors.textSecondary,
-    marginBottom: spacing.lg,
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  actions: {
-    alignSelf: 'stretch',
+  steps: {
     gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  step: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    alignItems: 'flex-start',
+  },
+  stepBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepBadgeMuted: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stepNumber: {
+    ...typography.caption,
+    fontWeight: '800',
+    color: colors.textInverse,
+  },
+  stepNumberMuted: {
+    color: colors.textSecondary,
+  },
+  stepBody: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  stepTitle: {
+    ...typography.bodyMedium,
+    color: colors.text,
+  },
+  stepHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  rallyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.lg,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: 'rgba(11, 122, 94, 0.12)',
+  },
+  rallyLinkBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rallyLinkTitle: {
+    ...typography.caption,
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  rallyLinkName: {
+    ...typography.bodyMedium,
+    color: colors.text,
+    marginTop: 2,
+  },
+  footnote: {
+    ...typography.caption,
+    textAlign: 'center',
+    color: colors.textTertiary,
+    lineHeight: 18,
+  },
+  betaLine: {
+    ...typography.caption,
+    textAlign: 'center',
+    color: colors.textTertiary,
+    lineHeight: 18,
   },
 });

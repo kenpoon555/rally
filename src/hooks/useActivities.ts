@@ -4,6 +4,7 @@ import {
   getNearbyActivities,
   getMyGames,
   getActivityById,
+  expireStaleActivities,
   MyGamesResult,
 } from '../services/activityService';
 import { supabase } from '../services/api/supabase';
@@ -138,6 +139,7 @@ export const useActivity = (activityId: string) => {
     setLoading(true);
     setError(null);
     try {
+      await expireStaleActivities();
       const activityData = await getActivityById(activityId);
       setActivity(activityData);
       if (!activityData) {
