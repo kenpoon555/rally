@@ -128,7 +128,7 @@ const ProfileScreen: React.FC = () => {
   const [conciergeAvailability, setConciergeAvailability] = useState('');
   const [submittingConcierge, setSubmittingConcierge] = useState(false);
   const [showCaptainFeedback, setShowCaptainFeedback] = useState(false);
-  const [feedbackSport, setFeedbackSport] = useState<SportType>('Badminton');
+  const [feedbackSport] = useState<SportType>('Badminton');
   const [feedbackArea, setFeedbackArea] = useState('host tools');
   const [feedbackScore, setFeedbackScore] = useState(3);
   const [feedbackNote, setFeedbackNote] = useState('');

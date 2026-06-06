@@ -100,7 +100,7 @@ export const CreateAvailabilityPollSheet: React.FC<Props> = ({
         groupId,
         conversationId,
         title: title.trim() || 'When can we play?',
-        options: sortedSlots.map((slot, index) => ({
+        options: sortedSlots.map((slot) => ({
           label:
             slot.label.trim() ||
             slot.startsAt.toLocaleString(undefined, {

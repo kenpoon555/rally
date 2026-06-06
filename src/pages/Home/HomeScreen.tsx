@@ -341,30 +341,33 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     ]);
   };
 
-  const openSportLanding = () => {
+  const openSportLanding = useCallback(() => {
     navigation.getParent()?.navigate(ROUTES.LANDING.SPORT as never, {
       sportSlug: selectedSport.toLowerCase(),
     } as never);
-  };
+  }, [navigation, selectedSport]);
 
-  const handleRequestSpot = async (post: NeedPlayerPost) => {
-    if (!user?.id) {
-      return;
-    }
-    setRequestingPostId(post.id);
-    try {
-      await requestNeedPlayerSpot(post.id);
-      await loadNeedPosts();
-      Alert.alert(
-        'Request sent',
-        'The host will review your request. If accepted, open the game and tap I\'m in.'
-      );
-    } catch (error: unknown) {
-      Alert.alert('Could not request', error instanceof Error ? error.message : 'Try again.');
-    } finally {
-      setRequestingPostId(null);
-    }
-  };
+  const handleRequestSpot = useCallback(
+    async (post: NeedPlayerPost) => {
+      if (!user?.id) {
+        return;
+      }
+      setRequestingPostId(post.id);
+      try {
+        await requestNeedPlayerSpot(post.id);
+        await loadNeedPosts();
+        Alert.alert(
+          'Request sent',
+          'The host will review your request. If accepted, open the game and tap I\'m in.'
+        );
+      } catch (error: unknown) {
+        Alert.alert('Could not request', error instanceof Error ? error.message : 'Try again.');
+      } finally {
+        setRequestingPostId(null);
+      }
+    },
+    [loadNeedPosts, user?.id]
+  );
 
   useEffect(() => {
     if (authLoading) {

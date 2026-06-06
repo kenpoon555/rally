@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Activity, JoinRequest } from '../types/activity';
+import { Activity } from '../types/activity';
 import { useAuth } from '../hooks/useAuth';
 import JoinRequestButton from './JoinRequestButton';
 import { SportBadge } from './SportBadge';

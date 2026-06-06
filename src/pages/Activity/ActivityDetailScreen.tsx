@@ -561,7 +561,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     void getGameRecapIdForActivity(activity.id).then(setRecapId);
-  }, [activity?.id, activity?.status, activity?.start_time, activity?.duration]);
+  }, [activity?.id, activity?.status, activity?.start_time, activity?.duration, activity]);
 
   const handleShareInvite = async () => {
     if (!activity?.invite_token) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { colors, spacing, typography } from '../constants/theme';
@@ -42,16 +42,16 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
     setDraftDate(value);
   }, [value]);
 
-  const openAndroidPicker = () => {
+  const openAndroidPicker = useCallback(() => {
     setDraftDate(new Date(value));
     setAndroidStep('date');
-  };
+  }, [value]);
 
   useEffect(() => {
     if (visible && autoOpen && Platform.OS === 'android' && androidStep === 'idle') {
       openAndroidPicker();
     }
-  }, [visible, autoOpen, androidStep]);
+  }, [visible, autoOpen, androidStep, openAndroidPicker]);
 
   const handleAndroidDate = (event: DateTimePickerEvent, date?: Date) => {
     if (isDismissed(event)) {
