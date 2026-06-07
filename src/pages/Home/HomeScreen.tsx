@@ -25,7 +25,7 @@ import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetada
 import { updateUserProfile } from '../../services/userService';
 import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
 import { getCurrentLocation } from '../../services/locationService';
-import { colors, PRIMARY_COLOR, radius, spacing, typography } from '../../constants/theme';
+import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
 import { ScreenHeader, SegmentToggle } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
@@ -124,8 +124,8 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     return 'games';
   });
   const [needPosts, setNeedPosts] = useState<NeedPlayerPost[]>([]);
-  const [needLoading, setNeedLoading] = useState(false);
-  const [needError, setNeedError] = useState<string | null>(null);
+  const [, setNeedLoading] = useState(false);
+  const [, setNeedError] = useState<string | null>(null);
   const [freeAgentPosts, setFreeAgentPosts] = useState<FreeAgentPost[]>([]);
   const [freeAgentLoading, setFreeAgentLoading] = useState(false);
   const [freeAgentError, setFreeAgentError] = useState<string | null>(null);
