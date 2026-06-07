@@ -29,6 +29,8 @@
 | [eas-build-and-credentials.md](./eas-build-and-credentials.md) | EAS credentials |
 | [github-actions-preview.md](./github-actions-preview.md) | Preview branch builds |
 | [github-actions-production.md](./github-actions-production.md) | Production branch builds |
+| [PUSH_NOTIFICATIONS.md](./PUSH_NOTIFICATIONS.md) | FCM push registry + add-new checklist |
+| Agent workflows | [../.cursor/workflows/](../.cursor/workflows/) (promote, ship, deploy) |
 | [APP_STORE_PLAY_STORE_PREP.md](./APP_STORE_PLAY_STORE_PREP.md) | TestFlight / Play / launch |
 | [beta-testflight-play-internal.md](./beta-testflight-play-internal.md) | Wider beta distribution |
 

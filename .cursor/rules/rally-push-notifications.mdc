@@ -1,0 +1,21 @@
+---
+description: Push notification wiring — send-push, dispatch, deep links
+globs: src/services/pushDispatchService.ts,src/services/notificationService.ts,supabase/functions/send-push/**,src/navigation/navigationRef.ts,docs/PUSH_NOTIFICATIONS.md
+alwaysApply: false
+---
+
+# Push notifications
+
+Registry: **`docs/PUSH_NOTIFICATIONS.md`** — update on every new notify event.
+
+When adding background push:
+
+1. `type` in `supabase/functions/send-push/index.ts` (`PushBody`)
+2. Handler: auth, membership/role check, quiet hours, suspended skip
+3. `notifyX()` in `src/services/pushDispatchService.ts`
+4. Call from service after DB success (fire-and-forget, best-effort)
+5. `navigateFromNotificationData()` case in `navigationRef.ts`
+6. Deploy: `supabase functions deploy send-push --project-ref casljueycxsqexpkdiuq`
+7. Test iOS + Android physical devices (background + killed)
+
+Foreground-only Realtime alerts: `src/hooks/useJoinRequestNotifications.ts`, `useGameLifecycleNotifications.ts` — not a substitute for FCM.

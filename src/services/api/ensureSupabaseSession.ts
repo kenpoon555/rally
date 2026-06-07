@@ -17,12 +17,18 @@ export async function ensureSupabaseSessionReady(): Promise<void> {
   const needsRefresh = !expiresAtMs || expiresAtMs - Date.now() < 120_000;
 
   if (needsRefresh) {
-    await supabase.auth.refreshSession();
+    const { error } = await supabase.auth.refreshSession();
+    if (error && __DEV__) {
+      console.warn('[auth] refreshSession failed:', error.message);
+    }
     return;
   }
 
   const { error: userError } = await supabase.auth.getUser();
   if (userError) {
-    await supabase.auth.refreshSession();
+    const { error } = await supabase.auth.refreshSession();
+    if (error && __DEV__) {
+      console.warn('[auth] refreshSession after getUser failed:', error.message);
+    }
   }
 }

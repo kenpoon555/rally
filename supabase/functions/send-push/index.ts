@@ -9,15 +9,33 @@ type PushBody = {
   type:
     | 'join_request'
     | 'join_request_approved'
+    | 'join_request_rejected'
     | 'game_finalized'
     | 'roster_nudge'
     | 'free_agent_invite'
-    | 'review_prompt';
-  activity_id: string;
+    | 'fill_in_invite'
+    | 'review_prompt'
+    | 'chat_message';
+  activity_id?: string;
+  conversation_id?: string;
+  message_preview?: string;
   target_user_id?: string;
   title?: string;
   body?: string;
 };
+
+function isInQuietHours(
+  quietStart: number | null | undefined,
+  quietEnd: number | null | undefined
+): boolean {
+  if (quietStart == null || quietEnd == null) {
+    return false;
+  }
+  const localHour = new Date().getUTCHours();
+  return quietStart < quietEnd
+    ? localHour >= quietStart && localHour < quietEnd
+    : localHour >= quietStart || localHour < quietEnd;
+}
 
 async function sendFcmLegacy(
   serverKey: string,
@@ -87,8 +105,8 @@ Deno.serve(async (req) => {
     }
 
     const payload = (await req.json()) as PushBody;
-    if (!payload?.activity_id || !payload?.type) {
-      return new Response(JSON.stringify({ error: 'activity_id and type required' }), {
+    if (!payload?.type) {
+      return new Response(JSON.stringify({ error: 'type required' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -104,6 +122,114 @@ Deno.serve(async (req) => {
     } else if (pushLimit && pushLimit.allowed === false) {
       return new Response(JSON.stringify({ ok: false, error: 'push rate limit exceeded' }), {
         status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (payload.type === 'chat_message') {
+      if (!payload.conversation_id) {
+        return new Response(JSON.stringify({ error: 'conversation_id required for chat_message' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: membership } = await admin
+        .from('conversation_members')
+        .select('conversation_id')
+        .eq('conversation_id', payload.conversation_id)
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!membership) {
+        return new Response(JSON.stringify({ error: 'Not a member of this conversation' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: convo } = await admin
+        .from('conversations')
+        .select('id, activity_id, title, conversation_type')
+        .eq('id', payload.conversation_id)
+        .maybeSingle();
+
+      const { data: senderProfile } = await admin
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const { data: members } = await admin
+        .from('conversation_members')
+        .select('user_id')
+        .eq('conversation_id', payload.conversation_id)
+        .eq('is_active', true);
+
+      const preview = (payload.message_preview || payload.body || 'New message').trim();
+      const senderName = (senderProfile?.username as string | undefined) || 'Someone';
+      const chatTitle =
+        payload.title ||
+        (convo?.conversation_type === 'crew_group'
+          ? `${senderName} in Rally chat`
+          : `${senderName} in game chat`);
+      const chatBody =
+        preview.length > 120 ? `${preview.slice(0, 117)}…` : preview;
+
+      let sent = 0;
+      for (const member of members || []) {
+        const memberId = member.user_id as string;
+        if (memberId === user.id) {
+          continue;
+        }
+
+        const { data: memberProfile } = await admin
+          .from('profiles')
+          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+          .eq('id', memberId)
+          .maybeSingle();
+
+        if (memberProfile?.is_suspended) {
+          continue;
+        }
+
+        if (
+          isInQuietHours(
+            memberProfile?.push_quiet_hours_start as number | null | undefined,
+            memberProfile?.push_quiet_hours_end as number | null | undefined
+          )
+        ) {
+          continue;
+        }
+
+        const { data: tokens } = await admin
+          .from('user_device_tokens')
+          .select('device_token')
+          .eq('user_id', memberId);
+
+        for (const tokenRow of tokens || []) {
+          try {
+            await sendFcmLegacy(serverKey, tokenRow.device_token, chatTitle, chatBody, {
+              type: payload.type,
+              conversation_id: payload.conversation_id,
+              activity_id: (convo?.activity_id as string | undefined) || '',
+            });
+            sent += 1;
+          } catch (e) {
+            console.error('FCM chat_message send failed for token:', e);
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, sent }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!payload.activity_id) {
+      return new Response(JSON.stringify({ error: 'activity_id required' }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -155,13 +281,40 @@ Deno.serve(async (req) => {
       recipientUserId = payload.target_user_id;
     }
 
-    if (payload.type === 'free_agent_invite') {
+    if (payload.type === 'join_request_rejected') {
+      if (!payload.target_user_id) {
+        return new Response(JSON.stringify({ error: 'target_user_id required for rejection push' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       if (user.id !== hostUserId) {
-        return new Response(JSON.stringify({ error: 'Only the host can send free agent invites' }), {
+        return new Response(JSON.stringify({ error: 'Only the host can notify rejection' }), {
           status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      const { data: rejectedRow } = await admin
+        .from('join_requests')
+        .select('id, status')
+        .eq('activity_id', payload.activity_id)
+        .eq('user_id', payload.target_user_id)
+        .eq('status', 'rejected')
+        .maybeSingle();
+      if (!rejectedRow) {
+        return new Response(JSON.stringify({ error: 'No rejected join request for target user' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      recipientUserId = payload.target_user_id;
+    }
+
+    if (
+      payload.type === 'free_agent_invite' ||
+      payload.type === 'fill_in_invite' ||
+      payload.type === 'game_friend_invite'
+    ) {
       if (!payload.target_user_id) {
         return new Response(JSON.stringify({ error: 'target_user_id required' }), {
           status: 400,
@@ -169,12 +322,43 @@ Deno.serve(async (req) => {
         });
       }
 
+      if (payload.type === 'game_friend_invite') {
+        const { data: friendInvite } = await admin
+          .from('activity_friend_invites')
+          .select('id, status, invited_by')
+          .eq('activity_id', payload.activity_id)
+          .eq('invited_user_id', payload.target_user_id)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (!friendInvite || friendInvite.invited_by !== user.id) {
+          return new Response(JSON.stringify({ error: 'No pending game friend invite' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else if (user.id !== hostUserId) {
+        return new Response(JSON.stringify({ error: 'Only the host can send free agent invites' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const courtName =
         (activity.location as { name?: string } | null)?.name || 'a court';
-      const title = payload.title || 'Game invite';
+      const title =
+        payload.title ||
+        (payload.type === 'fill_in_invite'
+          ? 'Fill-in invite'
+          : payload.type === 'game_friend_invite'
+            ? 'Game invite'
+            : 'Game invite');
       const body =
         payload.body ||
-        `A host invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`;
+        (payload.type === 'fill_in_invite'
+          ? `You're invited to fill a spot for ${activity.sport_type} at ${courtName}. Open Rally to respond.`
+          : payload.type === 'game_friend_invite'
+            ? `A friend invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`
+            : `A host invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`);
 
       const { data: tokens } = await admin
         .from('user_device_tokens')
@@ -427,20 +611,24 @@ Deno.serve(async (req) => {
       payload.title ||
       (payload.type === 'join_request_approved'
         ? "You're in!"
-        : payload.type === 'join_request'
-          ? 'New join request'
-          : payload.type === 'game_finalized'
-            ? 'Game finalized'
-            : 'Rally');
+        : payload.type === 'join_request_rejected'
+          ? 'Request declined'
+          : payload.type === 'join_request'
+            ? 'New join request'
+            : payload.type === 'game_finalized'
+              ? 'Game finalized'
+              : 'Rally');
     const body =
       payload.body ||
       (payload.type === 'join_request_approved'
         ? `Your request to join the ${activity.sport_type} game at ${courtName} was approved.`
-        : payload.type === 'join_request'
-          ? `Someone wants to join your ${activity.sport_type} game at ${courtName}.`
-          : payload.type === 'game_finalized'
-            ? `Roster locked for ${activity.sport_type} at ${courtName}. See you on court!`
-            : 'Rate your recent game on Rally.');
+        : payload.type === 'join_request_rejected'
+          ? `Your request to join the ${activity.sport_type} game at ${courtName} was declined.`
+          : payload.type === 'join_request'
+            ? `Someone wants to join your ${activity.sport_type} game at ${courtName}.`
+            : payload.type === 'game_finalized'
+              ? `Roster locked for ${activity.sport_type} at ${courtName}. See you on court!`
+              : 'Rate your recent game on Rally.');
 
     const dataPayload: Record<string, string> = {
       type: payload.type,

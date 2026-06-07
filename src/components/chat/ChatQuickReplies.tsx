@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CHAT_QUICK_REPLIES } from '../../constants/chatQuickReplies';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -16,17 +9,14 @@ type Props = {
 };
 
 export const ChatQuickReplies: React.FC<Props> = ({ onSelect, disabled = false }) => {
-  const { width } = useWindowDimensions();
-  const stripWidth = width * 0.5;
-
   return (
     <View style={styles.wrap}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        style={[styles.scroll, { width: stripWidth }]}
         contentContainerStyle={styles.row}
+        style={styles.scroll}
       >
         {CHAT_QUICK_REPLIES.map((reply) => (
           <TouchableOpacity
@@ -46,9 +36,7 @@ export const ChatQuickReplies: React.FC<Props> = ({ onSelect, disabled = false }
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.xs,
+    overflow: 'hidden',
   },
   scroll: {
     flexGrow: 0,
@@ -56,17 +44,20 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    paddingLeft: spacing.md,
     paddingRight: spacing.sm,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    gap: spacing.xs,
   },
   chip: {
+    flexShrink: 0,
     paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    flexShrink: 0,
   },
   chipDisabled: {
     opacity: 0.5,

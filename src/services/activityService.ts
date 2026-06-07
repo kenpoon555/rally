@@ -18,6 +18,7 @@ import { usersAreBlocked } from './safetyService';
 import {
   notifyHostOfJoinRequest,
   notifyPlayerOfJoinApproval,
+  notifyPlayerOfJoinRejection,
   notifyGameFinalized,
   notifyRosterNudge,
 } from './pushDispatchService';
@@ -271,7 +272,9 @@ async function queryDiscoverActivities(
     query = query.eq('sport_type', sportType);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query
+    .order('start_time', { ascending: true, nullsFirst: false })
+    .limit(CONFIG.DISCOVER_QUERY_LIMIT);
   if (error) {
     return { activities: [], errorMessage: error.message };
   }
@@ -376,6 +379,63 @@ export const extendActivitySchedule = async (
   });
 };
 
+function formatScheduleChangeTime(date: Date): string {
+  return date.toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export async function postActivitySystemMessage(
+  activityId: string,
+  content: string
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+  try {
+    await ensureActivityGroupConversation(activityId);
+  } catch {
+    // Message is best-effort when chat is not open yet.
+  }
+  const { error } = await supabase.rpc('post_activity_system_message', {
+    p_activity_id: activityId,
+    p_sender_id: user.id,
+    p_content: content,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function hostUpdateGameStartTime(
+  activityId: string,
+  newStartTime: Date
+): Promise<Activity> {
+  const updated = await extendActivitySchedule(activityId, newStartTime);
+  await postActivitySystemMessage(
+    activityId,
+    `Host changed game time to ${formatScheduleChangeTime(newStartTime)}`
+  );
+  return updated;
+}
+
+export async function hostUpdateGameCourt(
+  activityId: string,
+  locationId: string,
+  courtName: string
+): Promise<Activity> {
+  const updated = await updateActivity(activityId, { location_id: locationId });
+  await postActivitySystemMessage(activityId, `Host changed court to ${courtName}`);
+  return updated;
+}
+
 export const getNearbyActivities = async (
   latitude?: number,
   longitude?: number,
@@ -391,8 +451,6 @@ export const getNearbyActivities = async (
     ? Math.max(radius, 75000)
     : radius;
 
-  await ensureSupabaseSessionReady();
-
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
@@ -407,7 +465,7 @@ export const getNearbyActivities = async (
         );
       }
     }
-    await trackProductEvent(
+    void trackProductEvent(
       'discover_refreshed',
       { sport_type: sportType || null },
       authUser.id
@@ -865,6 +923,12 @@ export const approveJoinRequest = async (
  * Reject join request
  */
 export const rejectJoinRequest = async (requestId: string): Promise<void> => {
+  const { data: joinRow } = await supabase
+    .from('join_requests')
+    .select('user_id, activity_id')
+    .eq('id', requestId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('join_requests')
     .update({
@@ -875,6 +939,18 @@ export const rejectJoinRequest = async (requestId: string): Promise<void> => {
 
   if (error) {
     throw new Error(`Failed to reject join request: ${error.message}`);
+  }
+
+  const activityId = joinRow?.activity_id as string | undefined;
+  const playerUserId = joinRow?.user_id as string | undefined;
+  if (activityId && playerUserId) {
+    try {
+      await notifyPlayerOfJoinRejection(activityId, playerUserId);
+    } catch (pushError) {
+      if (__DEV__) {
+        console.warn('Rejection push skipped:', pushError);
+      }
+    }
   }
 };
 

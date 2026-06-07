@@ -3,14 +3,17 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
@@ -117,8 +120,34 @@ const GameRoomChatBody: React.FC<{
   onQuickReply,
 }) => {
   const gameRoom = useOptionalGameRoom();
+  const insets = useSafeAreaInsets();
   const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
   const canSendMessage = canSend && !chatReadOnly;
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      if (Platform.OS === 'android') {
+        setKeyboardInset(event.endCoordinates.height);
+      }
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      if (Platform.OS === 'android') {
+        setKeyboardInset(0);
+      }
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
+
+  const composerPaddingBottom =
+    Platform.OS === 'android' && keyboardInset > 0
+      ? Math.max(spacing.sm, keyboardInset - insets.bottom + spacing.sm)
+      : Math.max(insets.bottom, spacing.sm);
 
   return (
   <>
@@ -136,13 +165,15 @@ const GameRoomChatBody: React.FC<{
         ))
       : null}
     {isCrewChat || (isGameRoom && gameRoom?.activity) ? (
-      <GameRoomAnnouncementBanner
-        conversationId={isCrewChat ? conversationId : undefined}
-        activityId={gameRoom?.activity?.id}
-        isHost={bannerIsHost}
-        costNote={gameRoom?.activity?.cost_note}
-        showCostNote={false}
-      />
+      <Pressable onPress={Keyboard.dismiss}>
+        <GameRoomAnnouncementBanner
+          conversationId={isCrewChat ? conversationId : undefined}
+          activityId={gameRoom?.activity?.id}
+          isHost={bannerIsHost}
+          costNote={gameRoom?.activity?.cost_note}
+          showCostNote={false}
+        />
+      </Pressable>
     ) : null}
     {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
     {isGameRoom ? <GameRoomFooter /> : null}
@@ -153,8 +184,9 @@ const GameRoomChatBody: React.FC<{
       keyExtractor={(item) => item.id}
       onRefresh={onRefresh}
       refreshing={loading}
-      keyboardDismissMode="interactive"
-      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      keyboardShouldPersistTaps="never"
+      onScrollBeginDrag={Keyboard.dismiss}
       ListEmptyComponent={
         !loading && !errorText ? (
           <Text style={styles.emptyHint}>
@@ -176,7 +208,7 @@ const GameRoomChatBody: React.FC<{
     ) : null}
 
     {!chatReadOnly ? (
-    <View style={styles.composer}>
+    <View style={[styles.composer, { paddingBottom: composerPaddingBottom }]}>
       {isCrewChat && onOpenPollSheet ? (
         <TouchableOpacity style={styles.iconBtn} onPress={onOpenPollSheet}>
           <Ionicons name="bar-chart-outline" size={20} color={colors.textSecondary} />
@@ -186,6 +218,7 @@ const GameRoomChatBody: React.FC<{
         style={styles.input}
         value={draft}
         onChangeText={onDraftChange}
+        onFocus={() => gameRoom?.setDetailsExpanded(false)}
         placeholder={isGameRoom ? 'Message the group…' : 'Type a message…'}
         placeholderTextColor={colors.textTertiary}
         multiline
@@ -207,6 +240,8 @@ const GameRoomChatBody: React.FC<{
 const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const { conversationId, title, activityId, groupId } = route.params;
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + 44 : 0;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -604,7 +639,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
+      keyboardVerticalOffset={keyboardVerticalOffset}
     >
       {isGameRoom && resolvedActivityId ? (
         <GameRoomProvider
@@ -628,11 +663,13 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             }
           }}
         >
-          <GameRoomHeader />
-          {chatBody}
+          <View style={styles.flex}>
+            <GameRoomHeader />
+            {chatBody}
+          </View>
         </GameRoomProvider>
       ) : (
-        chatBody
+        <View style={styles.flex}>{chatBody}</View>
       )}
 
       {!isGameRoom && blockedThread ? (
@@ -681,6 +718,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  flex: {
+    flex: 1,
   },
   errorText: {
     color: '#b42318',
@@ -748,7 +788,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.xs,
-    paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
