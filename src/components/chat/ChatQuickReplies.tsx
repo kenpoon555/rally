@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CHAT_QUICK_REPLIES } from '../../constants/chatQuickReplies';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -16,30 +9,19 @@ type Props = {
 };
 
 export const ChatQuickReplies: React.FC<Props> = ({ onSelect, disabled = false }) => {
-  const { width } = useWindowDimensions();
-  const stripWidth = width * 0.5;
-
   return (
     <View style={styles.wrap}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        style={[styles.scroll, { width: stripWidth }]}
-        contentContainerStyle={styles.row}
-      >
-        {CHAT_QUICK_REPLIES.map((reply) => (
-          <TouchableOpacity
-            key={reply.id}
-            style={[styles.chip, disabled && styles.chipDisabled]}
-            onPress={() => onSelect(reply.text)}
-            disabled={disabled}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.chipText}>{reply.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {CHAT_QUICK_REPLIES.map((reply) => (
+        <TouchableOpacity
+          key={reply.id}
+          style={[styles.bar, disabled && styles.barDisabled]}
+          onPress={() => onSelect(reply.text)}
+          disabled={disabled}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.barText}>{reply.label}</Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
@@ -49,29 +31,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
+    gap: spacing.xs,
   },
-  scroll: {
-    flexGrow: 0,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
-  },
-  chip: {
+  bar: {
+    width: '100%',
     paddingHorizontal: spacing.md,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    flexShrink: 0,
+    alignItems: 'center',
   },
-  chipDisabled: {
+  barDisabled: {
     opacity: 0.5,
   },
-  chipText: {
+  barText: {
     ...typography.caption,
     fontWeight: '600',
     color: colors.primaryDark,

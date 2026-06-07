@@ -1,6 +1,6 @@
 import { supabase } from './api/supabase';
 import { trackProductEvent } from './analyticsService';
-import { notifyFreeAgentInvite } from './pushDispatchService';
+import { notifyFillInInvite } from './pushDispatchService';
 import { FillInSuggestion, FillInvite } from '../types/fillIn';
 
 export const suggestFillIns = async (activityId: string): Promise<FillInSuggestion[]> => {
@@ -33,12 +33,10 @@ export const inviteFillIn = async (
     target_user_id: targetUserId,
     source,
   });
-  if (source === 'seeker') {
-    try {
-      await notifyFreeAgentInvite(activityId, targetUserId);
-    } catch {
-      // Push is best-effort.
-    }
+  try {
+    await notifyFillInInvite(activityId, targetUserId);
+  } catch {
+    // Push is best-effort.
   }
   return data as string;
 };

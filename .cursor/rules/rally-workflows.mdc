@@ -1,0 +1,14 @@
+---
+description: Where to find Rally step-by-step workflows and CLI-first behavior
+alwaysApply: true
+---
+
+# Workflows & CLI
+
+- **Workflows** (ordered checklists): `.cursor/workflows/` — read `README.md` then the matching file
+- **Skills** (domain depth): `.cursor/skills/` — e.g. `push-notifications`, `cli-first`
+- **Rules** (constraints): `.cursor/rules/` — this folder
+
+When the user asks to ship, promote, deploy, or add push → open the relevant workflow first.
+
+**CLI first:** If `gh`, `supabase`, `eas`, `git`, or `npm` can do the job, run it yourself. Read `.cursor/skills/cli-first/SKILL.md` when unsure.

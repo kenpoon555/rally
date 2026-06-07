@@ -18,6 +18,7 @@ import { usersAreBlocked } from './safetyService';
 import {
   notifyHostOfJoinRequest,
   notifyPlayerOfJoinApproval,
+  notifyPlayerOfJoinRejection,
   notifyGameFinalized,
   notifyRosterNudge,
 } from './pushDispatchService';
@@ -865,6 +866,12 @@ export const approveJoinRequest = async (
  * Reject join request
  */
 export const rejectJoinRequest = async (requestId: string): Promise<void> => {
+  const { data: joinRow } = await supabase
+    .from('join_requests')
+    .select('user_id, activity_id')
+    .eq('id', requestId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('join_requests')
     .update({
@@ -875,6 +882,18 @@ export const rejectJoinRequest = async (requestId: string): Promise<void> => {
 
   if (error) {
     throw new Error(`Failed to reject join request: ${error.message}`);
+  }
+
+  const activityId = joinRow?.activity_id as string | undefined;
+  const playerUserId = joinRow?.user_id as string | undefined;
+  if (activityId && playerUserId) {
+    try {
+      await notifyPlayerOfJoinRejection(activityId, playerUserId);
+    } catch (pushError) {
+      if (__DEV__) {
+        console.warn('Rejection push skipped:', pushError);
+      }
+    }
   }
 };
 

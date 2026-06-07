@@ -39,6 +39,26 @@ export async function notifyPlayerOfJoinApproval(
   }
 }
 
+/** Notify the player their join request was declined. */
+export async function notifyPlayerOfJoinRejection(
+  activityId: string,
+  playerUserId: string
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      type: 'join_request_rejected',
+      activity_id: activityId,
+      target_user_id: playerUserId,
+    },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('Rejection push skipped:', error.message);
+    }
+  }
+}
+
 /** Remind approved players who have not tapped I'm in yet. */
 export async function notifyRosterNudge(activityId: string): Promise<void> {
   const { error } = await supabase.functions.invoke('send-push', {
@@ -71,6 +91,46 @@ export async function notifyFreeAgentInvite(
   if (error) {
     if (__DEV__) {
       console.warn('Free agent invite push skipped:', error.message);
+    }
+  }
+}
+
+/** Notify a player that the host invited them to fill an open spot. */
+export async function notifyFillInInvite(
+  activityId: string,
+  targetUserId: string
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      type: 'fill_in_invite',
+      activity_id: activityId,
+      target_user_id: targetUserId,
+    },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('Fill-in invite push skipped:', error.message);
+    }
+  }
+}
+
+/** Notify other conversation members of a new chat message (background push). */
+export async function notifyConversationMessage(
+  conversationId: string,
+  messagePreview: string
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      type: 'chat_message',
+      conversation_id: conversationId,
+      message_preview: messagePreview,
+    },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('Chat push skipped:', error.message);
     }
   }
 }

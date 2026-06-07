@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -138,6 +139,8 @@ type GameRoomContextValue = {
   setSchedulePickerVisible: (visible: boolean) => void;
   setNextStartTime: (date: Date) => void;
   confirmScheduleNext: () => Promise<void>;
+  detailsExpanded: boolean;
+  setDetailsExpanded: (expanded: boolean) => void;
 };
 
 const GameRoomContext = createContext<GameRoomContextValue | null>(null);
@@ -193,6 +196,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const [joiningCrew, setJoiningCrew] = useState(false);
   const [nudging, setNudging] = useState(false);
   const [readyOverride, setReadyOverride] = useState<boolean | null>(null);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const openPlayerProfile = useCallback(
     (
@@ -746,6 +750,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     joiningCrew,
     handleJoinCrewGame,
     handleRemovePlayer,
+    detailsExpanded,
+    setDetailsExpanded,
   };
 
   return (
@@ -993,6 +999,8 @@ export const GameRoomHeader: React.FC = () => {
     timeLabel,
     statusLabel,
     onOpenDetails,
+    detailsExpanded,
+    setDetailsExpanded,
   } = useGameRoomContext();
 
   if (loading && !activity) {
@@ -1014,6 +1022,29 @@ export const GameRoomHeader: React.FC = () => {
     `${readyCount}/${rosterCount} ready`,
     isFinalized ? 'Locked' : null,
   ].filter(Boolean);
+  const collapsedSummary = [displayTitle, ...metaParts].filter(Boolean).join(' · ');
+
+  if (!detailsExpanded) {
+    return (
+      <TouchableOpacity
+        style={styles.collapsedBar}
+        onPress={() => {
+          Keyboard.dismiss();
+          setDetailsExpanded(true);
+        }}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel="Expand game details"
+      >
+        <SportIcon sport={activity.sport_type} size="sm" style={styles.headerSportIcon} />
+        <Text style={styles.collapsedBarText} numberOfLines={1}>
+          {collapsedSummary}
+        </Text>
+        <MaterialCommunityIcons name="chevron-down" size={22} color={colors.textTertiary} />
+      </TouchableOpacity>
+    );
+  }
+
   const showRotation =
     isFinalized &&
     Boolean(activity.regular_group_id) &&
@@ -1022,6 +1053,21 @@ export const GameRoomHeader: React.FC = () => {
 
   return (
     <View style={styles.header}>
+      <View style={styles.headerTopRow}>
+        <View style={styles.headerTopRowSpacer} />
+        <TouchableOpacity
+          style={styles.collapseBtn}
+          onPress={() => {
+            Keyboard.dismiss();
+            setDetailsExpanded(false);
+          }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Collapse game details"
+        >
+          <MaterialCommunityIcons name="chevron-up" size={22} color={colors.textTertiary} />
+        </TouchableOpacity>
+      </View>
       <TouchableOpacity
         style={styles.compactTop}
         onPress={onOpenDetails}
@@ -1141,6 +1187,7 @@ export const GameRoomFooter: React.FC = () => {
     openPlayerProfile,
     viewerId,
     refetch,
+    detailsExpanded,
   } = useGameRoomContext();
 
   const [pendingExpanded, setPendingExpanded] = useState(pendingRequests.length > 0);
@@ -1362,6 +1409,10 @@ export const GameRoomFooter: React.FC = () => {
       }
     })();
   };
+
+  if (!detailsExpanded) {
+    return null;
+  }
 
   if (isFinalized) {
     return (
@@ -1716,6 +1767,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ddd',
+  },
+  collapsedBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  collapsedBarText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginBottom: -4,
+  },
+  headerTopRowSpacer: {
+    flex: 1,
+  },
+  collapseBtn: {
+    padding: 2,
   },
   header: {
     backgroundColor: colors.surface,
