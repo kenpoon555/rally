@@ -6,5 +6,7 @@ export { Badge } from './Badge';
 export { EmptyState } from './EmptyState';
 export { TextField } from './TextField';
 export { ScreenHeader } from './ScreenHeader';
+export { SegmentToggle } from './SegmentToggle';
+export type { SegmentToggleOption } from './SegmentToggle';
 export { SportIcon, getSportIconName, SportIconFallback } from '../SportIcon';
 export { RallyMark } from '../RallyMark';

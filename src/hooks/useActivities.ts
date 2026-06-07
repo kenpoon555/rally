@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity } from '../types/activity';
 import {
   getNearbyActivities,
-  getMyGames,
   getActivityById,
   expireStaleActivities,
   MyGamesResult,
@@ -12,7 +11,14 @@ import { ensureSupabaseSessionReady } from '../services/api/ensureSupabaseSessio
 import { SportType } from '../constants/sports';
 import { CONFIG } from '../constants/config';
 import { useAuth } from './useAuth';
-import { useSupabaseRealtimeReload } from './useSupabaseRealtimeReload';
+import {
+  REALTIME_MY_GAMES_TABLES,
+  useSupabaseRealtimeReload,
+} from './useSupabaseRealtimeReload';
+import {
+  fetchCachedMyGames,
+  getCachedMyGamesSnapshot,
+} from '../services/userDataCache';
 
 export const useActivities = (
   userLocation?: { latitude: number; longitude: number },
@@ -22,8 +28,11 @@ export const useActivities = (
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
+  const fetchGenerationRef = useRef(0);
+  const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchActivities = useCallback(async () => {
+    const generation = ++fetchGenerationRef.current;
     setLoading(true);
     setError(null);
     try {
@@ -34,14 +43,22 @@ export const useActivities = (
         CONFIG.DISCOVERY_RADIUS_M,
         sportType
       );
+      if (generation !== fetchGenerationRef.current) {
+        return;
+      }
       setActivities(nearbyActivities);
       console.warn(
         `[Discover] hook got ${nearbyActivities.length} games (sport=${sportType ?? 'all'})`
       );
     } catch (err) {
+      if (generation !== fetchGenerationRef.current) {
+        return;
+      }
       setError(err instanceof Error ? err : new Error('Failed to fetch activities'));
     } finally {
-      setLoading(false);
+      if (generation === fetchGenerationRef.current) {
+        setLoading(false);
+      }
     }
   }, [userLocation?.latitude, userLocation?.longitude, sportType]);
 
@@ -67,13 +84,22 @@ export const useActivities = (
           table: 'activities',
         },
         () => {
-          // Refetch activities on any change
-          fetchActivities();
+          if (realtimeDebounceRef.current) {
+            clearTimeout(realtimeDebounceRef.current);
+          }
+          realtimeDebounceRef.current = setTimeout(() => {
+            realtimeDebounceRef.current = null;
+            void fetchActivities();
+          }, 400);
         }
       )
       .subscribe();
 
     return () => {
+      if (realtimeDebounceRef.current) {
+        clearTimeout(realtimeDebounceRef.current);
+        realtimeDebounceRef.current = null;
+      }
       subscription.unsubscribe();
     };
   }, [authLoading, fetchActivities]);
@@ -87,33 +113,50 @@ export const useActivities = (
 };
 
 export const useMyGames = (userId: string) => {
-  const [games, setGames] = useState<MyGamesResult>({ active: [], past: [] });
-  const [loading, setLoading] = useState(false);
+  const [games, setGames] = useState<MyGamesResult>(
+    () => getCachedMyGamesSnapshot(userId) ?? { active: [], past: [] }
+  );
+  const [loading, setLoading] = useState(
+    () => Boolean(userId) && !getCachedMyGamesSnapshot(userId)
+  );
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchMyGames = useCallback(async () => {
-    if (!userId) {
-      setGames({ active: [], past: [] });
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      await ensureSupabaseSessionReady();
-      const entries = await getMyGames(userId);
-      setGames(entries);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Failed to fetch my games'));
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+  const fetchMyGames = useCallback(
+    async (force = false) => {
+      if (!userId) {
+        setGames({ active: [], past: [] });
+        setLoading(false);
+        return;
+      }
+
+      const hasCached = getCachedMyGamesSnapshot(userId) != null;
+      if (!hasCached || force) {
+        setLoading(true);
+      }
+      setError(null);
+      try {
+        await ensureSupabaseSessionReady();
+        const entries = await fetchCachedMyGames(userId, force);
+        setGames(entries);
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch my games'));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [userId]
+  );
 
   useEffect(() => {
-    fetchMyGames();
+    void fetchMyGames(false);
   }, [fetchMyGames]);
 
-  useSupabaseRealtimeReload(['activities', 'join_requests'], fetchMyGames, Boolean(userId));
+  useSupabaseRealtimeReload(
+    REALTIME_MY_GAMES_TABLES,
+    () => void fetchMyGames(true),
+    Boolean(userId),
+    400
+  );
 
   return {
     games,

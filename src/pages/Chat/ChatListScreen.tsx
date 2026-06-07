@@ -67,7 +67,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      load();
+      load({ force: false });
     }, [load])
   );
 
@@ -253,7 +253,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           data={visibleItems}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
-          onRefresh={load}
+          onRefresh={() => void load({ force: true })}
           refreshing={loading}
           contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={

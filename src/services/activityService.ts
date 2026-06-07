@@ -272,7 +272,9 @@ async function queryDiscoverActivities(
     query = query.eq('sport_type', sportType);
   }
 
-  const { data, error } = await query;
+  const { data, error } = await query
+    .order('start_time', { ascending: true, nullsFirst: false })
+    .limit(CONFIG.DISCOVER_QUERY_LIMIT);
   if (error) {
     return { activities: [], errorMessage: error.message };
   }
@@ -392,8 +394,6 @@ export const getNearbyActivities = async (
     ? Math.max(radius, 75000)
     : radius;
 
-  await ensureSupabaseSessionReady();
-
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
@@ -408,7 +408,7 @@ export const getNearbyActivities = async (
         );
       }
     }
-    await trackProductEvent(
+    void trackProductEvent(
       'discover_refreshed',
       { sport_type: sportType || null },
       authUser.id
