@@ -1,5 +1,5 @@
-# Push to `production` → tests, then EAS production builds (Android + iOS in parallel).
-# Does NOT auto-submit to App Store / Play — run submit manually or use workflow_dispatch.
+# Push to `production` → tests, then EAS production build + store submit (Android + iOS in parallel).
+# Requires submit credentials stored on EAS (not local paths in eas.json). See docs/github-actions-production.md
 # Requires: EXPO_TOKEN, EAS production env, Android + iOS production credentials.
 # See docs/github-actions-production.md
 
@@ -65,6 +65,7 @@ jobs:
       github.event.inputs.platform == 'all' ||
       github.event.inputs.platform == 'android'
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -76,7 +77,7 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - run: eas build --profile production --platform android --non-interactive --no-wait
+      - run: eas build --profile production --platform android --non-interactive --auto-submit
       - name: Builds dashboard
         run: echo "Android → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
 
@@ -88,6 +89,7 @@ jobs:
       github.event.inputs.platform == 'all' ||
       github.event.inputs.platform == 'ios'
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -99,7 +101,7 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - run: eas build --profile production --platform ios --non-interactive --no-wait
+      - run: eas build --profile production --platform ios --non-interactive --auto-submit
       - name: Builds dashboard
         run: echo "iOS → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
 
@@ -150,5 +152,5 @@ jobs:
             echo ""
             echo "**Commit:** \`${{ github.sha }}\`"
             echo ""
-            echo "Store submit is **not** automatic on push. Use **Actions → Deploy production → Run workflow** with **submit** enabled after builds finish, or run \`eas submit\` locally."
+            echo "On push, builds **auto-submit** to Play internal + TestFlight (production profile). Re-submit only: **Actions → Run workflow** with **submit** enabled, or \`eas submit --latest\` locally."
           } >> "$GITHUB_STEP_SUMMARY"
