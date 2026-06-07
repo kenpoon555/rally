@@ -17,7 +17,10 @@
       "bundleIdentifier": "com.rallyapp",
       "supportsTablet": false,
       "icon": "./assets/branding/icon-1024.png",
-      "buildNumber": "4"
+      "buildNumber": "4",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "app.rally.sports",
