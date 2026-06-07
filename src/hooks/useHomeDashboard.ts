@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import {
-  MyGameEntry,
-  getNearbyActivities,
-  activityWithinRadius,
-} from '../services/activityService';
-import { Activity } from '../types/activity';
-import { CONFIG } from '../constants/config';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MyGameEntry } from '../services/activityService';
 import {
   getHostLockReadiness,
   getApprovedParticipants,
@@ -25,35 +19,27 @@ export type HomeDashboardData = {
   rosterToLock: HostRosterToLock | null;
   waitlistedGames: MyGameEntry[];
   needsCommitmentGames: MyGameEntry[];
-  nearbyPublicGames: Activity[];
-  hostSummary: {
-    hosting: number;
-    needsLock: number;
-    readyToLock: number;
-    upcoming: number;
-  };
 };
 
 export function useHomeDashboard(
   activeGames: MyGameEntry[],
-  userId: string | undefined,
-  location: { latitude: number; longitude: number } | null
-): HomeDashboardData & { loadingNearby: boolean; refreshNearby: () => void } {
-  const [nearbyPublicGames, setNearbyPublicGames] = useState<Activity[]>([]);
-  const [loadingNearby, setLoadingNearby] = useState(false);
-
-  const hostGamesNeedingLock = activeGames.filter(
-    (e) =>
-      e.role === 'host' &&
-      e.activity.match_status !== 'finalized' &&
-      e.activity.status === 'active'
+  userId: string | undefined
+): HomeDashboardData {
+  const hostGamesNeedingLock = useMemo(
+    () =>
+      activeGames.filter(
+        (e) =>
+          e.role === 'host' &&
+          e.activity.match_status !== 'finalized' &&
+          e.activity.status === 'active'
+      ),
+    [activeGames]
   );
 
-  const rosterToLock: HostRosterToLock | null = (() => {
+  const rosterToLock: HostRosterToLock | null = useMemo(() => {
     const entry =
-      hostGamesNeedingLock.find(
-        (e) => getHostLockReadiness(e.activity) === 'ready'
-      ) ?? hostGamesNeedingLock[0];
+      hostGamesNeedingLock.find((e) => getHostLockReadiness(e.activity) === 'ready') ??
+      hostGamesNeedingLock[0];
     if (!entry) {
       return null;
     }
@@ -65,68 +51,34 @@ export function useHomeDashboard(
       readyCount,
       rosterCount,
     };
-  })();
+  }, [hostGamesNeedingLock]);
 
-  const waitlistedGames = activeGames.filter(
-    (e) =>
-      e.role === 'waitlisted' &&
-      e.activity.status === 'active' &&
-      e.activity.match_status !== 'finalized'
+  const waitlistedGames = useMemo(
+    () =>
+      activeGames.filter(
+        (e) =>
+          e.role === 'waitlisted' &&
+          e.activity.status === 'active' &&
+          e.activity.match_status !== 'finalized'
+      ),
+    [activeGames]
   );
 
-  const needsCommitmentGames = activeGames.filter(
-    (e) =>
-      e.role !== 'waitlisted' &&
-      userId &&
-      e.activity.regular_group_id &&
-      needsConfirmPlaying(e.activity, userId)
+  const needsCommitmentGames = useMemo(
+    () =>
+      activeGames.filter(
+        (e) =>
+          e.role !== 'waitlisted' &&
+          userId &&
+          e.activity.regular_group_id &&
+          needsConfirmPlaying(e.activity, userId)
+      ),
+    [activeGames, userId]
   );
-
-  const hostSummary = {
-    hosting: activeGames.filter((e) => e.role === 'host').length,
-    needsLock: hostGamesNeedingLock.length,
-    readyToLock: hostGamesNeedingLock.filter(
-      (e) => getHostLockReadiness(e.activity) === 'ready'
-    ).length,
-    upcoming: activeGames.length,
-  };
-
-  const refreshNearby = useCallback(async () => {
-    if (!location || !userId) {
-      setNearbyPublicGames([]);
-      return;
-    }
-    setLoadingNearby(true);
-    try {
-      const radius = CONFIG.DISCOVERY_RADIUS_M;
-      const list = await getNearbyActivities(
-        location.latitude,
-        location.longitude,
-        radius
-      );
-      const publicOnly = list
-        .filter((a) => !a.regular_group_id && a.visibility === 'nearby')
-        .filter((a) => activityWithinRadius(a, location.latitude, location.longitude, radius))
-        .slice(0, 3);
-      setNearbyPublicGames(publicOnly);
-    } catch {
-      setNearbyPublicGames([]);
-    } finally {
-      setLoadingNearby(false);
-    }
-  }, [location, userId]);
-
-  useEffect(() => {
-    void refreshNearby();
-  }, [refreshNearby]);
 
   return {
     rosterToLock,
     waitlistedGames,
     needsCommitmentGames,
-    nearbyPublicGames,
-    hostSummary,
-    loadingNearby,
-    refreshNearby,
   };
 }

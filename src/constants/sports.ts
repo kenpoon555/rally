@@ -228,16 +228,11 @@ export const PLAY_TAB_SPORT_ORDER: SportType[] = [
   SportType.HIKING,
 ];
 
-export function sortSportsForPlayTab<T extends { name: string }>(
-  sports: T[],
-  preferredSport?: string | null
-): T[] {
-  const preferred = resolveUserDefaultSport(preferredSport);
+/** Stable Play tab order — selection does not move chips (ring + label show active sport). */
+export function sortSportsForPlayTab<T extends { name: string }>(sports: T[]): T[] {
   const orderIndex = new Map(PLAY_TAB_SPORT_ORDER.map((sport, index) => [sport, index]));
 
   return [...sports].sort((a, b) => {
-    if (a.name === preferred) return -1;
-    if (b.name === preferred) return 1;
     const ai = orderIndex.get(a.name as SportType) ?? 999;
     const bi = orderIndex.get(b.name as SportType) ?? 999;
     return ai - bi;

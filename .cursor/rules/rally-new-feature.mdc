@@ -1,0 +1,16 @@
+---
+description: Checklist for new Rally features (service, migration, push, tests)
+globs: src/**/*.ts,src/**/*.tsx,supabase/migrations/**
+alwaysApply: false
+---
+
+# New feature checklist
+
+1. **Service layer** — add/extend `src/services/*.ts`, types in `src/types/`
+2. **Migration** — if schema/RPC changes: `supabase/migrations/NNN_*.sql`, apply to linked project
+3. **Push** — if another user should know when app is closed: see `rally-push-notifications.mdc` and `docs/PUSH_NOTIFICATIONS.md`
+4. **Navigation** — deep links in `src/navigation/navigationRef.ts` if pushable
+5. **Copy** — `src/constants/productCopy.ts` for user-facing strings
+6. **Verify** — `npm run verify`; physical device for push/location
+
+Do not add scope: extra abstractions, unrelated refactors, or docs the user did not ask for.

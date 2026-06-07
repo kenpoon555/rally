@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,31 +10,33 @@ import {
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useUserPlayMode } from '../../hooks/useUserPlayMode';
+import { useHomeDashboard } from '../../hooks/useHomeDashboard';
 import {
   ensureActivityGroupConversation,
   ensureCrewConversation,
 } from '../../services/chatService';
-import { useHomeDashboard } from '../../hooks/useHomeDashboard';
 import { ProductGlossarySheet } from '../../components/ProductGlossarySheet';
 import { MyGameEntry } from '../../services/activityService';
 import { ROUTES } from '../../constants/routes';
-import { Button, EmptyState, ScreenHeader } from '../../components/ui';
+import { EmptyState, ScreenHeader } from '../../components/ui';
 import { NextUpCard } from '../../components/home/NextUpCard';
-import { ActiveGameRoomRow } from '../../components/home/ActiveGameRoomRow';
-import { TodayQuickActions } from '../../components/home/TodayQuickActions';
-import { RallyRowCard } from '../../components/home/RallyRowCard';
+import { MyGameListCard } from '../../components/game/MyGameListCard';
+import { TodaySectionHeader } from '../../components/home/TodaySectionHeader';
+import { RallyCarouselCard } from '../../components/home/RallyCarouselCard';
 import { RallyInviteCard } from '../../components/rally/RallyInviteCard';
-import { PlayTeaserCard } from '../../components/home/PlayTeaserCard';
 import { colors, spacing, typography } from '../../constants/theme';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { needsConfirmPlaying } from '../../utils/activityHelpers';
+import { getTodaySubtitle } from '../../utils/todaySubtitle';
 import {
   acceptRegularGroupFriendInvite,
   declineRegularGroupFriendInvite,
+  getRegularGroupMembers,
   listMyPendingRegularGroupInvites,
 } from '../../services/regularGroupService';
 import { RallyFriendInvite } from '../../types/rallyInvite';
@@ -61,7 +63,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [rallyInvites, setRallyInvites] = useState<RallyFriendInvite[]>([]);
   const [inviteBusyId, setInviteBusyId] = useState<string | null>(null);
-  const dashboard = useHomeDashboard(activeGames, user?.id, location);
+  const [rallyMemberCounts, setRallyMemberCounts] = useState<Record<string, number>>({});
+  const dashboard = useHomeDashboard(activeGames, user?.id);
 
   const loadRallyInvites = useCallback(async () => {
     try {
@@ -71,13 +74,43 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
+  const loadRallyMemberCounts = useCallback(async () => {
+    const groups = regularGroups.slice(0, 8);
+    if (groups.length === 0) {
+      setRallyMemberCounts({});
+      return;
+    }
+
+    const entries = await Promise.all(
+      groups.map(async (group) => {
+        try {
+          const members = await getRegularGroupMembers(group.id);
+          return [group.id, members.length] as const;
+        } catch {
+          return [group.id, 0] as const;
+        }
+      })
+    );
+
+    setRallyMemberCounts(Object.fromEntries(entries));
+  }, [regularGroups]);
+
   useFocusEffect(
     useCallback(() => {
-      refetch();
-      void fetchLocation();
+      refetch(false);
       void loadRallyInvites();
-    }, [refetch, fetchLocation, loadRallyInvites])
+    }, [refetch, loadRallyInvites])
   );
+
+  useEffect(() => {
+    if (user?.id) {
+      void fetchLocation();
+    }
+  }, [user?.id, fetchLocation]);
+
+  useEffect(() => {
+    void loadRallyMemberCounts();
+  }, [loadRallyMemberCounts]);
 
   const handleAcceptRallyInvite = async (invite: RallyFriendInvite) => {
     setInviteBusyId(invite.id);
@@ -140,10 +173,11 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     } as never);
   };
 
+  const openDiscover = () => navigation.navigate(ROUTES.HOME.MAIN as never);
   const openCreateGame = () =>
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
-  const openDiscover = () => navigation.navigate(ROUTES.HOME.MAIN as never);
   const openChats = () => navigation.navigate(ROUTES.CHAT.TAB as never);
+  const openProfile = () => navigation.navigate(ROUTES.PROFILE.MAIN as never);
   const openCrew = (groupId: string) => {
     navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
       groupId,
@@ -152,8 +186,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    refetch();
-    await loadRallyInvites();
+    refetch(true);
+    await Promise.all([loadRallyInvites(), loadRallyMemberCounts()]);
     setRefreshing(false);
   };
 
@@ -168,16 +202,11 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   }, [activeGames, nextGame]);
 
   const needsConfirm = Boolean(
-    nextGame &&
-      needsConfirmPlaying(nextGame.activity, user?.id)
+    nextGame && needsConfirmPlaying(nextGame.activity, user?.id)
   );
 
-  const subtitle =
-    mode === 'regular'
-      ? PRODUCT_COPY.homeRegularSubtitle
-      : PRODUCT_COPY.homeExplorerSubtitle;
-
-  const showExplorerEmpty = mode === 'explorer' && !loading && regularGroups.length === 0;
+  const showExplorerEmpty =
+    mode === 'explorer' && !loading && regularGroups.length === 0 && activeGames.length === 0;
 
   const rosterLockHint = (item: NonNullable<typeof dashboard.rosterToLock>) => {
     if (item.readiness === 'ready') {
@@ -197,23 +226,48 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     nextGame &&
     dashboard.rosterToLock.entry.activity.id === nextGame.activity.id;
 
-  const otherRosterToLock =
-    dashboard.rosterToLock && !lockOnNextUp ? dashboard.rosterToLock : null;
+  const todaySubtitle = useMemo(
+    () =>
+      getTodaySubtitle({
+        needsCommitmentGames: dashboard.needsCommitmentGames,
+        rosterToLock: dashboard.rosterToLock,
+        nextGame: nextGame ?? null,
+        activeGameCount: activeGames.filter((entry) => entry.role !== 'waitlisted').length,
+        rallyInviteCount: rallyInvites.length,
+        isExplorerEmpty: showExplorerEmpty,
+      }),
+    [
+      dashboard.needsCommitmentGames,
+      dashboard.rosterToLock,
+      nextGame,
+      activeGames,
+      rallyInvites.length,
+      showExplorerEmpty,
+    ]
+  );
+
+  const headerRight = (
+    <TouchableOpacity onPress={openChats} hitSlop={8} accessibilityLabel="Notifications">
+      <Ionicons name="notifications-outline" size={24} color={colors.text} />
+      {rallyInvites.length > 0 ? <View style={styles.notificationDot} /> : null}
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      <ScreenHeader title="Today" subtitle={subtitle} showLogo accentColor={colors.primary} />
+      <ScreenHeader title="Today" subtitle={todaySubtitle} right={headerRight} />
 
-      {loading && activeGames.length === 0 && regularGroups.length === 0 ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <ScrollView
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-          contentContainerStyle={showExplorerEmpty ? styles.scrollEmpty : undefined}
-        >
-          {rallyInvites.map((invite) => (
+      <ScrollView
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        contentContainerStyle={showExplorerEmpty ? styles.scrollEmpty : styles.scrollContent}
+      >
+        {loading && activeGames.length === 0 && regularGroups.length === 0 ? (
+          <View style={styles.inlineLoader}>
+            <ActivityIndicator size="small" color={colors.primary} />
+          </View>
+        ) : null}
+
+        {rallyInvites.map((invite) => (
             <RallyInviteCard
               key={invite.id}
               invite={invite}
@@ -223,61 +277,6 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             />
           ))}
 
-          {otherRosterToLock ? (
-            <TouchableOpacity
-              style={styles.rosterLockRow}
-              onPress={() => openGameRoom(otherRosterToLock.entry)}
-            >
-              <Text style={styles.rosterLockRowTitle} numberOfLines={1}>
-                {otherRosterToLock.readiness === 'ready'
-                  ? PRODUCT_COPY.hostLockReady
-                  : 'Roster to lock'}
-                {' · '}
-                {otherRosterToLock.entry.activity.sport_type}
-              </Text>
-              <Text style={styles.rosterLockRowHint} numberOfLines={1}>
-                {rosterLockHint(otherRosterToLock)}
-              </Text>
-            </TouchableOpacity>
-          ) : dashboard.hostSummary.hosting > 0 && !lockOnNextUp ? (
-            <View style={styles.hostSummaryCard}>
-              <Text style={styles.hostSummaryTitle}>Host summary</Text>
-              <Text style={styles.hostSummaryMeta}>
-                {dashboard.hostSummary.hosting} hosting
-                {dashboard.hostSummary.needsLock > 0
-                  ? ` · ${dashboard.hostSummary.needsLock} awaiting lock`
-                  : ''}
-              </Text>
-            </View>
-          ) : null}
-
-          {dashboard.waitlistedGames.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{PRODUCT_COPY.waitlistSectionTitle}</Text>
-              <Text style={styles.waitlistSectionHint}>{PRODUCT_COPY.onWaitlistHint}</Text>
-              {dashboard.waitlistedGames.map((entry) => (
-                <TouchableOpacity
-                  key={entry.activity.id}
-                  style={styles.waitlistRow}
-                  onPress={() => void openGameRoom(entry)}
-                >
-                  <Text style={styles.waitlistRowTitle}>
-                    {entry.activity.sport_type} ·{' '}
-                    {entry.activity.location?.name ?? 'Game'}
-                  </Text>
-                  <Text style={styles.waitlistRowMeta}>{PRODUCT_COPY.onWaitlist}</Text>
-                </TouchableOpacity>
-              ))}
-              <Button
-                title="Discover other games"
-                variant="ghost"
-                size="sm"
-                onPress={openDiscover}
-                style={styles.sectionLink}
-              />
-            </View>
-          ) : null}
-
           {needsConfirm ? (
             <View style={styles.rsvpNeededCard}>
               <Text style={styles.rsvpNeededTitle}>{PRODUCT_COPY.confirmPlayingTitle}</Text>
@@ -285,91 +284,80 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             </View>
           ) : null}
 
-          {nextGame || regularGroups[0] ? (
-            <NextUpCard
-              nextGame={nextGame}
-              fallbackGroup={regularGroups[0] ?? null}
-              currentUserId={user?.id}
-              userLocation={location}
-              onOpenGameRoom={(entry) => void openGameRoom(entry)}
-              onScheduleNext={openActivityDetails}
-              openingGameId={openingGameId}
-              footerHint={
-                needsConfirm ? PRODUCT_COPY.needsImInHint : undefined
-              }
-              hostLock={
-                lockOnNextUp && dashboard.rosterToLock
-                  ? {
-                      readiness: dashboard.rosterToLock.readiness,
-                      hint: rosterLockHint(dashboard.rosterToLock),
-                    }
-                  : undefined
-              }
-            />
-          ) : null}
-
-          <TodayQuickActions
-            actions={[
-              { key: 'play', label: 'Browse Play', icon: 'compass-outline', onPress: openDiscover },
-              { key: 'host', label: 'Host', icon: 'add-circle-outline', onPress: openCreateGame },
-              { key: 'inbox', label: 'Inbox', icon: 'chatbubbles-outline', onPress: openChats },
-            ]}
+          <NextUpCard
+            nextGame={nextGame}
+            fallbackGroup={nextGame ? null : regularGroups[0] ?? null}
+            currentUserId={user?.id}
+            userLocation={location}
+            onOpenGameRoom={(entry) => void openGameRoom(entry)}
+            onScheduleNext={openActivityDetails}
+            openingGameId={openingGameId}
+            footerHint={needsConfirm ? PRODUCT_COPY.needsImInHint : undefined}
+            hostLock={
+              lockOnNextUp && dashboard.rosterToLock
+                ? {
+                    readiness: dashboard.rosterToLock.readiness,
+                    hint: rosterLockHint(dashboard.rosterToLock),
+                  }
+                : undefined
+            }
           />
 
           {otherActiveGames.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Active Game Rooms</Text>
+              <Text style={styles.sectionTitle}>Also on your calendar</Text>
               {otherActiveGames.map((entry) => (
-                <ActiveGameRoomRow
+                <MyGameListCard
                   key={entry.activity.id}
                   entry={entry}
+                  userLocation={location}
                   busy={openingGameId === entry.activity.id}
                   onPress={() => void openGameRoom(entry)}
                 />
               ))}
-              {activeGames.length > MAX_ROOM_ROWS ? (
-                <Button
-                  title="See all games"
-                  variant="ghost"
-                  size="sm"
-                  onPress={openChats}
-                  style={styles.sectionLink}
-                />
-              ) : null}
             </View>
           ) : null}
 
-          {regularGroups.length > 0 ? (
+          {dashboard.waitlistedGames.length > 0 ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{PRODUCT_COPY.yourRallies}</Text>
-              {regularGroups.slice(0, 4).map((group) => (
-                <RallyRowCard key={group.id} group={group} onPress={() => openCrew(group.id)} />
+              <Text style={styles.sectionTitle}>{PRODUCT_COPY.waitlistSectionTitle}</Text>
+              {dashboard.waitlistedGames.map((entry) => (
+                <TouchableOpacity
+                  key={entry.activity.id}
+                  style={styles.waitlistRow}
+                  onPress={() => void openGameRoom(entry)}
+                >
+                  <Text style={styles.waitlistRowTitle} numberOfLines={1}>
+                    {entry.activity.sport_type} · {entry.activity.location?.name ?? 'Game'}
+                  </Text>
+                  <Text style={styles.waitlistRowMeta}>{PRODUCT_COPY.onWaitlist}</Text>
+                </TouchableOpacity>
               ))}
             </View>
           ) : null}
 
-          {mode !== 'explorer' ? (
-            <PlayTeaserCard
-              nearbyGames={dashboard.nearbyPublicGames}
-              onBrowsePlay={openDiscover}
-              onOpenGame={openActivityDetails}
-            />
-          ) : null}
-
-          {mode === 'explorer' ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Get started</Text>
-              <Text style={styles.explorerHint}>
-                Find open games on Play first — join a session, then bring your crew into a Rally.
-              </Text>
-              <Button title="Browse Play" size="sm" onPress={openDiscover} />
-              <Button
-                title="Host a game"
-                variant="secondary"
-                size="sm"
-                onPress={openCreateGame}
-                style={styles.explorerSecondaryBtn}
+          {regularGroups.length > 0 ? (
+            <View style={styles.ralliesSection}>
+              <TodaySectionHeader
+                title={PRODUCT_COPY.rallies.toUpperCase()}
+                actionLabel="See all >"
+                onAction={openProfile}
               />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.rallyCarousel}
+              >
+                {regularGroups.map((group, index) => (
+                  <RallyCarouselCard
+                    key={group.id}
+                    group={group}
+                    memberCount={rallyMemberCounts[group.id]}
+                    accentIndex={index}
+                    onPress={() => openCrew(group.id)}
+                  />
+                ))}
+              </ScrollView>
             </View>
           ) : null}
 
@@ -386,8 +374,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
               secondaryAction={{ label: 'Host a Game', onPress: openCreateGame }}
             />
           ) : null}
-        </ScrollView>
-      )}
+      </ScrollView>
       <ProductGlossarySheet visible={glossaryOpen} onClose={() => setGlossaryOpen(false)} />
     </View>
   );
@@ -403,8 +390,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  inlineLoader: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  scrollContent: {
+    paddingBottom: spacing.lg,
+  },
   scrollEmpty: {
     flexGrow: 1,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary,
+    borderWidth: 1.5,
+    borderColor: colors.surface,
   },
   section: {
     marginBottom: spacing.lg,
@@ -414,21 +419,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
-  },
-  sectionLink: {
-    alignSelf: 'center',
-    marginTop: spacing.sm,
-  },
-  explorerHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    lineHeight: 18,
-  },
-  explorerSecondaryBtn: {
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
   },
   rsvpNeededCard: {
     marginHorizontal: spacing.lg,
@@ -449,6 +439,32 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
+  waitlistRow: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    backgroundColor: colors.warningSoft,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  waitlistRowTitle: {
+    ...typography.bodyMedium,
+    color: colors.text,
+  },
+  waitlistRowMeta: {
+    ...typography.caption,
+    color: colors.warning,
+    marginTop: spacing.xs,
+  },
+  ralliesSection: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  rallyCarousel: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
   footerLink: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.sm,
@@ -459,55 +475,6 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     textAlign: 'center',
   },
-  hostSummaryCard: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  hostSummaryTitle: { ...typography.bodyMedium, color: colors.text },
-  hostSummaryMeta: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
-  rosterLockRow: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 10,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  rosterLockRowTitle: {
-    ...typography.caption,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  rosterLockRowHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  waitlistSectionHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    lineHeight: 18,
-  },
-  waitlistRow: {
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
-    padding: spacing.md,
-    backgroundColor: colors.warningSoft,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.warning,
-  },
-  waitlistRowTitle: { ...typography.bodyMedium, color: colors.text },
-  waitlistRowMeta: { ...typography.caption, color: colors.warning, marginTop: spacing.xs },
 });
 
 export default DynamicHomeScreen;

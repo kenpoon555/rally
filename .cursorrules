@@ -61,3 +61,9 @@ Supabase client: `src/services/api/supabase.ts` (has custom fetch for trailing-s
 ## Task tracking
 - Open tasks: `docs/TASKS.md` — work one task at a time
 - Release blockers are at the top of that file — fix in order: Data correctness → Privacy → Crashes → UX
+
+## Agent rules (canonical)
+- Project rules: `.cursor/rules/*.mdc` (preferred for Cursor agents)
+- Workflows (step checklists): `.cursor/workflows/`
+- Project skills: `.cursor/skills/` (e.g. `cli-first`, `push-notifications`)
+- Push registry: `docs/PUSH_NOTIFICATIONS.md`

@@ -70,7 +70,12 @@ import {
   listMyPendingFillInvites,
   respondFillInvite,
 } from '../../services/fillInService';
+import {
+  listMyPendingGameFriendInvites,
+  respondGameFriendInvite,
+} from '../../services/gameFriendInviteService';
 import { FillInvite } from '../../types/fillIn';
+import { GameFriendInvite } from '../../types/gameFriendInvite';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -122,6 +127,7 @@ const ProfileScreen: React.FC = () => {
   const [showFreeAgentForm, setShowFreeAgentForm] = useState(false);
   const [busyInviteId, setBusyInviteId] = useState<string | null>(null);
   const [fillInvites, setFillInvites] = useState<FillInvite[]>([]);
+  const [gameFriendInvites, setGameFriendInvites] = useState<GameFriendInvite[]>([]);
   const [showConciergeForm, setShowConciergeForm] = useState(false);
   const [conciergeSport, setConciergeSport] = useState<SportType>('Badminton');
   const [conciergeArea, setConciergeArea] = useState('');
@@ -287,6 +293,9 @@ const ProfileScreen: React.FC = () => {
     listMyPendingFillInvites()
       .then(setFillInvites)
       .catch(() => setFillInvites([]));
+    listMyPendingGameFriendInvites()
+      .then(setGameFriendInvites)
+      .catch(() => setGameFriendInvites([]));
   }, [user?.id]);
 
   useEffect(() => {
@@ -739,9 +748,70 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.freeAgents}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.freeAgentsHint}</Text>
-        {[...freeAgentInvites, ...fillInvites].length > 0 ? (
+        {[...freeAgentInvites, ...fillInvites, ...gameFriendInvites].length > 0 ? (
           <View style={styles.paymentEditor}>
             <Text style={styles.fieldLabel}>Game invites</Text>
+            {gameFriendInvites.map((invite) => (
+              <View key={invite.id} style={styles.inviteCard}>
+                <Text style={styles.inviteTitle}>
+                  @{invite.inviter_username} · {invite.sport_type}
+                  {invite.regular_group_id ? ' (this game)' : ''}
+                </Text>
+                <Text style={styles.hint}>
+                  {formatActivityTime(invite.start_time)}
+                  {invite.location_name ? ` · ${invite.location_name}` : ''}
+                  {invite.open_spots > 0
+                    ? ` · ${invite.open_spots} spot${invite.open_spots === 1 ? '' : 's'}`
+                    : ' · waitlist'}
+                </Text>
+                <View style={styles.inviteActions}>
+                  <Button
+                    title={busyInviteId === invite.id ? '…' : 'Accept'}
+                    size="sm"
+                    onPress={() => {
+                      setBusyInviteId(invite.id);
+                      void (async () => {
+                        try {
+                          await respondGameFriendInvite(invite.id, true);
+                          setGameFriendInvites(await listMyPendingGameFriendInvites());
+                          openActivityDetail(invite.activity_id);
+                        } catch (error: unknown) {
+                          Alert.alert(
+                            'Could not accept',
+                            error instanceof Error ? error.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyInviteId(null);
+                        }
+                      })();
+                    }}
+                    disabled={busyInviteId === invite.id}
+                  />
+                  <Button
+                    title="Decline"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => {
+                      setBusyInviteId(invite.id);
+                      void (async () => {
+                        try {
+                          await respondGameFriendInvite(invite.id, false);
+                          setGameFriendInvites(await listMyPendingGameFriendInvites());
+                        } catch (error: unknown) {
+                          Alert.alert(
+                            'Could not decline',
+                            error instanceof Error ? error.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyInviteId(null);
+                        }
+                      })();
+                    }}
+                    disabled={busyInviteId === invite.id}
+                  />
+                </View>
+              </View>
+            ))}
             {freeAgentInvites.map((invite) => (
               <View key={invite.id} style={styles.inviteCard}>
                 <Text style={styles.inviteTitle}>

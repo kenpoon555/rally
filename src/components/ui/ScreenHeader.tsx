@@ -44,7 +44,7 @@ export function ScreenHeader({
 
 const styles = StyleSheet.create({
   outer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
   wrap: {
     paddingHorizontal: spacing.lg,

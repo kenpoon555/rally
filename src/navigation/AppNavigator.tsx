@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useJoinRequestNotifications } from '../hooks/useJoinRequestNotifications';
 import { useGameLifecycleNotifications } from '../hooks/useGameLifecycleNotifications';
 import { ROUTES } from '../constants/routes';
-import { getTotalUnreadCount } from '../services/chatService';
+import { fetchCachedUnreadCount } from '../services/chatUnreadCache';
 import { colors, PRIMARY_COLOR } from '../constants/theme';
 import { AppTabBar } from '../components/navigation/AppTabBar';
 
@@ -54,13 +54,13 @@ const MainTabs = () => {
   const { user } = useAuth();
   const [chatUnread, setChatUnread] = useState(0);
 
-  const refreshUnread = useCallback(async () => {
+  const refreshUnread = useCallback(async (force = false) => {
     if (!user?.id) {
       setChatUnread(0);
       return;
     }
     try {
-      setChatUnread(await getTotalUnreadCount(user.id));
+      setChatUnread(await fetchCachedUnreadCount(user.id, force));
     } catch {
       setChatUnread(0);
     }
@@ -98,7 +98,7 @@ const MainTabs = () => {
         }}
         listeners={{
           focus: () => {
-            void refreshUnread();
+            void refreshUnread(false);
           },
         }}
       />

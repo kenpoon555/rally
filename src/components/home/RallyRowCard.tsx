@@ -3,23 +3,24 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SportIcon } from '../SportIcon';
 import { RegularGroup } from '../../types/regularGroup';
-import { PRODUCT_COPY } from '../../constants/productCopy';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
 type Props = {
   group: RegularGroup;
+  memberCount?: number;
   onPress: () => void;
 };
 
-export const RallyRowCard: React.FC<Props> = ({ group, onPress }) => (
+export const RallyRowCard: React.FC<Props> = ({ group, memberCount, onPress }) => (
   <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-    <SportIcon sport={group.sport_type} size="sm" />
+    <SportIcon sport={group.sport_type} size="md" style={styles.icon} />
     <View style={styles.main}>
       <Text style={styles.name} numberOfLines={1}>
         {group.name}
       </Text>
       <Text style={styles.meta} numberOfLines={1}>
-        {group.sport_type} · {PRODUCT_COPY.rally}
+        {group.sport_type}
+        {memberCount != null ? ` · ${memberCount} member${memberCount === 1 ? '' : 's'}` : ''}
         {group.is_partner_rally ? ' · Partner' : ''}
       </Text>
     </View>
@@ -35,10 +36,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     padding: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.sm,
+  },
+  icon: {
+    backgroundColor: colors.primaryLight,
   },
   main: {
     flex: 1,

@@ -26,11 +26,19 @@ type Size = 'sm' | 'md' | 'lg';
 const BOX: Record<Size, number> = { sm: 32, md: 36, lg: 44 };
 const GLYPH: Record<Size, number> = { sm: 18, md: 20, lg: 24 };
 
+type Variant = 'tile' | 'plain';
+
 type Props = {
   sport: string;
   size?: Size;
   style?: ViewStyle;
+  /** `plain` matches game list cards — glyph only, no green tile */
+  variant?: Variant;
 };
+
+/** Plain list-card icon sizing (no background tile). */
+const PLAIN_COLUMN: Record<Size, number> = { sm: 36, md: 42, lg: 48 };
+const PLAIN_GLYPH: Record<Size, number> = { sm: 28, md: 34, lg: 40 };
 
 export function getSportIconName(sport: string): IconName {
   const meta = getSportMetadata(sport);
@@ -44,10 +52,25 @@ export function getSportIconName(sport: string): IconName {
   return 'account-group';
 }
 
-export function SportIcon({ sport, size = 'md', style }: Props) {
-  const box = BOX[size];
+export function SportIcon({ sport, size = 'md', style, variant = 'tile' }: Props) {
   const iconName = getSportIconName(sport);
 
+  if (variant === 'plain') {
+    const column = PLAIN_COLUMN[size];
+    const glyph = PLAIN_GLYPH[size];
+    return (
+      <View
+        style={[
+          { width: column, height: column, alignItems: 'center', justifyContent: 'center' },
+          style,
+        ]}
+      >
+        <MaterialCommunityIcons name={iconName} size={glyph} color={colors.text} />
+      </View>
+    );
+  }
+
+  const box = BOX[size];
   return (
     <View
       style={[

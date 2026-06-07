@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
+import { useLocation } from '../../hooks/useLocation';
 import { useMyGames } from '../../hooks/useActivities';
-import MyGameListItem from '../../components/MyGameListItem';
+import { MyGameListCard } from '../../components/game/MyGameListCard';
 import { ROUTES } from '../../constants/routes';
 import { colors, spacing } from '../../constants/theme';
 import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
@@ -30,6 +31,7 @@ const SEGMENTS: { key: Segment; label: string }[] = [
 const MyGamesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { location } = useLocation(false);
   const { games, loading, refetch } = useMyGames(user?.id || '');
   const [segment, setSegment] = useState<Segment>('upcoming');
   const [refreshing, setRefreshing] = useState(false);
@@ -150,15 +152,17 @@ const MyGamesScreen: React.FC = () => {
           }
         />
       ) : (
-        entries.map(({ activity, role }) => {
+        entries.map((entry) => {
+          const { activity } = entry;
           const title = activity.location?.name || `${activity.sport_type} game`;
           const isPast = !isActivityListingActive(activity) || activity.status === 'completed';
           const busy = openingId === activity.id;
           return (
-            <MyGameListItem
+            <MyGameListCard
               key={activity.id}
-              activity={activity}
-              role={role}
+              entry={entry}
+              userLocation={location}
+              muted={isPast}
               busy={busy}
               onPress={() => handleGamePress(activity.id, title, isPast)}
             />

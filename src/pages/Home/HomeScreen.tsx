@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
+  SectionList,
   RefreshControl,
   ActivityIndicator,
-  TouchableOpacity,
-  ScrollView,
   Platform,
   Alert,
 } from 'react-native';
@@ -16,8 +15,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useActivities } from '../../hooks/useActivities';
 import { useGeofence } from '../../hooks/useGeofence';
-import GameCard from '../../components/GameCard';
 import ActivityConfirmationModal from '../../components/ActivityConfirmationModal';
+import { Activity } from '../../types/activity';
 import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
@@ -25,10 +24,9 @@ import { useSportsCatalog } from '../../hooks/useSportsCatalog';
 import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata, sortSportsForPlayTab } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
 import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
-import { PLAY_PARTNER_SURFACES_ENABLED } from '../../constants/betaFlags';
 import { getCurrentLocation } from '../../services/locationService';
 import { colors, PRIMARY_COLOR, radius, spacing, typography } from '../../constants/theme';
-import { Button, ScreenHeader } from '../../components/ui';
+import { ScreenHeader, SegmentToggle } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
@@ -40,26 +38,18 @@ import { RegularGroup } from '../../types/regularGroup';
 import { DiscoverEmptyState } from '../../components/discover/DiscoverEmptyState';
 import { DiscoverErrorState } from '../../components/discover/DiscoverErrorState';
 import { DiscoverSportFilters } from '../../components/discover/DiscoverSportFilters';
+import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
+import { DiscoverSectionHeader } from '../../components/discover/DiscoverSectionHeader';
+import { GameListCard } from '../../components/game/GameListCard';
+import { CompactFreeAgentRow } from '../../components/discover/CompactFreeAgentRow';
 import { toUserErrorMessage } from '../../utils/errorMessages';
 import { BETA_REGION } from '../../constants/betaRegion';
-import { NeedPlayerPostCard } from '../../components/NeedPlayerPostCard';
-import {
-  listNeedPlayerPosts,
-  NEED_PLAYERS_SPORTS,
-  requestNeedPlayerSpot,
-} from '../../services/needPlayersService';
+import { listNeedPlayerPosts, NEED_PLAYERS_SPORTS } from '../../services/needPlayersService';
 import { NeedPlayerPost } from '../../types/needPlayer';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { SportType } from '../../constants/sports';
-import { FreeAgentPostCard } from '../../components/FreeAgentPostCard';
-import {
-  FREE_AGENT_SPORTS,
-  listFreeAgentPosts,
-} from '../../services/freeAgentService';
+import { FREE_AGENT_SPORTS, listFreeAgentPosts } from '../../services/freeAgentService';
 import { FreeAgentPost } from '../../types/freeAgent';
-import { CoachesCarousel } from '../../components/CoachesCarousel';
-import { listCoachListings, listIntroSessions } from '../../services/partnerService';
-import { CoachListing, IntroSession } from '../../types/sportTemplate';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -95,8 +85,12 @@ type TabParamList = {
 
 type Props = BottomTabScreenProps<TabParamList, 'Home'>;
 
+/** Quick-pick sports in the Play strip; full catalog via More. */
+const PLAY_STRIP_SPORT_COUNT = 3;
+
 const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user, loading: authLoading, refreshUser } = useAuth();
+  const isFocused = useIsFocused();
   const locState = useLocation(false, { skipPermissionCheckOnMount: Platform.OS === 'android' });
   const location = locState?.location ?? null;
   const fetchLocation = locState?.fetchLocation ?? (async () => {});
@@ -104,9 +98,15 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const preferredSport = user?.preferred_sports?.[0];
   const [selectedSport, setSelectedSport] = useState(() => resolveUserDefaultSport(preferredSport));
   const effectiveSportFilter = selectedSport;
-  const playTabSports = useMemo(
-    () => sortSportsForPlayTab(sports, preferredSport),
-    [sports, preferredSport]
+  const orderedPlaySports = useMemo(() => sortSportsForPlayTab(sports), [sports]);
+  const stripSports = useMemo(
+    () => orderedPlaySports.slice(0, PLAY_STRIP_SPORT_COUNT),
+    [orderedPlaySports]
+  );
+  const [sportPickerOpen, setSportPickerOpen] = useState(false);
+  const moreSportSelected = useMemo(
+    () => !stripSports.some((sport) => sport.name === selectedSport),
+    [stripSports, selectedSport]
   );
 
   useEffect(() => {
@@ -126,13 +126,12 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const [needPosts, setNeedPosts] = useState<NeedPlayerPost[]>([]);
   const [needLoading, setNeedLoading] = useState(false);
   const [needError, setNeedError] = useState<string | null>(null);
-  const [requestingPostId, setRequestingPostId] = useState<string | null>(null);
   const [freeAgentPosts, setFreeAgentPosts] = useState<FreeAgentPost[]>([]);
   const [freeAgentLoading, setFreeAgentLoading] = useState(false);
   const [freeAgentError, setFreeAgentError] = useState<string | null>(null);
-  const [coaches, setCoaches] = useState<CoachListing[]>([]);
-  const [introSessions, setIntroSessions] = useState<IntroSession[]>([]);
-  const [partnerOnly, setPartnerOnly] = useState(false);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
   useEffect(() => {
     if (routeSportFilter) {
       setSelectedSport(resolveUserDefaultSport(routeSportFilter));
@@ -206,7 +205,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const { activities, loading, error: discoverError, refetch } = useActivities(
     discoverLocation,
-    effectiveSportFilter
+    effectiveSportFilter as SportType
   );
 
   const sortedActivities = useMemo(
@@ -216,29 +215,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   );
   const [detectedLocation, setDetectedLocation] = useState<ActivityLocation | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
-  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
   const [crewForEmpty, setCrewForEmpty] = useState<RegularGroup | null>(null);
-
-  const loadPartnersContent = useCallback(async () => {
-    if (!PLAY_PARTNER_SURFACES_ENABLED) {
-      setCoaches([]);
-      setIntroSessions([]);
-      return;
-    }
-    try {
-      const sportFilter = effectiveSportFilter;
-      const [coachRows, introRows] = await Promise.all([
-        listCoachListings(sportFilter),
-        listIntroSessions(sportFilter),
-      ]);
-      setCoaches(coachRows);
-      setIntroSessions(introRows);
-    } catch {
-      setCoaches([]);
-      setIntroSessions([]);
-    }
-  }, [effectiveSportFilter]);
 
   const recruitingActivityIds = useMemo(
     () => new Set(needPosts.map((post) => post.activity_id)),
@@ -249,9 +226,44 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     return sortedActivities
       .filter((a) => !blockedUserIds.has(a.user_id))
       .filter((a) => shouldShowInDiscoverFeed(a, user?.id))
-      .filter((a) => !partnerOnly || Boolean(a.location?.partner_tier))
       .filter((a) => !recruitingActivityIds.has(a.id));
-  }, [sortedActivities, blockedUserIds, user?.id, partnerOnly, recruitingActivityIds]);
+  }, [sortedActivities, blockedUserIds, user?.id, recruitingActivityIds]);
+
+  const lockedWelcomingGames = useMemo(
+    () =>
+      visibleActivities.filter(
+        (activity) =>
+          (activity.match_status ?? '') === 'finalized' && (activity.missing_players ?? 0) > 0
+      ),
+    [visibleActivities]
+  );
+
+  const openGames = useMemo(() => {
+    const lockedIds = new Set(lockedWelcomingGames.map((activity) => activity.id));
+    return visibleActivities.filter((activity) => !lockedIds.has(activity.id));
+  }, [visibleActivities, lockedWelcomingGames]);
+
+  type GameSection = { key: string; title: string; subtitle?: string; data: Activity[] };
+
+  const gameSections = useMemo((): GameSection[] => {
+    const sections: GameSection[] = [];
+    if (openGames.length > 0) {
+      sections.push({
+        key: 'open',
+        title: PRODUCT_COPY.playOpenGamesSection.toUpperCase(),
+        data: openGames,
+      });
+    }
+    if (lockedWelcomingGames.length > 0) {
+      sections.push({
+        key: 'locked',
+        title: PRODUCT_COPY.playLockedWelcomingSection.toUpperCase(),
+        subtitle: PRODUCT_COPY.playLockedWelcomingHint,
+        data: lockedWelcomingGames,
+      });
+    }
+    return sections;
+  }, [openGames, lockedWelcomingGames]);
 
   const showInitialLoading = loading && visibleActivities.length === 0;
 
@@ -304,7 +316,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useGeofence(location, {
     onLocationDetected: onGeofenceLocationDetected,
-    enabled: !!location && !!user,
+    enabled: isFocused && !!location && !!user,
   });
 
   useFocusEffect(
@@ -312,16 +324,12 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
       if (authLoading) {
         return;
       }
-      refetch();
       if (discoverMode === 'free_agents') {
         void loadFreeAgentPosts();
       } else {
         void loadNeedPosts();
-        if (PLAY_PARTNER_SURFACES_ENABLED) {
-          void loadPartnersContent();
-        }
       }
-    }, [authLoading, refetch, discoverMode, loadNeedPosts, loadFreeAgentPosts, loadPartnersContent])
+    }, [authLoading, discoverMode, loadNeedPosts, loadFreeAgentPosts])
   );
 
   const handleActivityCreated = () => {
@@ -329,145 +337,43 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const handleRefresh = async () => {
-    await fetchLocation();
-    if (discoverMode === 'free_agents') {
-      await loadFreeAgentPosts();
-      return;
-    }
-    await Promise.all([
-      refetch(),
-      loadNeedPosts(),
-      ...(PLAY_PARTNER_SURFACES_ENABLED ? [loadPartnersContent()] : []),
-    ]);
-  };
-
-  const openSportLanding = useCallback(() => {
-    navigation.getParent()?.navigate(ROUTES.LANDING.SPORT as never, {
-      sportSlug: selectedSport.toLowerCase(),
-    } as never);
-  }, [navigation, selectedSport]);
-
-  const handleRequestSpot = useCallback(
-    async (post: NeedPlayerPost) => {
-      if (!user?.id) {
+    setIsRefreshing(true);
+    try {
+      await fetchLocation();
+      if (discoverMode === 'free_agents') {
+        await loadFreeAgentPosts();
         return;
       }
-      setRequestingPostId(post.id);
-      try {
-        await requestNeedPlayerSpot(post.id);
-        await loadNeedPosts();
-        Alert.alert(
-          'Request sent',
-          'The host will review your request. If accepted, open the game and tap I\'m in.'
-        );
-      } catch (error: unknown) {
-        Alert.alert('Could not request', error instanceof Error ? error.message : 'Try again.');
-      } finally {
-        setRequestingPostId(null);
-      }
+      await Promise.all([refetch(), loadNeedPosts()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const openActivityDetail = useCallback(
+    (activityId: string) => {
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+        activityId,
+      } as never);
     },
-    [loadNeedPosts, user?.id]
+    [navigation]
   );
 
-  useEffect(() => {
-    if (authLoading) {
-      return;
-    }
-    refetch();
-  }, [authLoading, user?.id, location?.latitude, location?.longitude, refetch]);
+  const handleInvitePlayer = useCallback(() => {
+    Alert.alert(
+      'Invite from a game',
+      'Host a game or open your game room, then invite available players from there.'
+    );
+  }, []);
 
   const openCreateGame = () => {
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
-  const gamesListHeader = useMemo(
-    () => (
-      <View>
-        {PLAY_PARTNER_SURFACES_ENABLED ? <CoachesCarousel coaches={coaches} /> : null}
-        {PLAY_PARTNER_SURFACES_ENABLED ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-          >
-            <TouchableOpacity
-              style={[styles.modeChip, partnerOnly && styles.modeChipSelected]}
-              onPress={() => setPartnerOnly((v) => !v)}
-            >
-              <Text style={[styles.modeChipText, partnerOnly && styles.modeChipTextSelected]}>
-                {PRODUCT_COPY.partnerVenuesFilter}
-              </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        ) : null}
-        {PLAY_PARTNER_SURFACES_ENABLED ? (
-          <TouchableOpacity style={styles.landingLink} onPress={openSportLanding}>
-            <Text style={styles.landingLinkText}>View {sportLabel} landing page</Text>
-          </TouchableOpacity>
-        ) : null}
-        {PLAY_PARTNER_SURFACES_ENABLED && introSessions.length > 0 ? (
-          <View style={styles.introHeader}>
-            <Text style={styles.introTitle}>{PRODUCT_COPY.introSessions}</Text>
-            {introSessions.map((session) => (
-              <TouchableOpacity
-                key={session.id}
-                style={styles.introCard}
-                onPress={() =>
-                  navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-                    activityId: session.id,
-                  } as never)
-                }
-              >
-                <Text style={styles.introCardTitle}>
-                  {session.listing_title || `${session.sport_type} intro`}
-                </Text>
-                <Text style={styles.introCardMeta}>
-                  @{session.host_username} · {session.missing_players} spots
-                  {session.location_name ? ` · ${session.location_name}` : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-        {needPosts.length > 0 ? (
-          <View style={styles.recruitingSection}>
-            <Text style={styles.recruitingTitle}>{PRODUCT_COPY.playRecruitingTitle}</Text>
-            <Text style={styles.recruitingHint}>{PRODUCT_COPY.playRecruitingHint}</Text>
-            {needPosts.map((post) => (
-              <NeedPlayerPostCard
-                key={post.id}
-                post={post}
-                requesting={requestingPostId === post.id}
-                onRequest={() => void handleRequestSpot(post)}
-                onPress={() =>
-                  navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-                    activityId: post.activity_id,
-                  } as never)
-                }
-              />
-            ))}
-          </View>
-        ) : null}
-        {visibleActivities.length > 0 ? (
-          <Text style={styles.allGamesLabel}>All open games</Text>
-        ) : null}
-      </View>
-    ),
-    [
-      coaches,
-      partnerOnly,
-      sportLabel,
-      introSessions,
-      needPosts,
-      requestingPostId,
-      visibleActivities.length,
-      openSportLanding,
-      handleRequestSpot,
-      navigation,
-    ]
+  const isHostUser = useMemo(
+    () => visibleActivities.some((activity) => activity.user_id === user?.id),
+    [visibleActivities, user?.id]
   );
-
-  const showHostInHeader = discoverMode === 'games' && visibleActivities.length > 0;
 
   return (
     <View style={styles.container}>
@@ -476,54 +382,32 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           <DevLocationLogPanel onRawTest={runRawLocationTest} />
         </ErrorBoundary>
       )}
-      <ScreenHeader
-        title="Play"
-        subtitle={discoverSubtitle}
-        showLogo
-        accentColor={colors.accent}
-        right={
-          showHostInHeader ? (
-            <Button title="Host" size="sm" onPress={openCreateGame} />
-          ) : undefined
-        }
-      />
+      <ScreenHeader title="Play" subtitle={discoverSubtitle} />
 
-      <View style={styles.modeSegment}>
-        {(['games', 'free_agents'] as const).map((mode) => {
-          const selected = discoverMode === mode;
-          const label = mode === 'games' ? 'Games' : 'Players';
-          return (
-            <TouchableOpacity
-              key={mode}
-              style={[styles.modeChip, selected && styles.modeChipSelected]}
-              onPress={() => {
-                setDiscoverMode(mode);
-                if (mode === 'free_agents') {
-                  void loadFreeAgentPosts();
-                }
-              }}
-            >
-              <Text style={[styles.modeChipText, selected && styles.modeChipTextSelected]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+      <View style={styles.playChrome}>
+        <DiscoverSportFilters
+          sports={stripSports}
+          selectedSport={selectedSport}
+          onSelect={(sport) => void handleSportFilter(sport)}
+          onMorePress={() => setSportPickerOpen(true)}
+          moreSelected={moreSportSelected}
+          moreLabel="More"
+        />
+
+        <SegmentToggle
+          options={[
+            { value: 'games', label: 'Games' },
+            { value: 'free_agents', label: 'Players' },
+          ]}
+          value={discoverMode}
+          onChange={(mode) => {
+            setDiscoverMode(mode);
+            if (mode === 'free_agents') {
+              void loadFreeAgentPosts();
+            }
+          }}
+        />
       </View>
-
-      <DiscoverSportFilters
-        sports={playTabSports}
-        selectedSport={selectedSport}
-        onSelect={(sport) => void handleSportFilter(sport)}
-      />
-
-      {needError && discoverMode === 'games' ? (
-        <View style={styles.limitBanner}>
-          <Text style={styles.limitBannerText}>
-            {toUserErrorMessage(needError, 'Unable to load recruiting posts right now.')}
-          </Text>
-        </View>
-      ) : null}
 
       {freeAgentError && discoverMode === 'free_agents' ? (
         <View style={styles.limitBanner}>
@@ -534,64 +418,79 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
       ) : null}
 
       {discoverMode === 'free_agents' ? (
-        freeAgentLoading && freeAgentPosts.length === 0 ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-            <Text style={styles.loadingText}>Loading available players…</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={freeAgentPosts}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.listContent}
-            renderItem={({ item }) => <FreeAgentPostCard post={item} />}
-            refreshControl={
-              <RefreshControl
-                refreshing={freeAgentLoading}
-                onRefresh={() => void loadFreeAgentPosts()}
-              />
-            }
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>No free agents yet</Text>
-                <Text style={styles.emptyText}>
-                  Post your availability from Profile → Free agents.
-                </Text>
-              </View>
-            }
-          />
-        )
-      ) : showInitialLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-          <Text style={styles.loadingText}>Loading nearby games…</Text>
-        </View>
-      ) : discoverMode === 'games' ? (
         <FlatList
-          data={visibleActivities}
+          style={styles.list}
+          data={freeAgentPosts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[
             styles.listContent,
-            visibleActivities.length === 0 && styles.listContentEmpty,
+            freeAgentPosts.length === 0 && styles.listContentEmpty,
           ]}
-          ListHeaderComponent={gamesListHeader}
+          ListHeaderComponent={
+            <DiscoverSectionHeader
+              title={PRODUCT_COPY.playPlayersNearbySection.toUpperCase()}
+              subtitle={PRODUCT_COPY.playPlayersNearbyHint}
+            />
+          }
           renderItem={({ item }) => (
-            <GameCard
-              activity={item}
-              userLocation={location}
-              friendIds={friendIds}
-              onPress={() =>
-                navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-                  activityId: item.id,
-                } as never)
-              }
+            <CompactFreeAgentRow
+              post={item}
+              onInvite={isHostUser ? handleInvitePlayer : undefined}
             />
           )}
           refreshControl={
-            <RefreshControl refreshing={loading || needLoading} onRefresh={handleRefresh} />
+            <RefreshControl
+              refreshing={freeAgentLoading}
+              onRefresh={() => void loadFreeAgentPosts()}
+            />
           }
           ListEmptyComponent={
-            discoverErrorMessage ? (
+            freeAgentLoading ? (
+              <View style={styles.inlineLoading}>
+                <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+                <Text style={styles.loadingText}>Loading players nearby…</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>No players nearby yet</Text>
+                <Text style={styles.emptyText}>
+                  Post your availability from Profile, or check back later.
+                </Text>
+              </View>
+            )
+          }
+        />
+      ) : (
+        <SectionList
+          style={styles.list}
+          sections={gameSections}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            gameSections.length === 0 && styles.listContentEmpty,
+          ]}
+          renderSectionHeader={({ section }) => (
+            <DiscoverSectionHeader title={section.title} subtitle={section.subtitle} />
+          )}
+          renderItem={({ item, section }) => (
+            <GameListCard
+              activity={item}
+              userLocation={discoverLocation}
+              isHost={item.user_id === user?.id}
+              variant={section.key === 'locked' ? 'locked_welcoming' : 'open'}
+              onPress={() => openActivityDetail(item.id)}
+            />
+          )}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+          }
+          ListEmptyComponent={
+            showInitialLoading ? (
+              <View style={styles.inlineLoading}>
+                <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+                <Text style={styles.loadingText}>Loading nearby games…</Text>
+              </View>
+            ) : discoverErrorMessage ? (
               <DiscoverErrorState
                 message={discoverErrorMessage}
                 onRetry={() => void refetch()}
@@ -616,8 +515,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               />
             )
           }
+          stickySectionHeadersEnabled={false}
         />
-      ) : null}
+      )}
 
       <ActivityConfirmationModal
         visible={modalVisible}
@@ -628,6 +528,14 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           setDetectedLocation(null);
         }}
         onActivityCreated={handleActivityCreated}
+      />
+
+      <SportPickerSheet
+        visible={sportPickerOpen}
+        sports={orderedPlaySports}
+        selectedSport={selectedSport}
+        onSelect={(sport) => void handleSportFilter(sport)}
+        onClose={() => setSportPickerOpen(false)}
       />
     </View>
   );
@@ -661,120 +569,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  modeSegment: {
-    flexDirection: 'row',
-    marginHorizontal: spacing.lg,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xs,
-    padding: 4,
-    backgroundColor: colors.background,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modeChip: {
-    flex: 1,
-    alignItems: 'center',
-    borderRadius: radius.pill,
-    paddingVertical: 10,
-    backgroundColor: 'transparent',
-  },
-  modeChipSelected: {
-    backgroundColor: colors.surface,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  modeChipText: {
-    ...typography.label,
-    color: colors.textSecondary,
-    fontWeight: '600',
-  },
-  modeChipTextSelected: {
-    color: colors.primaryDark,
-  },
-  landingLink: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  landingLinkText: {
-    ...typography.caption,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  recruitingSection: {
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-  },
-  recruitingTitle: {
-    ...typography.label,
-    color: colors.warning,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  recruitingHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 4,
-    marginBottom: spacing.sm,
-  },
-  allGamesLabel: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-  },
-  introHeader: {
-    marginBottom: spacing.md,
-  },
-  introTitle: {
-    ...typography.label,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    textTransform: 'uppercase',
-  },
-  introCard: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  introCardTitle: {
-    ...typography.body,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  introCardMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
-    gap: spacing.sm,
-  },
-  filterChip: {
-    borderWidth: 1,
-    borderColor: '#d6d6d6',
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: '#fff',
-  },
-  filterChipSelected: {
-    backgroundColor: PRIMARY_COLOR,
-  },
   filterChipText: {
     color: '#333',
     fontWeight: '600',
@@ -783,11 +577,16 @@ const styles = StyleSheet.create({
   filterChipTextSelected: {
     color: '#fff',
   },
-  loadingContainer: {
+  playChrome: {
+    flexShrink: 0,
+  },
+  list: {
     flex: 1,
-    justifyContent: 'center',
+  },
+  inlineLoading: {
+    paddingTop: spacing.xxl,
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.lg,
   },
   loadingText: {
     marginTop: 10,
