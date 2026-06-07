@@ -3,13 +3,20 @@ import { Activity } from '../types/activity';
 import { Conversation } from '../types/chat';
 import { Friend } from '../types/friends';
 import { RegularGroup } from '../types/regularGroup';
-import { getMyGames, MyGameEntry, MyGameRole } from '../services/activityService';
+import { MyGameEntry, MyGameRole } from '../services/activityService';
 import { getMyConversations, getUnreadConversationCounts, getLastMessagePreviews } from '../services/chatService';
-import { getMyRegularGroups } from '../services/regularGroupService';
 import { getBlockedUserIds } from '../services/safetyService';
 import { getUserFriends } from '../services/friendsService';
 import { supabase } from '../services/api/supabase';
-import { useSupabaseRealtimeReload } from './useSupabaseRealtimeReload';
+import {
+  REALTIME_INBOX_TABLES,
+  useSupabaseRealtimeReload,
+} from './useSupabaseRealtimeReload';
+import {
+  fetchCachedMyGames,
+  fetchCachedMyRegularGroups,
+} from '../services/userDataCache';
+import { setCachedUnreadCount } from '../services/chatUnreadCache';
 import { activityListingHeadline } from '../constants/playIntent';
 import {
   formatActivityTime,
@@ -279,7 +286,8 @@ export function useChatInbox(userId: string | undefined) {
   const [errorText, setErrorText] = useState<string | null>(null);
   const [totalUnread, setTotalUnread] = useState(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options?: { force?: boolean }) => {
+    const force = options?.force ?? false;
     if (!userId) {
       setItems([]);
       setTotalUnread(0);
@@ -290,7 +298,7 @@ export function useChatInbox(userId: string | undefined) {
     setErrorText(null);
     try {
       const [games, conversations, friends, unreadCounts, blockedIds] = await Promise.all([
-        getMyGames(userId),
+        fetchCachedMyGames(userId, force),
         getMyConversations(userId),
         getUserFriends(userId),
         getUnreadConversationCounts(userId),
@@ -299,7 +307,7 @@ export function useChatInbox(userId: string | undefined) {
 
       let groups: RegularGroup[] = [];
       try {
-        groups = await getMyRegularGroups(userId);
+        groups = await fetchCachedMyRegularGroups(userId, force);
       } catch (groupError) {
         console.warn('Regular groups load failed (inbox will show games only):', groupError);
       }
@@ -318,8 +326,10 @@ export function useChatInbox(userId: string | undefined) {
         blockedUserIds: new Set(blockedIds),
       });
 
+      const unreadTotal = Object.values(unreadCounts).reduce((sum, n) => sum + n, 0);
       setItems(inbox);
-      setTotalUnread(Object.values(unreadCounts).reduce((sum, n) => sum + n, 0));
+      setTotalUnread(unreadTotal);
+      setCachedUnreadCount(userId, unreadTotal);
     } catch (error) {
       console.error('Chat inbox load failed:', error);
       setErrorText('Could not load chats. Pull to retry.');
@@ -333,7 +343,12 @@ export function useChatInbox(userId: string | undefined) {
 
 export function useChatInboxWithRealtime(userId: string | undefined) {
   const inbox = useChatInbox(userId);
-  useSupabaseRealtimeReload(['activities', 'join_requests', 'messages'], inbox.load, Boolean(userId));
+  useSupabaseRealtimeReload(
+    REALTIME_INBOX_TABLES,
+    () => void inbox.load({ force: true }),
+    Boolean(userId),
+    400
+  );
   return inbox;
 }
 

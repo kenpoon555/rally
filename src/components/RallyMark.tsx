@@ -1,8 +1,7 @@
 import React from 'react';
-import { Image, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors, radius } from '../constants/theme';
+import { Image, ImageStyle, StyleProp, ViewStyle } from 'react-native';
 
-const ICON_SOURCE = require('../../assets/branding/icon-1024.png');
+const MARK_SOURCE = require('../../assets/branding/rally-mark-1024.png');
 
 type Size = 'sm' | 'md' | 'lg';
 
@@ -14,31 +13,20 @@ const SIZES: Record<Size, number> = {
 
 type Props = {
   size?: Size;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 };
 
-/** In-app Rally brand mark (same asset as home-screen icon). */
+/** In-app Rally brand mark — transparent PNG, no background chip. */
 export function RallyMark({ size = 'md', style }: Props) {
   const box = SIZES[size];
-  const imageSize = Math.round(box * 0.88);
+  const imageStyle: StyleProp<ImageStyle> = [{ width: box, height: box }, style as ImageStyle];
 
   return (
-    <View style={[styles.wrap, { width: box, height: box, borderRadius: radius.lg }, style]}>
-      <Image
-        source={ICON_SOURCE}
-        style={{ width: imageSize, height: imageSize, borderRadius: radius.md }}
-        resizeMode="cover"
-        accessibilityLabel="Rally"
-      />
-    </View>
+    <Image
+      source={MARK_SOURCE}
+      style={imageStyle}
+      resizeMode="contain"
+      accessibilityLabel="Rally"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-});

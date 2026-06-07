@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Alert,
   TextInput,
   ScrollView,
-  Platform,
   Share,
   ActivityIndicator,
 } from 'react-native';
@@ -29,10 +28,8 @@ import {
   approveJoinRequest,
   rejectJoinRequest,
   canOpenActivityChat,
-  extendActivitySchedule,
   scheduleNextGameFromActivity,
   scheduleGroupNextGame,
-  makeActivityRecurring,
   joinGameViaInvite,
   updateActivity,
   setSessionNote,
@@ -67,6 +64,7 @@ import {
   isGameChatReadOnly,
   isPastGameActivity,
   isTonightUrgency,
+  canHostEditGameSchedule,
 } from '../../utils/activityHelpers';
 import { isActivityListingActive, isReviewWindowOpen, gameEndMs } from '../../utils/activityExpiry';
 import { ActivityCandidateLocation, JoinRequest } from '../../types/activity';
@@ -86,6 +84,8 @@ import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
 import { Avatar } from '../../components/ui';
 import CoachMark from '../../components/CoachMark';
 import { ONBOARDING_FLAGS } from '../../constants/onboardingFlags';
+import { InviteFriendsToGameSheet } from '../../components/game/InviteFriendsToGameSheet';
+import { HostGameScheduleEditor } from '../../components/game/HostGameScheduleEditor';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -125,11 +125,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewedTargetIds, setReviewedTargetIds] = useState<Set<string>>(new Set());
   const [profilePlayer, setProfilePlayer] = useState<PlayerProfilePreview | null>(null);
-  const [extendPickerVisible, setExtendPickerVisible] = useState(false);
-  const [extendStartTime, setExtendStartTime] = useState(() => new Date());
-  const [extending, setExtending] = useState(false);
   const [schedulingNext, setSchedulingNext] = useState(false);
-  const [makingRecurring, setMakingRecurring] = useState(false);
   const [redeemingInvite, setRedeemingInvite] = useState(false);
   const [regularGroup, setRegularGroup] = useState<RegularGroup | null>(null);
   const [creatingRegularGroup, setCreatingRegularGroup] = useState(false);
@@ -143,6 +139,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [recapId, setRecapId] = useState<string | null>(null);
   const [groupTournaments, setGroupTournaments] = useState<MiniTournament[]>([]);
   const [creatingTournament, setCreatingTournament] = useState(false);
+  const [inviteFriendsOpen, setInviteFriendsOpen] = useState(false);
   const isHost = user && activity && user.id === activity.user_id;
   const myJoinRequest = useMemo(
     () => (activity?.join_requests || []).find((r) => r.user_id === user?.id),
@@ -310,11 +307,25 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     };
   }, [activityId, isHost, loadJoinRequests, refetch]);
 
-  useEffect(() => {
-    if (activity?.start_time) {
-      setExtendStartTime(new Date(activity.start_time));
-    }
-  }, [activity?.start_time]);
+  const canGoBack = navigation.canGoBack();
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: canGoBack,
+      headerBackVisible: canGoBack,
+      headerLeft: canGoBack
+        ? undefined
+        : () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('MainTabs' as never)}
+              hitSlop={8}
+              style={styles.headerCloseBtn}
+            >
+              <Text style={styles.headerCloseText}>Close</Text>
+            </TouchableOpacity>
+          ),
+    });
+  }, [canGoBack, navigation]);
 
   useEffect(() => {
     if (routeActivityId) {
@@ -439,23 +450,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   useEffect(() => {
     setSessionNoteDraft(activity?.session_note ?? '');
   }, [activity?.session_note]);
-
-  const handleExtendGame = async (date: Date) => {
-    if (!activity) {
-      return;
-    }
-    setExtending(true);
-    try {
-      await extendActivitySchedule(activity.id, date);
-      await refetch();
-      Alert.alert('Extended', 'Start time and listing expiry were updated.');
-    } catch (error: any) {
-      Alert.alert('Could not extend', error?.message || 'Try again.');
-    } finally {
-      setExtending(false);
-      setExtendPickerVisible(false);
-    }
-  };
 
   const handleScheduleNextGame = () => {
     if (!activity || !isHost) {
@@ -685,34 +679,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             }
           },
         })),
-      ]
-    );
-  };
-
-  const handleMakeRecurring = () => {
-    if (!activity || !isHost) {
-      return;
-    }
-    Alert.alert(
-      'Make weekly recurring?',
-      'Future “Schedule next game” spins up invite-only games with this roster every week.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Enable',
-          onPress: async () => {
-            setMakingRecurring(true);
-            try {
-              await makeActivityRecurring(activity.id);
-              await refetch();
-              Alert.alert('Recurring enabled', 'Use Schedule next game to spawn the next week.');
-            } catch (err: any) {
-              Alert.alert('Could not enable recurring', err?.message || 'Try again.');
-            } finally {
-              setMakingRecurring(false);
-            }
-          },
-        },
       ]
     );
   };
@@ -979,6 +945,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const canScheduleNext =
     !isPastGame && Boolean(isHost && canHostScheduleNextGame(activity, true));
   const showTonight = !isPastGame && isTonightUrgency(activity);
+  const canEditSchedule =
+    Boolean(isHost && activity && canHostEditGameSchedule(activity, approvedParticipants));
   const listingActive = isActivityListingActive(activity);
   const expiresLabel = activity.expires_at
     ? new Date(activity.expires_at).toLocaleString(undefined, {
@@ -1049,9 +1017,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
         {showTonight ? (
           <Text style={styles.urgentText}>Need players tonight</Text>
-        ) : null}
-        {activity.series_id ? (
-          <Text style={styles.recurringText}>Part of a weekly recurring series</Text>
         ) : null}
         {regularGroup ? (
           <TouchableOpacity onPress={openRegularsCrew}>
@@ -1148,8 +1113,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </TouchableOpacity>
         ) : null}
-        {showChat && fromGameRoom ? (
-          <Text style={styles.gameRoomHint}>Swipe down or tap back to return to the game room.</Text>
+        {showChat && fromGameRoom && canGoBack ? (
+          <Text style={styles.gameRoomHint}>{PRODUCT_COPY.gameCardBackHint}</Text>
+        ) : null}
+        {canEditSchedule ? (
+          <HostGameScheduleEditor activity={activity} onUpdated={() => void refetch()} />
         ) : null}
         {canScheduleNext ? (
           <>
@@ -1189,17 +1157,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             ) : null}
           </>
-        ) : null}
-        {isHost && !activity.series_id && activity.status === 'active' && !isPastGame ? (
-          <TouchableOpacity
-            style={[styles.secondaryButton, makingRecurring && styles.utilityButtonDisabled]}
-            onPress={handleMakeRecurring}
-            disabled={makingRecurring}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {makingRecurring ? 'Saving…' : 'Make weekly recurring'}
-            </Text>
-          </TouchableOpacity>
         ) : null}
         {isHost &&
         !activity.regular_group_id &&
@@ -1252,67 +1209,25 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             ))}
           </View>
         ) : null}
+        {(isHost || isApprovedJoiner) &&
+        !isPastGame &&
+        activity.status === 'active' &&
+        activity.match_status !== 'finalized' ? (
+          <TouchableOpacity
+            style={styles.utilityButton}
+            onPress={() => setInviteFriendsOpen(true)}
+          >
+            <Text style={styles.utilityButtonText}>{PRODUCT_COPY.inviteFriendsToGame}</Text>
+          </TouchableOpacity>
+        ) : null}
         {activity.invite_token && (isHost || isApprovedJoiner) ? (
           <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleShareInvite()}>
             <Text style={styles.secondaryButtonText}>
-              {regularGroup ? 'Invite to just this game' : 'Share invite link'}
+              {regularGroup ? PRODUCT_COPY.shareGameInviteLinkRally : PRODUCT_COPY.shareGameInviteLink}
             </Text>
           </TouchableOpacity>
         ) : null}
-        {isHost && !isPastGame && activity.status === 'active' && (
-          <>
-            <TouchableOpacity
-              style={[styles.secondaryButton, extending && styles.utilityButtonDisabled]}
-              onPress={() => setExtendPickerVisible(true)}
-              disabled={extending}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {extending ? 'Updating…' : 'Extend start time'}
-              </Text>
-            </TouchableOpacity>
-            {extendPickerVisible ? (
-              <ScheduleDateTimePicker
-                visible
-                autoOpen
-                value={extendStartTime}
-                title="New start time"
-                onChange={(date) => {
-                  setExtendStartTime(date);
-                  if (Platform.OS === 'android') {
-                    setExtendPickerVisible(false);
-                    void handleExtendGame(date);
-                  }
-                }}
-                onDismiss={() => setExtendPickerVisible(false)}
-              />
-            ) : null}
-            {Platform.OS === 'ios' && extendPickerVisible && (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => handleExtendGame(extendStartTime)}
-                disabled={extending}
-              >
-                <Text style={styles.secondaryButtonText}>Save new time</Text>
-              </TouchableOpacity>
-            )}
-          </>
-        )}
       </View>
-
-      <CoachMark
-        flag={ONBOARDING_FLAGS.COACH_RECURRING_SHOWN}
-        active={Boolean(
-          isHost &&
-            !isPastGame &&
-            !activity.series_id &&
-            activity.start_time &&
-            new Date(activity.start_time).getTime() < Date.now()
-        )}
-        title="Played a good game?"
-        body="Turn this into a weekly recurring game so your crew keeps the same slot."
-        actionLabel="Make weekly recurring"
-        onAction={handleMakeRecurring}
-      />
 
       <CoachMark
         flag={ONBOARDING_FLAGS.COACH_REGULARS_SHOWN}
@@ -1635,6 +1550,15 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         contextId={activityId}
         showNoShow={Boolean(isHost && canShowReviewForm)}
       />
+
+      {activity ? (
+        <InviteFriendsToGameSheet
+          visible={inviteFriendsOpen}
+          activity={activity}
+          isRallyGame={Boolean(regularGroup)}
+          onClose={() => setInviteFriendsOpen(false)}
+        />
+      ) : null}
     </ScrollView>
   );
 };
@@ -1647,6 +1571,16 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
+  },
+  headerCloseBtn: {
+    marginLeft: spacing.md,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+  },
+  headerCloseText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: 16,
   },
   loadingCenter: {
     flex: 1,
@@ -1829,12 +1763,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#b42318',
-  },
-  recurringText: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1a6535',
   },
   regularGroupText: {
     marginTop: 6,

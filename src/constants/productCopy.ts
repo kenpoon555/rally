@@ -7,6 +7,9 @@ export const PRODUCT_COPY = {
   rally: 'Rally',
   rallies: 'Rallies',
   yourRallies: 'Your Rallies',
+  todayGames: "Today's games",
+  noMoreGamesToday: 'No more games today',
+  findOnPlay: 'Find on Play →',
   startARally: 'Start a Rally',
   joinThisRally: 'Join this Rally',
 
@@ -20,6 +23,13 @@ export const PRODUCT_COPY = {
 
   /** Games */
   gameCard: 'Game card',
+  editGameScheduleTitle: 'Change time or court',
+  editGameScheduleHint:
+    'Available until someone joins or taps I\'m in. Updates post to game chat.',
+  changeGameTime: 'Change start time',
+  changeGameCourt: 'Court',
+  gameScheduleChangePosted: 'Your crew will see this in chat.',
+  gameCardBackHint: 'Swipe down or tap back to return to the game room.',
   gameRoomCoordinateHint: "Say hi here — tap I'm in when you can make it.",
   publicGame: 'Looking for a game',
   publicGameShort: 'Public game',
@@ -50,7 +60,12 @@ export const PRODUCT_COPY = {
   nudgeRosterHint: 'Host is locking roster — tap I\'m in.',
   needPlayers: 'Need players',
   needPlayersHint: 'Hosts posting open spots in LA — request to join, then tap I\'m in.',
-  playGamesHint: 'Open games nearby. Recruiting posts are hosts actively looking for players.',
+  playGamesHint: 'Find games · fill open spots nearby',
+  playOpenGamesSection: 'Open games near you',
+  playLockedWelcomingSection: 'Locked · still welcoming',
+  playLockedWelcomingHint: 'Roster locked — spots still open',
+  playPlayersNearbySection: 'Players nearby',
+  playPlayersNearbyHint: 'Free to play in the next few hours',
   playRecruitingTitle: 'Recruiting now',
   playRecruitingHint: 'Request a spot — host accepts, then tap I\'m in the game room.',
   playPlayersHint: 'Players posting when they can play — hosts invite them to fill open spots.',
@@ -125,7 +140,20 @@ export const PRODUCT_COPY = {
   discoverEmptyOpenRally: 'Open your Rally',
   discoverEmptyTrySport: 'Try a beta sport using the filters above.',
   homeRegularSubtitle: 'Next up, your Rallies, and active game rooms.',
-  needsImInHint: "Rally game — tap I'm in in Chats",
+  /** Today tab — one-line status under the title */
+  todaySubtitleNeedsConfirm: (count: number) =>
+    count === 1
+      ? '1 game needs your confirmation'
+      : `${count} games need your confirmation`,
+  todaySubtitleHostLockReady: 'Ready to lock your roster',
+  todaySubtitleNextUp: (venue: string, time: string) => `Next up · ${venue} · ${time}`,
+  todaySubtitleGamesToday: (count: number) =>
+    count === 1 ? '1 game on your calendar' : `${count} games on your calendar`,
+  todaySubtitleRallyInvite: (count: number) =>
+    count === 1 ? 'You have a Rally invite' : `You have ${count} Rally invites`,
+  todaySubtitleQuiet: 'Quiet day — browse open games on Play',
+  todaySubtitleNew: 'Join a game or start a Rally',
+  needsImInHint: 'Confirm on the game card below',
   confirmPlayingTitle: "Confirm you're playing",
   confirmPlayingBody:
     "Your Rally game is coming up. Open Chats and tap I'm in on the game card.",
@@ -133,6 +161,13 @@ export const PRODUCT_COPY = {
   shareRallyInviteLink: 'Share link instead',
   inviteFriendsToRally: 'Invite friends',
   inviteFriendsToRallyEmpty: 'Add friends on your Profile first, then invite them here.',
+  inviteFriendsToGame: 'Invite friends',
+  inviteFriendsToGameHint: 'Friends get a tap-to-join invite for this game.',
+  inviteFriendsToGameRallyHint:
+    'Invites them to this game only — not your whole Rally.',
+  shareGameInviteLink: 'Share link instead',
+  shareGameInviteLinkRally: 'Share link for this game',
+  gameFriendOnRoster: 'On roster',
   rallyInviteSent: 'Invited',
   rallyInviteInCrew: 'In Rally',
   bringRallyCta: 'Bring Rally to your group',
@@ -141,7 +176,7 @@ export const PRODUCT_COPY = {
   /** Host home — lock roster CTA */
   hostLockReady: 'Ready to lock roster',
   hostLockWaitingImIn: (ready: number, roster: number) =>
-    `Waiting on I'm in · ${ready}/${roster} ready`,
+    `Waiting on confirmations · ${ready}/${roster} ready`,
   hostLockNeedsPlayers: (roster: number, target: number) =>
     `${roster}/${target} on roster · need more players or I'm in`,
   hostLockTapToOpen: 'Tap to open Game Room and lock roster',

@@ -1,4 +1,5 @@
 import { Activity, JoinRequest } from '../types/activity';
+import { parseGeographyCoordinates } from './activityLocationGeo';
 import { calculateDistance } from './distance';
 import { isActivityListingActive, gameEndMs, parseActivityTimestamp } from './activityExpiry';
 import { GAME_CHAT_ARCHIVE_GRACE_MS } from '../constants/gameChat';
@@ -83,9 +84,11 @@ export const getDistanceToActivity = (
   activity: Activity,
   userLocation: { latitude: number; longitude: number }
 ): number | null => {
-  const coords = activity.location?.location?.coordinates;
-  if (!coords) return null;
-  const [lng, lat] = coords;
+  const parsed = parseGeographyCoordinates(activity.location?.location);
+  if (!parsed) {
+    return null;
+  }
+  const [lng, lat] = parsed;
   return calculateDistance(userLocation, { latitude: lat, longitude: lng });
 };
 
@@ -173,6 +176,40 @@ export function getActivityRosterSummary(activity: Activity): {
     1 +
     approved.filter((p) => isFinalized || Boolean(p.ready_at)).length;
   return { onRoster, capacity, readyCount };
+}
+
+/** Host may change time/court only before anyone joins or confirms I'm in. */
+export function canHostEditGameSchedule(
+  activity: Activity,
+  approvedParticipants: { ready_at?: string | null }[]
+): boolean {
+  if (activity.status !== 'active') {
+    return false;
+  }
+  if (activity.match_status === 'finalized') {
+    return false;
+  }
+  if (approvedParticipants.length > 0) {
+    return false;
+  }
+  if ((activity.player_count ?? 1) > 1) {
+    return false;
+  }
+  return !approvedParticipants.some((participant) => Boolean(participant.ready_at));
+}
+
+/** Spots props for `GameListCard` / `MyGameListCard` from a user's game entry. */
+export function getMyGameListCardSpots(activity: Activity): {
+  rosterCount: number;
+  capacityCount: number;
+  openSpots: number;
+} {
+  const { onRoster, capacity } = getActivityRosterSummary(activity);
+  return {
+    rosterCount: onRoster,
+    capacityCount: capacity,
+    openSpots: Math.max(capacity - onRoster, 0),
+  };
 }
 
 export type ParticipantReadyState = 'ready' | 'waiting' | 'none';

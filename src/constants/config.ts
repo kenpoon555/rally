@@ -49,6 +49,8 @@ export const CONFIG = {
   MAX_COURT_RADIUS_M: 120000,
   /** Discover feed radius (meters). LA beta — wide enough to cover the metro from one GPS fix. */
   DISCOVERY_RADIUS_M: 60000,
+  /** Cap rows fetched before client-side geo filter (Play tab). */
+  DISCOVER_QUERY_LIMIT: 120,
   /** Wider radius for games a friend hosts or joined (meters). */
   FRIEND_DISCOVERY_RADIUS_M: 120000,
 

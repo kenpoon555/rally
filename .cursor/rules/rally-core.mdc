@@ -1,0 +1,17 @@
+---
+description: Rally core stack, service layer, and platform rules
+alwaysApply: true
+---
+
+# Rally core
+
+- React Native 0.83 bare + Expo SDK 55, Supabase, React Navigation
+- All Supabase calls via `src/services/` — never from components
+- Env via `src/constants/config.ts` (react-native-config), never hardcode secrets
+- Firebase messaging is lazy-loaded — do not init at module top level
+- Android: no `watchPosition`; use expo-location patterns in `locationService.ts`
+- Android 13+: request `POST_NOTIFICATIONS` before FCM token
+- Styling: `src/constants/theme.ts`, existing components in `src/components/`
+- Run `npm run verify` before PRs
+
+See also: `CLAUDE.md`, `.cursorrules` (legacy pointer)

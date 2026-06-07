@@ -46,6 +46,7 @@ export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
+  card: 18,
   xl: 20,
   pill: 999,
 } as const;
@@ -93,6 +94,13 @@ export const typography = {
     textTransform: 'uppercase' as TextStyle['textTransform'],
     color: colors.textTertiary,
   },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: '800' as TextStyle['fontWeight'],
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as TextStyle['textTransform'],
+    color: colors.primaryDark,
+  },
   button: {
     fontSize: 16,
     fontWeight: '700' as TextStyle['fontWeight'],
@@ -103,12 +111,12 @@ export const typography = {
 export const shadows = {
   card: Platform.select<ViewStyle>({
     ios: {
-      shadowColor: '#141916',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.06,
-      shadowRadius: 8,
+      shadowColor: '#3A2A1A',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.08,
+      shadowRadius: 16,
     },
-    android: { elevation: 2 },
+    android: { elevation: 3 },
     default: {},
   }),
   elevated: Platform.select<ViewStyle>({

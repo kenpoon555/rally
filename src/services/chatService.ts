@@ -311,6 +311,10 @@ export const sendConversationMessage = async (
     senderId
   );
 
+  void import('./pushDispatchService')
+    .then(({ notifyConversationMessage }) => notifyConversationMessage(conversationId, trimmed))
+    .catch(() => undefined);
+
   return data as ChatMessage;
 };
 

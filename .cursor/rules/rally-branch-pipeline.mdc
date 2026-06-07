@@ -1,0 +1,17 @@
+---
+description: Git branch flow and EAS deploy pipeline
+alwaysApply: false
+globs: .github/workflows/**,eas.json,docs/github-actions*.md
+---
+
+# Branch pipeline
+
+```text
+dev → PR → preview   (preview EAS builds, internal)
+preview → PR → main  (CI only)
+main → PR → production (production build + auto-submit to Play internal + TestFlight)
+```
+
+- Do not push directly to `main` or `production` without PR
+- Production submit credentials live on EAS, not local paths in `eas.json`
+- Docs: `docs/github-actions-preview.md`, `docs/github-actions-production.md`
