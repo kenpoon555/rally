@@ -20,6 +20,7 @@ const ACTIVITY_PUSH_TYPES = new Set([
   'roster_nudge',
   'free_agent_invite',
   'fill_in_invite',
+  'game_friend_invite',
   'review_prompt',
 ]);
 

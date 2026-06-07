@@ -310,16 +310,35 @@ Deno.serve(async (req) => {
       recipientUserId = payload.target_user_id;
     }
 
-    if (payload.type === 'free_agent_invite' || payload.type === 'fill_in_invite') {
-      if (user.id !== hostUserId) {
-        return new Response(JSON.stringify({ error: 'Only the host can send free agent invites' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (
+      payload.type === 'free_agent_invite' ||
+      payload.type === 'fill_in_invite' ||
+      payload.type === 'game_friend_invite'
+    ) {
       if (!payload.target_user_id) {
         return new Response(JSON.stringify({ error: 'target_user_id required' }), {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (payload.type === 'game_friend_invite') {
+        const { data: friendInvite } = await admin
+          .from('activity_friend_invites')
+          .select('id, status, invited_by')
+          .eq('activity_id', payload.activity_id)
+          .eq('invited_user_id', payload.target_user_id)
+          .eq('status', 'pending')
+          .maybeSingle();
+        if (!friendInvite || friendInvite.invited_by !== user.id) {
+          return new Response(JSON.stringify({ error: 'No pending game friend invite' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      } else if (user.id !== hostUserId) {
+        return new Response(JSON.stringify({ error: 'Only the host can send free agent invites' }), {
+          status: 403,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -328,12 +347,18 @@ Deno.serve(async (req) => {
         (activity.location as { name?: string } | null)?.name || 'a court';
       const title =
         payload.title ||
-        (payload.type === 'fill_in_invite' ? 'Fill-in invite' : 'Game invite');
+        (payload.type === 'fill_in_invite'
+          ? 'Fill-in invite'
+          : payload.type === 'game_friend_invite'
+            ? 'Game invite'
+            : 'Game invite');
       const body =
         payload.body ||
         (payload.type === 'fill_in_invite'
           ? `You're invited to fill a spot for ${activity.sport_type} at ${courtName}. Open Rally to respond.`
-          : `A host invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`);
+          : payload.type === 'game_friend_invite'
+            ? `A friend invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`
+            : `A host invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`);
 
       const { data: tokens } = await admin
         .from('user_device_tokens')

@@ -379,6 +379,63 @@ export const extendActivitySchedule = async (
   });
 };
 
+function formatScheduleChangeTime(date: Date): string {
+  return date.toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export async function postActivitySystemMessage(
+  activityId: string,
+  content: string
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Authentication required');
+  }
+  try {
+    await ensureActivityGroupConversation(activityId);
+  } catch {
+    // Message is best-effort when chat is not open yet.
+  }
+  const { error } = await supabase.rpc('post_activity_system_message', {
+    p_activity_id: activityId,
+    p_sender_id: user.id,
+    p_content: content,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function hostUpdateGameStartTime(
+  activityId: string,
+  newStartTime: Date
+): Promise<Activity> {
+  const updated = await extendActivitySchedule(activityId, newStartTime);
+  await postActivitySystemMessage(
+    activityId,
+    `Host changed game time to ${formatScheduleChangeTime(newStartTime)}`
+  );
+  return updated;
+}
+
+export async function hostUpdateGameCourt(
+  activityId: string,
+  locationId: string,
+  courtName: string
+): Promise<Activity> {
+  const updated = await updateActivity(activityId, { location_id: locationId });
+  await postActivitySystemMessage(activityId, `Host changed court to ${courtName}`);
+  return updated;
+}
+
 export const getNearbyActivities = async (
   latitude?: number,
   longitude?: number,

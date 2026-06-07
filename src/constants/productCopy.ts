@@ -23,6 +23,13 @@ export const PRODUCT_COPY = {
 
   /** Games */
   gameCard: 'Game card',
+  editGameScheduleTitle: 'Change time or court',
+  editGameScheduleHint:
+    'Available until someone joins or taps I\'m in. Updates post to game chat.',
+  changeGameTime: 'Change start time',
+  changeGameCourt: 'Court',
+  gameScheduleChangePosted: 'Your crew will see this in chat.',
+  gameCardBackHint: 'Swipe down or tap back to return to the game room.',
   gameRoomCoordinateHint: "Say hi here — tap I'm in when you can make it.",
   publicGame: 'Looking for a game',
   publicGameShort: 'Public game',
@@ -154,6 +161,13 @@ export const PRODUCT_COPY = {
   shareRallyInviteLink: 'Share link instead',
   inviteFriendsToRally: 'Invite friends',
   inviteFriendsToRallyEmpty: 'Add friends on your Profile first, then invite them here.',
+  inviteFriendsToGame: 'Invite friends',
+  inviteFriendsToGameHint: 'Friends get a tap-to-join invite for this game.',
+  inviteFriendsToGameRallyHint:
+    'Invites them to this game only — not your whole Rally.',
+  shareGameInviteLink: 'Share link instead',
+  shareGameInviteLinkRally: 'Share link for this game',
+  gameFriendOnRoster: 'On roster',
   rallyInviteSent: 'Invited',
   rallyInviteInCrew: 'In Rally',
   bringRallyCta: 'Bring Rally to your group',

@@ -25,7 +25,7 @@ import { MyGameEntry } from '../../services/activityService';
 import { ROUTES } from '../../constants/routes';
 import { EmptyState, ScreenHeader } from '../../components/ui';
 import { NextUpCard } from '../../components/home/NextUpCard';
-import { ActiveGameRoomRow } from '../../components/home/ActiveGameRoomRow';
+import { MyGameListCard } from '../../components/game/MyGameListCard';
 import { TodaySectionHeader } from '../../components/home/TodaySectionHeader';
 import { RallyCarouselCard } from '../../components/home/RallyCarouselCard';
 import { RallyInviteCard } from '../../components/rally/RallyInviteCard';
@@ -307,7 +307,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Also on your calendar</Text>
               {otherActiveGames.map((entry) => (
-                <ActiveGameRoomRow
+                <MyGameListCard
                   key={entry.activity.id}
                   entry={entry}
                   userLocation={location}

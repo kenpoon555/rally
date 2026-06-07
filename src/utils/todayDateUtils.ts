@@ -44,3 +44,28 @@ export function activityOnCalendarDay(
   }
   return isSameCalendarDay(new Date(startTime), day);
 }
+
+/** Snap display time to :00 or :30 so Discover cards line up cleanly. */
+export function roundToNearestHalfHour(date: Date): Date {
+  const rounded = new Date(date);
+  const totalMinutes = rounded.getHours() * 60 + rounded.getMinutes();
+  const snapped = Math.round(totalMinutes / 30) * 30;
+  rounded.setHours(Math.floor(snapped / 60) % 24, snapped % 60, 0, 0);
+  return rounded;
+}
+
+export function formatDiscoverWhenLine(startTime?: string | null): string {
+  if (!startTime) {
+    return 'Time TBD';
+  }
+  const date = roundToNearestHalfHour(new Date(startTime));
+  const timeStr = date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  if (isSameCalendarDay(date, new Date())) {
+    return `Today · ${timeStr}`;
+  }
+  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short' });
+  return `${dayStr} · ${timeStr}`;
+}

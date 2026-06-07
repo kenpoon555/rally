@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { getLocationVenueDetails } from '../services/venueService';
+import { openMaps } from '../utils/mapsLink';
 import { VenueDetails } from '../types/gameRecap';
 import { PLAY_PARTNER_SURFACES_ENABLED } from '../constants/betaFlags';
 import { colors, radius, spacing, typography } from '../constants/theme';
@@ -76,24 +76,17 @@ export const VenueBlock: React.FC<Props> = ({
   const showDetails = !minimal && !inline;
 
   if (inline) {
+    if (!canOpenMaps) {
+      return null;
+    }
     return (
       <View style={styles.inlineRow}>
-        {canOpenMaps ? (
-          <TouchableOpacity
-            style={styles.inlineLink}
-            onPress={() => void openMaps(venue.latitude!, venue.longitude!, venue.name)}
-          >
-            <Text style={styles.inlineLinkText}>Maps</Text>
-          </TouchableOpacity>
-        ) : null}
-        {venue.booking_url ? (
-          <TouchableOpacity
-            style={styles.inlineLink}
-            onPress={() => void Linking.openURL(venue.booking_url!)}
-          >
-            <Text style={styles.inlineLinkText}>Booking</Text>
-          </TouchableOpacity>
-        ) : null}
+        <TouchableOpacity
+          style={styles.inlineLink}
+          onPress={() => void openMaps(venue.latitude!, venue.longitude!, venue.name)}
+        >
+          <Text style={styles.inlineLinkText}>Maps</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -133,24 +126,16 @@ export const VenueBlock: React.FC<Props> = ({
       {showDetails && venue.busy_notes ? (
         <Text style={styles.lineMuted}>Busy: {venue.busy_notes}</Text>
       ) : null}
-      <View style={styles.actions}>
-        {canOpenMaps ? (
+      {canOpenMaps ? (
+        <View style={styles.actions}>
           <TouchableOpacity
             style={styles.linkBtn}
             onPress={() => void openMaps(venue.latitude!, venue.longitude!, venue.name)}
           >
             <Text style={styles.linkText}>Open in Maps</Text>
           </TouchableOpacity>
-        ) : null}
-        {venue.booking_url ? (
-          <TouchableOpacity
-            style={styles.linkBtn}
-            onPress={() => void Linking.openURL(venue.booking_url!)}
-          >
-            <Text style={styles.linkText}>Booking info</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
       {venue.is_active === false ? (
         <Text style={styles.warning}>This court may be closed — verify before you go.</Text>
       ) : null}

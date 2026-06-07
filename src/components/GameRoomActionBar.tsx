@@ -61,7 +61,6 @@ import { setFocusedGameRoomActivityId } from '../utils/gameRoomFocus';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
 import { PlayerTrustLine } from './PlayerTrustLine';
 import { SessionRotationPanel } from './SessionRotationPanel';
-import { VenueBlock } from './VenueBlock';
 import { SportIcon } from './SportIcon';
 import { sportSupportsRotation } from '../constants/sports';
 import {
@@ -967,16 +966,41 @@ const GameRoomExitRow: React.FC = () => {
   );
 };
 
-const GameCardLink: React.FC<{ onPress: () => void; compact?: boolean }> = ({ onPress, compact }) => (
+const GameCardLink: React.FC<{
+  onPress: () => void;
+  variant?: 'header' | 'footer';
+}> = ({ onPress, variant = 'footer' }) => (
   <TouchableOpacity
-    style={[styles.gameCardBtn, compact && styles.gameCardBtnCompact]}
+    style={[styles.gameCardBtn, variant === 'header' && styles.gameCardBtnHeader]}
     onPress={onPress}
     activeOpacity={0.75}
   >
-    <Text style={styles.gameCardBtnText}>{compact ? 'Details' : PRODUCT_COPY.gameCard}</Text>
-    {!compact ? (
-      <MaterialCommunityIcons name="chevron-right" size={18} color={colors.textTertiary} />
-    ) : null}
+    <MaterialCommunityIcons
+      name="card-text-outline"
+      size={variant === 'header' ? 15 : 16}
+      color={colors.primary}
+    />
+    <Text style={styles.gameCardBtnText}>{PRODUCT_COPY.gameCard}</Text>
+  </TouchableOpacity>
+);
+
+const HeaderFoldButton: React.FC<{
+  expanded: boolean;
+  onPress: () => void;
+  accessibilityLabel: string;
+}> = ({ expanded, onPress, accessibilityLabel }) => (
+  <TouchableOpacity
+    style={styles.headerFoldBtn}
+    onPress={onPress}
+    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+    accessibilityRole="button"
+    accessibilityLabel={accessibilityLabel}
+  >
+    <MaterialCommunityIcons
+      name={expanded ? 'chevron-up' : 'chevron-down'}
+      size={18}
+      color={colors.textSecondary}
+    />
   </TouchableOpacity>
 );
 
@@ -1036,11 +1060,17 @@ export const GameRoomHeader: React.FC = () => {
         accessibilityRole="button"
         accessibilityLabel="Expand game details"
       >
-        <SportIcon sport={activity.sport_type} size="sm" style={styles.headerSportIcon} />
+        <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
         <Text style={styles.collapsedBarText} numberOfLines={1}>
           {collapsedSummary}
         </Text>
-        <MaterialCommunityIcons name="chevron-down" size={22} color={colors.textTertiary} />
+        <View style={styles.headerFoldBtn} pointerEvents="none">
+          <MaterialCommunityIcons
+            name="chevron-down"
+            size={18}
+            color={colors.textSecondary}
+          />
+        </View>
       </TouchableOpacity>
     );
   }
@@ -1049,33 +1079,18 @@ export const GameRoomHeader: React.FC = () => {
     isFinalized &&
     Boolean(activity.regular_group_id) &&
     sportSupportsRotation(activity.sport_type);
-  const hasLinks = Boolean(activity.cost_note?.trim() || activity.location_id);
+  const hasLinks = Boolean(activity.cost_note?.trim() || onOpenDetails);
 
   return (
     <View style={styles.header}>
-      <View style={styles.headerTopRow}>
-        <View style={styles.headerTopRowSpacer} />
+      <View style={styles.compactTop}>
+        <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
         <TouchableOpacity
-          style={styles.collapseBtn}
-          onPress={() => {
-            Keyboard.dismiss();
-            setDetailsExpanded(false);
-          }}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel="Collapse game details"
+          style={styles.compactCopy}
+          onPress={onOpenDetails}
+          disabled={!onOpenDetails}
+          activeOpacity={onOpenDetails ? 0.85 : 1}
         >
-          <MaterialCommunityIcons name="chevron-up" size={22} color={colors.textTertiary} />
-        </TouchableOpacity>
-      </View>
-      <TouchableOpacity
-        style={styles.compactTop}
-        onPress={onOpenDetails}
-        disabled={!onOpenDetails}
-        activeOpacity={onOpenDetails ? 0.85 : 1}
-      >
-        <SportIcon sport={activity.sport_type} size="sm" style={styles.headerSportIcon} />
-        <View style={styles.compactCopy}>
           <View style={styles.compactTitleRow}>
             <Text style={styles.compactTitle} numberOfLines={1}>
               {displayTitle}
@@ -1087,23 +1102,32 @@ export const GameRoomHeader: React.FC = () => {
           <Text style={styles.compactMeta} numberOfLines={1}>
             {metaParts.join(' · ')}
           </Text>
-        </View>
-        {onOpenDetails ? (
-          <MaterialCommunityIcons name="chevron-right" size={22} color={colors.textTertiary} />
-        ) : null}
-      </TouchableOpacity>
+        </TouchableOpacity>
+        <HeaderFoldButton
+          expanded
+          onPress={() => {
+            Keyboard.dismiss();
+            setDetailsExpanded(false);
+          }}
+          accessibilityLabel="Collapse game details"
+        />
+      </View>
 
       {hasLinks ? (
-        <View style={styles.compactLinks}>
+        <View
+          style={[
+            styles.compactLinks,
+            !activity.cost_note?.trim() && styles.compactLinksLeading,
+          ]}
+        >
           {activity.cost_note?.trim() ? (
             <View style={styles.costChip}>
               <Text style={styles.costChipText}>{activity.cost_note.trim()}</Text>
             </View>
           ) : null}
-          {activity.location_id ? (
-            <VenueBlock locationId={activity.location_id} inline />
+          {onOpenDetails ? (
+            <GameCardLink onPress={onOpenDetails} variant="header" />
           ) : null}
-          {onOpenDetails ? <GameCardLink onPress={onOpenDetails} compact /> : null}
         </View>
       ) : null}
 
@@ -1784,16 +1808,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  headerTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: -4,
-  },
-  headerTopRowSpacer: {
-    flex: 1,
-  },
-  collapseBtn: {
-    padding: 2,
+  headerFoldBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.background,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    flexShrink: 0,
   },
   header: {
     backgroundColor: colors.surface,
@@ -1805,11 +1830,8 @@ const styles = StyleSheet.create({
   },
   compactTop: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
-  },
-  headerSportIcon: {
-    backgroundColor: colors.primaryLight,
   },
   compactCopy: {
     flex: 1,
@@ -1821,7 +1843,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   compactTitle: {
-    flex: 1,
+    flexShrink: 1,
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
@@ -1834,9 +1856,12 @@ const styles = StyleSheet.create({
   compactLinks: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: spacing.sm,
     marginTop: spacing.sm,
+  },
+  compactLinksLeading: {
+    justifyContent: 'flex-start',
   },
   costChip: {
     backgroundColor: colors.background,
@@ -1904,20 +1929,21 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderColor: 'rgba(11, 122, 94, 0.18)',
   },
-  gameCardBtnCompact: {
+  gameCardBtnHeader: {
     marginTop: 0,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    backgroundColor: 'transparent',
-    borderWidth: 0,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
   },
   gameCardBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: colors.primary,
   },
   statusPill: {

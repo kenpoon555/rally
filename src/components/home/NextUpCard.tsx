@@ -8,23 +8,27 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../ui';
 import { MyGameEntry } from '../../services/activityService';
 import { RegularGroup } from '../../types/regularGroup';
-import { activityListingHeadline } from '../../constants/playIntent';
+import { activityCourtName, activityGameName } from '../../constants/playIntent';
 import {
   formatRosterSummary,
   getActivityRosterSummary,
   getDistanceToActivity,
+  getMyGameListCardSpots,
+  isTonightUrgency,
 } from '../../utils/activityHelpers';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
+import { formatGameCardDistance, GameListSpotsMeter } from '../game/GameListCard';
+import { formatDiscoverWhenLine } from '../../utils/todayDateUtils';
+import { getSportIconName } from '../SportIcon';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
 import type { HostLockReadiness } from '../../utils/activityHelpers';
-import { isSameCalendarDay } from '../../utils/todayDateUtils';
 
-const METERS_PER_MILE = 1609.344;
 const LA_FALLBACK = { latitude: 34.0522, longitude: -118.2437 };
+const MAP_HEIGHT = 120;
 
 export interface NextUpCardProps {
   nextGame: MyGameEntry | null;
@@ -41,28 +45,6 @@ export interface NextUpCardProps {
   };
 }
 
-function formatNextUpWhen(startTime?: string | null): string {
-  if (!startTime) {
-    return 'Time TBD';
-  }
-  const date = new Date(startTime);
-  const now = new Date();
-  const timeStr = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  if (isSameCalendarDay(date, now)) {
-    return `Today ${timeStr}`;
-  }
-  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short' });
-  return `${dayStr} ${timeStr}`;
-}
-
-function formatMiles(distanceMeters: number | null): string | null {
-  if (distanceMeters == null || !Number.isFinite(distanceMeters)) {
-    return null;
-  }
-  const miles = distanceMeters / METERS_PER_MILE;
-  return miles < 0.1 ? '<0.1 mi' : `${miles.toFixed(1)} mi`;
-}
-
 function rosterStatusLabel(activity: MyGameEntry['activity']): string {
   const status = activity.match_status ?? 'open';
   if (status === 'finalized') {
@@ -73,20 +55,6 @@ function rosterStatusLabel(activity: MyGameEntry['activity']): string {
   }
   return 'Roster open';
 }
-
-const SpotDots: React.FC<{ filled: number; total: number }> = ({ filled, total }) => (
-  <View style={styles.dotsRow}>
-    {Array.from({ length: total }, (_, index) => (
-      <View
-        key={index}
-        style={[styles.dot, index < filled ? styles.dotFilled : styles.dotEmpty]}
-      />
-    ))}
-    <Text style={styles.spotsLabel}>
-      {filled}/{total}
-    </Text>
-  </View>
-);
 
 function HeroShell({
   children,
@@ -105,6 +73,41 @@ function HeroShell({
     <TouchableOpacity onPress={onPress} activeOpacity={0.96} disabled={disabled}>
       {body}
     </TouchableOpacity>
+  );
+}
+
+function MapPreview({
+  mapRegion,
+  busy,
+}: {
+  mapRegion: {
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  };
+  busy?: boolean;
+}) {
+  return (
+    <View style={styles.mapWrap}>
+      <MapView
+        style={styles.map}
+        region={mapRegion}
+        scrollEnabled={false}
+        zoomEnabled={false}
+        pitchEnabled={false}
+        rotateEnabled={false}
+        liteMode={Platform.OS === 'android'}
+        pointerEvents="none"
+      >
+        <Marker coordinate={{ latitude: mapRegion.latitude, longitude: mapRegion.longitude }} />
+      </MapView>
+      {busy ? (
+        <View style={styles.busyOverlay}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -141,75 +144,88 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
     };
   }, [coords]);
 
-  const mapSection = (overlay?: React.ReactNode, busy?: boolean) => (
-    <View style={styles.mapWrap}>
-      <MapView
-        style={styles.map}
-        region={mapRegion}
-        scrollEnabled={false}
-        zoomEnabled={false}
-        pitchEnabled={false}
-        rotateEnabled={false}
-        liteMode={Platform.OS === 'android'}
-        pointerEvents="none"
-      >
-        <Marker coordinate={{ latitude: mapRegion.latitude, longitude: mapRegion.longitude }} />
-      </MapView>
-      {overlay}
-      {busy ? (
-        <View style={styles.busyOverlay}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : null}
-    </View>
-  );
-
   if (nextGame) {
     const busy = openingGameId === nextGame.activity.id;
-    const court = activity?.location?.name || 'Court TBD';
-    const title = activityListingHeadline(activity!);
-    const whenLabel = formatNextUpWhen(activity?.start_time);
-    const distanceMeters = userLocation && activity
-      ? getDistanceToActivity(activity, userLocation)
-      : null;
-    const milesLabel = formatMiles(distanceMeters);
-    const roleLabel = nextGame.role === 'host' ? 'Hosting' : 'Joined';
-    const durationLabel = activity?.duration ? `${activity.duration} min` : null;
-    const { onRoster, capacity, readyCount } = getActivityRosterSummary(nextGame.activity);
-    const hostLabel = activity?.user?.username ? `@${activity.user.username}` : null;
-    const overlayMeta = [court, whenLabel, milesLabel].filter(Boolean).join(' · ');
+    const game = nextGame.activity;
+    const isHost = nextGame.role === 'host';
+    const hasCustomTitle = Boolean(game.listing_title?.trim());
+    const headline = hasCustomTitle ? activityGameName(game) : activityCourtName(game);
+    const courtName = activityCourtName(game);
+    const whenLine = formatDiscoverWhenLine(game.start_time);
+    const distanceMeters = userLocation ? getDistanceToActivity(game, userLocation) : null;
+    const distanceLabel = formatGameCardDistance(distanceMeters, !isHost);
+    const roleLabel = isHost ? 'Hosting' : 'Joined';
+    const durationLabel = game.duration ? `${game.duration} min` : null;
+    const { readyCount } = getActivityRosterSummary(game);
+    const spots = getMyGameListCardSpots(game);
+    const hostLabel = game.user?.username ? `@${game.user.username}` : null;
+    const isTonight = isTonightUrgency(game);
+    const sportIcon = getSportIconName(game.sport_type);
 
     return (
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>NEXT UP</Text>
         <HeroShell onPress={() => onOpenGameRoom(nextGame)} disabled={busy}>
-          {mapSection(
-            <View style={styles.mapOverlay}>
-              <Text style={styles.overlayMeta} numberOfLines={2}>
-                {overlayMeta}
-              </Text>
-              <SpotDots filled={onRoster} total={Math.max(capacity, onRoster)} />
-            </View>,
-            busy
-          )}
+          <MapPreview mapRegion={mapRegion} busy={busy} />
           <View style={styles.detailsPanel}>
-            <Text style={styles.title} numberOfLines={2}>
-              {title}
+            <View style={styles.titleRow}>
+              <View style={styles.iconColumn}>
+                <MaterialCommunityIcons name={sportIcon} size={28} color={colors.text} />
+              </View>
+              <View style={styles.titleBody}>
+                <View style={styles.headlineRow}>
+                  <Text style={styles.headline} numberOfLines={2}>
+                    {headline}
+                  </Text>
+                  {isTonight ? (
+                    <View style={styles.tonightBadge}>
+                      <Text style={styles.tonightText}>Tonight</Text>
+                    </View>
+                  ) : null}
+                </View>
+                {hasCustomTitle ? (
+                  <Text style={styles.courtLine} numberOfLines={1}>
+                    {courtName}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+
+            <Text style={styles.whenLine} numberOfLines={1}>
+              {whenLine}
             </Text>
+
+            <View style={styles.distanceRow}>
+              <Ionicons name="location-outline" size={13} color={colors.textTertiary} />
+              <Text style={styles.distance} numberOfLines={1}>
+                {distanceLabel ?? 'Distance unavailable'}
+              </Text>
+            </View>
+
             <Text style={styles.metaLine} numberOfLines={1}>
-              {[activity?.sport_type, roleLabel, durationLabel].filter(Boolean).join(' · ')}
+              {[game.sport_type, roleLabel, durationLabel].filter(Boolean).join(' · ')}
             </Text>
+
             {hostLabel ? (
               <Text style={styles.metaLine} numberOfLines={1}>
                 Host {hostLabel}
               </Text>
             ) : null}
-            <View style={styles.statsRow}>
-              <Text style={styles.statText}>{formatRosterSummary(nextGame.activity)}</Text>
-              <Text style={styles.statText}>
-                {readyCount} confirmed · {rosterStatusLabel(nextGame.activity)}
-              </Text>
+
+            <View style={styles.spotsRow}>
+              <View style={styles.spotsMeta}>
+                <Text style={styles.statText}>{formatRosterSummary(game)}</Text>
+                <Text style={styles.statText}>
+                  {readyCount} confirmed · {rosterStatusLabel(game)}
+                </Text>
+              </View>
+              <GameListSpotsMeter
+                roster={spots.rosterCount}
+                capacity={spots.capacityCount}
+                open={spots.openSpots}
+              />
             </View>
+
             {hostLock ? (
               <View
                 style={[
@@ -240,17 +256,14 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>YOUR RALLY</Text>
         <HeroShell>
-          {mapSection(
-            <View style={styles.mapOverlay}>
-              <Text style={styles.overlayTitle} numberOfLines={1}>
-                {fallbackGroup.name}
-              </Text>
-              <Text style={styles.overlayMeta} numberOfLines={1}>
-                {fallbackGroup.sport_type} · No game scheduled yet
-              </Text>
-            </View>
-          )}
+          <MapPreview mapRegion={mapRegion} />
           <View style={styles.detailsPanel}>
+            <Text style={styles.headline} numberOfLines={2}>
+              {fallbackGroup.name}
+            </Text>
+            <Text style={styles.metaLine}>
+              {fallbackGroup.sport_type} · No game scheduled yet
+            </Text>
             {fallbackGroup.is_partner_rally ? (
               <Text style={styles.metaLine}>Partner Rally</Text>
             ) : null}
@@ -290,14 +303,10 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
           <View style={styles.quietPin}>
             <MaterialCommunityIcons name="map-marker-radius" size={28} color={colors.primary} />
           </View>
-          <View style={styles.mapOverlay}>
-            <Text style={styles.overlayTitle}>Nothing scheduled yet</Text>
-            <Text style={styles.overlayMeta}>
-              Court, time, and roster details appear here
-            </Text>
-          </View>
         </View>
         <View style={styles.detailsPanel}>
+          <Text style={styles.headline}>Nothing scheduled yet</Text>
+          <Text style={styles.metaLine}>Court, time, and roster details appear here.</Text>
           <Text style={styles.waiting}>Use Play to find open games nearby.</Text>
         </View>
       </HeroShell>
@@ -325,38 +334,15 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   mapWrap: {
-    height: 176,
+    height: MAP_HEIGHT,
     backgroundColor: colors.primaryLight,
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
-  mapOverlay: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    bottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    gap: spacing.xs,
-    ...shadows.card,
-  },
-  overlayTitle: {
-    ...typography.bodyMedium,
-    color: colors.text,
-  },
-  overlayMeta: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
   quietPin: {
     position: 'absolute',
-    top: '36%',
+    top: '50%',
     alignSelf: 'center',
     width: 48,
     height: 48,
@@ -372,66 +358,105 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
-    gap: spacing.xs,
+    gap: 4,
     backgroundColor: colors.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  title: {
-    ...typography.headline,
-    fontSize: 18,
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  iconColumn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  titleBody: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
+  },
+  headlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  headline: {
+    ...typography.bodyMedium,
+    fontSize: 17,
+    fontWeight: '700',
     color: colors.text,
+    flexShrink: 1,
+  },
+  courtLine: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '500',
+  },
+  tonightBadge: {
+    borderWidth: 1,
+    borderColor: colors.accent,
+    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  tonightText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.accent,
+  },
+  whenLine: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  distanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 16,
+  },
+  distance: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    flexShrink: 1,
   },
   metaLine: {
     ...typography.caption,
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  statsRow: {
+  spotsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  spotsMeta: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   statText: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.textSecondary,
   },
-  dotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  dotFilled: {
-    backgroundColor: colors.primary,
-  },
-  dotEmpty: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-  },
-  spotsLabel: {
-    marginLeft: spacing.xs,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-  },
   actionBtn: {
     alignSelf: 'flex-start',
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   waiting: {
     fontSize: 13,
     color: colors.textSecondary,
     lineHeight: 18,
+    marginTop: spacing.xs,
   },
   footerHint: {
     fontSize: 12,
@@ -441,7 +466,7 @@ const styles = StyleSheet.create({
   },
   lockChip: {
     alignSelf: 'flex-start',
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.sm,

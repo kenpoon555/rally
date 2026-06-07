@@ -95,6 +95,26 @@ export async function notifyFreeAgentInvite(
   }
 }
 
+/** Notify a friend they were invited to a specific game. */
+export async function notifyGameFriendInvite(
+  activityId: string,
+  targetUserId: string
+): Promise<void> {
+  const { error } = await supabase.functions.invoke('send-push', {
+    body: {
+      type: 'game_friend_invite',
+      activity_id: activityId,
+      target_user_id: targetUserId,
+    },
+  });
+
+  if (error) {
+    if (__DEV__) {
+      console.warn('Game friend invite push skipped:', error.message);
+    }
+  }
+}
+
 /** Notify a player that the host invited them to fill an open spot. */
 export async function notifyFillInInvite(
   activityId: string,
