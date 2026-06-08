@@ -4,6 +4,10 @@ import {
   MiniTournamentMatch,
   MiniTournamentMember,
 } from '../types/miniTournament';
+import {
+  pickTournamentWinners,
+  TournamentWinnerSummary,
+} from '../utils/miniTournamentHelpers';
 
 export const createMiniTournament = async (
   groupId: string,
@@ -67,6 +71,69 @@ export const getTournamentsForGroup = async (groupId: string): Promise<MiniTourn
     throw new Error(error.message);
   }
   return (data ?? []) as MiniTournament[];
+};
+
+export async function getCompletedTournamentWinners(
+  tournamentIds: string[]
+): Promise<Record<string, TournamentWinnerSummary | null>> {
+  const result: Record<string, TournamentWinnerSummary | null> = {};
+  if (tournamentIds.length === 0) {
+    return result;
+  }
+
+  for (const id of tournamentIds) {
+    result[id] = null;
+  }
+
+  const { data, error } = await supabase
+    .from('regular_group_tournament_members')
+    .select('tournament_id, user_id, wins, losses, points, joined_at')
+    .in('tournament_id', tournamentIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const members = (data ?? []) as MiniTournamentMember[];
+  if (members.length === 0) {
+    return result;
+  }
+
+  const { data: profiles, error: profileError } = await supabase
+    .from('profiles')
+    .select('id, username')
+    .in(
+      'id',
+      members.map((member) => member.user_id)
+    );
+
+  if (profileError) {
+    throw new Error(profileError.message);
+  }
+
+  const nameById = new Map(
+    (profiles ?? []).map((row) => [row.id as string, row.username as string])
+  );
+
+  const byTournament = new Map<string, MiniTournamentMember[]>();
+  for (const member of members) {
+    const enriched: MiniTournamentMember = {
+      ...member,
+      user: {
+        id: member.user_id,
+        username: nameById.get(member.user_id) ?? 'player',
+      },
+    };
+    const bucket = byTournament.get(member.tournament_id) ?? [];
+    bucket.push(enriched);
+    byTournament.set(member.tournament_id, bucket);
+  }
+
+  for (const [tournamentId, roster] of byTournament) {
+    result[tournamentId] = pickTournamentWinners(roster);
+  }
+
+  return result;
 };
 
 export const getMiniTournamentById = async (

@@ -47,6 +47,7 @@ import {
   ReportContextType,
 } from '../../types/safety';
 import { colors } from '../../constants/theme';
+import { KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
 
 type MainStackParamList = {
   Admin: undefined;
@@ -228,10 +229,12 @@ const AdminScreen: React.FC<Props> = () => {
   };
 
   return (
+    <KeyboardSafeView style={styles.container}>
     <ScrollView
-      style={styles.container}
+      style={styles.scroll}
       contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+      {...keyboardAwareScrollProps}
     >
       <Text style={styles.title}>Admin</Text>
       <Text style={styles.subtitle}>
@@ -668,11 +671,13 @@ const AdminScreen: React.FC<Props> = () => {
         </>
       ) : null}
     </ScrollView>
+    </KeyboardSafeView>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 32 },
   title: { fontSize: 22, fontWeight: '700' },
   subtitle: { color: '#666', marginTop: 4, marginBottom: 16, lineHeight: 20 },

@@ -20,6 +20,7 @@ import {
   ReportReason,
 } from '../types/safety';
 import { colors } from '../constants/theme';
+import { KeyboardSafeBottomSheet, keyboardAwareScrollProps } from './ui';
 
 type Props = {
   visible: boolean;
@@ -146,7 +147,7 @@ const SafetyActionsSheet: React.FC<Props> = ({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
+      <KeyboardSafeBottomSheet style={styles.overlay}>
         <View style={styles.sheet}>
           <Text style={styles.title}>{targetUsername}</Text>
           <Text style={styles.subtitle}>Safety</Text>
@@ -166,7 +167,7 @@ const SafetyActionsSheet: React.FC<Props> = ({
               ) : null}
             </>
           ) : (
-            <ScrollView style={styles.reportScroll}>
+            <ScrollView style={styles.reportScroll} {...keyboardAwareScrollProps}>
               <Text style={styles.label}>Reason</Text>
               {REASONS.map((r) => (
                 <TouchableOpacity
@@ -203,7 +204,7 @@ const SafetyActionsSheet: React.FC<Props> = ({
             <Text style={styles.cancelText}>Close</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </KeyboardSafeBottomSheet>
     </Modal>
   );
 };

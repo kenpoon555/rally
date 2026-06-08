@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SportBadge } from '../SportBadge';
+import { SportFilterIconItem } from './SportFilterIconItem';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
 export type SportPickerItem = {
@@ -46,17 +46,16 @@ export const SportPickerSheet: React.FC<Props> = ({
           <Text style={styles.subtitle}>Pick a sport to filter games and players nearby.</Text>
           <ScrollView contentContainerStyle={styles.grid} keyboardShouldPersistTaps="handled">
             {sports.map((sport) => (
-              <SportBadge
-                key={sport.id}
-                sport={sport.name}
-                variant="filter"
-                selected={selectedSport === sport.name}
-                onPress={() => {
-                  onSelect(sport.name);
-                  onClose();
-                }}
-                style={styles.chip}
-              />
+              <View key={sport.id} style={styles.gridCell}>
+                <SportFilterIconItem
+                  sport={sport.name}
+                  selected={selectedSport === sport.name}
+                  onPress={() => {
+                    onSelect(sport.name);
+                    onClose();
+                  }}
+                />
+              </View>
             ))}
           </ScrollView>
           <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
@@ -103,11 +102,14 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    justifyContent: 'flex-start',
+    rowGap: spacing.lg,
+    columnGap: spacing.sm,
     paddingBottom: spacing.md,
   },
-  chip: {
-    marginBottom: 0,
+  gridCell: {
+    width: '31%',
+    alignItems: 'center',
   },
   doneBtn: {
     alignItems: 'center',

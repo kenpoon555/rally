@@ -43,6 +43,8 @@ import { supabase } from '../services/api/supabase';
 import { JoinRequest } from '../types/activity';
 import {
   formatActivityTime,
+  getActivityRosterMax,
+  getActivityRosterMin,
   getApprovedParticipants,
   getGameStatusLabel,
   canHostScheduleNextGame,
@@ -110,6 +112,7 @@ type GameRoomContextValue = {
   transferring: boolean;
   onLeftGame?: () => void;
   onOpenDetails?: () => void;
+  onOpenRallyHub?: () => void;
   handlePublishToDiscover: () => void;
   publishingToDiscover: boolean;
   handleApprove: (requestId: string) => Promise<void>;
@@ -159,6 +162,7 @@ function useGameRoomContext(): GameRoomContextValue {
 type ProviderProps = {
   activityId: string;
   onOpenDetails?: () => void;
+  onOpenRallyHub?: () => void;
   onLeftGame?: () => void;
   onScheduledNextGame?: (newActivityId: string) => void;
   children: React.ReactNode;
@@ -167,6 +171,7 @@ type ProviderProps = {
 export const GameRoomProvider: React.FC<ProviderProps> = ({
   activityId,
   onOpenDetails,
+  onOpenRallyHub,
   onLeftGame,
   onScheduledNextGame,
   children,
@@ -448,15 +453,16 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     setSchedulingNext(true);
     try {
       const startIso = nextStartTime.toISOString();
-      const capacity =
-        Math.max(2, (activity.player_count ?? 1) + (activity.missing_players ?? 0)) || 8;
+      const rosterMax = getActivityRosterMax(activity);
+      const rosterMin = getActivityRosterMin(activity);
       let newId: string;
       if (activity.regular_group_id) {
         newId = await scheduleGroupNextGame(
           activity.regular_group_id,
           startIso,
-          capacity,
-          activity.duration
+          rosterMax,
+          activity.duration,
+          rosterMin
         );
       } else {
         newId = await scheduleNextGameFromActivity(activity.id, startIso);
@@ -721,6 +727,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     transferring,
     onLeftGame,
     onOpenDetails,
+    onOpenRallyHub,
     handlePublishToDiscover,
     publishingToDiscover,
     handleApprove,
@@ -1023,6 +1030,7 @@ export const GameRoomHeader: React.FC = () => {
     timeLabel,
     statusLabel,
     onOpenDetails,
+    onOpenRallyHub,
     detailsExpanded,
     setDetailsExpanded,
   } = useGameRoomContext();
@@ -1040,6 +1048,9 @@ export const GameRoomHeader: React.FC = () => {
   }
 
   const displayTitle = groupName || courtName;
+  const isRallyGame = Boolean(activity.regular_group_id);
+  const onTitlePress =
+    isRallyGame && onOpenRallyHub ? onOpenRallyHub : onOpenDetails;
   const metaParts = [
     groupName ? courtName : null,
     timeLabel,
@@ -1087,9 +1098,9 @@ export const GameRoomHeader: React.FC = () => {
         <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
         <TouchableOpacity
           style={styles.compactCopy}
-          onPress={onOpenDetails}
-          disabled={!onOpenDetails}
-          activeOpacity={onOpenDetails ? 0.85 : 1}
+          onPress={onTitlePress}
+          disabled={!onTitlePress}
+          activeOpacity={onTitlePress ? 0.85 : 1}
         >
           <View style={styles.compactTitleRow}>
             <Text style={styles.compactTitle} numberOfLines={1}>

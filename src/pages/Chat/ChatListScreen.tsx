@@ -15,11 +15,11 @@ import {
   ChatInboxFilter,
   ChatInboxItem,
   filterChatInbox,
+  sumUnreadByFilter,
   useChatInboxWithRealtime,
 } from '../../hooks/useChatInbox';
 import {
   ensureActivityGroupConversation,
-  ensureCrewConversation,
   getOrCreateDirectConversation,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
@@ -40,17 +40,17 @@ type TabParamList = {
 type Props = BottomTabScreenProps<TabParamList, 'Chats'>;
 
 const FILTERS: { id: ChatInboxFilter; label: string }[] = [
+  { id: 'friends', label: 'Friends' },
   { id: 'games', label: 'Games' },
   { id: 'rallies', label: 'Rallies' },
-  { id: 'friends', label: 'Friends' },
 ];
 
 const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
   if (item.kind === 'game') {
-    return <SportIcon sport={item.activity.sport_type} size="sm" style={styles.rowIcon} />;
+    return <SportIcon sport={item.activity.sport_type} size="sm" variant="plain" style={styles.rowIcon} />;
   }
   if (item.kind === 'group') {
-    return <SportIcon sport={item.group.sport_type} size="sm" style={styles.rowIcon} />;
+    return <SportIcon sport={item.group.sport_type} size="sm" variant="plain" style={styles.rowIcon} />;
   }
   return (
     <View style={styles.rowIconFriend}>
@@ -62,7 +62,7 @@ const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
-  const [filter, setFilter] = useState<ChatInboxFilter>('games');
+  const [filter, setFilter] = useState<ChatInboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
 
   useFocusEffect(
@@ -72,16 +72,29 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
+  const unreadByFilter = useMemo(() => sumUnreadByFilter(items), [items]);
+
+  const openRallyHub = (
+    groupId: string,
+    initialTab: 'chat' | 'play' | 'members' = 'chat'
+  ) => {
+    navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+      groupId,
+      initialTab,
+    } as never);
+  };
 
   const openThread = (
     conversationId: string,
     title: string,
-    activityId?: string
+    activityId?: string,
+    groupId?: string
   ) => {
     navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
       conversationId,
       title,
       activityId,
+      groupId,
     } as never);
   };
 
@@ -114,22 +127,10 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const openGroupRow = async (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
+  const openGroupRow = (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
     setOpeningKey(item.key);
-    try {
-      const conversationId =
-        item.conversationId || (await ensureCrewConversation(item.group.id));
-      openThread(
-        conversationId,
-        item.title,
-        item.nextActivity?.id
-      );
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Could not open Rally chat.';
-      Alert.alert('Chat unavailable', message);
-    } finally {
-      setOpeningKey(null);
-    }
+    openRallyHub(item.group.id, 'chat');
+    setOpeningKey(null);
   };
 
   const handlePress = (item: ChatInboxItem) => {
@@ -214,7 +215,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     filter === 'games'
       ? 'No active game rooms. Host or join from Play — archived chat moves to My Games after 2 days.'
       : filter === 'rallies'
-        ? 'No Rally chats yet. Start a Rally from Today or save a crew from a game.'
+        ? 'No Rally chats yet. Start a Rally from Today or save one from a game.'
         : 'No friend messages yet. Add friends from Profile.';
 
   return (
@@ -232,6 +233,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
             <Chip
               key={f.id}
               label={f.label}
+              badge={unreadByFilter[f.id]}
               selected={filter === f.id}
               tone="primary"
               compact

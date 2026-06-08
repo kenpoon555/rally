@@ -4,11 +4,17 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/assets/branding/icon-1024.png"
+ANDROID_FG_SRC="$ROOT/assets/branding/icon-android-foreground.png"
 IOS_SET="$ROOT/ios/RallyApp/Images.xcassets/AppIcon.appiconset"
 ANDROID_RES="$ROOT/android/app/src/main/res"
 
 if [[ ! -f "$SRC" ]]; then
-  echo "Missing $SRC — add a 1024×1024 master icon first."
+  echo "Missing $SRC — run: python3 scripts/build-app-icon-assets.py"
+  exit 1
+fi
+
+if [[ ! -f "$ANDROID_FG_SRC" ]]; then
+  echo "Missing $ANDROID_FG_SRC — run: python3 scripts/build-app-icon-assets.py"
   exit 1
 fi
 
@@ -48,7 +54,7 @@ cat > "$IOS_SET/Contents.json" <<'EOF'
 }
 EOF
 
-# Android launcher densities
+# Android launcher densities (legacy fallback + adaptive foreground layer)
 for spec in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
   density="${spec%%:*}"
   size="${spec##*:}"
@@ -56,6 +62,7 @@ for spec in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
   mkdir -p "$dir"
   resize "$size" "$dir/ic_launcher.png"
   cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+  sips -z "$size" "$size" "$ANDROID_FG_SRC" --out "$dir/ic_launcher_foreground.png" >/dev/null
 done
 
-echo "Generated iOS AppIcon and Android mipmaps from $SRC"
+echo "Generated iOS AppIcon and Android mipmaps from $SRC (+ adaptive foreground)"

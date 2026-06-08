@@ -309,20 +309,9 @@ export function usesWideCourtSearch(sportName: string): boolean {
   );
 }
 
-/** Radii to try in order when loading courts for Create Game (meters). */
-export function getCourtSearchRadiiForSport(sportName: string): number[] {
-  if (usesWideCourtSearch(sportName)) {
-    return [
-      CONFIG.WIDER_COURT_RADIUS_M,
-      CONFIG.NICHE_COURT_RADIUS_M,
-      CONFIG.MAX_COURT_RADIUS_M,
-    ];
-  }
-  return [
-    CONFIG.NEARBY_COURT_RADIUS_M,
-    CONFIG.WIDER_COURT_RADIUS_M,
-    CONFIG.NICHE_COURT_RADIUS_M,
-  ];
+/** Radii to try when loading courts for Create Game (meters): nearby first, then wide fallback. */
+export function getCourtSearchRadiiForSport(_sportName: string): number[] {
+  return [CONFIG.COURT_SEARCH_NEARBY_RADIUS_M, CONFIG.COURT_SEARCH_WIDE_RADIUS_M];
 }
 
 export function getCreateGameSubtitle(sportName: string): string {
@@ -405,8 +394,73 @@ export function getActivityDetailMatchingCopy(
   return ACTIVITY_DETAIL_COPY_BY_PROFILE[profile];
 }
 
-export const ACTIVITY_DURATIONS = [30, 60, 90] as const;
+export const ACTIVITY_DURATIONS = [30, 60, 90, 120] as const;
 export type ActivityDuration = (typeof ACTIVITY_DURATIONS)[number];
+
+export type SportRosterDefaults = {
+  defaultMin: number;
+  defaultMax: number;
+  floorMin: number;
+  ceilingMax: number;
+};
+
+const SPORT_ROSTER_DEFAULTS: Partial<Record<SportType, SportRosterDefaults>> = {
+  [SportType.BADMINTON]: {
+    defaultMin: 4,
+    defaultMax: 6,
+    floorMin: 2,
+    ceilingMax: 12,
+  },
+  [SportType.PICKLEBALL]: {
+    defaultMin: 4,
+    defaultMax: 8,
+    floorMin: 2,
+    ceilingMax: 16,
+  },
+};
+
+export function getSportRosterDefaults(sportName: string): SportRosterDefaults {
+  const meta = getSportMetadata(sportName);
+  const custom = meta ? SPORT_ROSTER_DEFAULTS[meta.name] : undefined;
+  if (custom) {
+    return custom;
+  }
+  const defaultMax = meta?.defaultTotalPlayers ?? 4;
+  return {
+    defaultMin: Math.max(2, defaultMax - 1),
+    defaultMax,
+    floorMin: 2,
+    ceilingMax: 32,
+  };
+}
+
+export function clampRosterMin(sportName: string, min: number, max: number): number {
+  const { floorMin } = getSportRosterDefaults(sportName);
+  return Math.min(max, Math.max(floorMin, min));
+}
+
+export function clampRosterMax(sportName: string, max: number, min: number): number {
+  const { ceilingMax } = getSportRosterDefaults(sportName);
+  return Math.max(min, Math.min(ceilingMax, max));
+}
+
+export function formatRosterRange(min: number, max: number): string {
+  if (min >= max) {
+    return `${max} player${max === 1 ? '' : 's'}`;
+  }
+  return `${min}–${max} players`;
+}
+
+export function formatRosterExpectation(min: number, max: number): string {
+  if (min >= max) {
+    return formatRosterRange(min, max);
+  }
+  return `${formatRosterRange(min, max)} · lock at ${min}`;
+}
+
+export function formatActivityDurationLabel(minutes: ActivityDuration): string {
+  return minutes >= 120 ? '120m+' : `${minutes}m`;
+}
 
 export const ACTIVITY_VISIBILITY = ['friends', 'nearby', 'invite_only'] as const;
 export type ActivityVisibility = (typeof ACTIVITY_VISIBILITY)[number];

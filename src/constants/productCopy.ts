@@ -18,8 +18,10 @@ export const PRODUCT_COPY = {
   rallyChatTitle: (name: string) => `${name} chat`,
   openRallyChat: 'Open Rally chat',
   rallyChatEmpty:
-    "Rally chat — say hi and tap I'm in on the game card when you can make it.",
-  tapImInInRallyChat: "Tap I'm in in your Rally chat to confirm you're playing.",
+    'Say hi here. Join games and tap I\'m in on the Play tab — not in chat.',
+  rallyPlayTabHint: 'Games and rosters live on Play →',
+  rallyPlayTabActionHint: 'Play needs you — join or tap I\'m in →',
+  tapImInInRallyChat: "Tap I'm in on the Play tab when you can make it.",
 
   /** Games */
   gameCard: 'Game card',
@@ -28,7 +30,7 @@ export const PRODUCT_COPY = {
     'Available until someone joins or taps I\'m in. Updates post to game chat.',
   changeGameTime: 'Change start time',
   changeGameCourt: 'Court',
-  gameScheduleChangePosted: 'Your crew will see this in chat.',
+  gameScheduleChangePosted: 'Your Rally will see this in chat.',
   gameCardBackHint: 'Swipe down or tap back to return to the game room.',
   gameRoomCoordinateHint: "Say hi here — tap I'm in when you can make it.",
   publicGame: 'Looking for a game',
@@ -38,7 +40,9 @@ export const PRODUCT_COPY = {
   joinGame: 'Join game',
   imIn: "I'm in",
   imInConfirm: "You're in ✓",
-  undoImIn: 'Not in',
+  imInLocked: "I'm in ✓",
+  hostingConfirm: 'Hosting ✓',
+  undoImIn: "Can't make it",
   undoImInTitle: "Undo I'm in?",
   undoImInBody:
     'You are no longer committed for this session. Tap I\'m in again anytime before the host locks the roster.',
@@ -87,6 +91,29 @@ export const PRODUCT_COPY = {
   scheduleFirstSession: 'Schedule first session',
   scheduleFirstSessionHint:
     'Host the first game so your Rally can join, tap I\'m in, and lock the roster.',
+  scheduleNextSession: 'Schedule next session',
+  scheduleNextSessionHint:
+    'Pick a time for your next game — your Rally will see it on Play and in chat.',
+  startMiniTournament: 'Start mini tournament',
+  hostPlayActionsTitle: 'Plan for Rally',
+  postNextRallyGame: 'Post next game',
+  createGame: 'Create game',
+  createGameHint: 'Post a game so your Rally can tap I\'m in.',
+  rosterSection: 'Roster',
+  rosterLockAt: 'Lock at',
+  rosterUpTo: 'Up to',
+  rosterLockHint:
+    'Lock when everyone on roster taps I\'m in. More players can join until you hit the max.',
+  createGameCourtTbd: 'Court TBD',
+  createGameCourtHint: 'Set the court on the game card after you post.',
+  gameModePickup: 'Pickup',
+  gameModeTournament: 'Tournament',
+  shareRallyGameLink: 'Share game link',
+  rallyMembersTab: 'Members',
+  rallyPendingInvites: 'Invited · waiting',
+  rallyPendingInvitesEmpty: 'No pending invites — tap + above to invite friends.',
+  saveAsRallyConfirmBody:
+    'Creates a Rally from this roster. Approved players join automatically; share a link to invite others.',
   introSessions: 'Intro nights',
   findPlayers: 'Find players',
   findPlayersHint: 'Invite free agents and active seekers to fill open spots.',
@@ -134,7 +161,7 @@ export const PRODUCT_COPY = {
   homeExplorerSubtitle: 'Open games nearby. Recruiting posts are hosts actively looking for players.',
   discoverEmptyTitle: (sport: string) => `No ${sport.toLowerCase()} games nearby`,
   discoverEmptyBody:
-    'LA beta is strongest for badminton, pickleball, and basketball. Host a game to get on the board — then invite your crew from the Rally.',
+    'LA beta is strongest for badminton, pickleball, and basketball. Host a game to get on the board — then invite friends from your Rally.',
   discoverEmptyStepHost: 'Host a game',
   discoverEmptyStepInvite: 'After you host, open your Rally to invite friends to that game.',
   discoverEmptyOpenRally: 'Open your Rally',

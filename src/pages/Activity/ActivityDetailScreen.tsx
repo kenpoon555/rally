@@ -14,7 +14,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { sportSupportsMiniTournament } from '../../constants/sports';
-import { ensureCrewConversation } from '../../services/chatService';
 import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import JoinRequestButton from '../../components/JoinRequestButton';
@@ -44,7 +43,7 @@ import {
   getTournamentsForGroup,
 } from '../../services/miniTournamentService';
 import { MiniTournament } from '../../types/miniTournament';
-import { buildGameInviteUrl, buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
+import { buildGameInviteUrl } from '../../navigation/deepLinking';
 import { RegularGroup } from '../../types/regularGroup';
 import { PlayerReviewForm } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
@@ -57,6 +56,8 @@ import { reportCourtIssue, CourtReportType } from '../../services/courtService';
 import { supabase } from '../../services/api/supabase';
 import {
   formatActivityTime,
+  getActivityRosterMax,
+  getActivityRosterMin,
   getApprovedParticipants,
   canHostScheduleNextGame,
   countReadyParticipants,
@@ -81,11 +82,13 @@ import { activityListingHeadline, playIntentLabel } from '../../constants/playIn
 import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
 import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
+import { KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
 import { Avatar } from '../../components/ui';
 import CoachMark from '../../components/CoachMark';
 import { ONBOARDING_FLAGS } from '../../constants/onboardingFlags';
 import { InviteFriendsToGameSheet } from '../../components/game/InviteFriendsToGameSheet';
 import { HostGameScheduleEditor } from '../../components/game/HostGameScheduleEditor';
+import { RosterSeatBar } from '../../components/game/RosterSeatBar';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -94,7 +97,11 @@ type MainStackParamList = {
   PostGameAttendance: { activityId: string };
   ChatThread: { conversationId: string; title?: string; activityId?: string; groupId?: string };
   MiniTournament: { tournamentId: string };
-  RegularsCrew: { groupId: string };
+  RegularsCrew: {
+    groupId: string;
+    initialTab?: 'chat' | 'play' | 'members';
+    promptShareInvite?: boolean;
+  };
 };
 
 type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
@@ -471,26 +478,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setSchedulingNext(true);
     try {
       const startIso = nextStartTime.toISOString();
-      const capacity =
-        Math.max(2, (activity.player_count ?? 1) + (activity.missing_players ?? 0)) || 8;
+      const rosterMax = getActivityRosterMax(activity);
+      const rosterMin = getActivityRosterMin(activity);
       const newId = activity.regular_group_id
         ? await scheduleGroupNextGame(
             activity.regular_group_id,
             startIso,
-            capacity,
-            activity.duration
+            rosterMax,
+            activity.duration,
+            rosterMin
           )
         : await scheduleNextGameFromActivity(activity.id, startIso);
       setSchedulePickerVisible(false);
       if (activity.regular_group_id) {
-        const conversationId = await ensureCrewConversation(activity.regular_group_id);
-        navigation.navigate(ROUTES.CHAT.THREAD as never, {
-          conversationId,
-          activityId: newId,
+        navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
           groupId: activity.regular_group_id,
-          title: regularGroup?.name
-            ? PRODUCT_COPY.rallyChatTitle(regularGroup.name)
-            : PRODUCT_COPY.rallyChat,
+          initialTab: 'play',
         } as never);
       } else {
         (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
@@ -570,54 +573,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   };
 
-  const handleCreateRegularGroup = () => {
-    if (!activity || !isHost) {
-      return;
-    }
-    Alert.alert(
-      PRODUCT_COPY.saveAsRally,
-      'Creates a named crew from this roster. Share the group link so friends join future games together.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Create',
-          onPress: async () => {
-            setCreatingRegularGroup(true);
-            try {
-              const groupId = await createRegularGroupFromActivity(activity.id);
-              const group = await getRegularGroupById(groupId);
-              setRegularGroup(group);
-              await refetch();
-              Alert.alert(
-                PRODUCT_COPY.rallySaved,
-                group?.name ? `"${group.name}" is ready. Share the group invite link next.` : 'Group is ready.'
-              );
-            } catch (err: any) {
-              Alert.alert('Could not create group', err?.message || 'Try again.');
-            } finally {
-              setCreatingRegularGroup(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleShareGroupInvite = async () => {
-    if (!regularGroup?.invite_token) {
-      return;
-    }
-    try {
-      await Share.share({
-        message: `Join our ${regularGroup.sport_type} crew "${regularGroup.name}" and our next game on Rally — one tap to get in: ${buildRegularGroupInviteUrl(regularGroup.invite_token)}`,
-      });
-    } catch {
-      // User dismissed share sheet.
-    }
-  };
-
   const handleCreateMiniTournament = async () => {
-    if (!regularGroup || !isHost) {
+    if (!regularGroup || (!isHost && !isGroupMember)) {
       return;
     }
     setCreatingTournament(true);
@@ -632,6 +589,33 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setCreatingTournament(false);
     }
+  };
+
+  const handleCreateRegularGroup = () => {
+    if (!activity || !isHost) {
+      return;
+    }
+    Alert.alert(PRODUCT_COPY.saveAsRally, PRODUCT_COPY.saveAsRallyConfirmBody, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Create',
+        onPress: async () => {
+          setCreatingRegularGroup(true);
+          try {
+            const groupId = await createRegularGroupFromActivity(activity.id);
+            navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+              groupId,
+              initialTab: 'chat',
+              promptShareInvite: true,
+            } as never);
+          } catch (err: any) {
+            Alert.alert('Could not create group', err?.message || 'Try again.');
+          } finally {
+            setCreatingRegularGroup(false);
+          }
+        },
+      },
+    ]);
   };
 
   const openMiniTournament = (tournamentId: string) => {
@@ -929,21 +913,26 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
-  const slotsLabel = (() => {
-    const count = activity.player_count || 1;
-    const openSpots = activity.missing_players ?? 0;
-    if (openSpots > 0) {
-      return `${count} player${count === 1 ? '' : 's'} · ${openSpots} spot${openSpots === 1 ? '' : 's'} open`;
-    }
-    return `${count} player${count === 1 ? '' : 's'}`;
-  })();
   const showChat = canOpenActivityChat(activity, user?.id) || isGroupMember;
   const chatArchived = isGameChatReadOnly(activity);
   const wasOnGame =
     isHost || isApprovedJoiner || Boolean(myJoinRequest) || user?.id === activity.user_id;
   const isPastGame = isPastGameActivity(activity);
   const canScheduleNext =
-    !isPastGame && Boolean(isHost && canHostScheduleNextGame(activity, true));
+    !isPastGame &&
+    !activity.regular_group_id &&
+    Boolean(isHost && canHostScheduleNextGame(activity, true));
+  const showShareLink = Boolean(
+    activity.invite_token &&
+      ((activity.regular_group_id && isGroupMember) ||
+        (!activity.regular_group_id && (isHost || isApprovedJoiner)))
+  );
+  const showInviteFriends = Boolean(
+    (isHost || isApprovedJoiner) &&
+      !isPastGame &&
+      activity.status === 'active' &&
+      activity.match_status !== 'finalized'
+  );
   const showTonight = !isPastGame && isTonightUrgency(activity);
   const canEditSchedule =
     Boolean(isHost && activity && canHostEditGameSchedule(activity, approvedParticipants));
@@ -958,7 +947,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     : null;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <KeyboardSafeView style={styles.container}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
       <View style={styles.heroCard}>
         <View style={styles.heroTopRow}>
           <Text style={styles.heroSport}>{activity.sport_type}</Text>
@@ -994,9 +984,17 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </TouchableOpacity>
         ) : null}
         {!isPastGame ? (
-          <Text style={styles.heroMeta}>
-            {slotsLabel} · {detailCopy.statusSchedulingDescriptor}
-          </Text>
+          <>
+            <View style={styles.seatBarWrap}>
+              <RosterSeatBar
+                sportType={activity.sport_type}
+                activity={activity}
+                variant="wide"
+                align="left"
+              />
+            </View>
+            <Text style={styles.heroMeta}>{detailCopy.statusSchedulingDescriptor}</Text>
+          </>
         ) : null}
         {!isPastGame && !!detailCopy.statusDetailLine && activity.scheduling_mode === 'flex' && (
           <Text style={styles.statusDetailLine}>{detailCopy.statusDetailLine}</Text>
@@ -1076,7 +1074,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ) : null}
         {isPastGame && !recapId && isHost && showPostGameAttendance ? (
           <Text style={styles.pastGameHint}>
-            Record who showed up to generate a shareable recap for your crew.
+            Record who showed up to generate a shareable recap for your Rally.
           </Text>
         ) : null}
         {expiresLabel ? (
@@ -1098,18 +1096,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </TouchableOpacity>
           </>
         ) : null}
-        {showChat && !chatArchived && !fromGameRoom ? (
+        {showChat && !chatArchived && !fromGameRoom && !activity.regular_group_id ? (
           <TouchableOpacity
             style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
             onPress={handleOpenGroupChat}
             disabled={openingChat}
           >
             <Text style={styles.utilityButtonText}>
-              {openingChat
-                ? 'Opening…'
-                : activity.regular_group_id
-                  ? PRODUCT_COPY.openRallyChat
-                  : 'Open Game Room'}
+              {openingChat ? 'Opening…' : 'Open Game Room'}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -1127,11 +1121,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               disabled={schedulingNext}
             >
               <Text style={styles.secondaryButtonText}>
-                {schedulingNext
-                  ? 'Scheduling…'
-                  : activity.regular_group_id
-                    ? 'Post next game for crew'
-                    : 'Schedule next game'}
+                {schedulingNext ? 'Scheduling…' : 'Schedule next game'}
               </Text>
             </TouchableOpacity>
             {schedulePickerVisible ? (
@@ -1171,10 +1161,29 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             </Text>
           </TouchableOpacity>
         ) : null}
-        {regularGroup?.invite_token && (isHost || isApprovedJoiner) ? (
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleShareGroupInvite()}>
-            <Text style={styles.secondaryButtonText}>Share crew + next game link</Text>
-          </TouchableOpacity>
+        {showShareLink || showInviteFriends ? (
+          <View style={styles.inviteActionRow}>
+            {showShareLink ? (
+              <TouchableOpacity
+                style={[styles.secondaryButton, styles.inviteActionBtn]}
+                onPress={() => void handleShareInvite()}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  {activity.regular_group_id
+                    ? PRODUCT_COPY.shareRallyGameLink
+                    : 'Share game invite link'}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+            {showInviteFriends ? (
+              <TouchableOpacity
+                style={[styles.utilityButton, styles.inviteActionBtn]}
+                onPress={() => setInviteFriendsOpen(true)}
+              >
+                <Text style={styles.utilityButtonText}>{PRODUCT_COPY.inviteFriendsToGame}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         ) : null}
         {regularGroup &&
         !isPastGame &&
@@ -1183,10 +1192,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <View style={styles.tournamentBlock}>
             <Text style={styles.tournamentTitle}>Mini tournaments</Text>
             <Text style={styles.tournamentHint}>
-              Private doubles round-robin for your crew. Host starts when 4+ players join (even
-              count).
+              Private doubles round-robin for your Rally. Start when 4+ players join (even count).
             </Text>
-            {isHost ? (
+            {isHost || isGroupMember ? (
               <TouchableOpacity
                 style={[styles.secondaryButton, creatingTournament && styles.utilityButtonDisabled]}
                 onPress={() => void handleCreateMiniTournament()}
@@ -1208,24 +1216,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </TouchableOpacity>
             ))}
           </View>
-        ) : null}
-        {(isHost || isApprovedJoiner) &&
-        !isPastGame &&
-        activity.status === 'active' &&
-        activity.match_status !== 'finalized' ? (
-          <TouchableOpacity
-            style={styles.utilityButton}
-            onPress={() => setInviteFriendsOpen(true)}
-          >
-            <Text style={styles.utilityButtonText}>{PRODUCT_COPY.inviteFriendsToGame}</Text>
-          </TouchableOpacity>
-        ) : null}
-        {activity.invite_token && (isHost || isApprovedJoiner) ? (
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleShareInvite()}>
-            <Text style={styles.secondaryButtonText}>
-              {regularGroup ? PRODUCT_COPY.shareGameInviteLinkRally : PRODUCT_COPY.shareGameInviteLink}
-            </Text>
-          </TouchableOpacity>
         ) : null}
       </View>
 
@@ -1340,9 +1330,15 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       )}
 
-      {!isHost && isApprovedJoiner && !isFinalized && showChat ? (
+      {!isHost && isApprovedJoiner && !isFinalized && activity.regular_group_id ? (
         <Text style={styles.gameRoomHint}>
-          Open Rally chat to tap I'm in, chat with your Rally, or leave this game.
+          Chat lives on the Rally Chat tab. Tap I'm in on Play when you can make it.
+        </Text>
+      ) : null}
+
+      {!isHost && isApprovedJoiner && !isFinalized && !activity.regular_group_id && showChat ? (
+        <Text style={styles.gameRoomHint}>
+          Open Game Room to tap I'm in, chat with players, or leave this game.
         </Text>
       ) : null}
 
@@ -1560,6 +1556,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         />
       ) : null}
     </ScrollView>
+    </KeyboardSafeView>
   );
 };
 
@@ -1567,6 +1564,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     padding: spacing.lg,
@@ -1675,9 +1675,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   heroMeta: {
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     fontSize: 13,
     color: colors.textSecondary,
+  },
+  seatBarWrap: {
+    marginTop: spacing.sm,
   },
   participantsSection: {
     backgroundColor: colors.surface,
@@ -1884,6 +1887,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
+  inviteActionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  inviteActionBtn: {
+    flex: 1,
+    marginTop: 0,
+    marginBottom: 0,
+  },
   ctaRow: {
     flexDirection: 'row',
     marginTop: 8,
@@ -1926,7 +1939,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 11,
     paddingHorizontal: 14,
-    marginBottom: 10,
     alignItems: 'center',
   },
   utilityButtonDisabled: {

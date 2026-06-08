@@ -20,6 +20,75 @@ const withRetry = async <T>(action: () => Promise<T>, retries: number = 1): Prom
   throw lastError instanceof Error ? lastError : new Error('Unknown chat service failure');
 };
 
+async function consumeChatCreateLimitIfNew(
+  userId: string | undefined,
+  conversationExists: boolean
+): Promise<void> {
+  if (!userId || conversationExists) {
+    return;
+  }
+  await consumeRateLimit('chat_create', userId);
+}
+
+export async function getDirectConversationId(
+  currentUserId: string,
+  targetUserId: string
+): Promise<string | null> {
+  const { data: mine, error: mineError } = await supabase
+    .from('conversation_members')
+    .select('conversation_id')
+    .eq('user_id', currentUserId)
+    .eq('is_active', true);
+
+  if (mineError || !mine?.length) {
+    return null;
+  }
+
+  const convoIds = mine.map((row) => row.conversation_id as string);
+  const { data: shared, error: sharedError } = await supabase
+    .from('conversation_members')
+    .select('conversation_id, conversations!inner(conversation_type)')
+    .eq('user_id', targetUserId)
+    .in('conversation_id', convoIds)
+    .eq('conversations.conversation_type', 'friend_direct')
+    .limit(1);
+
+  if (sharedError || !shared?.length) {
+    return null;
+  }
+
+  return shared[0].conversation_id as string;
+}
+
+async function getActivityGroupConversationId(activityId: string): Promise<string | null> {
+  const { data: activity, error: activityError } = await supabase
+    .from('activities')
+    .select('regular_group_id')
+    .eq('id', activityId)
+    .maybeSingle();
+
+  if (activityError) {
+    throw new Error(`Failed to load activity chat: ${activityError.message}`);
+  }
+
+  if (activity?.regular_group_id) {
+    return getCrewConversationId(activity.regular_group_id);
+  }
+
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('activity_id', activityId)
+    .eq('conversation_type', 'activity_group')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to load game chat: ${error.message}`);
+  }
+
+  return data?.id ?? null;
+}
+
 export const getOrCreateDirectConversation = async (
   targetUserId: string,
   currentUserId?: string
@@ -28,7 +97,8 @@ export const getOrCreateDirectConversation = async (
     if (await usersAreBlocked(currentUserId, targetUserId)) {
       throw new Error('You cannot message this user.');
     }
-    await consumeRateLimit('chat_create', currentUserId);
+    const existingId = await getDirectConversationId(currentUserId, targetUserId);
+    await consumeChatCreateLimitIfNew(currentUserId, Boolean(existingId));
   }
 
   const { data, error } = await withRetry(() =>
@@ -52,9 +122,8 @@ export const ensureCrewConversation = async (groupId: string): Promise<string> =
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) {
-    await consumeRateLimit('chat_create', user.id);
-  }
+  const existingId = await getCrewConversationId(groupId);
+  await consumeChatCreateLimitIfNew(user?.id, Boolean(existingId));
 
   const { data, error } = await withRetry(() =>
     supabase.rpc('ensure_crew_conversation', { p_group_id: groupId })
@@ -76,9 +145,8 @@ export const ensureActivityGroupConversation = async (activityId: string): Promi
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) {
-    await consumeRateLimit('chat_create', user.id);
-  }
+  const existingId = await getActivityGroupConversationId(activityId);
+  await consumeChatCreateLimitIfNew(user?.id, Boolean(existingId));
 
   const { data, error } = await withRetry(() =>
     supabase.rpc('ensure_activity_group_conversation', {
@@ -155,23 +223,6 @@ export const getCrewConversationActivities = async (
   }
 
   return (data || []) as ConversationActivity[];
-};
-
-export const getActivityGroupConversationId = async (
-  activityId: string
-): Promise<string | null> => {
-  const { data, error } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('activity_id', activityId)
-    .eq('conversation_type', 'activity_group')
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Failed to load activity conversation: ${error.message}`);
-  }
-
-  return data?.id || null;
 };
 
 export const getConversationById = async (conversationId: string): Promise<Conversation | null> => {

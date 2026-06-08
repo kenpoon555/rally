@@ -87,7 +87,7 @@ android {
         applicationId "app.rally.sports"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
+        versionCode 5
         versionName "1.0.0"
         resValue "string", "build_config_package", "app.rally.sports"
         ndk {

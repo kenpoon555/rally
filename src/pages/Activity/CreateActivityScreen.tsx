@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ScrollView,
   Share,
@@ -14,8 +13,9 @@ import {
   View,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
-import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
+import { ScheduleDateTimePicker, snapDateToMinuteInterval } from '../../components/ScheduleDateTimePicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
@@ -27,17 +27,24 @@ import {
   ACTIVITY_VISIBILITY,
   CREATE_ACTIVITY_VISIBILITY,
   ActivityVisibility,
-  MVP_DEFAULT_SCHEDULING_MODE,
+  clampRosterMax,
+  clampRosterMin,
+  formatActivityDurationLabel,
+  formatRosterExpectation,
   getDefaultLaunchSportName,
-  getDefaultOpenSpotsForSport,
-  getDefaultTotalPlayersForSport,
   getCourtSearchRadiiForSport,
   getCreateGameSubtitle,
-  totalPlayersFromOpenSpots,
+  getSportRosterDefaults,
   resolvePreferredSportForLaunch,
   SportType,
 } from '../../constants/sports';
-import { Chip, ScreenHeader, TextField } from '../../components/ui';
+import {
+  Button,
+  KeyboardSafeView,
+  ScreenHeader,
+  keyboardAwareScrollProps,
+} from '../../components/ui';
+import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
 import { createActivity } from '../../services/activityService';
 import { buildGameInviteUrl } from '../../navigation/deepLinking';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
@@ -47,20 +54,18 @@ import {
 } from '../../services/locationService';
 import { ActivityLocation } from '../../types/location';
 import { calculateDistance } from '../../utils/distance';
-import { formatDistanceLabel } from '../../utils/formatDistance';
+import { formatDistanceLabel, formatSearchRadiusLabel } from '../../utils/formatDistance';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
-import { colors, spacing } from '../../constants/theme';
+import { colors, radius, spacing, typography } from '../../constants/theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { getSportIconName } from '../../components/SportIcon';
 import { AddCourtSheet } from '../../components/AddCourtSheet';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { PLAY_INTENTS, type PlayIntentId } from '../../constants/playIntent';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
 import { SHOW_LOCATION_DEBUG } from '../../constants/devFlags';
 import {
   getDefaultDurationFromTemplate,
-  getDefaultOpenSpotsFromTemplate,
   getListingTitleHint,
 } from '../../services/sportTemplateService';
 
@@ -80,6 +85,15 @@ type Props = NativeStackScreenProps<MainStackParamList, 'CreateActivity'>;
 
 type LocationWithDistance = ActivityLocation & { distanceMeters: number | null };
 
+const CREATE_GAME_MINUTE_INTERVAL = 30;
+const CREATE_GAME_SPORT_BAR_COUNT = 4;
+
+function defaultPublicGameStartTime(): Date {
+  const next = new Date();
+  next.setMinutes(next.getMinutes() + 60);
+  return snapDateToMinuteInterval(next, CREATE_GAME_MINUTE_INTERVAL);
+}
+
 const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
 
@@ -93,30 +107,42 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       .catch(() => setMyRallys([]));
   }, [user?.id]);
   const { location, loading: loadingLocation, fetchLocation, hasPermission } = useLocation(false);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(event.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardInset(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const { sports } = useSportsCatalog();
   const launchSportName = sports[0]?.name ?? getDefaultLaunchSportName();
-  const showSportPicker = sports.length > 1;
 
   const [locations, setLocations] = useState<ActivityLocation[]>([]);
-  const [courtSearchRadiusM, setCourtSearchRadiusM] = useState(CONFIG.NEARBY_COURT_RADIUS_M);
+  const [courtSearchRadiusM, setCourtSearchRadiusM] = useState(CONFIG.COURT_SEARCH_NEARBY_RADIUS_M);
+  const [courtSearchWidened, setCourtSearchWidened] = useState(false);
   const [showAllCourtsDev, setShowAllCourtsDev] = useState(false);
   const [myRallys, setMyRallys] = useState<RegularGroup[]>([]);
-  const [showAllCourtsFallback, setShowAllCourtsFallback] = useState(false);
   const [loadingLocations, setLoadingLocations] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [needPlayersTonight, setNeedPlayersTonight] = useState(false);
   const [isIntroSession, setIsIntroSession] = useState(false);
   const [titleHint, setTitleHint] = useState<string | null>(null);
   const [costNote, setCostNote] = useState('');
   const [listingTitle, setListingTitle] = useState('');
-  const [playIntent, setPlayIntent] = useState<PlayIntentId | null>('pickup');
   const [sessionNote, setSessionNote] = useState('');
   const didRequestInitialLocationRef = useRef(false);
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState('');
   const [addCourtSheetVisible, setAddCourtSheetVisible] = useState(false);
+  const [sportPickerOpen, setSportPickerOpen] = useState(false);
   const [sportType, setSportType] = useState<string>(() =>
     resolvePreferredSportForLaunch(user?.preferred_sports?.[0])
   );
@@ -126,30 +152,24 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const [visibility, setVisibility] = useState<ActivityVisibility>(
     (user?.default_visibility as ActivityVisibility) || 'friends'
   );
-  const [openSpotsText, setOpenSpotsText] = useState(() => {
+  const [rosterMin, setRosterMin] = useState(() => {
     const sport = resolvePreferredSportForLaunch(user?.preferred_sports?.[0]);
-    return String(getDefaultOpenSpotsForSport(sport));
+    return getSportRosterDefaults(sport).defaultMin;
   });
-  const [schedulingMode, setSchedulingMode] = useState<'fixed' | 'flex'>(
-    MVP_DEFAULT_SCHEDULING_MODE
-  );
-  const defaultFixedStart = useMemo(() => {
-    const d = new Date();
-    d.setMinutes(d.getMinutes() + 60);
-    d.setSeconds(0, 0);
-    return d;
-  }, []);
+  const [rosterMax, setRosterMax] = useState(() => {
+    const sport = resolvePreferredSportForLaunch(user?.preferred_sports?.[0]);
+    return getSportRosterDefaults(sport).defaultMax;
+  });
+  const defaultFixedStart = useMemo(() => defaultPublicGameStartTime(), []);
   const [fixedStartTime, setFixedStartTime] = useState(defaultFixedStart);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showAdvancedScheduling, setShowAdvancedScheduling] = useState(false);
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
 
   useEffect(() => {
     const prefill = route.params?.prefillStartTime;
     if (prefill) {
       const parsed = new Date(prefill);
       if (!Number.isNaN(parsed.getTime())) {
-        setFixedStartTime(parsed);
-        setSchedulingMode('fixed');
+        setFixedStartTime(snapDateToMinuteInterval(parsed, CREATE_GAME_MINUTE_INTERVAL));
       }
     }
     if (route.params?.prefillTitle?.trim()) {
@@ -171,12 +191,13 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     void (async () => {
-      const [spots, durationMins, hint] = await Promise.all([
-        getDefaultOpenSpotsFromTemplate(sportType),
+      const [durationMins, hint] = await Promise.all([
         getDefaultDurationFromTemplate(sportType),
         getListingTitleHint(sportType),
       ]);
-      setOpenSpotsText(String(spots));
+      const defaults = getSportRosterDefaults(sportType);
+      setRosterMin(defaults.defaultMin);
+      setRosterMax(defaults.defaultMax);
       if (ACTIVITY_DURATIONS.includes(durationMins as (typeof ACTIVITY_DURATIONS)[number])) {
         setDuration(durationMins as (typeof ACTIVITY_DURATIONS)[number]);
       }
@@ -184,13 +205,47 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     })();
   }, [sportType]);
 
-  const rosterTotalPlayers = useMemo(() => {
-    const open = Number.parseInt(openSpotsText, 10);
-    if (!Number.isFinite(open) || open < 0) {
-      return getDefaultTotalPlayersForSport(sportType);
+  const rosterDefaults = useMemo(() => getSportRosterDefaults(sportType), [sportType]);
+  const rosterExpectationCopy = formatRosterExpectation(rosterMin, rosterMax);
+
+  const sportBarSports = useMemo(() => {
+    const primary = sports.slice(0, CREATE_GAME_SPORT_BAR_COUNT);
+    if (primary.some((sport) => sport.name === sportType)) {
+      return primary;
     }
-    return totalPlayersFromOpenSpots(open);
-  }, [openSpotsText, sportType]);
+    const selected = sports.find((sport) => sport.name === sportType);
+    if (!selected) {
+      return primary;
+    }
+    return [...primary.slice(0, CREATE_GAME_SPORT_BAR_COUNT - 1), selected];
+  }, [sportType, sports]);
+
+  const adjustRosterMin = (delta: number) => {
+    setRosterMin((prev) => {
+      const next = clampRosterMin(sportType, prev + delta, rosterMax);
+      if (next > rosterMax) {
+        setRosterMax(next);
+      }
+      return next;
+    });
+  };
+
+  const adjustRosterMax = (delta: number) => {
+    setRosterMax((prev) => {
+      const next = clampRosterMax(sportType, prev + delta, rosterMin);
+      if (next < rosterMin) {
+        setRosterMin(next);
+      }
+      return next;
+    });
+  };
+
+  const handleSportChange = (nextSport: string) => {
+    setSportType(nextSport);
+    const defaults = getSportRosterDefaults(nextSport);
+    setRosterMin(defaults.defaultMin);
+    setRosterMax(defaults.defaultMax);
+  };
 
   useEffect(() => {
     if (didRequestInitialLocationRef.current) {
@@ -202,7 +257,6 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     setSelectedLocationId(null);
-    setShowAllCourtsFallback(false);
     setLocationSearch('');
   }, [sportType]);
 
@@ -210,9 +264,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     const load = async () => {
       if (!location) {
         setLocations([]);
-        setCourtSearchRadiusM(CONFIG.NEARBY_COURT_RADIUS_M);
+        setCourtSearchRadiusM(CONFIG.COURT_SEARCH_NEARBY_RADIUS_M);
+        setCourtSearchWidened(false);
         setShowAllCourtsDev(false);
-        setShowAllCourtsFallback(false);
         return;
       }
 
@@ -222,9 +276,15 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           const all = await getAllActivityLocations(100);
           setLocations(all);
           setCourtSearchRadiusM(0);
-          if (all.length > 0) {
-            setSelectedLocationId((prev) => prev || all[0].id);
-          }
+          const sportMatches = all.filter(
+            (loc) => loc.sport_type.toLowerCase() === sportType.toLowerCase()
+          );
+          setSelectedLocationId((prev) => {
+            if (prev && sportMatches.some((loc) => loc.id === prev)) {
+              return prev;
+            }
+            return sportMatches[0]?.id ?? null;
+          });
         } catch (error) {
           console.error('Error loading all courts:', error);
           setLocations([]);
@@ -238,7 +298,8 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       try {
         const radii = getCourtSearchRadiiForSport(sportType);
         let near: ActivityLocation[] = [];
-        let matchedRadius = radii[0] ?? CONFIG.NEARBY_COURT_RADIUS_M;
+        let matchedRadius = radii[0] ?? CONFIG.COURT_SEARCH_NEARBY_RADIUS_M;
+        let widened = false;
 
         for (const radius of radii) {
           near = await getNearbyActivityLocations(
@@ -251,7 +312,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           );
           if (sportMatches.length > 0) {
             matchedRadius = radius;
-            setShowAllCourtsFallback(false);
+            widened = radius > (radii[0] ?? CONFIG.COURT_SEARCH_NEARBY_RADIUS_M);
             setSelectedLocationId((prev) => {
               if (prev && sportMatches.some((loc) => loc.id === prev)) {
                 return prev;
@@ -263,20 +324,20 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           matchedRadius = radius;
         }
 
+        setLocations(near);
+        setCourtSearchRadiusM(matchedRadius);
+        setCourtSearchWidened(widened);
         const sportMatches = near.filter(
           (loc) => loc.sport_type.toLowerCase() === sportType.toLowerCase()
         );
-        setLocations(near);
-        setCourtSearchRadiusM(matchedRadius);
-        setShowAllCourtsFallback(sportMatches.length === 0 && near.length > 0);
         if (sportMatches.length === 0) {
           setSelectedLocationId(null);
         }
       } catch (error) {
         console.error('Error loading activity locations:', error);
         setLocations([]);
-        setCourtSearchRadiusM(CONFIG.NEARBY_COURT_RADIUS_M);
-        setShowAllCourtsFallback(false);
+        setCourtSearchRadiusM(CONFIG.COURT_SEARCH_NEARBY_RADIUS_M);
+        setCourtSearchWidened(false);
         setSelectedLocationId(null);
       } finally {
         setLoadingLocations(false);
@@ -359,14 +420,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const sportLocations = locationsWithDistance.filter(
     (loc) => loc.sport_type.toLowerCase() === sportType.toLowerCase()
   );
-  const baseLocationList =
-    sportLocations.length > 0 || !showAllCourtsFallback
-      ? sportLocations
-      : locationsWithDistance;
-
   const filteredLocations = !keyword
-    ? baseLocationList
-    : baseLocationList.filter((loc) => {
+    ? sportLocations
+    : sportLocations.filter((loc) => {
         return (
           loc.name.toLowerCase().includes(keyword) ||
           loc.sport_type.toLowerCase().includes(keyword)
@@ -419,20 +475,19 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     const sportCount = sportLocations.length;
-    const radiusKm = (courtSearchRadiusM / 1000).toFixed(
-      courtSearchRadiusM >= 10000 ? 0 : 1
-    );
+    const nearbyLabel = formatSearchRadiusLabel(CONFIG.COURT_SEARCH_NEARBY_RADIUS_M);
+    const wideLabel = formatSearchRadiusLabel(CONFIG.COURT_SEARCH_WIDE_RADIUS_M);
 
     if (sportCount > 0) {
-      return `${sportCount} ${sportType.toLowerCase()} court${sportCount === 1 ? '' : 's'} within ${radiusKm} km.`;
+      if (courtSearchWidened) {
+        return `No ${sportType.toLowerCase()} courts within ${nearbyLabel} — showing ${sportCount} within ${wideLabel}.`;
+      }
+      return `${sportCount} ${sportType.toLowerCase()} court${sportCount === 1 ? '' : 's'} within ${nearbyLabel}.`;
     }
     if (locations.length === 0) {
-      return `No courts within ${radiusKm} km. Add one below, or set emulator location to LA (34.05, -118.24).`;
+      return `No courts within ${wideLabel}. Add a ${sportType.toLowerCase()} court below.`;
     }
-    if (showAllCourtsFallback) {
-      return `No ${sportType.toLowerCase()} courts within ${radiusKm} km — showing other sports to pick or Add a court.`;
-    }
-    return `Searching for ${sportType.toLowerCase()} courts…`;
+    return `No ${sportType.toLowerCase()} courts within ${wideLabel}. Add one below.`;
   }, [
     loadingLocation,
     loadingLocations,
@@ -440,10 +495,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     hasPermission,
     locations.length,
     showAllCourtsDev,
-    courtSearchRadiusM,
+    courtSearchWidened,
     sportType,
     sportLocations.length,
-    showAllCourtsFallback,
   ]);
 
   const selectLocation = (loc: ActivityLocation) => {
@@ -459,7 +513,6 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     });
     setSelectedLocationId(loc.id);
     setShowAllCourtsDev(false);
-    setShowAllCourtsFallback(false);
   };
 
   const handleCreate = async () => {
@@ -480,22 +533,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    const parsed = Number.parseInt(openSpotsText, 10);
-    const missingPlayers = Number.isFinite(parsed) && parsed >= 0 ? parsed : 1;
-    const now = new Date();
-    const gameStart = schedulingMode === 'fixed' ? fixedStartTime : now;
-    const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-    const candidateLocationIds =
-      schedulingMode === 'flex'
-        ? [
-            effectiveSelectedLocationId,
-            ...visibleLocations
-              .map((loc) => loc.id)
-              .filter((id) => id !== effectiveSelectedLocationId),
-          ]
-            .filter(Boolean)
-            .slice(0, 3) as string[]
-        : undefined;
+    const missingPlayers = Math.max(0, rosterMax - 1);
 
     setSaving(true);
     try {
@@ -503,21 +541,19 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         user_id: user.id,
         location_id: effectiveSelectedLocationId,
         sport_type: sportType as SportType,
-        start_time: gameStart.toISOString(),
+        start_time: fixedStartTime.toISOString(),
         duration,
         visibility,
         missing_players: missingPlayers,
-        scheduling_mode: schedulingMode,
-        match_status: schedulingMode === 'flex' ? 'collecting' : 'open',
-        window_start: schedulingMode === 'flex' ? now.toISOString() : undefined,
-        window_end: schedulingMode === 'flex' ? windowEnd.toISOString() : undefined,
-        preference_deadline: schedulingMode === 'flex' ? windowEnd.toISOString() : undefined,
-        candidate_location_ids: candidateLocationIds,
+        roster_min: rosterMin,
+        roster_max: rosterMax,
+        scheduling_mode: 'fixed',
+        match_status: 'open',
         urgency_level: needPlayersTonight ? 'tonight' : 'normal',
         cost_note: costNote.trim() || null,
         session_note: sessionNote.trim() || null,
         listing_title: titleTrimmed,
-        play_intent: playIntent,
+        play_intent: 'pickup',
         is_intro_session: isIntroSession && visibility === 'nearby',
       });
 
@@ -555,468 +591,399 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     const distanceLabel = formatDistanceLabel(loc.distanceMeters);
     return (
       <TouchableOpacity
-        style={[styles.locationCard, selected && styles.locationCardSelected]}
+        style={[styles.courtCard, selected && styles.courtCardSelected]}
         onPress={() => selectLocation(loc)}
+        activeOpacity={0.85}
       >
-        <Text style={[styles.locationName, selected && styles.locationNameSelected]}>
-          {loc.name}
-        </Text>
-        <Text style={[styles.locationMeta, selected && styles.locationMetaSelected]}>
-          {loc.sport_type} • {distanceLabel}
-        </Text>
+        <View style={styles.courtCardBody}>
+          <Text style={[styles.courtName, selected && styles.courtNameSelected]} numberOfLines={2}>
+            {loc.name}
+          </Text>
+          <Text style={styles.courtMeta}>
+            {loc.sport_type} · {distanceLabel}
+          </Text>
+        </View>
+        {selected ? (
+          <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+        ) : (
+          <Ionicons name="ellipse-outline" size={20} color={colors.textTertiary} />
+        )}
       </TouchableOpacity>
     );
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardSafeView style={styles.container}>
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.scrollContent,
+          keyboardInset > 0 ? { paddingBottom: keyboardInset + 120 } : { paddingBottom: 120 },
+        ]}
+        {...keyboardAwareScrollProps}
       >
-        <ScreenHeader title="Host a Game" subtitle={getCreateGameSubtitle(sportType)} />
+        <ScreenHeader title={PRODUCT_COPY.createGame} subtitle={getCreateGameSubtitle(sportType)} />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Listing (shown on Play)</Text>
-          {titleHint ? <Text style={styles.hintText}>Tip: {titleHint}</Text> : null}
-          <TextField
-            label="Title"
+        <Text style={styles.sectionLabel}>Sport</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sportBar}
+        >
+          {sportBarSports.map((sport) => {
+            const selected = sportType === sport.name;
+            return (
+              <TouchableOpacity
+                key={sport.id}
+                style={[styles.sportBarChip, selected && styles.sportBarChipSelected]}
+                onPress={() => handleSportChange(sport.name)}
+                activeOpacity={0.85}
+              >
+                <MaterialCommunityIcons
+                  name={getSportIconName(sport.name)}
+                  size={15}
+                  color={selected ? colors.primaryDark : colors.textSecondary}
+                  style={styles.sportChipIcon}
+                />
+                <Text style={[styles.sportBarChipText, selected && styles.sportBarChipTextSelected]}>
+                  {sport.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          {sports.length > CREATE_GAME_SPORT_BAR_COUNT ? (
+            <TouchableOpacity
+              style={styles.sportBarMore}
+              onPress={() => setSportPickerOpen(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.sportBarMoreText}>See more</Text>
+            </TouchableOpacity>
+          ) : null}
+        </ScrollView>
+
+        <Text style={styles.sectionLabel}>Title</Text>
+        <View style={styles.fieldCard}>
+          <TextInput
+            style={styles.input}
             value={listingTitle}
             onChangeText={setListingTitle}
-            placeholder='e.g. "AM training partner — casual" or "Last minute indoor — $80/hr split"'
+            placeholder={titleHint ?? 'Saturday doubles · casual'}
+            placeholderTextColor={colors.textTertiary}
             maxLength={80}
-            style={styles.listingTitleField}
           />
-          <Text style={styles.fieldHint}>Players see this first when browsing open games.</Text>
-          <Text style={styles.subsectionLabel}>What kind of game?</Text>
-          <View style={styles.intentRow}>
-            {PLAY_INTENTS.map((intent) => (
-              <Chip
-                key={intent.id}
-                label={intent.label}
-                selected={playIntent === intent.id}
-                tone="primary"
-                compact
-                onPress={() => setPlayIntent(intent.id)}
-                style={styles.intentChip}
-              />
-            ))}
-          </View>
-          <TextField
-            label="Details (optional)"
-            value={sessionNote}
-            onChangeText={setSessionNote}
-            placeholder="Court #, skill level, split cost math, etc."
-            maxLength={200}
-            multiline
-            numberOfLines={2}
-            style={styles.sessionNoteField}
-          />
+          <Text style={styles.fieldHint}>Players see this first on Discover and Play.</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What are you hosting?</Text>
-          <View style={[styles.pill, styles.pillSelected, styles.createKindSelected]}>
-            <Text style={[styles.pillText, styles.pillTextSelected]}>{PRODUCT_COPY.publicGame}</Text>
-          </View>
-          <Text style={styles.createKindHint}>
-            Open to discovery — find players for a one-off game.
-          </Text>
-          <TouchableOpacity
-            style={styles.createKindLink}
-            onPress={() => {
-              if (myRallys.length === 0) {
-                Alert.alert(
-                  PRODUCT_COPY.startARally,
-                  'Start a Rally first, then schedule games from Rally chat or your Rally profile.',
-                  [{ text: 'OK' }]
-                );
-                return;
-              }
-              if (myRallys.length === 1) {
-                navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
-                  groupId: myRallys[0].id,
-                } as never);
-                return;
-              }
-              Alert.alert(
-                'Schedule for a Rally',
-                'Pick a Rally to open its profile and schedule from chat.',
-                myRallys.map((g) => ({
-                  text: g.name,
-                  onPress: () =>
-                    navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
-                      groupId: g.id,
-                    } as never),
-                }))
-              );
-            }}
-          >
-            <Text style={styles.createKindLinkText}>
-              Scheduling for {PRODUCT_COPY.rally}? Open your Rally instead →
-            </Text>
-          </TouchableOpacity>
+        <Text style={styles.sectionLabel}>When</Text>
+        <View style={styles.fieldCard}>
+          <ScheduleDateTimePicker
+            visible
+            value={fixedStartTime}
+            minuteInterval={CREATE_GAME_MINUTE_INTERVAL}
+            onChange={(date) =>
+              setFixedStartTime(snapDateToMinuteInterval(date, CREATE_GAME_MINUTE_INTERVAL))
+            }
+          />
+          <Text style={styles.fieldMeta}>{formattedStartTime}</Text>
         </View>
 
-        {showSportPicker ? (
-          <View style={[styles.section, { marginTop: 8 }]}>
-            <Text style={styles.sectionTitle}>Sport</Text>
-            <View style={styles.wrapRow}>
-              {sports.map((sport) => {
-                const selected = sportType === sport.name;
-                return (
-                  <TouchableOpacity
-                    key={sport.id}
-                    style={[styles.pill, styles.pillRow, selected && styles.pillSelected]}
-                    onPress={() => setSportType(sport.name)}
-                  >
-                    <MaterialCommunityIcons
-                      name={getSportIconName(sport.name)}
-                      size={16}
-                      color={selected ? '#fff' : colors.primaryDark}
-                      style={styles.pillIcon}
-                    />
-                    <Text style={[styles.pillText, selected && styles.pillTextSelected]}>
-                      {sport.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+        <Text style={styles.sectionLabel}>{PRODUCT_COPY.rosterSection}</Text>
+        <View style={styles.fieldCard}>
+          <View style={styles.rosterRow}>
+            <Text style={styles.rosterRowLabel}>{PRODUCT_COPY.rosterLockAt}</Text>
+            <View style={styles.stepperRow}>
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => adjustRosterMin(-1)}
+                disabled={rosterMin <= rosterDefaults.floorMin}
+              >
+                <Ionicons name="remove" size={18} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.stepperValue}>
+                {rosterMin} player{rosterMin === 1 ? '' : 's'}
+              </Text>
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => adjustRosterMin(1)}
+                disabled={rosterMin >= rosterMax}
+              >
+                <Ionicons name="add" size={18} color={colors.text} />
+              </TouchableOpacity>
             </View>
+          </View>
+          <View style={styles.rosterRow}>
+            <Text style={styles.rosterRowLabel}>{PRODUCT_COPY.rosterUpTo}</Text>
+            <View style={styles.stepperRow}>
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => adjustRosterMax(-1)}
+                disabled={rosterMax <= rosterMin}
+              >
+                <Ionicons name="remove" size={18} color={colors.text} />
+              </TouchableOpacity>
+              <Text style={styles.stepperValue}>
+                {rosterMax} player{rosterMax === 1 ? '' : 's'}
+              </Text>
+              <TouchableOpacity
+                style={styles.stepperBtn}
+                onPress={() => adjustRosterMax(1)}
+                disabled={rosterMax >= rosterDefaults.ceilingMax}
+              >
+                <Ionicons name="add" size={18} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <Text style={styles.fieldHint}>{rosterExpectationCopy}</Text>
+          <Text style={styles.fieldHint}>{PRODUCT_COPY.rosterLockHint}</Text>
+          <View style={styles.durationRow}>
+            {ACTIVITY_DURATIONS.map((dur) => {
+              const selected = duration === dur;
+              return (
+                <TouchableOpacity
+                  key={dur}
+                  style={[styles.durationChip, selected && styles.durationChipSelected]}
+                  onPress={() => setDuration(dur)}
+                >
+                  <Text
+                    style={[styles.durationChipText, selected && styles.durationChipTextSelected]}
+                  >
+                    {formatActivityDurationLabel(dur)}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Where</Text>
+        {courtStatusMessage ? <Text style={styles.statusText}>{courtStatusMessage}</Text> : null}
+
+        <View style={styles.mapWrap}>
+          <TouchableOpacity style={styles.mapRefresh} onPress={fetchLocation}>
+            <Text style={styles.mapRefreshText}>Refresh</Text>
+          </TouchableOpacity>
+          <MapView
+            style={styles.map}
+            region={mapRegion}
+            showsUserLocation={!!location}
+            onPress={() => {}}
+          >
+            {visibleLocations.map((loc) => {
+              const coords = parseGeographyCoordinates(loc.location);
+              if (!coords) return null;
+              const [lng, lat] = coords;
+              const selected = effectiveSelectedLocationId === loc.id;
+              return (
+                <Marker
+                  key={loc.id}
+                  coordinate={{ latitude: lat, longitude: lng }}
+                  title={loc.name}
+                  description={formatDistanceLabel(loc.distanceMeters)}
+                  pinColor={selected ? colors.primary : '#34a853'}
+                  onPress={() => selectLocation(loc)}
+                />
+              );
+            })}
+          </MapView>
+          {(loadingLocation || loadingLocations) && (
+            <View style={styles.mapLoading}>
+              <ActivityIndicator color={colors.primary} />
+            </View>
+          )}
+        </View>
+
+        {sportLocations.length === 0 && !loadingLocation && !loadingLocations ? (
+          <View style={styles.emptyCourtBlock}>
+            <Text style={styles.emptyCourtText}>
+              No {sportType.toLowerCase()} courts nearby yet.
+            </Text>
+            <Button
+              title={`Add a ${sportType.toLowerCase()} court`}
+              variant="secondary"
+              size="sm"
+              onPress={() => setAddCourtSheetVisible(true)}
+            />
           </View>
         ) : null}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>When do you want to play?</Text>
-          <View style={styles.timePickerBlock}>
-            <Text style={styles.sectionTitle}>Game starts</Text>
-            <TouchableOpacity
-              style={styles.timePickerButton}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Text style={styles.timePickerButtonText}>
-                {fixedStartTime.toLocaleString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit',
-                })}
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={styles.advancedToggle}
-            onPress={() => {
-              setShowAdvancedScheduling((v) => {
-                const next = !v;
-                if (!next) {
-                  setSchedulingMode('fixed');
-                }
-                return next;
-              });
-            }}
-          >
-            <Text style={styles.advancedToggleText}>
-              {showAdvancedScheduling ? 'Hide advanced scheduling ▲' : 'Advanced scheduling ▼'}
-            </Text>
-          </TouchableOpacity>
-          {showAdvancedScheduling ? (
-            <View style={styles.row}>
-              <TouchableOpacity
-                style={[styles.optionButton, schedulingMode === 'fixed' && styles.optionButtonSelected]}
-                onPress={() => setSchedulingMode('fixed')}
-              >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    schedulingMode === 'fixed' && styles.optionButtonTextSelected,
-                  ]}
-                >
-                  Set time now
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.optionButton, schedulingMode === 'flex' && styles.optionButtonSelected]}
-                onPress={() => setSchedulingMode('flex')}
-              >
-                <Text
-                  style={[
-                    styles.optionButtonText,
-                    schedulingMode === 'flex' && styles.optionButtonTextSelected,
-                  ]}
-                >
-                  I'm flexible
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Roster size</Text>
-          <Text style={styles.rosterHint}>
-            {rosterTotalPlayers} players total including you. Host can finalize early if everyone
-            in the room taps Ready.
-          </Text>
-          <Text style={styles.fieldLabel}>Open spots (besides you)</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="number-pad"
-            value={openSpotsText}
-            onChangeText={setOpenSpotsText}
-            placeholder="How many more players?"
-          />
-        </View>
-
-        <View style={styles.section}>
-          {courtStatusMessage ? (
-            <Text style={styles.statusText}>{courtStatusMessage}</Text>
-          ) : null}
-
-          <View style={styles.mapWrap}>
-            <TouchableOpacity style={styles.mapRefresh} onPress={fetchLocation}>
-              <Text style={styles.mapRefreshText}>Refresh location</Text>
-            </TouchableOpacity>
-            <MapView
-              style={styles.map}
-              region={mapRegion}
-              showsUserLocation={!!location}
-              onPress={() => {}}
-            >
-              {visibleLocations.map((loc) => {
-                const coords = parseGeographyCoordinates(loc.location);
-                if (!coords) return null;
-                const [lng, lat] = coords;
-                const selected = effectiveSelectedLocationId === loc.id;
-                return (
-                  <Marker
-                    key={loc.id}
-                    coordinate={{ latitude: lat, longitude: lng }}
-                    title={loc.name}
-                    description={formatDistanceLabel(loc.distanceMeters)}
-                    pinColor={selected ? colors.primary : '#34a853'}
-                    onPress={() => selectLocation(loc)}
-                  />
-                );
-              })}
-            </MapView>
-            {(loadingLocation || loadingLocations) && (
-              <View style={styles.mapLoading}>
-                <ActivityIndicator color={colors.primary} />
-              </View>
-            )}
-          </View>
-
-          {sportLocations.length === 0 && locationsWithDistance.length > 0 && showAllCourtsFallback && (
-            <View style={styles.fallbackBanner}>
-              <Text style={styles.fallbackBannerText}>
-                No {sportType.toLowerCase()} courts in this search — showing other nearby courts.
-                Pick one anyway or tap Add a court to tag a {sportType.toLowerCase()} spot.
-              </Text>
-            </View>
-          )}
-
-          {SHOW_LOCATION_DEBUG && locations.length > 0 && courtSearchRadiusM > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                setShowAllCourtsDev(true);
-                setShowAllCourtsFallback(false);
-              }}
-            >
-              <Text style={styles.devLink}>Dev: browse all courts in database</Text>
-            </TouchableOpacity>
-          )}
-
-          <TextInput
-            style={styles.input}
-            value={locationSearch}
-            onChangeText={setLocationSearch}
-            placeholder="Search court name"
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.listMeta}>
-            {filteredLocations.length === 0
-              ? 'No courts match your search.'
-              : `${filteredLocations.length} court${filteredLocations.length === 1 ? '' : 's'} nearby`}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.addCourtBtn}
-            onPress={() => setAddCourtSheetVisible(true)}
-          >
-            <Text style={styles.addCourtBtnText}>
-              {locations.length === 0 ? 'Add a court near you' : "Can't find your court? Add one"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottomSheet}>
-        <FlatList
-          data={visibleLocations}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCourtRow}
-          style={styles.courtList}
-          contentContainerStyle={styles.courtListContent}
-          ListEmptyComponent={
-            !loadingLocation && !loadingLocations ? (
-              <Text style={styles.helperText}>
-                {location
-                  ? 'No courts to list. Try Refresh or add courts in your area.'
-                  : 'Enable location to load nearby courts.'}
-              </Text>
-            ) : null
-          }
+        <TextInput
+          style={styles.input}
+          value={locationSearch}
+          onChangeText={setLocationSearch}
+          placeholder="Search courts"
+          placeholderTextColor={colors.textTertiary}
+          autoCapitalize="none"
         />
 
-        <TouchableOpacity style={styles.advancedToggle} onPress={() => setShowAdvanced((v) => !v)}>
-          <Text style={styles.linkText}>
-            {showAdvanced ? 'Hide options' : 'Duration & who can see'}
+        <Text style={styles.listMeta}>
+          {filteredLocations.length === 0
+            ? 'No courts match.'
+            : `${filteredLocations.length} court${filteredLocations.length === 1 ? '' : 's'} nearby`}
+        </Text>
+
+        {visibleLocations.map((loc) => (
+          <React.Fragment key={loc.id}>{renderCourtRow({ item: loc })}</React.Fragment>
+        ))}
+
+        {!loadingLocation && !loadingLocations && visibleLocations.length === 0 ? (
+          <Text style={styles.helperText}>
+            {location ? 'Try Refresh or add a court below.' : 'Enable location to load courts.'}
+          </Text>
+        ) : null}
+
+        <TouchableOpacity style={styles.addCourtBtn} onPress={() => setAddCourtSheetVisible(true)}>
+          <Text style={styles.addCourtBtnText}>
+            {locations.length === 0 ? 'Add a court near you' : "Can't find your court? Add one"}
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.bottomTimeRow}>
-          <View style={styles.bottomTimeCopy}>
-            <Text style={styles.bottomTimeLabel}>Game starts</Text>
-            <Text style={styles.bottomTimeValue}>{formattedStartTime}</Text>
-          </View>
-          <TouchableOpacity onPress={() => setShowDatePicker(true)}>
-            <Text style={styles.linkText}>Change</Text>
+        {SHOW_LOCATION_DEBUG && locations.length > 0 && courtSearchRadiusM > 0 ? (
+          <TouchableOpacity onPress={() => setShowAllCourtsDev(true)}>
+            <Text style={styles.devLink}>Dev: browse all courts</Text>
           </TouchableOpacity>
-        </View>
-
-        {showDatePicker ? (
-          <>
-            <ScheduleDateTimePicker
-              visible
-              autoOpen
-              value={fixedStartTime}
-              title="Game starts"
-              onChange={(date) => {
-                setFixedStartTime(date);
-                if (Platform.OS === 'android') {
-                  setShowDatePicker(false);
-                }
-              }}
-              onDismiss={() => setShowDatePicker(false)}
-            />
-            {Platform.OS === 'ios' ? (
-              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <Text style={styles.timePickerDone}>Done picking time</Text>
-              </TouchableOpacity>
-            ) : null}
-          </>
         ) : null}
 
-        {showAdvanced && (
-          <View style={styles.advancedBlock}>
-            <View style={styles.row}>
-              {ACTIVITY_DURATIONS.map((dur) => {
-                const selected = duration === dur;
-                return (
-                  <TouchableOpacity
-                    key={dur}
-                    style={[styles.optionButton, selected && styles.optionButtonSelected]}
-                    onPress={() => setDuration(dur)}
-                  >
-                    <Text style={[styles.optionButtonText, selected && styles.optionButtonTextSelected]}>
-                      {dur}m
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            <View style={[styles.row, { marginTop: 8 }]}>
+        <Text style={styles.sectionLabel}>Details (optional)</Text>
+        <TextInput
+          style={[styles.input, styles.multilineInput]}
+          value={sessionNote}
+          onChangeText={setSessionNote}
+          placeholder="Court #, skill level, split cost, etc."
+          placeholderTextColor={colors.textTertiary}
+          maxLength={200}
+          multiline
+          numberOfLines={3}
+        />
+
+        <TouchableOpacity
+          style={styles.moreToggle}
+          onPress={() => setShowMoreOptions((value) => !value)}
+        >
+          <Text style={styles.moreToggleText}>
+            {showMoreOptions ? 'Hide options ▲' : 'More options ▼'}
+          </Text>
+        </TouchableOpacity>
+
+        {showMoreOptions ? (
+          <View style={styles.moreBlock}>
+            <Text style={styles.moreLabel}>Who can see</Text>
+            <View style={styles.optionRow}>
               {CREATE_ACTIVITY_VISIBILITY.map((value) => {
                 const selected = visibility === value;
                 return (
                   <TouchableOpacity
                     key={value}
-                    style={[styles.optionButton, selected && styles.optionButtonSelected]}
+                    style={[styles.optionBtn, selected && styles.optionBtnSelected]}
                     onPress={() => setVisibility(value)}
                   >
-                    <Text style={[styles.optionButtonText, selected && styles.optionButtonTextSelected]}>
+                    <Text style={[styles.optionBtnText, selected && styles.optionBtnTextSelected]}>
                       {value === 'friends' ? 'Friends only' : 'Nearby players'}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            <Text style={styles.visibilityHint}>
+            <Text style={styles.fieldHint}>
               {visibility === 'friends'
-                ? 'Only people you invite can join. Share the link after you publish.'
+                ? 'Invite-only — share the link after you publish.'
                 : 'Shows on Discover for players near this court.'}
             </Text>
+
             {visibility === 'nearby' ? (
-              <TouchableOpacity
-                style={styles.introToggle}
-                onPress={() => setIsIntroSession((v) => !v)}
-              >
-                <Text style={styles.introToggleText}>
-                  {isIntroSession ? '✓ ' : ''}Intro session (stranger-friendly)
-                </Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  style={[styles.toggleRow, isIntroSession && styles.toggleRowSelected]}
+                  onPress={() => setIsIntroSession((value) => !value)}
+                >
+                  <Text style={styles.toggleRowText}>
+                    {isIntroSession ? '✓ ' : ''}Intro session (stranger-friendly)
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.toggleRow, needPlayersTonight && styles.toggleRowUrgent]}
+                  onPress={() => setNeedPlayersTonight((value) => !value)}
+                >
+                  <Text
+                    style={[
+                      styles.toggleRowText,
+                      needPlayersTonight && styles.toggleRowTextUrgent,
+                    ]}
+                  >
+                    {needPlayersTonight ? '✓ ' : ''}Need players tonight
+                  </Text>
+                </TouchableOpacity>
+              </>
             ) : null}
+
             <TextInput
-              style={[styles.input, { marginTop: 8 }]}
+              style={styles.input}
               value={costNote}
               onChangeText={setCostNote}
-              placeholder="Cost note (optional) — e.g. ~$8/person court, BYO drinks"
+              placeholder="Cost note — e.g. ~$8/person court fee"
+              placeholderTextColor={colors.textTertiary}
               maxLength={120}
             />
           </View>
-        )}
-
-        {visibility === 'nearby' ? (
-          <>
-            <TouchableOpacity
-              style={[styles.urgencyToggle, needPlayersTonight && styles.urgencyToggleSelected]}
-              onPress={() => setNeedPlayersTonight((v) => !v)}
-            >
-              <Text
-                style={[
-                  styles.urgencyToggleText,
-                  needPlayersTonight && styles.urgencyToggleTextSelected,
-                ]}
-              >
-                {needPlayersTonight ? '✓ Need players tonight' : 'Need players tonight'}
-              </Text>
-            </TouchableOpacity>
-            {needPlayersTonight ? (
-              <Text style={styles.urgencyHint}>
-                Adds a TONIGHT badge on Discover so nearby players notice your game faster.
-              </Text>
-            ) : null}
-          </>
         ) : null}
 
-        {!!selectedLocation && (
-          <Text style={styles.selectedCourt} numberOfLines={1}>
-            {selectedLocation.name} • {formatDistanceLabel(selectedLocation.distanceMeters)}
-          </Text>
-        )}
-
         <TouchableOpacity
-          style={[
-            styles.createButton,
-            (saving || !effectiveSelectedLocationId) && styles.createButtonDisabled,
-          ]}
-          onPress={handleCreate}
-          disabled={saving || !effectiveSelectedLocationId}
+          style={styles.rallyLink}
+          onPress={() => {
+            if (myRallys.length === 0) {
+              Alert.alert(
+                PRODUCT_COPY.startARally,
+                'Start a Rally first, then create games from the Play tab.',
+                [{ text: 'OK' }]
+              );
+              return;
+            }
+            if (myRallys.length === 1) {
+              navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                groupId: myRallys[0].id,
+                initialTab: 'play',
+              } as never);
+              return;
+            }
+            Alert.alert(
+              'Open a Rally',
+              'Pick a Rally to create a game for your crew.',
+              myRallys.map((group) => ({
+                text: group.name,
+                onPress: () =>
+                  navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                    groupId: group.id,
+                    initialTab: 'play',
+                  } as never),
+              }))
+            );
+          }}
         >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.createButtonText}>Publish Game</Text>
-          )}
+          <Text style={styles.rallyLinkText}>
+            Creating for {PRODUCT_COPY.rally}? Open your Rally →
+          </Text>
         </TouchableOpacity>
+      </ScrollView>
+
+      <View style={styles.footer}>
+        {selectedLocation ? (
+          <View style={styles.footerCourt}>
+            <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
+            <Text style={styles.footerCourtText} numberOfLines={1}>
+              {selectedLocation.name} · {formatDistanceLabel(selectedLocation.distanceMeters)}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.footerHint}>Pick a court to publish</Text>
+        )}
+        <Button
+          title={saving ? 'Publishing…' : 'Publish game'}
+          onPress={() => void handleCreate()}
+          loading={saving}
+          disabled={saving || !effectiveSelectedLocationId}
+        />
       </View>
+
       <AddCourtSheet
         visible={addCourtSheetVisible}
         sportType={sportType as SportType}
@@ -1024,7 +991,15 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         onClose={() => setAddCourtSheetVisible(false)}
         onAdded={handleCourtAdded}
       />
-    </KeyboardAvoidingView>
+
+      <SportPickerSheet
+        visible={sportPickerOpen}
+        sports={sports}
+        selectedSport={sportType}
+        onSelect={handleSportChange}
+        onClose={() => setSportPickerOpen(false)}
+      />
+    </KeyboardSafeView>
   );
 };
 
@@ -1037,116 +1012,199 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 8,
+    padding: spacing.lg,
   },
-  subtitle: {
+  sectionLabel: {
+    ...typography.label,
+    fontSize: 11,
+    color: colors.textSecondary,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sportBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingRight: spacing.sm,
+  },
+  sportBarChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  sportBarChipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  sportBarChipText: {
+    ...typography.bodyMedium,
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
+    color: colors.textSecondary,
+  },
+  sportBarChipTextSelected: {
+    color: colors.primaryDark,
+  },
+  sportBarMore: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    justifyContent: 'center',
+  },
+  sportBarMoreText: {
+    ...typography.bodyMedium,
+    fontSize: 14,
+    color: colors.primary,
+  },
+  sportChipIcon: {
+    marginRight: 6,
+  },
+  emptyCourtBlock: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
+  },
+  emptyCourtText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  fieldCard: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
+  },
+  fieldMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  fieldHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    lineHeight: 16,
+  },
+  input: {
+    ...typography.body,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    color: colors.text,
+  },
+  multilineInput: {
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  rosterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  rosterRowLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    width: 56,
+  },
+  stepperBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  stepperValue: {
+    ...typography.bodyMedium,
+    color: colors.text,
+  },
+  durationRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  durationChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  durationChipSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  durationChipText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  durationChipTextSelected: {
+    color: colors.primaryDark,
+  },
+  statusText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    lineHeight: 18,
+  },
+  mapWrap: {
+    height: 200,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: spacing.sm,
+  },
+  map: {
+    flex: 1,
   },
   mapRefresh: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: spacing.sm,
+    right: spacing.sm,
     zIndex: 2,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    paddingHorizontal: 10,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: colors.border,
   },
   mapRefreshText: {
     color: colors.primary,
     fontWeight: '600',
     fontSize: 12,
-  },
-  section: {
-    marginTop: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  listingTitleField: {
-    marginBottom: spacing.xs,
-  },
-  sessionNoteField: {
-    marginTop: spacing.sm,
-  },
-  fieldHint: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  subsectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  intentRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  intentChip: {
-    marginBottom: 0,
-  },
-  linkText: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  addCourtBtn: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  addCourtBtnText: {
-    color: colors.primary,
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  devLink: {
-    marginTop: 8,
-    color: '#888',
-    fontSize: 12,
-    textDecorationLine: 'underline',
-  },
-  statusText: {
-    fontSize: 13,
-    color: '#444',
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  rosterHint: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-    marginBottom: spacing.sm,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  mapWrap: {
-    height: 220,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-  },
-  map: {
-    flex: 1,
   },
   mapLoading: {
     ...StyleSheet.absoluteFillObject,
@@ -1154,285 +1212,185 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bottomSheet: {
-    borderTopWidth: 1,
-    borderTopColor: '#e8e8e8',
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
-    maxHeight: '42%',
-  },
-  courtList: {
-    maxHeight: 160,
-  },
-  courtListContent: {
-    paddingBottom: 4,
-  },
-  listMeta: {
-    marginTop: 8,
-    fontSize: 12,
-    color: '#888',
-  },
-  helperText: {
-    color: '#666',
-    fontSize: 13,
-    paddingVertical: 8,
-  },
   fallbackBanner: {
-    marginTop: 8,
-    padding: 10,
-    backgroundColor: '#f5f8ff',
-    borderRadius: 8,
+    marginBottom: spacing.sm,
+    padding: spacing.sm,
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#c8daf8',
+    borderColor: 'rgba(11, 122, 94, 0.2)',
   },
   fallbackBannerText: {
-    fontSize: 13,
-    color: '#334',
-    marginBottom: 6,
+    ...typography.caption,
+    color: colors.text,
+    lineHeight: 17,
   },
-  locationCard: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 6,
+  listMeta: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  locationCardSelected: {
-    borderColor: colors.primary,
-    backgroundColor: '#e8f1ff',
-  },
-  locationName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#222',
-  },
-  locationNameSelected: {
-    color: colors.primaryDark,
-  },
-  locationMeta: {
-    marginTop: 2,
-    fontSize: 12,
-    color: '#666',
-  },
-  locationMetaSelected: {
-    color: colors.primaryDark,
-  },
-  advancedToggle: {
-    marginTop: 12,
-    marginBottom: 4,
-    alignSelf: 'flex-start',
-  },
-  advancedBlock: {
-    marginBottom: 6,
-  },
-  bottomTimeRow: {
+  courtCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    gap: spacing.sm,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  courtCardSelected: {
+    borderColor: colors.primary,
+    borderWidth: 2,
     backgroundColor: colors.primaryLight,
   },
-  bottomTimeCopy: {
+  courtCardBody: {
     flex: 1,
-    paddingRight: spacing.sm,
+    minWidth: 0,
   },
-  bottomTimeLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
-  bottomTimeValue: {
-    marginTop: 2,
-    fontSize: 15,
-    fontWeight: '600',
+  courtName: {
+    ...typography.bodyMedium,
+    fontSize: 14,
     color: colors.text,
   },
-  visibilityHint: {
-    marginTop: spacing.sm,
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 17,
-  },
-  hintText: {
-    fontSize: 12,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-  },
-  introToggle: {
-    marginTop: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  introToggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  urgencyHint: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.xs,
-    fontSize: 12,
-    color: colors.textSecondary,
-    lineHeight: 17,
-    textAlign: 'center',
-  },
-  urgencyToggle: {
-    marginTop: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: '#fafafa',
-  },
-  urgencyToggleSelected: {
-    borderColor: '#b42318',
-    backgroundColor: '#fff5f5',
-  },
-  urgencyToggleText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#444',
-    textAlign: 'center',
-  },
-  urgencyToggleTextSelected: {
-    color: '#b42318',
-  },
-  selectedCourt: {
-    fontSize: 12,
-    color: '#555',
-    marginBottom: 6,
-  },
-  wrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  row: {
-    flexDirection: 'row',
-  },
-  pill: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#cfcfcf',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  pillRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  pillIcon: {
-    marginRight: 6,
-  },
-  pillSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  createKindSelected: {
-    alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
-  },
-  createKindHint: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  createKindLink: {
-    marginTop: spacing.sm,
-  },
-  createKindLinkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  pillText: {
-    color: '#333',
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  pillTextSelected: {
-    color: '#fff',
-  },
-  optionButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#cfcfcf',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    marginRight: 8,
-    alignItems: 'center',
-  },
-  optionButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primary,
-  },
-  optionButtonText: {
-    color: '#333',
-    fontSize: 13,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  optionButtonTextSelected: {
-    color: '#fff',
-  },
-  timePickerBlock: {
-    marginTop: 12,
-  },
-  timePickerButton: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    backgroundColor: '#f0f7ff',
-  },
-  timePickerButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
+  courtNameSelected: {
     color: colors.primaryDark,
   },
-  timePickerDone: {
-    marginTop: 8,
-    textAlign: 'right',
+  courtMeta: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  helperText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    paddingVertical: spacing.sm,
+  },
+  addCourtBtn: {
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  addCourtBtnText: {
+    ...typography.bodyMedium,
     color: colors.primary,
-    fontWeight: '600',
+    fontSize: 14,
   },
-  advancedToggleText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+  devLink: {
+    marginBottom: spacing.sm,
+    color: colors.textTertiary,
+    fontSize: 12,
+    textDecorationLine: 'underline',
   },
-  input: {
+  moreToggle: {
+    marginTop: spacing.md,
+    alignSelf: 'flex-start',
+  },
+  moreToggleText: {
+    ...typography.bodyMedium,
+    color: colors.primary,
+    fontSize: 14,
+  },
+  moreBlock: {
+    marginTop: spacing.sm,
+    padding: spacing.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginTop: 8,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    gap: spacing.sm,
   },
-  createButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
+  moreLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  optionBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
-  createButtonDisabled: {
-    opacity: 0.6,
+  optionBtnSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
   },
-  createButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+  optionBtnText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  optionBtnTextSelected: {
+    color: colors.primaryDark,
+  },
+  toggleRow: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.background,
+  },
+  toggleRowSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  toggleRowUrgent: {
+    borderColor: colors.error,
+    backgroundColor: '#fff5f5',
+  },
+  toggleRowText: {
+    ...typography.bodyMedium,
+    fontSize: 14,
+    color: colors.text,
+  },
+  toggleRowTextUrgent: {
+    color: colors.error,
+  },
+  rallyLink: {
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  rallyLinkText: {
+    ...typography.bodyMedium,
+    color: colors.primary,
+    fontSize: 14,
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.lg,
+    gap: spacing.sm,
+  },
+  footerCourt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  footerCourtText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    flex: 1,
+  },
+  footerHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
   },
 });
 

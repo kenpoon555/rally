@@ -14,10 +14,13 @@ const WINDOW_OPTIONS: { id: RallyLeaderboardWindow; label: string }[] = [
   { id: '90', label: '90 days' },
 ];
 
+const LEADERBOARD_PREVIEW = 5;
+
 export const RallyLeaderboardPanel: React.FC<Props> = ({ groupId, viewerId }) => {
   const [window, setWindow] = useState<RallyLeaderboardWindow>('all');
   const [entries, setEntries] = useState<RallyLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -35,6 +38,10 @@ export const RallyLeaderboardPanel: React.FC<Props> = ({ groupId, viewerId }) =>
     void reload();
   }, [reload]);
 
+  useEffect(() => {
+    setExpanded(false);
+  }, [window, groupId]);
+
   const hasStats = entries.some(
     (e) =>
       e.sessions_attended > 0 ||
@@ -42,6 +49,35 @@ export const RallyLeaderboardPanel: React.FC<Props> = ({ groupId, viewerId }) =>
       e.tournament_wins > 0 ||
       e.tournament_losses > 0
   );
+
+  const canFold = entries.length > LEADERBOARD_PREVIEW;
+  const viewerEntry = viewerId ? entries.find((e) => e.user_id === viewerId) : undefined;
+  const viewerOutsidePreview =
+    Boolean(viewerEntry && viewerEntry.rank > LEADERBOARD_PREVIEW && !expanded);
+  const visibleEntries =
+    expanded || !canFold ? entries : entries.slice(0, LEADERBOARD_PREVIEW);
+
+  const renderEntry = (entry: RallyLeaderboardEntry) => {
+    const isViewer = entry.user_id === viewerId;
+    const tourneyLine =
+      entry.tournament_wins + entry.tournament_losses > 0
+        ? ` · Tourney ${entry.tournament_wins}–${entry.tournament_losses}`
+        : '';
+    return (
+      <View key={entry.user_id} style={[styles.row, isViewer && styles.rowViewer]}>
+        <Text style={styles.rank}>#{entry.rank}</Text>
+        <View style={styles.rowBody}>
+          <Text style={styles.name}>@{entry.username}</Text>
+          <Text style={styles.stats}>
+            {entry.sessions_attended} attended
+            {entry.week_streak > 0 ? ` · ${entry.week_streak} wk streak` : ''}
+            {entry.games_played > 0 ? ` · ${entry.games_played} locked games` : ''}
+            {tourneyLine}
+          </Text>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.panel}>
@@ -72,30 +108,25 @@ export const RallyLeaderboardPanel: React.FC<Props> = ({ groupId, viewerId }) =>
           Stats appear after hosts record post-game attendance and you play mini tournaments.
         </Text>
       ) : (
-        entries.map((entry) => {
-          const isViewer = entry.user_id === viewerId;
-          const tourneyLine =
-            entry.tournament_wins + entry.tournament_losses > 0
-              ? ` · Tourney ${entry.tournament_wins}–${entry.tournament_losses}`
-              : '';
-          return (
-            <View
-              key={entry.user_id}
-              style={[styles.row, isViewer && styles.rowViewer]}
+        <>
+          {visibleEntries.map((entry) => renderEntry(entry))}
+          {viewerOutsidePreview && viewerEntry ? (
+            <>
+              <Text style={styles.foldDivider}>···</Text>
+              {renderEntry(viewerEntry)}
+            </>
+          ) : null}
+          {canFold ? (
+            <TouchableOpacity
+              style={styles.foldToggle}
+              onPress={() => setExpanded((value) => !value)}
             >
-              <Text style={styles.rank}>#{entry.rank}</Text>
-              <View style={styles.rowBody}>
-                <Text style={styles.name}>@{entry.username}</Text>
-                <Text style={styles.stats}>
-                  {entry.sessions_attended} attended
-                  {entry.week_streak > 0 ? ` · ${entry.week_streak} wk streak` : ''}
-                  {entry.games_played > 0 ? ` · ${entry.games_played} locked games` : ''}
-                  {tourneyLine}
-                </Text>
-              </View>
-            </View>
-          );
-        })
+              <Text style={styles.foldToggleText}>
+                {expanded ? 'Show top 5' : `Show all ${entries.length}`}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </>
       )}
     </View>
   );
@@ -179,5 +210,21 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
     lineHeight: 17,
+  },
+  foldDivider: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginVertical: spacing.xs,
+  },
+  foldToggle: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  foldToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

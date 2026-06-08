@@ -361,3 +361,17 @@ export function filterChatInbox(items: ChatInboxItem[], filter: ChatInboxFilter)
   }
   return items.filter((item) => item.kind === 'friend');
 }
+
+export function sumUnreadByFilter(items: ChatInboxItem[]): Record<ChatInboxFilter, number> {
+  const totals: Record<ChatInboxFilter, number> = { games: 0, rallies: 0, friends: 0 };
+  for (const item of items) {
+    if (item.kind === 'game') {
+      totals.games += item.unread;
+    } else if (item.kind === 'group') {
+      totals.rallies += item.unread;
+    } else {
+      totals.friends += item.unread;
+    }
+  }
+  return totals;
+}

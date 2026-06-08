@@ -14,14 +14,13 @@ import { MyGameEntry } from '../../services/activityService';
 import { RegularGroup } from '../../types/regularGroup';
 import { activityCourtName, activityGameName } from '../../constants/playIntent';
 import {
-  formatRosterSummary,
   getActivityRosterSummary,
   getDistanceToActivity,
-  getMyGameListCardSpots,
   isTonightUrgency,
 } from '../../utils/activityHelpers';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
-import { formatGameCardDistance, GameListSpotsMeter } from '../game/GameListCard';
+import { formatGameCardDistance } from '../game/GameListCard';
+import { RosterSeatBar } from '../game/RosterSeatBar';
 import { formatDiscoverWhenLine } from '../../utils/todayDateUtils';
 import { getSportIconName } from '../SportIcon';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
@@ -43,17 +42,6 @@ export interface NextUpCardProps {
     readiness: HostLockReadiness;
     hint: string;
   };
-}
-
-function rosterStatusLabel(activity: MyGameEntry['activity']): string {
-  const status = activity.match_status ?? 'open';
-  if (status === 'finalized') {
-    return 'Roster locked';
-  }
-  if (status === 'cancelled') {
-    return 'Cancelled';
-  }
-  return 'Roster open';
 }
 
 function HeroShell({
@@ -156,8 +144,8 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
     const distanceLabel = formatGameCardDistance(distanceMeters, !isHost);
     const roleLabel = isHost ? 'Hosting' : 'Joined';
     const durationLabel = game.duration ? `${game.duration} min` : null;
-    const { readyCount } = getActivityRosterSummary(game);
-    const spots = getMyGameListCardSpots(game);
+
+    const { onRoster } = getActivityRosterSummary(game);
     const hostLabel = game.user?.username ? `@${game.user.username}` : null;
     const isTonight = isTonightUrgency(game);
     const sportIcon = getSportIconName(game.sport_type);
@@ -212,19 +200,13 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
               </Text>
             ) : null}
 
-            <View style={styles.spotsRow}>
-              <View style={styles.spotsMeta}>
-                <Text style={styles.statText}>{formatRosterSummary(game)}</Text>
-                <Text style={styles.statText}>
-                  {readyCount} confirmed · {rosterStatusLabel(game)}
-                </Text>
-              </View>
-              <GameListSpotsMeter
-                roster={spots.rosterCount}
-                capacity={spots.capacityCount}
-                open={spots.openSpots}
-              />
-            </View>
+            <RosterSeatBar
+              sportType={game.sport_type}
+              activity={game}
+              onRoster={onRoster}
+              variant="wide"
+              align="left"
+            />
 
             {hostLock ? (
               <View
@@ -433,15 +415,10 @@ const styles = StyleSheet.create({
   },
   spotsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.md,
     marginTop: spacing.sm,
-  },
-  spotsMeta: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
   },
   statText: {
     fontSize: 12,
