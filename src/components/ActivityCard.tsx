@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Activity } from '../types/activity';
 import JoinRequestButton from './JoinRequestButton';
+import { formatGameCardRosterLine } from '../utils/activityHelpers';
 
 interface ActivityCardProps {
   activity: Activity;
@@ -15,6 +16,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onPress }) => {
     ? `Prefs close: ${new Date(activity.preference_deadline as string).toLocaleTimeString()}`
     : null;
   const hostLabel = activity.user?.username || 'Unknown host';
+  const rosterLabel = formatGameCardRosterLine(activity);
 
   return (
     <View style={styles.card}>
@@ -29,10 +31,7 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ activity, onPress }) => {
           {activity.location?.name || 'Unknown location'}
         </Text>
         {deadlineText && <Text style={styles.deadlineText}>{deadlineText}</Text>}
-        <Text style={styles.players}>
-          {activity.player_count} players
-          {activity.missing_players && ` (${activity.missing_players} needed)`}
-        </Text>
+        <Text style={styles.players}>{rosterLabel}</Text>
         {activity.user && (
           <Text style={styles.host}>Host: {hostLabel}</Text>
         )}

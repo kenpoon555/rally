@@ -11,12 +11,14 @@ import { Activity } from '../../types/activity';
 import { activityCourtName, activityGameName } from '../../constants/playIntent';
 import {
   formatDistance,
+  getActivityRosterSummary,
   getDistanceToActivity,
   isTonightUrgency,
 } from '../../utils/activityHelpers';
 import { bucketDistanceMeters } from '../../utils/approximateLocation';
 import { formatDiscoverWhenLine } from '../../utils/todayDateUtils';
 import { getSportIconName } from '../SportIcon';
+import { RosterSeatBar } from './RosterSeatBar';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
 
 const METERS_PER_MILE = 1609.344;
@@ -71,38 +73,11 @@ export function formatGameCardDistance(
   return formatDistance(distanceMeters);
 }
 
-export const GameListSpotsMeter: React.FC<{
-  roster: number;
-  capacity: number;
-  open: number;
-}> = ({ roster, capacity, open }) => {
-  const slots = Math.min(Math.max(capacity, 1), 10);
-  const onRoster = Math.min(roster, slots);
-  const fillPct = slots > 0 ? (onRoster / slots) * 100 : 0;
+export { RosterSeatBar, RosterFillBadge, GameListSpotsMeter } from './RosterSeatBar';
 
-  return (
-    <View style={styles.spotsBlock}>
-      <Text style={styles.spotsLabel}>
-        {open > 0 ? `${open} / ${slots} spots left` : 'Full'}
-      </Text>
-      <View style={styles.spotsTrack}>
-        <View style={[styles.spotsFill, { width: `${fillPct}%` }]} />
-      </View>
-    </View>
-  );
-};
-
-function resolveSpots(
-  activity: Activity,
-  rosterCount?: number,
-  capacityCount?: number,
-  openSpots?: number
-) {
-  const missing = activity.missing_players ?? 0;
-  const roster = rosterCount ?? activity.player_count;
-  const capacity = capacityCount ?? roster + missing;
-  const open = openSpots ?? missing;
-  return { roster, capacity, open };
+function resolveSpots(activity: Activity, rosterCount?: number) {
+  const summary = getActivityRosterSummary(activity);
+  return rosterCount ?? summary.onRoster;
 }
 
 const GameListCardComponent: React.FC<GameListCardProps> = ({
@@ -130,7 +105,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
   const distanceMeters = userLocation ? getDistanceToActivity(activity, userLocation) : null;
   const distanceLabel = formatGameCardDistance(distanceMeters, !isHost);
   const sportIcon = getSportIconName(activity.sport_type);
-  const spots = resolveSpots(activity, rosterCount, capacityCount, openSpots);
+  const onRoster = resolveSpots(activity, rosterCount);
 
   const accentColor = useMemo(() => {
     if (isLockedWelcoming) {
@@ -203,10 +178,11 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
           ) : showChevron && !trailingAction ? (
             <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
           ) : null}
-          <GameListSpotsMeter
-            roster={spots.roster}
-            capacity={spots.capacity}
-            open={spots.open}
+          <RosterSeatBar
+            sportType={activity.sport_type}
+            activity={activity}
+            onRoster={onRoster}
+            variant="compact"
           />
           {trailingAction ?? null}
         </View>
@@ -324,34 +300,10 @@ const styles = StyleSheet.create({
     minHeight: ICON_COLUMN,
     alignSelf: 'center',
     alignItems: 'flex-end',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     flexShrink: 0,
+    minWidth: 88,
     gap: spacing.xs,
-  },
-  spotsBlock: {
-    alignItems: 'flex-end',
-    width: 72,
-    gap: 4,
-  },
-  spotsLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.primary,
-    textAlign: 'right',
-  },
-  spotsTrack: {
-    width: 72,
-    height: 5,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primaryLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-  },
-  spotsFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
   },
   busyOverlay: {
     ...StyleSheet.absoluteFillObject,

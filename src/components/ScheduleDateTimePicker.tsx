@@ -11,10 +11,35 @@ type Props = {
   onDismiss?: () => void;
   /** When true, open the Android picker as soon as `visible` becomes true. */
   autoOpen?: boolean;
+  /** iOS spinner interval; Android snaps on confirm. */
+  minuteInterval?: number;
 };
 
 function isDismissed(event: DateTimePickerEvent | undefined): boolean {
   return event?.type === 'dismissed';
+}
+
+export function snapDateToMinuteInterval(date: Date, interval: number): Date {
+  if (interval <= 1) {
+    return new Date(date);
+  }
+  const next = new Date(date);
+  const minutes = next.getMinutes();
+  const snapped = Math.round(minutes / interval) * interval;
+  if (snapped >= 60) {
+    next.setHours(next.getHours() + 1);
+    next.setMinutes(0, 0, 0);
+  } else {
+    next.setMinutes(snapped, 0, 0);
+  }
+  return next;
+}
+
+function applyMinuteInterval(date: Date, minuteInterval?: number): Date {
+  if (!minuteInterval || minuteInterval <= 1) {
+    return date;
+  }
+  return snapDateToMinuteInterval(date, minuteInterval);
 }
 
 /**
@@ -28,6 +53,7 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
   title,
   onDismiss,
   autoOpen = false,
+  minuteInterval,
 }) => {
   const [androidStep, setAndroidStep] = useState<'idle' | 'date' | 'time'>('idle');
   const [draftDate, setDraftDate] = useState(value);
@@ -76,7 +102,7 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
     if (date) {
       const combined = new Date(draftDate);
       combined.setHours(date.getHours(), date.getMinutes(), 0, 0);
-      onChange(combined);
+      onChange(applyMinuteInterval(combined, minuteInterval));
     }
   };
 
@@ -86,7 +112,7 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
       return;
     }
     if (date) {
-      onChange(date);
+      onChange(applyMinuteInterval(date, minuteInterval));
     }
   };
 
@@ -128,6 +154,7 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
             value={draftDate}
             mode="time"
             display="default"
+            minuteInterval={minuteInterval}
             onChange={handleAndroidTime}
           />
         ) : null}
@@ -143,6 +170,7 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
         mode="datetime"
         minimumDate={new Date()}
         display="spinner"
+        minuteInterval={minuteInterval}
         onChange={handleIosChange}
       />
     </View>

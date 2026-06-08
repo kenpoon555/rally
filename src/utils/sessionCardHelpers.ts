@@ -1,5 +1,6 @@
 import { Activity, JoinRequest } from '../types/activity';
 import { SessionCardPayload } from '../types/sessionCard';
+import { formatGameCardRosterLine } from './activityHelpers';
 
 /** Minimal Activity shape for session card action handlers. */
 export function activityFromSessionCard(card: SessionCardPayload): Activity {
@@ -25,6 +26,8 @@ export function activityFromSessionCard(card: SessionCardPayload): Activity {
     match_status: card.match_status as Activity['match_status'],
     player_count: card.player_count,
     missing_players: card.missing_players,
+    roster_min: card.roster_min,
+    roster_max: card.roster_max,
     session_note: card.session_note,
     cost_note: card.cost_note,
     location_id: card.location_id,
@@ -39,8 +42,16 @@ export function activityFromSessionCard(card: SessionCardPayload): Activity {
 }
 
 export function sessionCardMetaLine(card: SessionCardPayload): string {
-  const open =
-    card.open_spots > 0 ? `${card.open_spots} open` : 'Full';
+  const rosterSummary = formatGameCardRosterLine(
+    {
+      roster_min: card.roster_min,
+      roster_max: card.roster_max,
+      player_count: card.player_count,
+      missing_players: card.missing_players,
+      match_status: card.match_status,
+    },
+    card.roster_count
+  );
   const ready = `${card.ready_count} ready`;
   const waitlist =
     card.viewer.is_waitlisted && card.viewer.waitlist_position
@@ -48,9 +59,11 @@ export function sessionCardMetaLine(card: SessionCardPayload): string {
       : '';
   const lock =
     card.viewer.is_finalized
-      ? ' · Roster locked'
+      ? card.open_spots > 0
+        ? ' · Locked · spots open'
+        : ' · Roster locked'
       : card.viewer.is_host && card.viewer.lock_readiness === 'ready'
         ? ' · Ready to lock'
         : '';
-  return `${card.roster_count} in · ${open} · ${ready}${waitlist}${lock}`;
+  return `${rosterSummary} · ${ready}${waitlist}${lock}`;
 }

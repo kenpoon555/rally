@@ -20,6 +20,9 @@
       "buildNumber": "4",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "aps-environment": "production"
       }
     },
     "android": {
@@ -29,6 +32,7 @@
         "foregroundImage": "./assets/branding/icon-android-foreground.png",
         "backgroundColor": "#F5F4F0"
       },
+      "softwareKeyboardLayoutMode": "resize",
       "versionCode": 4
     },
     "extra": {

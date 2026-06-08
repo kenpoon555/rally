@@ -22,7 +22,7 @@ import {
 import { RegularGroup } from '../../types/regularGroup';
 import { Friend } from '../../types/friends';
 import { RallyOutgoingInvite } from '../../types/rallyInvite';
-import { Avatar } from '../ui';
+import { Avatar, KeyboardSafeView } from '../ui';
 import { SportIcon } from '../SportIcon';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
@@ -180,7 +180,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <KeyboardSafeView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={8}>
             <Text style={styles.cancel}>Close</Text>
@@ -190,7 +190,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
         </View>
 
         <View style={styles.hero}>
-          <SportIcon sport={group.sport_type} size="lg" style={styles.heroIcon} />
+          <SportIcon sport={group.sport_type} size="lg" variant="plain" />
           <View style={styles.heroBody}>
             <Text style={styles.heroName} numberOfLines={2}>
               {group.name}
@@ -225,6 +225,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
             data={rows}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <View style={styles.row}>
                 <Avatar name={item.username} size="md" />
@@ -239,7 +240,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
           <Ionicons name="link-outline" size={18} color={colors.textSecondary} />
           <Text style={styles.linkText}>{PRODUCT_COPY.shareRallyInviteLink}</Text>
         </TouchableOpacity>
-      </View>
+      </KeyboardSafeView>
     </Modal>
   );
 };
@@ -281,9 +282,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     borderWidth: 1,
     borderColor: 'rgba(11, 122, 94, 0.12)',
-  },
-  heroIcon: {
-    backgroundColor: colors.surface,
   },
   heroBody: {
     flex: 1,

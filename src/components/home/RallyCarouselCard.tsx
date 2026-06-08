@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { SportIcon } from '../SportIcon';
 import { RegularGroup } from '../../types/regularGroup';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -29,7 +28,7 @@ export const RallyCarouselCard: React.FC<Props> = ({
       onPress={onPress}
       activeOpacity={0.9}
     >
-      <SportIcon sport={group.sport_type} size="md" style={styles.icon} />
+      <SportIcon sport={group.sport_type} size="md" variant="plain" style={styles.icon} />
       <Text style={styles.name} numberOfLines={2}>
         {group.name}
       </Text>
@@ -39,13 +38,9 @@ export const RallyCarouselCard: React.FC<Props> = ({
       <Text style={styles.detail} numberOfLines={1}>
         {memberCount != null
           ? `${memberCount} member${memberCount === 1 ? '' : 's'}`
-          : 'Your crew'}
+          : 'Your Rally'}
         {group.is_partner_rally ? ' · Partner' : ''}
       </Text>
-      <View style={styles.footer}>
-        <Text style={styles.link}>Open Rally</Text>
-        <Ionicons name="chevron-forward" size={14} color={colors.primary} />
-      </View>
     </TouchableOpacity>
   );
 };
@@ -64,13 +59,12 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
   },
   icon: {
-    backgroundColor: colors.primaryLight,
     marginBottom: spacing.sm,
   },
   name: {
     ...typography.bodyMedium,
     color: colors.text,
-    minHeight: 44,
+    minHeight: 36,
   },
   sport: {
     ...typography.caption,
@@ -81,16 +75,5 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textTertiary,
     marginTop: spacing.xs,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginTop: spacing.md,
-  },
-  link: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
   },
 });

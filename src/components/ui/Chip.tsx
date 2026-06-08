@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, TouchableOpacityProps } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, TouchableOpacityProps, View } from 'react-native';
 import { colors, radius, spacing } from '../../constants/theme';
 
 type Tone = 'default' | 'primary' | 'accent' | 'success' | 'muted' | 'host';
@@ -9,6 +9,8 @@ type Props = TouchableOpacityProps & {
   selected?: boolean;
   tone?: Tone;
   compact?: boolean;
+  /** Unread count shown beside the label when > 0. */
+  badge?: number;
 };
 
 const toneMap: Record<Tone, { bg: string; bgSelected: string; text: string; textSelected: string }> = {
@@ -55,11 +57,14 @@ export function Chip({
   selected = false,
   tone = 'default',
   compact = false,
+  badge,
   style,
   disabled,
   ...rest
 }: Props) {
   const t = toneMap[tone];
+  const showBadge = badge != null && badge > 0;
+  const badgeLabel = badge != null && badge > 99 ? '99+' : String(badge ?? '');
 
   return (
     <TouchableOpacity
@@ -74,15 +79,24 @@ export function Chip({
       disabled={disabled}
       {...rest}
     >
-      <Text
-        style={[
-          styles.label,
-          compact && styles.labelCompact,
-          { color: selected ? t.textSelected : t.text },
-        ]}
-      >
-        {label}
-      </Text>
+      <View style={styles.content}>
+        <Text
+          style={[
+            styles.label,
+            compact && styles.labelCompact,
+            { color: selected ? t.textSelected : t.text },
+          ]}
+        >
+          {label}
+        </Text>
+        {showBadge ? (
+          <View style={[styles.badge, selected ? styles.badgeSelected : styles.badgeIdle]}>
+            <Text style={[styles.badgeText, selected && styles.badgeTextSelected]}>
+              {badgeLabel}
+            </Text>
+          </View>
+        ) : null}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -97,12 +111,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs + 2,
   },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
   },
   labelCompact: {
     fontSize: 12,
+  },
+  badge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeIdle: {
+    backgroundColor: colors.accent,
+  },
+  badgeSelected: {
+    backgroundColor: colors.surface,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textInverse,
+  },
+  badgeTextSelected: {
+    color: colors.primaryDark,
   },
   disabled: {
     opacity: 0.5,

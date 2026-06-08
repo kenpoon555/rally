@@ -3,6 +3,7 @@ import { parseGeographyCoordinates } from './activityLocationGeo';
 import { calculateDistance } from './distance';
 import { isActivityListingActive, gameEndMs, parseActivityTimestamp } from './activityExpiry';
 import { GAME_CHAT_ARCHIVE_GRACE_MS } from '../constants/gameChat';
+import { formatRosterExpectation } from '../constants/sports';
 
 export type IntensityLevel = 'casual' | 'moderate' | 'intense';
 
@@ -170,7 +171,7 @@ export function getActivityRosterSummary(activity: Activity): {
 } {
   const approved = getApprovedParticipants(activity);
   const onRoster = 1 + approved.length;
-  const capacity = Math.max(onRoster, activity.player_count + (activity.missing_players ?? 0));
+  const capacity = getActivityRosterMax(activity);
   const isFinalized = activity.match_status === 'finalized';
   const readyCount =
     1 +
@@ -204,12 +205,76 @@ export function getMyGameListCardSpots(activity: Activity): {
   capacityCount: number;
   openSpots: number;
 } {
-  const { onRoster, capacity } = getActivityRosterSummary(activity);
+  const { onRoster } = getActivityRosterSummary(activity);
+  const capacity = getActivityRosterMax(activity);
   return {
     rosterCount: onRoster,
     capacityCount: capacity,
     openSpots: Math.max(capacity - onRoster, 0),
   };
+}
+
+export type RosterFillDisplay = {
+  filled: number;
+  total: number;
+  count: string;
+};
+
+export type RosterSeatCaptionTone = 'full' | 'open';
+
+export function getRosterSeatCaption(
+  filled: number,
+  total: number
+): { label: string; tone: RosterSeatCaptionTone } {
+  const open = Math.max(total - filled, 0);
+  if (open <= 0) {
+    return { label: 'Full', tone: 'full' };
+  }
+  if (open === 1) {
+    return { label: '1 spot open', tone: 'open' };
+  }
+  return { label: `${open} spots open`, tone: 'open' };
+}
+
+export function getRosterSeatCounts(
+  activity: Pick<
+    Activity,
+    'roster_min' | 'roster_max' | 'player_count' | 'missing_players' | 'match_status'
+  >,
+  onRoster?: number
+): { filled: number; total: number } {
+  const filled = onRoster ?? activity.player_count ?? 1;
+  const total = Math.max(getActivityRosterMax(activity), 1);
+  return { filled, total };
+}
+
+/** Compact roster fraction for meta lines (no "to lock" copy). */
+export function formatRosterFillDisplay(
+  activity: Pick<
+    Activity,
+    'roster_min' | 'roster_max' | 'player_count' | 'missing_players' | 'match_status'
+  >,
+  onRoster?: number
+): RosterFillDisplay {
+  const { filled, total } = getRosterSeatCounts(activity, onRoster);
+  const { label } = getRosterSeatCaption(filled, total);
+  return { filled, total, count: label };
+}
+
+/** One-line roster label for list meta rows. */
+export function formatGameCardRosterLine(
+  activity: Pick<
+    Activity,
+    'roster_min' | 'roster_max' | 'player_count' | 'missing_players' | 'match_status'
+  >,
+  onRoster?: number
+): string {
+  return formatRosterFillDisplay(activity, onRoster).count;
+}
+
+export function formatRosterSummary(activity: Activity): string {
+  const { onRoster } = getActivityRosterSummary(activity);
+  return formatGameCardRosterLine(activity, onRoster);
 }
 
 export type ParticipantReadyState = 'ready' | 'waiting' | 'none';
@@ -256,22 +321,50 @@ export function getHostLockReadiness(
     return 'needs_players';
   }
 
-  const targetTotal = 1 + Math.max(activity.missing_players ?? 1, 0);
+  const targetTotal = getActivityRosterMax(activity);
+  const lockMin = getActivityRosterMin(activity);
   const approved = approvedParticipants.length + 1;
   const ready =
     1 + approvedParticipants.filter((participant) => participant.ready_at).length;
 
-  const canFinalize =
-    (approved >= targetTotal && ready >= targetTotal) ||
-    (approved < targetTotal && ready >= approved);
+  const canFinalize = approved >= lockMin && ready >= approved;
 
   if (canFinalize) {
     return 'ready';
   }
-  if (approved < targetTotal) {
+  if (approved < lockMin) {
     return 'needs_players';
   }
   return 'waiting_im_in';
+}
+
+export function getActivityRosterMax(
+  activity: Pick<Activity, 'roster_max' | 'player_count' | 'missing_players'>
+): number {
+  if (activity.roster_max != null && activity.roster_max > 0) {
+    return activity.roster_max;
+  }
+  return (activity.player_count ?? 1) + Math.max(activity.missing_players ?? 0, 0);
+}
+
+export function getActivityRosterMin(
+  activity: Pick<Activity, 'roster_min' | 'roster_max' | 'player_count' | 'missing_players'>
+): number {
+  if (activity.roster_min != null && activity.roster_min > 0) {
+    return activity.roster_min;
+  }
+  return getActivityRosterMax(activity);
+}
+
+export function formatRosterExpectationForActivity(
+  activity: Pick<Activity, 'roster_min' | 'roster_max' | 'player_count' | 'missing_players'>
+): string | null {
+  const max = getActivityRosterMax(activity);
+  const min = getActivityRosterMin(activity);
+  if (min >= max && activity.roster_min == null && activity.roster_max == null) {
+    return null;
+  }
+  return formatRosterExpectation(min, max);
 }
 
 /** Friend-connected games first, then open spots / tonight, then distance. */
@@ -447,12 +540,6 @@ export function needsConfirmPlaying(activity: Activity, userId?: string): boolea
   return !approved.ready_at;
 }
 
-export function formatRosterSummary(activity: Activity): string {
-  const approved = getApprovedParticipants(activity).length + 1;
-  const open = activity.missing_players ?? 0;
-  return `${approved} in · ${open} open`;
-}
-
 /** @deprecated */
 export function formatGroupRsvpSummary(activity: Pick<Activity, 'rsvps'>): string {
   return formatRosterSummary(activity as Activity);
@@ -474,6 +561,16 @@ export function canHostScheduleNextGame(
     return false;
   }
   return activity.match_status === 'finalized' || Date.now() >= gameEndMs(activity);
+}
+
+/** Any Rally member can post a new session; they become host of that game. */
+export function canMemberScheduleRallyGame(
+  activity: Pick<Activity, 'status' | 'regular_group_id'>,
+  isGroupMember: boolean
+): boolean {
+  return Boolean(
+    activity.regular_group_id && isGroupMember && activity.status !== 'cancelled'
+  );
 }
 
 export function getActivityOpenSpots(

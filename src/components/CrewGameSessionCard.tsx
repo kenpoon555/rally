@@ -1,12 +1,19 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Activity } from '../types/activity';
 import { Button } from './ui';
-import { formatActivityTime } from '../utils/activityHelpers';
+import {
+  formatActivityTime,
+} from '../utils/activityHelpers';
+import { RosterSeatBar } from './game/RosterSeatBar';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import { SportBadge } from './SportBadge';
 import { colors, radius, spacing, typography } from '../constants/theme';
 import { SessionCardLockReadiness } from '../types/sessionCard';
+import { GameModeChip } from './rally/GameModeChip';
+
+export type CrewGameSessionCardVariant = 'default' | 'rally';
 
 export type CrewGameSessionCardProps = {
   activity: Activity;
@@ -23,6 +30,8 @@ export type CrewGameSessionCardProps = {
   canLock?: boolean;
   lockReadiness?: SessionCardLockReadiness;
   waitlistPosition?: number | null;
+  variant?: CrewGameSessionCardVariant;
+  gameModeLabel?: string;
   onJoin?: () => void;
   onConfirmIn?: () => void;
   onUndoImIn?: () => void;
@@ -47,6 +56,8 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   canLock = true,
   lockReadiness,
   waitlistPosition,
+  variant = 'default',
+  gameModeLabel,
   onJoin,
   onConfirmIn,
   onUndoImIn,
@@ -55,48 +66,106 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   showNudge = false,
   onOpenDetails,
 }) => {
+  const isRally = variant === 'rally';
   const court = activity.location?.name || 'Court TBD';
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
   const rosterCount = activity.player_count ?? 1;
-  const openSpots = activity.missing_players ?? 0;
   const isPast = activity.status === 'completed' || activity.status === 'cancelled';
   const resolvedReadyCount = readyCount ?? rosterCount;
+  const listingTitle = activity.listing_title?.trim();
   const lockHint =
     isHost && !isFinalized && lockReadiness === 'ready'
       ? ' · Ready to lock'
       : isHost && !isFinalized && lockReadiness === 'waiting_im_in'
-        ? ' · Waiting on I\'m in'
+        ? " · Waiting on I'm in"
         : isHost && !isFinalized && lockReadiness === 'needs_players'
           ? ' · Need more players'
           : '';
 
+  const headline = isRally
+    ? listingTitle || timeLabel
+    : court;
+
+  const statusBits = [
+    !isFinalized && resolvedReadyCount > 1 ? `${resolvedReadyCount} ready` : null,
+    isFinalized ? 'Roster locked' : null,
+    lockHint ? lockHint.replace(/^ · /, '') : null,
+    isWaitlisted
+      ? `${PRODUCT_COPY.onWaitlist}${waitlistPosition ? ` #${waitlistPosition}` : ''}`
+      : null,
+  ].filter(Boolean);
+
+  const metaLine = isRally
+    ? statusBits.join(' · ')
+    : [timeLabel, ...statusBits].join(' · ');
+
+  const noteParts = [
+    activity.session_note?.trim(),
+    activity.cost_note?.trim() ? activity.cost_note.trim() : null,
+  ].filter(Boolean);
+
   return (
-    <View style={[styles.card, isCurrent && styles.cardCurrent, isPast && styles.cardPast]}>
+    <View
+      style={[
+        styles.card,
+        isRally && styles.cardRally,
+        isCurrent && styles.cardCurrent,
+        isPast && styles.cardPast,
+      ]}
+    >
       <TouchableOpacity onPress={onOpenDetails} disabled={!onOpenDetails}>
-        <SportBadge sport={activity.sport_type} style={styles.sportBadge} />
-        <Text style={styles.title}>{court}</Text>
-        <Text style={styles.meta}>
-          {timeLabel} · {rosterCount} in ·{' '}
-          {openSpots > 0 ? `${openSpots} open` : PRODUCT_COPY.gameFull}
-          {` · ${resolvedReadyCount} ready`}
-          {isFinalized ? ' · Roster locked' : lockHint}
-          {isWaitlisted
-            ? ` · ${PRODUCT_COPY.onWaitlist}${waitlistPosition ? ` #${waitlistPosition}` : ''}`
-            : ''}
-        </Text>
+        {!isRally ? <SportBadge sport={activity.sport_type} style={styles.sportBadge} /> : null}
+        {isRally && gameModeLabel ? (
+          <GameModeChip label={gameModeLabel} kind="activity" />
+        ) : null}
+        {isRally ? (
+          <>
+            <Text style={[styles.title, styles.titleRally]} numberOfLines={2}>
+              {headline}
+            </Text>
+            {listingTitle ? (
+              <Text style={styles.subline} numberOfLines={1}>
+                {timeLabel}
+              </Text>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.title} numberOfLines={1}>
+            {court}
+          </Text>
+        )}
+        {metaLine ? (
+          <Text style={styles.meta} numberOfLines={2}>
+            {metaLine}
+          </Text>
+        ) : null}
+        <View style={styles.seatBar}>
+          <RosterSeatBar
+            sportType={activity.sport_type}
+            activity={activity}
+            onRoster={rosterCount}
+            variant="wide"
+            align="left"
+          />
+        </View>
         {isWaitlisted ? (
           <Text style={styles.waitlistHint}>{PRODUCT_COPY.onWaitlistHint}</Text>
         ) : null}
-        {activity.session_note ? (
-          <Text style={styles.sessionNote}>{activity.session_note}</Text>
+        {!isPast && noteParts.length > 0 ? (
+          <Text style={styles.sessionNote} numberOfLines={2}>
+            {noteParts.join(' · ')}
+          </Text>
         ) : null}
-        {activity.cost_note ? (
-          <Text style={styles.costNote}>Cost: {activity.cost_note}</Text>
+        {isRally && onOpenDetails ? (
+          <View style={styles.openRow}>
+            <Text style={styles.openLink}>{isPast ? 'View summary' : 'View game'}</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+          </View>
         ) : null}
       </TouchableOpacity>
 
       {!isPast && showActions ? (
-        <View style={styles.actions}>
+        <View style={[styles.actions, isRally && styles.actionsRally]}>
           {isWaitlisted ? (
             <Text style={styles.waitlistBadge}>{PRODUCT_COPY.onWaitlist}</Text>
           ) : null}
@@ -110,25 +179,32 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
               loading={busy}
             />
           ) : null}
-          {isOnRoster && !isReady && !isFinalized && onConfirmIn ? (
+          {isOnRoster && isReady && !isFinalized && isHost ? (
+            <Text style={styles.readyLabel}>{PRODUCT_COPY.hostingConfirm}</Text>
+          ) : null}
+          {isOnRoster && isReady && !isFinalized && !isHost && onUndoImIn ? (
+            <>
+              <Text style={styles.readyLabel}>{PRODUCT_COPY.imInConfirm}</Text>
+              <Button
+                title={busy ? 'Saving…' : PRODUCT_COPY.undoImIn}
+                size="sm"
+                variant="ghost"
+                onPress={onUndoImIn}
+                disabled={busy}
+              />
+            </>
+          ) : null}
+          {isOnRoster && isReady && !isFinalized && !isHost && !onUndoImIn ? (
+            <Text style={styles.readyLabel}>{PRODUCT_COPY.imInConfirm}</Text>
+          ) : null}
+          {isOnRoster && !isReady && !isFinalized && !isHost && onConfirmIn ? (
             <Button
-              title={busy ? 'Saving…' : "I'm in"}
+              title={busy ? 'Saving…' : PRODUCT_COPY.imIn}
               size="sm"
+              variant="secondary"
               onPress={onConfirmIn}
               disabled={busy}
             />
-          ) : null}
-          {isOnRoster && isReady && !isFinalized && onUndoImIn ? (
-            <Button
-              title={PRODUCT_COPY.undoImIn}
-              size="sm"
-              variant="secondary"
-              onPress={onUndoImIn}
-              disabled={busy}
-            />
-          ) : null}
-          {isOnRoster && isReady && !isFinalized && !onUndoImIn ? (
-            <Text style={styles.readyLabel}>{PRODUCT_COPY.imInConfirm}</Text>
           ) : null}
           {isHost && !isFinalized && showNudge && onNudge ? (
             <Button
@@ -165,6 +241,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  cardRally: {
+    marginHorizontal: 0,
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
   cardCurrent: {
     borderColor: colors.primary,
     borderWidth: 2,
@@ -180,22 +261,30 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginTop: spacing.xs,
   },
+  titleRally: {
+    marginTop: 0,
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  subline: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   meta: {
     ...typography.caption,
     color: colors.textSecondary,
-    marginTop: spacing.xs,
+    marginTop: 4,
+    lineHeight: 17,
+  },
+  seatBar: {
+    marginTop: spacing.sm,
   },
   sessionNote: {
     ...typography.caption,
-    color: colors.text,
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
-  },
-  costNote: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-    fontStyle: 'italic',
+    color: colors.textTertiary,
+    marginTop: 4,
+    lineHeight: 16,
   },
   actions: {
     flexDirection: 'row',
@@ -203,6 +292,9 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginTop: spacing.sm,
     flexWrap: 'wrap',
+  },
+  actionsRally: {
+    marginTop: spacing.xs,
   },
   readyLabel: {
     ...typography.caption,
@@ -219,5 +311,16 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '700',
     color: colors.warning,
+  },
+  openRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  openLink: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

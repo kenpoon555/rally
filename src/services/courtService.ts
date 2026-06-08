@@ -1,6 +1,6 @@
 import { SportType } from '../constants/sports';
 import { ActivityLocation } from '../types/location';
-import { searchSportsLocations } from './api/googlePlaces';
+import { searchNearbySportsCourts, searchSportsLocations } from './api/googlePlaces';
 import { saveActivityLocation } from './locationService';
 import { supabase } from './api/supabase';
 
@@ -37,7 +37,22 @@ export async function addCourtFromPlacesSearch(
     throw new Error('No places found — try a park name, recreation center, or address.');
   }
 
-  const place = results[0];
+  return addCourtFromPlacePreview(results[0], sportType);
+}
+
+/** Nearby courts from Google (~25 mi), not yet saved to Supabase. */
+export async function discoverNearbyCourtsFromPlaces(
+  sportType: SportType,
+  near: { latitude: number; longitude: number }
+): Promise<ActivityLocation[]> {
+  return searchNearbySportsCourts(sportType, near);
+}
+
+/** Persist a Places preview row and return the saved court. */
+export async function addCourtFromPlacePreview(
+  place: ActivityLocation,
+  sportType: SportType
+): Promise<ActivityLocation> {
   return saveActivityLocation({
     name: place.name,
     sport_type: sportType,
