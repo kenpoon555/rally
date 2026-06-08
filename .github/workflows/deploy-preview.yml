@@ -1,12 +1,11 @@
-# Push to `preview` → tests, then EAS preview builds (Android + iOS in parallel).
+# Manual EAS preview builds only (saves Free-plan / Starter credits).
+# Push to `preview` no longer auto-builds — run from Actions when you need a tester build.
 # Requires: EXPO_TOKEN, EAS env, Android keystore, iOS preview credentials (eas credentials -p ios).
 # See docs/github-actions-preview.md
 
 name: Deploy preview (EAS)
 
 on:
-  push:
-    branches: [preview]
   workflow_dispatch:
     inputs:
       platform:
@@ -45,7 +44,6 @@ jobs:
     name: EAS preview · Android
     needs: verify
     if: >-
-      github.event_name == 'push' ||
       github.event.inputs.platform == 'all' ||
       github.event.inputs.platform == 'android'
     runs-on: ubuntu-latest
@@ -68,7 +66,6 @@ jobs:
     name: EAS preview · iOS
     needs: verify
     if: >-
-      github.event_name == 'push' ||
       github.event.inputs.platform == 'all' ||
       github.event.inputs.platform == 'ios'
     runs-on: ubuntu-latest
