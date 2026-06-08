@@ -1,5 +1,6 @@
 # Pull requests → fast checks only (no EAS build, saves time/cost).
-# Merge to `preview` → deploy-preview.yml · merge to `production` → deploy-production.yml
+# Preview EAS: manual only (deploy-preview.yml workflow_dispatch).
+# Merge to `production` → deploy-production.yml
 
 name: CI
 

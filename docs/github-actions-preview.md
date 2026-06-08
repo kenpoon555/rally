@@ -1,6 +1,6 @@
 # GitHub Actions → EAS preview builds
 
-Push to branch **`preview`** runs tests, then queues **EAS `preview` builds for Android and iOS** (`--platform all`). Install links appear on [expo.dev](https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds) when each build finishes (~10–25 min per platform, in parallel).
+**Preview EAS builds are manual** (to save build credits). Run **Actions → Deploy preview (EAS) → Run workflow** when you need an internal tester build. Merging to `preview` runs CI on the PR only — it does **not** auto-queue EAS. Install links appear on [expo.dev](https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds) when each build finishes (~10–25 min per platform).
 
 Workflow file: [`.github/workflows/deploy-preview.yml`](../.github/workflows/deploy-preview.yml)
 
@@ -76,14 +76,14 @@ Future workflow: merge or push to **`preview`** → CI runs → EAS build starts
 | Event | Workflow | What happens |
 |-------|----------|----------------|
 | **PR** → `main` or `preview` | [`ci.yml`](../.github/workflows/ci.yml) | `npm test` + lint + check EAS has `SUPABASE_*` — **no** phone build |
-| **Push / merge** to `preview` | [`deploy-preview.yml`](../.github/workflows/deploy-preview.yml) | Same tests, then **EAS Android + iOS** builds |
+| **Manual** (Actions → Deploy preview) | [`deploy-preview.yml`](../.github/workflows/deploy-preview.yml) | Tests, then **EAS Android + iOS** (your choice) |
 | **Push** to `main` only | `ci.yml` | Tests only (no deploy) |
 
 **Recommended git flow**
 
 ```text
 dev                →  PR into preview      (CI must pass)
-merge preview      →  auto preview EAS     (internal testers)
+merge preview      →  CI only (no auto EAS; run workflow when needed)
 preview            →  PR into main         (CI must pass)
 main               →  PR into production   (CI must pass)
 merge production   →  auto production EAS  (store-ready builds; submit manual)
