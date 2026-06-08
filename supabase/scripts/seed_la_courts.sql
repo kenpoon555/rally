@@ -21,6 +21,10 @@ SELECT 'Monrovia Recreation Park Basketball Courts', 'Basketball', 'seed-monrovi
 WHERE NOT EXISTS (SELECT 1 FROM public.activity_locations WHERE google_place_id = 'seed-monrovia-rec-park-basketball');
 
 INSERT INTO public.activity_locations (name, sport_type, google_place_id, radius, location)
+SELECT 'Julian Fisher Park Basketball Courts', 'Basketball', 'seed-julian-fisher-park-basketball', 80, ST_SetSRID(ST_MakePoint(-117.9954, 34.1418), 4326)::geography
+WHERE NOT EXISTS (SELECT 1 FROM public.activity_locations WHERE google_place_id = 'seed-julian-fisher-park-basketball');
+
+INSERT INTO public.activity_locations (name, sport_type, google_place_id, radius, location)
 SELECT 'Venice Beach Basketball Courts', 'Basketball', 'seed-la-venice-beach-basketball', 80, ST_SetSRID(ST_MakePoint(-118.469, 33.985), 4326)::geography
 WHERE NOT EXISTS (SELECT 1 FROM public.activity_locations WHERE google_place_id = 'seed-la-venice-beach-basketball');
 

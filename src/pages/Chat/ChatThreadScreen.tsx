@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
@@ -26,13 +25,9 @@ import {
   subscribeToConversationMessages,
 } from '../../services/chatService';
 import { ChatMessage, Conversation } from '../../types/chat';
-import { getRegularGroupById, joinCrewGame } from '../../services/regularGroupService';
-import {
-  finalizeGameCommitment,
-  nudgeSessionRoster,
-  setGameReady,
-} from '../../services/activityService';
-import { CrewChatSessionList } from '../../components/CrewChatSessionList';
+import { getRegularGroupById } from '../../services/regularGroupService';
+import { RallyPlayTabHint } from '../../components/rally/RallyPlayTabHint';
+import { countPlayTabActions } from '../../utils/playTabActions';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { trackProductEvent } from '../../services/analyticsService';
 import { getUserById } from '../../services/userService';
@@ -55,6 +50,7 @@ import { ChatMessageBubble } from '../../components/chat/ChatMessageBubble';
 import { ChatQuickReplies } from '../../components/chat/ChatQuickReplies';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
+import { KeyboardSafeView, useComposerBottomPadding } from '../../components/ui';
 
 type MainStackParamList = {
   MainTabs: undefined;
@@ -120,34 +116,9 @@ const GameRoomChatBody: React.FC<{
   onQuickReply,
 }) => {
   const gameRoom = useOptionalGameRoom();
-  const insets = useSafeAreaInsets();
   const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
   const canSendMessage = canSend && !chatReadOnly;
-  const [keyboardInset, setKeyboardInset] = useState(0);
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-    const showSub = Keyboard.addListener(showEvent, (event) => {
-      if (Platform.OS === 'android') {
-        setKeyboardInset(event.endCoordinates.height);
-      }
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      if (Platform.OS === 'android') {
-        setKeyboardInset(0);
-      }
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
-
-  const composerPaddingBottom =
-    Platform.OS === 'android' && keyboardInset > 0
-      ? Math.max(spacing.sm, keyboardInset - insets.bottom + spacing.sm)
-      : Math.max(insets.bottom, spacing.sm);
+  const composerPaddingBottom = useComposerBottomPadding(spacing.sm);
 
   return (
   <>
@@ -254,12 +225,12 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [crewSessions, setCrewSessions] = useState<ConversationSessionCard[]>([]);
   const [focusedActivityId, setFocusedActivityId] = useState<string | undefined>(activityId);
-  const [busyActivityId, setBusyActivityId] = useState<string | null>(null);
   const [crewHostId, setCrewHostId] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
 
   const isCrewChat = conversation?.conversation_type === 'crew_group';
+  const resolvedGroupId = groupId ?? conversation?.regular_group_id ?? undefined;
   const resolvedActivityId = isCrewChat ? focusedActivityId : focusedActivityId;
   const isGameRoom = Boolean(isCrewChat ? focusedActivityId : resolvedActivityId);
 
@@ -380,9 +351,33 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       .catch(() => setBlockedThread(false));
   }, [isGameRoom, peerUserId, user?.id]);
 
+  const openRallyHub = useCallback(() => {
+    if (!resolvedGroupId) {
+      return;
+    }
+    navigation.replace(ROUTES.REGULAR_GROUP.CREW as never, {
+      groupId: resolvedGroupId,
+      initialTab: 'chat',
+    } as never);
+  }, [navigation, resolvedGroupId]);
+
   useEffect(() => {
+    const displayTitle = isGameRoom ? title || 'Game Room' : title || 'Chat';
     navigation.setOptions({
-      title: isGameRoom ? title || 'Game Room' : title || 'Chat',
+      title: displayTitle,
+      headerTitle: isCrewChat && resolvedGroupId
+        ? () => (
+            <TouchableOpacity
+              onPress={openRallyHub}
+              activeOpacity={0.7}
+              style={styles.headerTitleButton}
+            >
+              <Text style={styles.headerTitleText} numberOfLines={1}>
+                {displayTitle}
+              </Text>
+            </TouchableOpacity>
+          )
+        : displayTitle,
       headerRight: () => (
         <View style={styles.headerActions}>
           {!isGameRoom && peerUserId ? (
@@ -393,7 +388,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         </View>
       ),
     });
-  }, [navigation, title, isGameRoom, peerUserId]);
+  }, [navigation, title, isGameRoom, peerUserId, isCrewChat, resolvedGroupId, openRallyHub]);
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -440,6 +435,11 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !blockedThread,
     [blockedThread, draft, sending, user?.id]
+  );
+
+  const playActionCount = useMemo(
+    () => countPlayTabActions(crewSessions.map((s) => s.card)),
+    [crewSessions]
   );
 
   const sendContent = async (content: string) => {
@@ -499,7 +499,6 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const bannerIsHost =
     Boolean(user?.id && crewHostId && user.id === crewHostId) ||
     focusedSession?.activity?.user_id === user?.id;
-  const resolvedGroupId = groupId ?? conversation?.regular_group_id ?? undefined;
   const crewPollsHost = Boolean(user?.id && crewHostId && user.id === crewHostId);
 
   const handleScheduleFromPoll = (option: { starts_at: string; label: string }) => {
@@ -517,99 +516,13 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       conversationId={conversationId}
       bannerIsHost={bannerIsHost}
       crewSessionsHeader={
-        isCrewChat ? (
-          <CrewChatSessionList
-            sessions={crewSessions}
-            focusedActivityId={focusedActivityId}
-            busyActivityId={busyActivityId}
-            onFocusActivity={(id) => setFocusedActivityId(id)}
-            onJoin={async (act) => {
-              setBusyActivityId(act.id);
-              try {
-                const result = await joinCrewGame(act.id);
-                if (result === 'waitlisted') {
-                  Alert.alert(
-                    'Waitlist',
-                    'Game is full. You are on the waitlist if a spot opens.'
-                  );
-                }
-                await reloadCrewSessions();
-              } catch (error: unknown) {
-                Alert.alert(
-                  'Join failed',
-                  error instanceof Error ? error.message : 'Could not join.'
-                );
-              } finally {
-                setBusyActivityId(null);
-              }
-            }}
-            onConfirmIn={async (act) => {
-              setBusyActivityId(act.id);
-              try {
-                await setGameReady(act.id, true);
-                await reloadCrewSessions();
-              } catch (error: unknown) {
-                Alert.alert(
-                  "Couldn't save",
-                  error instanceof Error ? error.message : 'Try again.'
-                );
-              } finally {
-                setBusyActivityId(null);
-              }
-            }}
-            onUndoImIn={(act) => {
-              setBusyActivityId(act.id);
-              void (async () => {
-                try {
-                  await setGameReady(act.id, false);
-                  await reloadCrewSessions();
-                } catch (error: unknown) {
-                  Alert.alert(
-                    "Couldn't save",
-                    error instanceof Error ? error.message : 'Try again.'
-                  );
-                } finally {
-                  setBusyActivityId(null);
-                }
-              })();
-            }}
-            onLockRoster={async (act) => {
-              setBusyActivityId(act.id);
-              try {
-                await finalizeGameCommitment(act.id);
-                await reloadCrewSessions();
-              } catch (error: unknown) {
-                Alert.alert(
-                  'Lock failed',
-                  error instanceof Error ? error.message : 'Try again.'
-                );
-              } finally {
-                setBusyActivityId(null);
-              }
-            }}
-            onNudge={async (act) => {
-              setBusyActivityId(act.id);
-              try {
-                const count = await nudgeSessionRoster(act.id);
-                await reloadCrewSessions();
-                await loadMessages();
-                Alert.alert(
-                  PRODUCT_COPY.nudgeRosterSent,
-                  `Reminder sent to ${count} player${count === 1 ? '' : 's'}.`
-                );
-              } catch (error: unknown) {
-                Alert.alert(
-                  'Could not nudge',
-                  error instanceof Error ? error.message : 'Try again.'
-                );
-              } finally {
-                setBusyActivityId(null);
-              }
-            }}
-            onOpenDetails={(act) =>
-              navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
-                activityId: act.id,
-                fromGameRoom: true,
+        isCrewChat && resolvedGroupId ? (
+          <RallyPlayTabHint
+            actionCount={playActionCount}
+            onPress={() =>
+              navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                groupId: resolvedGroupId,
+                initialTab: 'play',
               } as never)
             }
           />
@@ -636,14 +549,16 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   return (
-    <KeyboardAvoidingView
+    <KeyboardSafeView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={keyboardVerticalOffset}
     >
       {isGameRoom && resolvedActivityId ? (
         <GameRoomProvider
           activityId={resolvedActivityId}
+          onOpenRallyHub={
+            isCrewChat && resolvedGroupId ? openRallyHub : undefined
+          }
           onOpenDetails={() =>
             navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
               activityId: resolvedActivityId,
@@ -704,7 +619,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           contextId={conversationId}
         />
       ) : null}
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 };
 
@@ -830,6 +745,14 @@ const styles = StyleSheet.create({
   headerSafety: {
     marginRight: 12,
     paddingVertical: 4,
+  },
+  headerTitleButton: {
+    maxWidth: 240,
+  },
+  headerTitleText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.text,
   },
   headerActions: {
     flexDirection: 'row',

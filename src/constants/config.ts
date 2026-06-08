@@ -39,10 +39,14 @@ export const CONFIG = {
   GOOGLE_PLACES_API_KEY_ANDROID: readEnv('GOOGLE_PLACES_API_KEY_ANDROID'),
   GOOGLE_PLACES_API_KEY: readEnv('GOOGLE_PLACES_API_KEY'),
 
-  /** Court search on Create Game — first pass (meters). */
+  /** Create Game — primary court list (~10 miles). */
+  COURT_SEARCH_NEARBY_RADIUS_M: 16093,
+  /** Create Game fallback + Add Court discovery (~25 miles). */
+  COURT_SEARCH_WIDE_RADIUS_M: 40234,
+  /** @deprecated Use COURT_SEARCH_WIDE_RADIUS_M for Places / Add Court. */
+  COURT_SEARCH_DEFAULT_RADIUS_M: 40234,
+  /** @deprecated Legacy 5 km radius — use COURT_SEARCH_NEARBY_RADIUS_M. */
   NEARBY_COURT_RADIUS_M: 5000,
-  /** Court search when none within NEARBY_COURT_RADIUS_M (meters). */
-  WIDER_COURT_RADIUS_M: 25000,
   /** Niche sports (squash, ultimate, etc.) — search wider metro area on Create Game. */
   NICHE_COURT_RADIUS_M: 60000,
   /** Last resort court search for rare sports (meters). */
@@ -53,6 +57,11 @@ export const CONFIG = {
   DISCOVER_QUERY_LIMIT: 120,
   /** Wider radius for games a friend hosts or joined (meters). */
   FRIEND_DISCOVERY_RADIUS_M: 120000,
+
+  /** Client-side Places throttling (pairs with GCP daily quotas). */
+  GOOGLE_PLACES_MIN_INTERVAL_MS: asNumber(readEnv('GOOGLE_PLACES_MIN_INTERVAL_MS'), 2000),
+  GOOGLE_PLACES_SESSION_MAX_REQUESTS: asNumber(readEnv('GOOGLE_PLACES_SESSION_MAX_REQUESTS'), 12),
+  GOOGLE_PLACES_CACHE_TTL_MS: asNumber(readEnv('GOOGLE_PLACES_CACHE_TTL_MS'), 5 * 60 * 1000),
 
   get GOOGLE_PLACES_API_KEY_PLATFORM() {
     if (Platform.OS === 'ios' && this.GOOGLE_PLACES_API_KEY_IOS) {

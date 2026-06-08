@@ -40,6 +40,8 @@ export type SessionCardPayload = {
   regular_group_id?: string | null;
   player_count: number;
   missing_players: number;
+  roster_min?: number | null;
+  roster_max?: number | null;
   listing_title?: string | null;
   roster_count: number;
   ready_count: number;

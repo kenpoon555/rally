@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SessionCardPayload } from '../../types/sessionCard';
 import { activityFromSessionCard } from '../../utils/sessionCardHelpers';
@@ -16,35 +17,91 @@ import {
   nudgeSessionRoster,
   setGameReady,
 } from '../../services/activityService';
-import { createMiniTournament } from '../../services/miniTournamentService';
+import { getCompletedTournamentWinners } from '../../services/miniTournamentService';
 import { sportSupportsMiniTournament } from '../../constants/sports';
-import { formatRosterSummary } from '../../utils/activityHelpers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
+import {
+  formatTournamentWinnerMeta,
+  TournamentWinnerSummary,
+} from '../../utils/miniTournamentHelpers';
+import { CreateRallyGameSheet } from './CreateRallyGameSheet';
+import { GameModeChip } from './GameModeChip';
 
 type Props = {
   group: RegularGroup;
   sessionCards: SessionCardPayload[];
   tournaments: MiniTournament[];
   isHost: boolean;
+  isMember: boolean;
   busyActivityId: string | null;
   setBusyActivityId: (id: string | null) => void;
   onReload: () => Promise<void>;
   navigation: NativeStackNavigationProp<any>;
-  onOpenGameRoom: (activityId: string) => void;
+};
+
+function tournamentStatusLabel(status: MiniTournament['status']): string {
+  if (status === 'open') {
+    return 'Open · join in Rally';
+  }
+  if (status === 'active') {
+    return 'In progress';
+  }
+  return 'Completed';
+}
+
+const RallyTournamentRow: React.FC<{
+  tournament: MiniTournament;
+  tone: 'live' | 'history';
+  winner?: TournamentWinnerSummary | null;
+  onPress: () => void;
+}> = ({ tournament, tone, winner, onPress }) => {
+  const isLive = tone === 'live';
+  const metaLine = isLive
+    ? tournamentStatusLabel(tournament.status)
+    : formatTournamentWinnerMeta(winner ?? null);
+  const hasWinner = !isLive && winner != null;
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.playCard,
+        isLive ? styles.playCardLive : styles.playCardHistory,
+      ]}
+      onPress={onPress}
+      activeOpacity={0.85}
+    >
+      <GameModeChip label={PRODUCT_COPY.gameModeTournament} kind="tournament" />
+      <Text style={styles.playCardTitle} numberOfLines={2}>
+        {tournament.name}
+      </Text>
+      <Text
+        style={[styles.playCardMeta, hasWinner && styles.playCardMetaWinner]}
+        numberOfLines={2}
+      >
+        {metaLine}
+      </Text>
+      <View style={styles.playCardFooter}>
+        <Text style={styles.playCardLink}>{isLive ? 'Open bracket' : 'View results'}</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
+      </View>
+    </TouchableOpacity>
+  );
 };
 
 export const RallyPlayPanel: React.FC<Props> = ({
   group,
   sessionCards,
   tournaments,
-  isHost,
+  isMember,
   busyActivityId,
   setBusyActivityId,
   onReload,
   navigation,
-  onOpenGameRoom,
 }) => {
-  const [creatingTournament, setCreatingTournament] = React.useState(false);
+  const [createOpen, setCreateOpen] = React.useState(false);
+  const [winnersById, setWinnersById] = React.useState<
+    Record<string, TournamentWinnerSummary | null>
+  >({});
 
   const activities = sessionCards.map((card) => ({
     card,
@@ -54,29 +111,52 @@ export const RallyPlayPanel: React.FC<Props> = ({
   const past = activities.filter(({ activity }) => activity.status !== 'active');
   const currentActivity = upcoming[0]?.activity;
 
-  const openScheduleNext = () => {
-    const sourceId = currentActivity?.id ?? group.source_activity_id;
-    if (!sourceId) {
-      Alert.alert(group.name, 'No game yet. Host can schedule the first one.');
+  const liveTournaments = tournaments.filter((t) => t.status === 'open' || t.status === 'active');
+  const completedTournaments = tournaments.filter((t) => t.status === 'completed');
+  const showTournaments = sportSupportsMiniTournament(group.sport_type);
+  const hasUpcoming = upcoming.length > 0 || (showTournaments && liveTournaments.length > 0);
+  const hasHistory = past.length > 0 || completedTournaments.length > 0;
+
+  React.useEffect(() => {
+    const completedIds = tournaments
+      .filter((tournament) => tournament.status === 'completed')
+      .map((tournament) => tournament.id);
+    if (completedIds.length === 0) {
+      setWinnersById({});
       return;
     }
-    navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId: sourceId } as never);
+
+    let cancelled = false;
+    void getCompletedTournamentWinners(completedIds)
+      .then((winners) => {
+        if (!cancelled) {
+          setWinnersById(winners);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setWinnersById({});
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tournaments]);
+
+  const openTournament = (tournamentId: string) => {
+    navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
   };
 
-  const handleCreateTournament = async () => {
-    setCreatingTournament(true);
-    try {
-      const tournamentId = await createMiniTournament(group.id);
-      await onReload();
-      navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
-    } catch (error: unknown) {
-      Alert.alert(
-        'Tournament',
-        error instanceof Error ? error.message : 'Could not create tournament.'
-      );
-    } finally {
-      setCreatingTournament(false);
+  const handleCreated = async (result: { kind: 'activity' | 'tournament'; id: string }) => {
+    await onReload();
+    if (result.kind === 'tournament') {
+      openTournament(result.id);
     }
+  };
+
+  const openActivityDetail = (activityId: string) => {
+    navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
   };
 
   const renderSessionCard = (card: SessionCardPayload, activity: Activity, isCurrent: boolean) => {
@@ -85,6 +165,8 @@ export const RallyPlayPanel: React.FC<Props> = ({
       <CrewGameSessionCard
         key={card.activity_id}
         activity={activity}
+        variant="rally"
+        gameModeLabel={PRODUCT_COPY.gameModePickup}
         isCurrent={isCurrent}
         showActions={viewer.show_actions}
         isHost={viewer.is_host}
@@ -121,19 +203,35 @@ export const RallyPlayPanel: React.FC<Props> = ({
             setBusyActivityId(null);
           }
         }}
-        onUndoImIn={() => {
-          setBusyActivityId(activity.id);
-          void (async () => {
-            try {
-              await setGameReady(activity.id, false);
-              await onReload();
-            } catch (e: unknown) {
-              Alert.alert("Couldn't save", e instanceof Error ? e.message : 'Try again.');
-            } finally {
-              setBusyActivityId(null);
-            }
-          })();
-        }}
+        onUndoImIn={
+          viewer.is_host
+            ? undefined
+            : () => {
+                Alert.alert(PRODUCT_COPY.undoImInTitle, PRODUCT_COPY.undoImInBody, [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: PRODUCT_COPY.undoImIn,
+                    style: 'destructive',
+                    onPress: () => {
+                      setBusyActivityId(activity.id);
+                      void (async () => {
+                        try {
+                          await setGameReady(activity.id, false);
+                          await onReload();
+                        } catch (e: unknown) {
+                          Alert.alert(
+                            "Couldn't save",
+                            e instanceof Error ? e.message : 'Try again.'
+                          );
+                        } finally {
+                          setBusyActivityId(null);
+                        }
+                      })();
+                    },
+                  },
+                ]);
+              }
+        }
         onLockRoster={async () => {
           setBusyActivityId(activity.id);
           try {
@@ -158,80 +256,83 @@ export const RallyPlayPanel: React.FC<Props> = ({
             setBusyActivityId(null);
           }
         }}
-        onOpenDetails={() => onOpenGameRoom(activity.id)}
+        onOpenDetails={() => openActivityDetail(activity.id)}
+      />
+    );
+  };
+
+  const renderCreateGameCta = () => {
+    if (!isMember) {
+      return null;
+    }
+    return (
+      <Button
+        title={PRODUCT_COPY.createGame}
+        onPress={() => setCreateOpen(true)}
+        style={styles.createBtn}
       />
     );
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {isHost ? (
-        <Button title="Schedule next game" size="sm" onPress={openScheduleNext} />
-      ) : null}
-
-      <Text style={styles.sectionTitle}>Upcoming</Text>
-      {upcoming.length === 0 ? (
-        <View style={styles.emptyBlock}>
-          <Text style={styles.hint}>{PRODUCT_COPY.scheduleFirstSessionHint}</Text>
-          {isHost ? (
-            <Button title={PRODUCT_COPY.scheduleFirstSession} size="sm" onPress={openScheduleNext} />
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.cardStack}>
-          {upcoming.map(({ card, activity }) =>
-            renderSessionCard(card, activity, activity.id === currentActivity?.id)
-          )}
-          {currentActivity ? (
-            <Text style={styles.hint}>{formatRosterSummary(currentActivity)}</Text>
-          ) : null}
-        </View>
-      )}
-
-      <Text style={styles.sectionTitle}>Past games</Text>
-      {past.length === 0 ? (
-        <Text style={styles.hint}>Finished games land here.</Text>
-      ) : (
-        <View style={styles.cardStack}>
-          {past.map(({ card, activity }) => renderSessionCard(card, activity, false))}
-        </View>
-      )}
-
-      {sportSupportsMiniTournament(group.sport_type) ? (
-        <>
-          <Text style={styles.sectionTitle}>Tournaments</Text>
-          <View style={styles.tournamentBlock}>
-            {isHost ? (
-              <Button
-                title={creatingTournament ? 'Creating…' : 'Start mini tournament'}
-                variant="secondary"
-                size="sm"
-                onPress={() => void handleCreateTournament()}
-                disabled={creatingTournament}
-              />
-            ) : null}
-            {tournaments.length === 0 ? (
-              <Text style={styles.hint}>Round-robin brackets for your regulars.</Text>
-            ) : (
-              tournaments.map((tournament) => (
-                <TouchableOpacity
-                  key={tournament.id}
-                  style={styles.tournamentRow}
-                  onPress={() =>
-                    navigation.navigate(ROUTES.TOURNAMENT.MINI as never, {
-                      tournamentId: tournament.id,
-                    } as never)
-                  }
-                >
-                  <Text style={styles.tournamentTitle}>{tournament.name}</Text>
-                  <Text style={styles.tournamentMeta}>{tournament.status}</Text>
-                </TouchableOpacity>
-              ))
-            )}
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <Text style={styles.sectionTitle}>Upcoming</Text>
+        {!hasUpcoming ? (
+          <View style={styles.emptyBlock}>
+            <Text style={styles.hint}>{PRODUCT_COPY.createGameHint}</Text>
+            {renderCreateGameCta()}
           </View>
-        </>
-      ) : null}
-    </ScrollView>
+        ) : (
+          <View style={styles.cardStack}>
+            {upcoming.map(({ card, activity }) =>
+              renderSessionCard(card, activity, activity.id === currentActivity?.id)
+            )}
+            {showTournaments
+              ? liveTournaments.map((tournament) => (
+                  <RallyTournamentRow
+                    key={tournament.id}
+                    tournament={tournament}
+                    tone="live"
+                    onPress={() => openTournament(tournament.id)}
+                  />
+                ))
+              : null}
+            {renderCreateGameCta()}
+          </View>
+        )}
+
+        {hasHistory ? (
+          <>
+            <Text style={styles.sectionTitle}>History</Text>
+            <View style={styles.cardStack}>
+              {past.map(({ card, activity }) => renderSessionCard(card, activity, false))}
+              {completedTournaments.map((tournament) => (
+                <RallyTournamentRow
+                  key={tournament.id}
+                  tournament={tournament}
+                  tone="history"
+                  winner={winnersById[tournament.id] ?? null}
+                  onPress={() => openTournament(tournament.id)}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.sectionTitle}>History</Text>
+            <Text style={styles.hint}>Finished games and tournaments show up here.</Text>
+          </>
+        )}
+      </ScrollView>
+
+      <CreateRallyGameSheet
+        visible={createOpen}
+        group={group}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(result) => void handleCreated(result)}
+      />
+    </>
   );
 };
 
@@ -265,24 +366,50 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 18,
   },
-  tournamentBlock: {
-    gap: spacing.sm,
+  createBtn: {
+    marginTop: spacing.sm,
   },
-  tournamentRow: {
-    padding: spacing.md,
+  playCard: {
+    padding: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  tournamentTitle: {
+  playCardLive: {
+    backgroundColor: colors.surface,
+    borderColor: colors.primary,
+    borderWidth: 2,
+  },
+  playCardHistory: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    opacity: 0.85,
+  },
+  playCardTitle: {
     ...typography.bodyMedium,
+    fontSize: 15,
+    lineHeight: 20,
     color: colors.text,
   },
-  tournamentMeta: {
+  playCardMeta: {
     ...typography.caption,
     color: colors.textSecondary,
-    textTransform: 'capitalize',
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 17,
+  },
+  playCardMetaWinner: {
+    color: colors.warning,
+    fontWeight: '600',
+  },
+  playCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  playCardLink: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

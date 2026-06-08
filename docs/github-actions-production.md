@@ -183,6 +183,32 @@ eas build --profile production --platform all --auto-submit --non-interactive
 
 ---
 
+## Troubleshooting
+
+### iOS build uploaded but missing in TestFlight
+
+EAS can report “Submitted to App Store Connect” while TestFlight still hides the build until **export compliance** is answered. Set this once in native `Info.plist` (bare workflow):
+
+```xml
+<key>ITSAppUsesNonExemptEncryption</key>
+<false/>
+```
+
+Also mirror in `app.json` → `expo.ios.infoPlist` for documentation. Rally uses HTTPS only (Supabase, etc.), so `false` is correct.
+
+### Wrong home-screen icon after deploy
+
+OS icons come from **native** assets (`ios/.../AppIcon.appiconset`, `android/.../mipmap-*`), not JS. After changing `assets/branding/`:
+
+```bash
+python3 scripts/build-app-icon-assets.py
+./scripts/generate-app-icons.sh
+```
+
+Then run a new EAS production build.
+
+---
+
 ## Related
 
 - Preview pipeline: [github-actions-preview.md](./github-actions-preview.md)

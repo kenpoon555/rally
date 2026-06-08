@@ -18,6 +18,8 @@ export interface Activity {
   visibility: ActivityVisibility;
   player_count: number;
   missing_players?: number;
+  roster_min?: number | null;
+  roster_max?: number | null;
   status: 'active' | 'completed' | 'cancelled';
   scheduling_mode?: ActivitySchedulingMode;
   preference_deadline?: string | null;

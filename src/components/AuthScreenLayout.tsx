@@ -1,18 +1,12 @@
 import React from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '../constants/theme';
 import { APP_NAME, APP_TAGLINE } from '../constants/brand';
 import { BETA_COPY } from '../constants/betaCopy';
 import { RallyMark } from './RallyMark';
 import { colors as themeColors, spacing as themeSpacing, typography as themeTypography } from '../constants/theme';
+import { KeyboardSafeView, keyboardAwareScrollProps } from './ui/KeyboardSafeView';
 
 type Props = {
   title: string;
@@ -24,14 +18,11 @@ export function AuthScreenLayout({ title, subtitle, children }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
-    <KeyboardAvoidingView
-      style={[styles.root, { paddingTop: insets.top + spacing.xl }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardSafeView style={[styles.root, { paddingTop: insets.top + spacing.xl }]}>
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + spacing.xxl }]}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        {...keyboardAwareScrollProps}
       >
         <View style={styles.brandBlock}>
           <RallyMark size="lg" style={styles.logoMark} />
@@ -50,7 +41,7 @@ export function AuthScreenLayout({ title, subtitle, children }: Props) {
           {children}
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }
 

@@ -13,7 +13,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ScheduleDateTimePicker } from './ScheduleDateTimePicker';
 import { createAvailabilityPoll } from '../services/availabilityPollService';
-import { Button } from './ui';
+import { Button, KeyboardSafeView, keyboardAwareScrollProps } from './ui';
 import { colors, radius, spacing, typography } from '../constants/theme';
 
 type SlotDraft = {
@@ -129,7 +129,7 @@ export const CreateAvailabilityPollSheet: React.FC<Props> = ({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={styles.container}>
+      <KeyboardSafeView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleClose}>
             <Text style={styles.cancel}>Cancel</Text>
@@ -138,7 +138,7 @@ export const CreateAvailabilityPollSheet: React.FC<Props> = ({
           <View style={styles.headerSpacer} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
           <Text style={styles.label}>Question</Text>
           <TextInput
             style={styles.input}
@@ -222,7 +222,7 @@ export const CreateAvailabilityPollSheet: React.FC<Props> = ({
             onDismiss={() => setPickerSlotId(null)}
           />
         ) : null}
-      </View>
+      </KeyboardSafeView>
     </Modal>
   );
 };

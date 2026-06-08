@@ -25,3 +25,12 @@ export function formatTravelEstimate(distanceMeters: number | null | undefined):
   const mileLabel = miles < 0.1 ? '<0.1 mi' : `~${miles.toFixed(1)} mi`;
   return `${mileLabel} · ~${minutes} min drive`;
 }
+
+/** Court search radius for empty-state copy (e.g. "within 25 mi"). */
+export function formatSearchRadiusLabel(radiusMeters: number): string {
+  const miles = radiusMeters / METERS_PER_MILE;
+  if (miles >= 10) {
+    return `${Math.round(miles)} mi`;
+  }
+  return `~${miles.toFixed(1)} mi`;
+}

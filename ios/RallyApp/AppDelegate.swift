@@ -35,6 +35,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
       launchOptions: launchOptions
     )
 
+    application.registerForRemoteNotifications()
+
     return true
   }
 }

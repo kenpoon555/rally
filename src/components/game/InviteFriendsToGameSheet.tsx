@@ -24,7 +24,7 @@ import { getApprovedParticipants } from '../../utils/activityHelpers';
 import { formatDiscoverWhenLine } from '../../utils/todayDateUtils';
 import { Friend } from '../../types/friends';
 import { GameFriendOutgoingInvite } from '../../types/gameFriendInvite';
-import { Avatar } from '../ui';
+import { Avatar, KeyboardSafeView } from '../ui';
 import { getSportIconName } from '../SportIcon';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { buildGameInviteUrl } from '../../navigation/deepLinking';
@@ -194,7 +194,7 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={styles.container}>
+      <KeyboardSafeView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} hitSlop={8}>
             <Text style={styles.cancel}>Close</Text>
@@ -246,6 +246,7 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
             data={rows}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <View style={styles.row}>
                 <Avatar name={item.username} size="md" />
@@ -264,7 +265,7 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
             </Text>
           </TouchableOpacity>
         ) : null}
-      </View>
+      </KeyboardSafeView>
     </Modal>
   );
 };

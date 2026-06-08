@@ -38,6 +38,8 @@ export const createActivity = async (activityData: {
   duration: number;
   visibility: ActivityVisibility;
   missing_players?: number;
+  roster_min?: number | null;
+  roster_max?: number | null;
   scheduling_mode?: 'fixed' | 'flex';
   preference_deadline?: string;
   window_start?: string;
@@ -1206,18 +1208,21 @@ export const scheduleNextGameFromActivity = async (
   return data as string;
 };
 
-/** Regulars host posts next invite-only game with chosen time and court capacity (e.g. 8 of 50). */
+/** Regulars host posts next invite-only game with chosen roster range. */
 export const scheduleGroupNextGame = async (
   groupId: string,
   startTime: string,
-  playerCount = 8,
-  duration?: number
+  rosterMax = 8,
+  duration?: number,
+  rosterMin?: number
 ): Promise<string> => {
   const { data, error } = await supabase.rpc('schedule_group_next_game', {
     p_group_id: groupId,
     p_start_time: startTime,
-    p_player_count: playerCount,
+    p_player_count: rosterMax,
     p_duration: duration ?? null,
+    p_roster_min: rosterMin ?? null,
+    p_roster_max: rosterMax,
   });
   if (error) {
     throw new Error(error.message);

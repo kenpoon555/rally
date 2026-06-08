@@ -22,7 +22,7 @@ import {
   startMiniTournament,
 } from '../../services/miniTournamentService';
 import { MiniTournament, MiniTournamentMatch, MiniTournamentMember } from '../../types/miniTournament';
-import { Button, ScreenHeader } from '../../components/ui';
+import { Button, KeyboardSafeView, ScreenHeader, keyboardAwareScrollProps } from '../../components/ui';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
 export type MiniTournamentStackParams = {
@@ -140,13 +140,16 @@ const MiniTournamentScreen: React.FC<Props> = ({ route }) => {
   }
 
   return (
+    <KeyboardSafeView style={styles.container}>
     <ScrollView
-      style={styles.container}
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}
+      {...keyboardAwareScrollProps}
     >
       <ScreenHeader
         title={tournament.name}
-        subtitle={`${tournament.sport_type} · ${tournament.status} · private to your crew`}
+        subtitle={`${tournament.sport_type} · ${tournament.status} · private to your Rally`}
       />
 
       <View style={styles.section}>
@@ -236,6 +239,7 @@ const MiniTournamentScreen: React.FC<Props> = ({ route }) => {
         ))
       )}
     </ScrollView>
+    </KeyboardSafeView>
   );
 };
 
@@ -243,6 +247,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingBottom: spacing.xxxl,
   },
   centered: {
     flex: 1,

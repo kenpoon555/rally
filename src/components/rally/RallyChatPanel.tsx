@@ -25,14 +25,15 @@ import { ChatMessage } from '../../types/chat';
 import { AvailabilityPoll } from '../../types/availabilityPoll';
 import { AvailabilityPollCard } from '../AvailabilityPollCard';
 import { CreateAvailabilityPollSheet } from '../CreateAvailabilityPollSheet';
-import { CrewChatSessionList } from '../CrewChatSessionList';
+import { RallyPlayTabHint } from './RallyPlayTabHint';
 import GameRoomAnnouncementBanner from '../GameRoomAnnouncementBanner';
 import { ChatMessageBubble } from '../chat/ChatMessageBubble';
 import { ChatQuickReplies } from '../chat/ChatQuickReplies';
-import { Button } from '../ui';
+import { Button, useComposerBottomPadding } from '../ui';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing, typography } from '../../constants/theme';
+import { countPlayTabActions } from '../../utils/playTabActions';
 
 type Props = {
   groupId: string;
@@ -41,6 +42,7 @@ type Props = {
   chatError: string | null;
   chatLoading: boolean;
   onRetryChat: () => void;
+  onGoToPlay: () => void;
   navigation: NativeStackNavigationProp<any>;
 };
 
@@ -51,6 +53,7 @@ export const RallyChatPanel: React.FC<Props> = ({
   chatError,
   chatLoading,
   onRetryChat,
+  onGoToPlay,
   navigation,
 }) => {
   const { user } = useAuth();
@@ -62,6 +65,7 @@ export const RallyChatPanel: React.FC<Props> = ({
   const [errorText, setErrorText] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const composerPaddingBottom = useComposerBottomPadding(spacing.md);
 
   const loadMessages = useCallback(async () => {
     if (!conversationId) {
@@ -84,13 +88,9 @@ export const RallyChatPanel: React.FC<Props> = ({
 
   const {
     crewSessions,
-    focusedActivityId,
-    busyActivityId,
     bannerIsHost,
     crewPollsHost,
     reloadCrewSessions,
-    sessionHandlers,
-    setFocusedActivityId,
   } = useCrewChatSessions({
     conversationId,
     groupId,
@@ -149,6 +149,11 @@ export const RallyChatPanel: React.FC<Props> = ({
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !!conversationId,
     [conversationId, draft, sending, user?.id]
+  );
+
+  const playActionCount = useMemo(
+    () => countPlayTabActions(crewSessions.map((s) => s.card)),
+    [crewSessions]
   );
 
   const sendContent = useCallback(
@@ -234,18 +239,7 @@ export const RallyChatPanel: React.FC<Props> = ({
 
   const listHeader = (
     <>
-      <CrewChatSessionList
-        sessions={crewSessions}
-        focusedActivityId={focusedActivityId}
-        busyActivityId={busyActivityId}
-        onFocusActivity={setFocusedActivityId}
-        onJoin={sessionHandlers.onJoin}
-        onConfirmIn={sessionHandlers.onConfirmIn}
-        onUndoImIn={sessionHandlers.onUndoImIn}
-        onLockRoster={sessionHandlers.onLockRoster}
-        onNudge={sessionHandlers.onNudge}
-        onOpenDetails={sessionHandlers.onOpenDetails}
-      />
+      <RallyPlayTabHint actionCount={playActionCount} onPress={onGoToPlay} />
       {crewPolls.map((poll) => (
         <AvailabilityPollCard
           key={poll.id}
@@ -284,7 +278,7 @@ export const RallyChatPanel: React.FC<Props> = ({
           !loading ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyEmoji}>👋</Text>
-              <Text style={styles.emptyTitle}>Say hi to the crew</Text>
+              <Text style={styles.emptyTitle}>Say hi to your Rally</Text>
               <Text style={styles.emptyHint}>{PRODUCT_COPY.rallyChatEmpty}</Text>
             </View>
           ) : null
@@ -300,7 +294,7 @@ export const RallyChatPanel: React.FC<Props> = ({
       />
 
       <ChatQuickReplies onSelect={handleQuickReply} disabled={sending} />
-      <View style={styles.composer}>
+      <View style={[styles.composer, { paddingBottom: composerPaddingBottom }]}>
         <TouchableOpacity style={styles.iconBtn} onPress={() => setPollSheetOpen(true)}>
           <Ionicons name="bar-chart-outline" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
