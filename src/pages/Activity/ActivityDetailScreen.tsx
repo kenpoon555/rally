@@ -14,7 +14,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ScheduleDateTimePicker } from '../../components/ScheduleDateTimePicker';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { sportSupportsMiniTournament } from '../../constants/sports';
-import { ensureCrewConversation } from '../../services/chatService';
 import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import JoinRequestButton from '../../components/JoinRequestButton';

@@ -3,7 +3,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ScrollViewProps,
   StyleProp,
   ViewStyle,

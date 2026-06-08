@@ -321,7 +321,6 @@ export function getHostLockReadiness(
     return 'needs_players';
   }
 
-  const targetTotal = getActivityRosterMax(activity);
   const lockMin = getActivityRosterMin(activity);
   const approved = approvedParticipants.length + 1;
   const ready =
