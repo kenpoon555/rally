@@ -14,7 +14,7 @@
     "test": "jest",
     "verify": "bash ./scripts/verify-release-bundle.sh",
     "postinstall": "patch-package",
-    "eas-build-post-install": "bash ./scripts/eas-sync-env.sh",
+    "eas-build-post-install": "bash ./scripts/eas-sync-env.sh && bash ./scripts/eas-ios-preview-entitlements.sh",
     "eas:build:dev:ios": "eas build --platform ios --profile development",
     "eas:build:dev:android": "eas build --platform android --profile development",
     "eas:build:preview:ios": "eas build --platform ios --profile preview",
