@@ -13,7 +13,7 @@ type Props = {
 
 export const RallyInviteCard: React.FC<Props> = ({ invite, busy, onAccept, onDecline }) => (
   <View style={styles.card}>
-    <SportIcon sport={invite.sport_type} size="md" style={styles.icon} />
+    <SportIcon sport={invite.sport_type} size="md" variant="plain" />
     <View style={styles.body}>
       <Text style={styles.eyebrow}>Rally invite</Text>
       <Text style={styles.title} numberOfLines={2}>
@@ -54,9 +54,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
-  },
-  icon: {
-    backgroundColor: colors.primaryLight,
   },
   body: {
     flex: 1,

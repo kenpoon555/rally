@@ -89,6 +89,8 @@ function isExpectedPushTokenFailure(error: unknown): boolean {
   );
 }
 
+const ANDROID_DEFAULT_CHANNEL_ID = 'rally_default';
+
 /**
  * Get device token (FCM). Returns null on simulator / missing APNs — not a fatal app error.
  */
@@ -101,7 +103,21 @@ export const getDeviceToken = async (): Promise<string | null> => {
   }
 
   try {
+    if (Platform.OS === 'ios') {
+      const isRegistered = messaging().isDeviceRegisteredForRemoteMessages;
+      if (!isRegistered) {
+        await messaging().registerDeviceForRemoteMessages();
+      }
+    }
+
+    if (Platform.OS === 'android') {
+      await messaging().setAutoInitEnabled(true);
+    }
+
     const token = await messaging().getToken();
+    if (__DEV__ && token) {
+      console.log('FCM token registered for push');
+    }
     return token;
   } catch (error) {
     // console.error triggers a red LogBox toast; simulator lacks APNs/FCM.
@@ -222,6 +238,8 @@ export const registerBackgroundNotificationHandler = (): void => {
   });
 };
 
+export { ANDROID_DEFAULT_CHANNEL_ID };
+
 /**
  * Initialize push notifications for a signed-in user.
  * Returns a cleanup function that unsubscribes token refresh listener.
@@ -242,6 +260,8 @@ export const initializeNotificationsForUser = async (
     const token = await getDeviceToken();
     if (token) {
       await registerDeviceToken(userId, token);
+    } else if (__DEV__) {
+      console.warn('Push token missing — background notifications will not work on this device.');
     }
 
     // Only subscribe to token refresh if we have messaging (avoids native crash on Android when Firebase is not fully configured).

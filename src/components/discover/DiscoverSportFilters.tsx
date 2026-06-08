@@ -1,9 +1,8 @@
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { getSportMetadata } from '../../constants/sports';
 import { colors, spacing } from '../../constants/theme';
-import { getSportIconName } from '../SportIcon';
+import { SportFilterIconItem } from './SportFilterIconItem';
 
 export interface DiscoverSportFilterSport {
   id: string;
@@ -22,40 +21,6 @@ export interface DiscoverSportFiltersProps {
 
 const ICON_RING = 52;
 const ICON_GLYPH = 26;
-
-function filterLabel(sport: string): string {
-  const meta = getSportMetadata(sport);
-  return meta?.shortLabel ?? sport;
-}
-
-type FilterItemProps = {
-  sport: string;
-  selected: boolean;
-  onPress: () => void;
-};
-
-const PlaySportFilterItem: React.FC<FilterItemProps> = ({ sport, selected, onPress }) => {
-  const label = filterLabel(sport);
-  const iconName = getSportIconName(sport);
-  const iconColor = selected ? colors.primary : colors.text;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-      accessibilityRole="button"
-      accessibilityState={{ selected }}
-      accessibilityLabel={`${label} filter`}
-    >
-      <View style={[styles.iconRing, selected && styles.iconRingSelected]}>
-        <MaterialCommunityIcons name={iconName} size={ICON_GLYPH} color={iconColor} />
-      </View>
-      <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-};
 
 type MoreItemProps = {
   label: string;
@@ -104,7 +69,7 @@ export const DiscoverSportFilters: React.FC<DiscoverSportFiltersProps> = ({
       contentContainerStyle={styles.row}
     >
       {sports.map((sport) => (
-        <PlaySportFilterItem
+        <SportFilterIconItem
           key={sport.id}
           sport={sport.name}
           selected={selectedSport === sport.name}

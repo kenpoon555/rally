@@ -17,7 +17,13 @@
       "bundleIdentifier": "com.rallyapp",
       "supportsTablet": false,
       "icon": "./assets/branding/icon-1024.png",
-      "buildNumber": "2"
+      "buildNumber": "5",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "aps-environment": "production"
+      }
     },
     "android": {
       "package": "app.rally.sports",
@@ -26,7 +32,8 @@
         "foregroundImage": "./assets/branding/icon-android-foreground.png",
         "backgroundColor": "#F5F4F0"
       },
-      "versionCode": 2
+      "softwareKeyboardLayoutMode": "resize",
+      "versionCode": 5
     },
     "extra": {
       "eas": {

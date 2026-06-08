@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
+  Share,
   StyleSheet,
   Text,
   View,
@@ -22,29 +21,35 @@ import { activityFromSessionCard } from '../../utils/sessionCardHelpers';
 import { getTournamentsForGroup } from '../../services/miniTournamentService';
 import { RegularGroup } from '../../types/regularGroup';
 import { MiniTournament } from '../../types/miniTournament';
-import { ROUTES } from '../../constants/routes';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ensureCrewConversation } from '../../services/chatService';
+import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
 import { updateRegularGroupName } from '../../services/regularGroupService';
 import { RallyTabBar, RallyHubTab } from '../../components/rally/RallyTabBar';
 import { RallyHubHeader } from '../../components/rally/RallyHubHeader';
 import { InviteFriendsToRallySheet } from '../../components/rally/InviteFriendsToRallySheet';
-import { RallyNextGameCard } from '../../components/rally/RallyNextGameCard';
+import { countPlayTabActions } from '../../utils/playTabActions';
 import { RallyChatPanel } from '../../components/rally/RallyChatPanel';
 import { RallyPlayPanel } from '../../components/rally/RallyPlayPanel';
 import { RallyCrewPanel } from '../../components/rally/RallyCrewPanel';
+import { KeyboardSafeView } from '../../components/ui';
 import { colors, spacing } from '../../constants/theme';
 
 export type RegularsCrewStackParams = {
-  RegularsCrew: { groupId: string };
+  RegularsCrew: {
+    groupId: string;
+    initialTab?: RallyHubTab;
+    promptShareInvite?: boolean;
+  };
 };
 
 type Props = NativeStackScreenProps<RegularsCrewStackParams, 'RegularsCrew'>;
 
 const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { groupId } = route.params;
+  const { groupId, initialTab, promptShareInvite } = route.params;
   const { user } = useAuth();
-  const [tab, setTab] = useState<RallyHubTab>('chat');
+  const [tab, setTab] = useState<RallyHubTab>(initialTab ?? 'chat');
+  const sharePromptHandled = useRef(false);
   const [group, setGroup] = useState<RegularGroup | null>(null);
   const [members, setMembers] = useState<RegularGroupMemberRow[]>([]);
   const [tournaments, setTournaments] = useState<MiniTournament[]>([]);
@@ -56,13 +61,17 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   const [chatError, setChatError] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteRefreshToken, setInviteRefreshToken] = useState(0);
 
   const activities = useMemo(
     () => sessionCards.map((card) => activityFromSessionCard(card)),
     [sessionCards]
   );
-  const upcoming = activities.filter((a) => a.status === 'active');
-  const nextActivity = upcoming[0] ?? null;
+
+  const playActionCount = useMemo(
+    () => countPlayTabActions(sessionCards),
+    [sessionCards]
+  );
 
   const bootstrapChat = useCallback(async () => {
     setChatLoading(true);
@@ -120,32 +129,33 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   useEffect(() => {
+    if (initialTab) {
+      setTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    if (!promptShareInvite || !group?.invite_token || sharePromptHandled.current) {
+      return;
+    }
+    sharePromptHandled.current = true;
+    navigation.setParams({ promptShareInvite: false } as never);
+    void Share.share({
+      message: `Join our ${group.sport_type} Rally "${group.name}" on Rally — one tap to get in: ${buildRegularGroupInviteUrl(group.invite_token)}`,
+    });
+  }, [group, navigation, promptShareInvite]);
+
+  useEffect(() => {
     navigation.setOptions({
       headerShown: false,
     });
   }, [navigation]);
 
-  const openGameRoom = useCallback(
-    async (activityId: string) => {
-      try {
-        const convoId = conversationId ?? (await ensureCrewConversation(groupId));
-        navigation.navigate(ROUTES.CHAT.THREAD as never, {
-          conversationId: convoId,
-          title: group?.name ? PRODUCT_COPY.rallyChatTitle(group.name) : PRODUCT_COPY.rallyChat,
-          activityId,
-          groupId,
-        } as never);
-      } catch (error: unknown) {
-        Alert.alert(
-          'Chat unavailable',
-          error instanceof Error ? error.message : 'Could not open game room.'
-        );
-      }
-    },
-    [conversationId, group?.name, groupId, navigation]
-  );
-
   const isHost = group?.host_id === user?.id;
+  const isMember = useMemo(
+    () => Boolean(isHost || members.some((member) => member.user_id === user?.id)),
+    [isHost, members, user?.id]
+  );
 
   const handleRename = useCallback(
     async (name: string) => {
@@ -182,11 +192,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
+    <KeyboardSafeView style={styles.container}>
       <RallyHubHeader
         group={group}
         members={members}
@@ -201,18 +207,13 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
         group={group}
         members={members}
         onClose={() => setInviteOpen(false)}
-        onInvited={() => void load()}
+        onInvited={() => {
+          void load();
+          setInviteRefreshToken((n) => n + 1);
+        }}
       />
 
-      {nextActivity && tab === 'chat' ? (
-        <RallyNextGameCard
-          activity={nextActivity}
-          onPress={() => setTab('play')}
-          onOpenGameRoom={() => void openGameRoom(nextActivity.id)}
-        />
-      ) : null}
-
-      <RallyTabBar active={tab} onChange={setTab} />
+      <RallyTabBar active={tab} onChange={setTab} playActionCount={playActionCount} />
 
       {tab === 'chat' ? (
         <RallyChatPanel
@@ -222,6 +223,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
           chatError={chatError}
           chatLoading={chatLoading}
           onRetryChat={() => void bootstrapChat()}
+          onGoToPlay={() => setTab('play')}
           navigation={navigation}
         />
       ) : null}
@@ -232,15 +234,15 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
           sessionCards={sessionCards}
           tournaments={tournaments}
           isHost={Boolean(isHost)}
+          isMember={Boolean(isMember)}
           busyActivityId={busyActivityId}
           setBusyActivityId={setBusyActivityId}
           onReload={refreshAll}
           navigation={navigation}
-          onOpenGameRoom={(activityId) => void openGameRoom(activityId)}
         />
       ) : null}
 
-      {tab === 'crew' ? (
+      {tab === 'members' ? (
         <RallyCrewPanel
           group={group}
           groupId={groupId}
@@ -249,10 +251,10 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
           viewerId={user?.id}
           isHost={Boolean(isHost)}
           onReload={refreshAll}
-          onInviteFriends={() => setInviteOpen(true)}
+          inviteRefreshToken={inviteRefreshToken}
         />
       ) : null}
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 };
 

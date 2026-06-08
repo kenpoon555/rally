@@ -46,11 +46,6 @@ export const RallyHubHeader: React.FC<Props> = ({
     }
   }, [group.name, editing]);
 
-  const memberPreview = members
-    .slice(0, 3)
-    .map((m) => m.user?.username?.replace(/^@/, '') ?? 'player')
-    .join(' · ');
-
   const startEditing = () => {
     setDraft(group.name);
     setEditing(true);
@@ -114,7 +109,7 @@ export const RallyHubHeader: React.FC<Props> = ({
         )}
       </View>
       <View style={styles.row}>
-        <SportIcon sport={group.sport_type} size="lg" style={styles.icon} />
+        <SportIcon sport={group.sport_type} size="lg" variant="plain" />
         <View style={styles.body}>
           {editing && canEdit ? (
             <View style={styles.nameEditRow}>
@@ -151,14 +146,8 @@ export const RallyHubHeader: React.FC<Props> = ({
             </Text>
           )}
           <Text style={styles.meta}>
-            {group.sport_type} · {members.length} player{members.length === 1 ? '' : 's'}
+            {group.sport_type} · {members.length} member{members.length === 1 ? '' : 's'}
           </Text>
-          {memberPreview ? (
-            <Text style={styles.members} numberOfLines={1}>
-              {memberPreview}
-              {members.length > 3 ? ` +${members.length - 3}` : ''}
-            </Text>
-          ) : null}
         </View>
       </View>
     </View>
@@ -193,9 +182,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-  },
-  icon: {
-    backgroundColor: colors.primaryLight,
   },
   body: {
     flex: 1,
@@ -245,11 +231,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginTop: 2,
-  },
-  members: {
-    ...typography.caption,
-    color: colors.textTertiary,
-    marginTop: 4,
   },
   shareBtn: {
     width: 40,

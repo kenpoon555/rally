@@ -40,7 +40,7 @@ import { RegularGroup } from '../../types/regularGroup';
 import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { BetaMarketBanner } from '../../components/home/BetaMarketBanner';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { Button, ScreenHeader } from '../../components/ui';
+import { Button, KeyboardSafeView, ScreenHeader, keyboardAwareScrollProps } from '../../components/ui';
 import { ProfileTabBar, ProfileTab } from '../../components/profile/ProfileTabBar';
 import { ProfileSettingsRow } from '../../components/profile/ProfileSettingsRow';
 import { ProfileLinkCard } from '../../components/profile/ProfileLinkCard';
@@ -443,7 +443,7 @@ const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardSafeView style={styles.container}>
       <ScreenHeader
         title="You"
         subtitle={
@@ -457,7 +457,7 @@ const ProfileScreen: React.FC = () => {
         accentColor={colors.primaryDark}
       />
       <ProfileTabBar active={profileTab} onChange={setProfileTab} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
       {profileTab === 'me' ? (
       <>
       <View style={styles.heroCard}>
@@ -1425,7 +1425,7 @@ const ProfileScreen: React.FC = () => {
         </View>
       </Modal>
       </ScrollView>
-    </View>
+    </KeyboardSafeView>
   );
 };
 

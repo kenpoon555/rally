@@ -1,19 +1,10 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { submitProductFeedback } from '../../services/feedbackService';
-import { Button } from '../../components/ui';
+import { Button, KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
 import { colors, spacing, typography } from '../../constants/theme';
 
 type MainStackParamList = {
@@ -46,14 +37,11 @@ const BetaFeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <KeyboardSafeView style={styles.flex}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
+        {...keyboardAwareScrollProps}
       >
         <Text style={styles.title}>{PRODUCT_COPY.feedbackTitle}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.feedbackHint}</Text>
@@ -80,7 +68,7 @@ const BetaFeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
           loading={sending}
         />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 };
 

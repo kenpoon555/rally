@@ -5,12 +5,17 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RegularGroup } from '../../types/regularGroup';
-import { RegularGroupMemberRow } from '../../services/regularGroupService';
+import {
+  listRegularGroupOutgoingInvites,
+  RegularGroupMemberRow,
+} from '../../services/regularGroupService';
 import { Activity } from '../../types/activity';
+import { RallyOutgoingInvite } from '../../types/rallyInvite';
 import { RallyLeaderboardPanel } from '../RallyLeaderboardPanel';
 import { VenueBlock } from '../VenueBlock';
 import { PartnerRallyBadge } from '../PartnerRallyBadge';
@@ -33,7 +38,7 @@ type Props = {
   viewerId?: string;
   isHost: boolean;
   onReload: () => Promise<void>;
-  onInviteFriends: () => void;
+  inviteRefreshToken?: number;
 };
 
 type StatPill = {
@@ -43,6 +48,9 @@ type StatPill = {
   tint: string;
 };
 
+const MEMBERS_PREVIEW = 6;
+const INVITES_PREVIEW = 3;
+
 export const RallyCrewPanel: React.FC<Props> = ({
   group,
   groupId,
@@ -51,13 +59,17 @@ export const RallyCrewPanel: React.FC<Props> = ({
   viewerId,
   isHost,
   onReload,
-  onInviteFriends,
+  inviteRefreshToken = 0,
 }) => {
   const [attendanceStats, setAttendanceStats] = useState<UserAttendanceStats | null>(null);
   const [viewerStreak, setViewerStreak] = useState(0);
   const [viewerRank, setViewerRank] = useState<number | null>(null);
   const [viewerTourneyWins, setViewerTourneyWins] = useState(0);
   const [loadingViewer, setLoadingViewer] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<RallyOutgoingInvite[]>([]);
+  const [loadingInvites, setLoadingInvites] = useState(false);
+  const [membersExpanded, setMembersExpanded] = useState(false);
+  const [invitesExpanded, setInvitesExpanded] = useState(false);
 
   const upcoming = activities.filter((a) => a.status === 'active');
   const currentActivity = upcoming[0];
@@ -65,6 +77,18 @@ export const RallyCrewPanel: React.FC<Props> = ({
     currentActivity?.location_id ??
     activities.find((a) => a.location_id)?.location_id ??
     null;
+
+  const loadPendingInvites = useCallback(async () => {
+    setLoadingInvites(true);
+    try {
+      const rows = await listRegularGroupOutgoingInvites(groupId);
+      setPendingInvites(rows.filter((row) => row.status === 'pending'));
+    } catch {
+      setPendingInvites([]);
+    } finally {
+      setLoadingInvites(false);
+    }
+  }, [groupId]);
 
   const loadViewerStats = useCallback(async () => {
     if (!viewerId) {
@@ -95,6 +119,10 @@ export const RallyCrewPanel: React.FC<Props> = ({
     void loadViewerStats();
   }, [loadViewerStats]);
 
+  useEffect(() => {
+    void loadPendingInvites();
+  }, [loadPendingInvites, inviteRefreshToken]);
+
   const statPills = useMemo((): StatPill[] => {
     const reliability = formatReliabilityLabel(attendanceStats);
     const streak =
@@ -111,6 +139,22 @@ export const RallyCrewPanel: React.FC<Props> = ({
       { icon: 'medal-outline', label: 'Tourney wins', value: wins, tint: colors.infoSoft },
     ];
   }, [attendanceStats, viewerRank, viewerStreak, viewerTourneyWins]);
+
+  const visibleMembers = useMemo(
+    () =>
+      membersExpanded || members.length <= MEMBERS_PREVIEW
+        ? members
+        : members.slice(0, MEMBERS_PREVIEW),
+    [members, membersExpanded]
+  );
+
+  const visibleInvites = useMemo(
+    () =>
+      invitesExpanded || pendingInvites.length <= INVITES_PREVIEW
+        ? pendingInvites
+        : pendingInvites.slice(0, INVITES_PREVIEW),
+    [invitesExpanded, pendingInvites]
+  );
 
   const setDefaultCourt = async () => {
     if (!latestLocationId) {
@@ -153,11 +197,81 @@ export const RallyCrewPanel: React.FC<Props> = ({
 
       <RallyLeaderboardPanel groupId={groupId} viewerId={viewerId} />
 
-      <Text style={styles.sectionTitle}>Grow the crew</Text>
-      <View style={styles.card}>
-        <Text style={styles.hint}>{PRODUCT_COPY.shareRallyInviteHint}</Text>
-        <Button title={PRODUCT_COPY.inviteFriendsToRally} size="sm" onPress={onInviteFriends} />
+      <Text style={styles.sectionTitle}>Players ({members.length})</Text>
+      <View style={styles.memberList}>
+        {visibleMembers.map((member, index) => (
+          <View
+            key={member.user_id}
+            style={[
+              styles.memberRow,
+              index === visibleMembers.length - 1 && styles.memberRowLast,
+            ]}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(member.user?.username?.[0] ?? 'P').toUpperCase()}
+              </Text>
+            </View>
+            <View style={styles.memberBody}>
+              <Text style={styles.memberName}>@{member.user?.username ?? 'player'}</Text>
+              <Text style={styles.memberRole}>{member.role}</Text>
+            </View>
+          </View>
+        ))}
       </View>
+      {members.length > MEMBERS_PREVIEW ? (
+        <TouchableOpacity
+          style={styles.foldToggle}
+          onPress={() => setMembersExpanded((value) => !value)}
+        >
+          <Text style={styles.foldToggleText}>
+            {membersExpanded
+              ? 'Show fewer'
+              : `Show all ${members.length} players`}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
+      <Text style={styles.sectionTitle}>{PRODUCT_COPY.rallyPendingInvites}</Text>
+      {loadingInvites ? (
+        <ActivityIndicator size="small" color={colors.primary} style={styles.loader} />
+      ) : pendingInvites.length === 0 ? (
+        <Text style={styles.hint}>{PRODUCT_COPY.rallyPendingInvitesEmpty}</Text>
+      ) : (
+        <>
+          <View style={styles.memberList}>
+            {visibleInvites.map((invite, index) => (
+              <View
+                key={invite.id}
+                style={[
+                  styles.memberRow,
+                  index === visibleInvites.length - 1 && styles.memberRowLast,
+                ]}
+              >
+                <View style={[styles.avatar, styles.avatarPending]}>
+                  <Ionicons name="mail-outline" size={16} color={colors.primaryDark} />
+                </View>
+                <View style={styles.memberBody}>
+                  <Text style={styles.memberName}>@{invite.invited_username}</Text>
+                  <Text style={styles.memberRole}>Invite sent · waiting</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+          {pendingInvites.length > INVITES_PREVIEW ? (
+            <TouchableOpacity
+              style={styles.foldToggle}
+              onPress={() => setInvitesExpanded((value) => !value)}
+            >
+              <Text style={styles.foldToggleText}>
+                {invitesExpanded
+                  ? 'Show fewer'
+                  : `Show all ${pendingInvites.length} invites`}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </>
+      )}
 
       {group.default_location_id || (isHost && latestLocationId) ? (
         <>
@@ -186,26 +300,6 @@ export const RallyCrewPanel: React.FC<Props> = ({
           </View>
         </>
       ) : null}
-
-      <Text style={styles.sectionTitle}>Players ({members.length})</Text>
-      <View style={styles.memberList}>
-        {members.map((member, index) => (
-          <View
-            key={member.user_id}
-            style={[styles.memberRow, index === members.length - 1 && styles.memberRowLast]}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(member.user?.username?.[0] ?? 'P').toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.memberBody}>
-              <Text style={styles.memberName}>@{member.user?.username ?? 'player'}</Text>
-              <Text style={styles.memberRole}>{member.role}</Text>
-            </View>
-          </View>
-        ))}
-      </View>
     </ScrollView>
   );
 };
@@ -299,6 +393,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarPending: {
+    backgroundColor: colors.infoSoft,
+  },
   avatarText: {
     ...typography.bodyMedium,
     color: colors.primaryDark,
@@ -315,5 +412,16 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textTertiary,
     textTransform: 'capitalize',
+  },
+  foldToggle: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs,
+  },
+  foldToggleText: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.primary,
   },
 });

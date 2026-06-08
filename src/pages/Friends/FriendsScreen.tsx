@@ -26,7 +26,15 @@ import { useFocusEffect, useRoute, type RouteProp } from '@react-navigation/nati
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ROUTES } from '../../constants/routes';
 import { getOrCreateDirectConversation } from '../../services/chatService';
-import { Avatar, Button, Chip, EmptyState, ScreenHeader, TextField } from '../../components/ui';
+import {
+  Avatar,
+  Button,
+  Chip,
+  EmptyState,
+  KeyboardSafeView,
+  ScreenHeader,
+  TextField,
+} from '../../components/ui';
 import { colors, radius, spacing } from '../../constants/theme';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
 import { PlayerTrustLine } from '../../components/PlayerTrustLine';
@@ -224,7 +232,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <KeyboardSafeView style={styles.container}>
       <ScreenHeader title="Friends" subtitle={headerSubtitle} />
 
       <View style={styles.tabs}>
@@ -398,6 +406,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
           <FlatList
             data={searchResults}
             keyExtractor={(item) => item.id}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <View style={styles.searchItem}>
                 <TouchableOpacity
@@ -479,7 +488,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
             : undefined
         }
       />
-    </View>
+    </KeyboardSafeView>
   );
 };
 

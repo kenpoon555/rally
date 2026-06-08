@@ -13,7 +13,7 @@ type Props = {
 
 export const RallyRowCard: React.FC<Props> = ({ group, memberCount, onPress }) => (
   <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-    <SportIcon sport={group.sport_type} size="md" style={styles.icon} />
+    <SportIcon sport={group.sport_type} size="md" variant="plain" />
     <View style={styles.main}>
       <Text style={styles.name} numberOfLines={1}>
         {group.name}
@@ -40,9 +40,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     gap: spacing.sm,
-  },
-  icon: {
-    backgroundColor: colors.primaryLight,
   },
   main: {
     flex: 1,

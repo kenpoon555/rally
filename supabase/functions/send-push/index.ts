@@ -52,9 +52,29 @@ async function sendFcmLegacy(
     },
     body: JSON.stringify({
       to: token,
-      notification: { title, body },
+      notification: { title, body, sound: 'default' },
       data,
       priority: 'high',
+      content_available: true,
+      apns: {
+        headers: {
+          'apns-priority': '10',
+        },
+        payload: {
+          aps: {
+            alert: { title, body },
+            sound: 'default',
+            'content-available': 1,
+          },
+        },
+      },
+      android: {
+        priority: 'high',
+        notification: {
+          channel_id: 'rally_default',
+          sound: 'default',
+        },
+      },
     }),
   });
 
