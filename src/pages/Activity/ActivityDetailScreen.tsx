@@ -7,7 +7,6 @@ import {
   Alert,
   TextInput,
   ScrollView,
-  Share,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -92,7 +91,6 @@ import {
 } from '../../components/game/GameCardIconActionBar';
 import { GameCardSection, gameCardPanelStyles } from '../../components/game/GameCardSection';
 import { JoinRequestsSheet } from '../../components/game/JoinRequestsSheet';
-import { Ionicons } from '@expo/vector-icons';
 
 type MainStackParamList = {
   MainTabs: undefined;

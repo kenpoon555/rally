@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { Alert } from 'react-native';
-import { PRODUCT_COPY } from '../constants/productCopy';
 import {
   confirmUndoImIn,
   joinCrewGameWithFeedback,
@@ -90,14 +89,9 @@ export function createGameCardSessionActions({
 }
 
 export function useGameCardSessionActions(options: Options): GameCardSessionActionHandlers {
+  const { activityId, isHost, canNudge, setBusyActivityId, onReload } = options;
   return useMemo(
-    () => createGameCardSessionActions(options),
-    [
-      options.activityId,
-      options.isHost,
-      options.canNudge,
-      options.onReload,
-      options.setBusyActivityId,
-    ]
+    () => createGameCardSessionActions({ activityId, isHost, canNudge, setBusyActivityId, onReload }),
+    [activityId, isHost, canNudge, setBusyActivityId, onReload]
   );
 }

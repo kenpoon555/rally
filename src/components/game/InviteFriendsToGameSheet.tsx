@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Modal,
-  Share,
   StyleSheet,
   Text,
   TextInput,

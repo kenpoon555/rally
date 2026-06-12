@@ -1,6 +1,5 @@
 import { LinkingOptions } from '@react-navigation/native';
 import { ROUTES } from '../constants/routes';
-import { getSupabaseFunctionsBaseUrl } from '../constants/appLinks';
 
 export const APP_SCHEME = 'rallyapp';
 

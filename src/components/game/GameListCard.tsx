@@ -11,7 +11,6 @@ import { Activity } from '../../types/activity';
 import { activityCourtName, activityGameName } from '../../constants/playIntent';
 import {
   formatDistance,
-  getActivityRosterSummary,
   getDistanceToActivity,
   getGameListSpotsBadgeLabel,
   isTonightUrgency,
@@ -79,11 +78,6 @@ export function formatGameCardDistance(
 
 export { RosterSeatBar, RosterFillBadge, GameListSpotsMeter } from './RosterSeatBar';
 
-function resolveSpots(activity: Activity, rosterCount?: number) {
-  const summary = getActivityRosterSummary(activity);
-  return rosterCount ?? summary.onRoster;
-}
-
 const GameListCardComponent: React.FC<GameListCardProps> = ({
   activity,
   userLocation,
@@ -92,7 +86,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
   onPress,
   disabled,
   busy,
-  rosterCount,
+  rosterCount: _rosterCount,
   capacityCount: _capacityCount,
   openSpots: _openSpots,
   showChevron = true,

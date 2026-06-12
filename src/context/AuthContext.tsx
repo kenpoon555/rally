@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { Linking, Platform, Alert } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { User } from '../types/user';

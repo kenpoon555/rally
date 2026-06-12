@@ -153,13 +153,6 @@ const ProfileScreen: React.FC = () => {
     setPreferredPayment(user?.preferred_payment ?? null);
   }, [user?.payment_note, user?.preferred_payment]);
 
-  const usernamePreview = useMemo(() => {
-    if (nickname.trim()) {
-      return nickname.trim();
-    }
-    return user?.username || 'Player';
-  }, [nickname, user?.username]);
-
   const trustHeroLine = useMemo(() => {
     const count = reviewStats?.review_count || 0;
     if (typeof reviewStats?.visible_score === 'number') {
