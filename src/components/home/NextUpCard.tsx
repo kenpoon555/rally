@@ -13,7 +13,7 @@ import { MyGameEntry } from '../../services/activityService';
 import { RegularGroup } from '../../types/regularGroup';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
 import { GameListCard, gameListCardVariantForActivity } from '../game/GameListCard';
-import { TodaySectionDotLabel } from './TodayGameMapCard';
+import { TodaySectionDotLabel } from './TodaySectionDotLabel';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
 import type { HostLockReadiness } from '../../utils/activityHelpers';
 

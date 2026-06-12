@@ -5,7 +5,6 @@ import {
   Keyboard,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -48,7 +47,7 @@ import {
 } from '../../components/ui';
 import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
 import { createActivity } from '../../services/activityService';
-import { buildHostGameInviteMessage } from '../../services/inviteLinkService';
+import { shareGameInvite } from '../../services/inviteLinkService';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
 import {
   getAllActivityLocations,
@@ -582,9 +581,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       // Don't make the host hunt for the share button — open the invite sheet right away.
       if (created.invite_token) {
         try {
-          await Share.share({
-            message: buildHostGameInviteMessage(created),
-          });
+          await shareGameInvite(created, { asHost: true });
           void setOnboardingFlag(ONBOARDING_FLAGS.COACH_SHARE_SHOWN);
         } catch {
           // Host dismissed the share sheet; the link is still on the Details screen.

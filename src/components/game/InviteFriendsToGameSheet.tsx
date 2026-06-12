@@ -27,10 +27,7 @@ import { GameFriendOutgoingInvite } from '../../types/gameFriendInvite';
 import { Avatar, KeyboardSafeView } from '../ui';
 import { getSportIconName } from '../SportIcon';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import {
-  buildGameShareMessage,
-  buildHostGameInviteMessage,
-} from '../../services/inviteLinkService';
+import { shareGameInvite } from '../../services/inviteLinkService';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
 type Props = {
@@ -146,10 +143,7 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
   };
 
   const shareLink = async () => {
-    const message = isHost
-      ? buildHostGameInviteMessage(activity)
-      : buildGameShareMessage(activity);
-    await Share.share({ message });
+    await shareGameInvite(activity, { asHost: isHost });
   };
 
   const isHost = user?.id === activity.user_id;

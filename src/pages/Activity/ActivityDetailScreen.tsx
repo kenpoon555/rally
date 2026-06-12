@@ -44,10 +44,8 @@ import {
   getTournamentsForGroup,
 } from '../../services/miniTournamentService';
 import { MiniTournament } from '../../types/miniTournament';
-import {
-  buildGameShareMessage,
-  buildHostGameInviteMessage,
-} from '../../services/inviteLinkService';
+import { detailPresetForActivity, shareModeForViewer } from '../../config/gameCardLayouts';
+import { shareGameInvite } from '../../services/inviteLinkService';
 import { RegularGroup } from '../../types/regularGroup';
 import { PlayerReviewForm } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
@@ -634,10 +632,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     try {
-      const message = isHost
-        ? buildHostGameInviteMessage(activity)
-        : buildGameShareMessage(activity);
-      await Share.share({ message });
+      const preset = detailPresetForActivity(activity);
+      const shareMode = shareModeForViewer(preset, { isHost: Boolean(isHost) });
+      await shareGameInvite(activity, { asHost: shareMode === 'host' });
     } catch {
       // User dismissed share sheet.
     }

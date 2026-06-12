@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SessionCardPayload } from '../../types/sessionCard';
@@ -7,16 +7,10 @@ import { activityFromSessionCard } from '../../utils/sessionCardHelpers';
 import { Activity } from '../../types/activity';
 import { RegularGroup } from '../../types/regularGroup';
 import { MiniTournament } from '../../types/miniTournament';
-import { CrewGameSessionCard } from '../CrewGameSessionCard';
+import { RallySessionCard } from './RallySessionCard';
 import { Button } from '../ui';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ROUTES } from '../../constants/routes';
-import { joinCrewGame } from '../../services/regularGroupService';
-import {
-  finalizeGameCommitment,
-  nudgeSessionRoster,
-  setGameReady,
-} from '../../services/activityService';
 import { getCompletedTournamentWinners } from '../../services/miniTournamentService';
 import { sportSupportsMiniTournament } from '../../constants/sports';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -159,106 +153,18 @@ export const RallyPlayPanel: React.FC<Props> = ({
     navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
   };
 
-  const renderSessionCard = (card: SessionCardPayload, activity: Activity, isCurrent: boolean) => {
-    const viewer = card.viewer;
-    return (
-      <CrewGameSessionCard
-        key={card.activity_id}
-        activity={activity}
-        variant="rally"
-        isCurrent={isCurrent}
-        showActions={viewer.show_actions}
-        isHost={viewer.is_host}
-        isOnRoster={viewer.is_on_roster}
-        isReady={viewer.is_ready}
-        isFinalized={viewer.is_finalized}
-        isWaitlisted={viewer.is_waitlisted}
-        isFull={viewer.is_full}
-        readyCount={card.ready_count}
-        canLock={viewer.can_lock}
-        lockReadiness={viewer.lock_readiness}
-        waitlistPosition={viewer.waitlist_position}
-        busy={busyActivityId === activity.id}
-        onJoin={async () => {
-          setBusyActivityId(activity.id);
-          try {
-            const result = await joinCrewGame(activity.id);
-            if (result === 'waitlisted') {
-              Alert.alert('Waitlist', 'Game is full. You are on the waitlist if a spot opens.');
-            }
-            await onReload();
-          } catch (e: unknown) {
-            Alert.alert('Join failed', e instanceof Error ? e.message : 'Try again.');
-          } finally {
-            setBusyActivityId(null);
-          }
-        }}
-        onConfirmIn={async () => {
-          setBusyActivityId(activity.id);
-          try {
-            await setGameReady(activity.id, true);
-            await onReload();
-          } finally {
-            setBusyActivityId(null);
-          }
-        }}
-        onUndoImIn={
-          viewer.is_host
-            ? undefined
-            : () => {
-                Alert.alert(PRODUCT_COPY.undoImInTitle, PRODUCT_COPY.undoImInBody, [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: PRODUCT_COPY.undoImIn,
-                    style: 'destructive',
-                    onPress: () => {
-                      setBusyActivityId(activity.id);
-                      void (async () => {
-                        try {
-                          await setGameReady(activity.id, false);
-                          await onReload();
-                        } catch (e: unknown) {
-                          Alert.alert(
-                            "Couldn't save",
-                            e instanceof Error ? e.message : 'Try again.'
-                          );
-                        } finally {
-                          setBusyActivityId(null);
-                        }
-                      })();
-                    },
-                  },
-                ]);
-              }
-        }
-        onLockRoster={async () => {
-          setBusyActivityId(activity.id);
-          try {
-            await finalizeGameCommitment(activity.id);
-            await onReload();
-          } finally {
-            setBusyActivityId(null);
-          }
-        }}
-        showNudge={viewer.can_nudge}
-        onNudge={async () => {
-          setBusyActivityId(activity.id);
-          try {
-            const count = await nudgeSessionRoster(activity.id);
-            Alert.alert(
-              PRODUCT_COPY.nudgeRosterSent,
-              `Reminder sent to ${count} player${count === 1 ? '' : 's'}.`
-            );
-          } catch (e: unknown) {
-            Alert.alert('Could not nudge', e instanceof Error ? e.message : 'Try again.');
-          } finally {
-            setBusyActivityId(null);
-          }
-        }}
-        onOpenDetails={() => openActivityDetail(activity.id)}
-      />
-    );
-  };
+  const renderSessionCard = (card: SessionCardPayload, activity: Activity, isCurrent: boolean) => (
+    <RallySessionCard
+      key={card.activity_id}
+      card={card}
+      activity={activity}
+      isCurrent={isCurrent}
+      busyActivityId={busyActivityId}
+      setBusyActivityId={setBusyActivityId}
+      onReload={onReload}
+      onOpenDetails={openActivityDetail}
+    />
+  );
 
   const renderCreateGameCta = () => {
     if (!isMember) {

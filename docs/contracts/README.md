@@ -10,6 +10,8 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 |----------|------|-----------------|
 | [flow-invite-to-rally.md](./flow-invite-to-rally.md) | **A** | Friend taps link → installs → signs in → lands in Rally |
 | [flow-rally-session.md](./flow-rally-session.md) | **B** | Sees game → I'm in → host locks roster |
+| [module-game-card.md](./module-game-card.md) | **Module** | Config-driven presets; no duplicated session actions |
+| [module-invite-link.md](./module-invite-link.md) | **Module** | Host vs public URLs; landing + deep link routing |
 
 ## How to validate
 
@@ -58,12 +60,15 @@ See [beta-testflight-play-internal.md](../beta-testflight-play-internal.md).
 
 | URL pattern | Purpose |
 |-------------|---------|
+| `…/functions/v1/game-invite?activity={id}` | **Public game** — HTTPS landing → game card → request |
+| `…/functions/v1/game-invite?token={token}&host=1` | **Host game** — HTTPS landing → auto-join |
 | `rallyapp://group-invite/{token}` | Join Rally (+ next game when scheduled) |
-| `rallyapp://invite/{token}` | Join public pickup game |
-| `rallyapp://game/{activityId}` | Open game detail |
+| `rallyapp://host-invite/{token}` | Host game invite (auto-join) |
+| `rallyapp://game/{activityId}` | Open game detail (request flow) |
+| `rallyapp://invite/{token}` | Legacy view-only invite |
 | `rallyapp://auth/callback?...` | Magic link / OAuth return |
 
-Build URLs via `src/navigation/deepLinking.ts` (`buildRegularGroupInviteUrl`, `buildGameInviteUrl`).
+Build game URLs via `src/services/inviteLinkService.ts`. Rally scheme URLs via `buildRallyGroupInviteUrl()` in the same module.
 
 ### Screenshot output
 
