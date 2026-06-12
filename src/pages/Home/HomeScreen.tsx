@@ -10,7 +10,9 @@ import {
   ActivityIndicator,
   Platform,
   Alert,
+  TouchableOpacity,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
 import { useActivities } from '../../hooks/useActivities';
@@ -370,6 +372,20 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
+  const headerRight =
+    discoverMode === 'games' ? (
+      <TouchableOpacity
+        style={styles.hostHeaderBtn}
+        onPress={openCreateGame}
+        activeOpacity={0.85}
+        accessibilityRole="button"
+        accessibilityLabel={PRODUCT_COPY.createGame}
+      >
+        <Ionicons name="add" size={18} color={colors.onPrimary} />
+        <Text style={styles.hostHeaderBtnText}>Host</Text>
+      </TouchableOpacity>
+    ) : null;
+
   const isHostUser = useMemo(
     () => visibleActivities.some((activity) => activity.user_id === user?.id),
     [visibleActivities, user?.id]
@@ -382,7 +398,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           <DevLocationLogPanel onRawTest={runRawLocationTest} />
         </ErrorBoundary>
       )}
-      <ScreenHeader title="Play" subtitle={discoverSubtitle} />
+      <ScreenHeader title="Play" subtitle={discoverSubtitle} right={headerRight} />
 
       <View style={styles.playChrome}>
         <DiscoverSportFilters
@@ -545,6 +561,20 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  hostHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radius.pill,
+  },
+  hostHeaderBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.onPrimary,
   },
   nearbyCourtsLink: {
     marginTop: 6,

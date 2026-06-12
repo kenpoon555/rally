@@ -18,6 +18,7 @@ export type MyGameListCardProps = {
   actionBusy?: boolean;
   onPress: () => void;
   onConfirmIn?: () => void;
+  showStatusSignal?: boolean;
 };
 
 export const MyGameListCard: React.FC<MyGameListCardProps> = ({
@@ -30,6 +31,7 @@ export const MyGameListCard: React.FC<MyGameListCardProps> = ({
   actionBusy,
   onPress,
   onConfirmIn,
+  showStatusSignal = true,
 }) => {
   const { activity, role } = entry;
   const isHost = role === 'host';
@@ -77,6 +79,7 @@ export const MyGameListCard: React.FC<MyGameListCardProps> = ({
       openSpots={spots.openSpots}
       showChevron={!showImInAction}
       trailingAction={trailingAction}
+      showStatusSignal={showStatusSignal}
     />
   );
 };

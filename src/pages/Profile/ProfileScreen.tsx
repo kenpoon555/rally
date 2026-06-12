@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -44,12 +43,20 @@ import { Button, KeyboardSafeView, ScreenHeader, keyboardAwareScrollProps } from
 import { ProfileTabBar, ProfileTab } from '../../components/profile/ProfileTabBar';
 import { ProfileSettingsRow } from '../../components/profile/ProfileSettingsRow';
 import { ProfileLinkCard } from '../../components/profile/ProfileLinkCard';
+import { ProfileScoreCard } from '../../components/profile/ProfileScoreCard';
 import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
 import {
   formatReliabilityLabel,
   getUserAttendanceStats,
+  MyGameEntry,
   UserAttendanceStats,
 } from '../../services/activityService';
+import { fetchCachedMyGames } from '../../services/userDataCache';
+import {
+  buildProfileScorecardStats,
+  formatRallyMemberSince,
+  orderSportsAttended,
+} from '../../utils/profileScorecardHelpers';
 import { setProfilePayment, formatPaymentLabel } from '../../services/paymentService';
 import { PreferredPayment } from '../../types/user';
 import { getMyCaptainStatus, submitCaptainApplication } from '../../services/captainService';
@@ -104,6 +111,7 @@ const ProfileScreen: React.FC = () => {
   const [showSportPicker, setShowSportPicker] = useState(false);
   const [regularGroups, setRegularGroups] = useState<RegularGroup[]>([]);
   const [attendanceStats, setAttendanceStats] = useState<UserAttendanceStats | null>(null);
+  const [myGameEntries, setMyGameEntries] = useState<MyGameEntry[]>([]);
   const [savingTimezone, setSavingTimezone] = useState(false);
   const [paymentNote, setPaymentNote] = useState(user?.payment_note ?? '');
   const [preferredPayment, setPreferredPayment] = useState<PreferredPayment | null>(
@@ -308,6 +316,31 @@ const ProfileScreen: React.FC = () => {
       .catch(() => setAttendanceStats(null));
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setMyGameEntries([]);
+      return;
+    }
+    fetchCachedMyGames(user.id)
+      .then((result) => setMyGameEntries([...result.active, ...result.past]))
+      .catch(() => setMyGameEntries([]));
+  }, [user?.id]);
+
+  const memberSinceLabel = useMemo(
+    () => formatRallyMemberSince(user?.created_at),
+    [user?.created_at]
+  );
+
+  const sportsAttended = useMemo(
+    () => orderSportsAttended(myGameEntries, user?.preferred_sports ?? []),
+    [myGameEntries, user?.preferred_sports]
+  );
+
+  const scorecardStats = useMemo(
+    () => buildProfileScorecardStats(myGameEntries, attendanceStats),
+    [myGameEntries, attendanceStats]
+  );
+
   const pickTimezone = () => {
     if (!user?.id) {
       return;
@@ -460,35 +493,22 @@ const ProfileScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
       {profileTab === 'me' ? (
       <>
-      <View style={styles.heroCard}>
-        <View style={styles.identityRow}>
-          {user?.profile_photo_url ? (
-            <Image source={{ uri: user.profile_photo_url }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarInitial}>{usernamePreview.slice(0, 1).toUpperCase()}</Text>
-            </View>
-          )}
-          <View style={styles.identityTextCol}>
-            <Text style={styles.displayName}>{usernamePreview}</Text>
-            <Text style={styles.usernameHandle}>@{user?.username || 'player'}</Text>
-          </View>
-        </View>
+      <ProfileScoreCard
+        username={user?.username || 'player'}
+        profilePhotoUrl={user?.profile_photo_url}
+        memberSinceLabel={memberSinceLabel}
+        sports={sportsAttended}
+        stats={scorecardStats}
+        style={styles.heroCard}
+      />
 
-        <View style={styles.statPillGrid}>
-          <View style={[styles.statPill, styles.statPillRating]}>
-            <Text style={styles.statPillLabel}>Rating</Text>
-            <Text style={styles.statPillValue} numberOfLines={2}>
-              {trustHeroLine}
-            </Text>
-          </View>
-          <View style={[styles.statPill, styles.statPillReliability]}>
-            <Text style={styles.statPillLabel}>Reliability</Text>
-            <Text style={styles.statPillValue} numberOfLines={3}>
-              {reliabilityLine}
-            </Text>
-          </View>
-        </View>
+      <View style={styles.heroCardFooter}>
+        <Text style={styles.trustCaption} numberOfLines={2}>
+          {trustHeroLine}
+        </Text>
+        <Text style={styles.reliabilityCaption} numberOfLines={2}>
+          {reliabilityLine}
+        </Text>
 
         <Text style={styles.fieldLabel}>Display name</Text>
         <View style={styles.nameRow}>
@@ -1439,12 +1459,27 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heroCard: {
+    marginBottom: spacing.md,
+  },
+  heroCardFooter: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  trustCaption: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primaryDark,
+    marginBottom: 4,
+  },
+  reliabilityCaption: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+    marginBottom: spacing.md,
   },
   identityRow: {
     flexDirection: 'row',

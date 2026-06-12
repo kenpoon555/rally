@@ -4,12 +4,8 @@ import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { User } from '../types/user';
 import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
-import { navigationRef } from '../navigation/navigationRef';
-import { parseAppDeepLink } from '../navigation/deepLinking';
-import { joinGroupAndNextGame } from '../services/regularGroupService';
-import { ensureActivityGroupConversation } from '../services/chatService';
-import { ROUTES } from '../constants/routes';
-import { PRODUCT_COPY } from '../constants/productCopy';
+import { processDeepLink } from '../navigation/processDeepLink';
+import { consumePendingDeepLink } from '../services/pendingDeepLinkService';
 
 interface AuthContextType {
   user: User | null;
@@ -199,104 +195,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const handleAuthDeepLink = async (url: string) => {
       try {
-        const parsed = parseAppDeepLink(url);
-        if (parsed.type === 'sportLanding' && parsed.sportSlug && navigationRef.isReady()) {
-          (navigationRef as any).navigate(ROUTES.LANDING.SPORT, {
-            sportSlug: parsed.sportSlug,
-          });
-          return;
-        }
-        if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
-          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
-            activityId: parsed.activityId,
-          });
-          return;
-        }
-        if (parsed.type === 'invite' && parsed.inviteToken && navigationRef.isReady()) {
-          (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
-            inviteToken: parsed.inviteToken,
-          });
-          return;
-        }
-        if (parsed.type === 'groupInvite' && parsed.groupInviteToken) {
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-          if (!session?.user) {
-            Alert.alert('Sign in required', 'Log in to join this Rally.');
+        const params = parseAuthParamsFromUrl(url);
+        const isAuthUrl =
+          url.includes('auth/callback') ||
+          Boolean(params.access_token || params.code || params.token_hash);
+
+        if (isAuthUrl) {
+          if (params.access_token && params.refresh_token) {
+            const { error } = await supabase.auth.setSession({
+              access_token: params.access_token,
+              refresh_token: params.refresh_token,
+            });
+            if (error) {
+              console.error('Failed to set auth session from deep link:', error);
+            }
             return;
           }
-          try {
-            const { activityId, conversationId, groupId, joinedGame, joinGameError } =
-              await joinGroupAndNextGame(parsed.groupInviteToken);
-            if (joinGameError === 'full') {
-              Alert.alert(
-                'Joined Rally',
-                "You're in the Rally. The next game is full — tap Join when a spot opens."
-              );
+
+          if (params.code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(params.code);
+            if (error) {
+              console.error('Failed to exchange code for session:', error);
             }
-            if (conversationId && navigationRef.isReady()) {
-              (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
-                conversationId,
-                activityId: activityId ?? undefined,
-                groupId,
-                title: PRODUCT_COPY.rallyChat,
-              });
-              return;
+            return;
+          }
+
+          if (params.token_hash && params.type) {
+            const { error } = await supabase.auth.verifyOtp({
+              token_hash: params.token_hash,
+              type: params.type as any,
+            });
+            if (error) {
+              console.error('Failed to verify OTP from deep link:', error);
             }
-            if (activityId && navigationRef.isReady()) {
-              try {
-                const gameConvoId = await ensureActivityGroupConversation(activityId);
-                (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
-                  conversationId: gameConvoId,
-                  activityId,
-                });
-                return;
-              } catch {
-                // Joined the crew but couldn't open the room — fall back to a confirmation.
-              }
-            }
-            if (joinedGame) {
-              Alert.alert('Joined crew', "You're in! Your next game will show up in Chats.");
-            } else if (!joinGameError) {
-              Alert.alert('Joined crew', "You're in the crew. Open Chats when a game is scheduled.");
-            }
-          } catch (err: any) {
-            Alert.alert('Group invite', err?.message || 'Could not join group.');
           }
           return;
         }
 
-        const params = parseAuthParamsFromUrl(url);
-
-        if (params.access_token && params.refresh_token) {
-          const { error } = await supabase.auth.setSession({
-            access_token: params.access_token,
-            refresh_token: params.refresh_token,
-          });
-          if (error) {
-            console.error('Failed to set auth session from deep link:', error);
-          }
-          return;
-        }
-
-        if (params.code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(params.code);
-          if (error) {
-            console.error('Failed to exchange code for session:', error);
-          }
-          return;
-        }
-
-        if (params.token_hash && params.type) {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: params.token_hash,
-            type: params.type as any,
-          });
-          if (error) {
-            console.error('Failed to verify OTP from deep link:', error);
-          }
-        }
+        await processDeepLink(url);
       } catch (error) {
         console.error('Error handling auth deep link:', error);
       }
@@ -344,6 +280,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       linkingSubscription.remove();
     };
   }, [checkSession, loadUser]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const pending = await consumePendingDeepLink();
+      if (!pending || cancelled) {
+        return;
+      }
+      await processDeepLink(pending, { allowStorePending: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   const signIn = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signInWithPassword({

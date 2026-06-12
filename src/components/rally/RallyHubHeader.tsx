@@ -109,7 +109,7 @@ export const RallyHubHeader: React.FC<Props> = ({
         )}
       </View>
       <View style={styles.row}>
-        <SportIcon sport={group.sport_type} size="lg" variant="plain" />
+        <SportIcon sport={group.sport_type} size="lg" variant="ring" />
         <View style={styles.body}>
           {editing && canEdit ? (
             <View style={styles.nameEditRow}>

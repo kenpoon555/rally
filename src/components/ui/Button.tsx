@@ -18,12 +18,13 @@ type Props = TouchableOpacityProps & {
   size?: Size;
   loading?: boolean;
   fullWidth?: boolean;
+  textStyle?: React.ComponentProps<typeof Text>['style'];
 };
 
 const variantStyles: Record<Variant, { button: ViewStyle; text: { color: string } }> = {
   primary: {
     button: { backgroundColor: colors.primary },
-    text: { color: colors.textInverse },
+    text: { color: colors.onPrimary },
   },
   secondary: {
     button: {
@@ -35,7 +36,7 @@ const variantStyles: Record<Variant, { button: ViewStyle; text: { color: string 
   },
   accent: {
     button: { backgroundColor: colors.accent },
-    text: { color: colors.textInverse },
+    text: { color: colors.onAccent },
   },
   ghost: {
     button: { backgroundColor: 'transparent' },
@@ -61,6 +62,7 @@ export function Button({
   fullWidth = false,
   disabled,
   style,
+  textStyle,
   ...rest
 }: Props) {
   const v = variantStyles[variant];
@@ -83,7 +85,7 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={v.text.color} />
       ) : (
-        <Text style={[styles.text, typography.button, v.text]}>{title}</Text>
+        <Text style={[styles.text, typography.button, v.text, textStyle]}>{title}</Text>
       )}
     </TouchableOpacity>
   );

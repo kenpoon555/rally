@@ -27,7 +27,10 @@ import { GameFriendOutgoingInvite } from '../../types/gameFriendInvite';
 import { Avatar, KeyboardSafeView } from '../ui';
 import { getSportIconName } from '../SportIcon';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { buildGameInviteUrl } from '../../navigation/deepLinking';
+import {
+  buildGameShareMessage,
+  buildHostGameInviteMessage,
+} from '../../services/inviteLinkService';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
 type Props = {
@@ -143,22 +146,20 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
   };
 
   const shareLink = async () => {
-    if (!activity.invite_token) {
-      return;
-    }
-    const url = buildGameInviteUrl(activity.invite_token);
-    const headline = activityGameName(activity);
-    const court = activityCourtName(activity);
-    await Share.share({
-      message: `Join my ${activity.sport_type} game "${headline}" at ${court} on Rally: ${url}`,
-      url,
-    });
+    const message = isHost
+      ? buildHostGameInviteMessage(activity)
+      : buildGameShareMessage(activity);
+    await Share.share({ message });
   };
 
+  const isHost = user?.id === activity.user_id;
   const sportIcon = getSportIconName(activity.sport_type);
   const hasCustomTitle = Boolean(activity.listing_title?.trim());
   const headline = hasCustomTitle ? activityGameName(activity) : activityCourtName(activity);
   const whenLine = formatDiscoverWhenLine(activity.start_time);
+  const shareLinkHint = isHost
+    ? PRODUCT_COPY.shareHostGameInviteLinkHint
+    : PRODUCT_COPY.shareGameInviteLinkHint;
 
   const renderAction = (row: FriendRow) => {
     if (row.state === 'on_roster') {
@@ -217,6 +218,7 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
                 ? PRODUCT_COPY.inviteFriendsToGameRallyHint
                 : PRODUCT_COPY.inviteFriendsToGameHint}
             </Text>
+            <Text style={styles.heroShareHint}>{shareLinkHint}</Text>
           </View>
         </View>
 
@@ -257,7 +259,7 @@ export const InviteFriendsToGameSheet: React.FC<Props> = ({
           />
         )}
 
-        {activity.invite_token ? (
+        {activity.id ? (
           <TouchableOpacity style={styles.linkRow} onPress={() => void shareLink()}>
             <Ionicons name="link-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.linkText}>
@@ -335,6 +337,12 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     lineHeight: 18,
+  },
+  heroShareHint: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    lineHeight: 18,
+    marginTop: 4,
   },
   searchWrap: {
     flexDirection: 'row',

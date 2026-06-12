@@ -3,7 +3,12 @@ import { ROUTES } from '../constants/routes';
 
 export type RootStackParamList = {
   MainTabs: undefined;
-  [ROUTES.ACTIVITY.DETAIL]: { activityId?: string; inviteToken?: string; fromGameRoom?: boolean };
+  [ROUTES.ACTIVITY.DETAIL]: {
+    activityId?: string;
+    inviteToken?: string;
+    hostInvite?: boolean;
+    fromGameRoom?: boolean;
+  };
   [ROUTES.ACTIVITY.CREATE]: undefined;
   [ROUTES.PROFILE.MAIN]: undefined;
   [ROUTES.CHAT.TAB]: undefined;

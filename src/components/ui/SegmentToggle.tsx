@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   segmentSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    backgroundColor: colors.primaryLight,
     ...Platform.select({
       ios: {
         shadowColor: '#141916',

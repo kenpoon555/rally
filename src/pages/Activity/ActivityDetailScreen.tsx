@@ -30,6 +30,7 @@ import {
   scheduleNextGameFromActivity,
   scheduleGroupNextGame,
   joinGameViaInvite,
+  getActivityByInviteToken,
   updateActivity,
   setSessionNote,
 } from '../../services/activityService';
@@ -43,12 +44,15 @@ import {
   getTournamentsForGroup,
 } from '../../services/miniTournamentService';
 import { MiniTournament } from '../../types/miniTournament';
-import { buildGameInviteUrl } from '../../navigation/deepLinking';
+import {
+  buildGameShareMessage,
+  buildHostGameInviteMessage,
+} from '../../services/inviteLinkService';
 import { RegularGroup } from '../../types/regularGroup';
 import { PlayerReviewForm } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
-import { PlayerTrustLine } from '../../components/PlayerTrustLine';
 import { VenueBlock } from '../../components/VenueBlock';
+import { SportIcon } from '../../components/SportIcon';
 import { GameRecapCard } from '../../components/GameRecapCard';
 import { getGameRecapIdForActivity } from '../../services/gameRecapService';
 import { HostPaymentHint } from '../../components/HostPaymentHint';
@@ -61,7 +65,7 @@ import {
   getApprovedParticipants,
   canHostScheduleNextGame,
   countReadyParticipants,
-  getParticipantReadyState,
+  getGameParticipantPreview,
   isGameChatReadOnly,
   isPastGameActivity,
   isTonightUrgency,
@@ -83,16 +87,30 @@ import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
 import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
 import { KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
-import { Avatar } from '../../components/ui';
 import CoachMark from '../../components/CoachMark';
 import { ONBOARDING_FLAGS } from '../../constants/onboardingFlags';
 import { InviteFriendsToGameSheet } from '../../components/game/InviteFriendsToGameSheet';
-import { HostGameScheduleEditor } from '../../components/game/HostGameScheduleEditor';
+import { ChangeGameCourtSheet } from '../../components/game/ChangeGameCourtSheet';
+import { ChangeGameTimeSheet } from '../../components/game/ChangeGameTimeSheet';
+import {
+  GameCardIconAction,
+  GameCardIconActionBar,
+} from '../../components/game/GameCardIconActionBar';
+import { GameCardSection, gameCardPanelStyles } from '../../components/game/GameCardSection';
+import { GameCardTypePill } from '../../components/game/GameCardTypePill';
+import { GameCardWhoGoing } from '../../components/game/GameCardWhoGoing';
+import { JoinRequestsSheet } from '../../components/game/JoinRequestsSheet';
 import { RosterSeatBar } from '../../components/game/RosterSeatBar';
+import { Ionicons } from '@expo/vector-icons';
 
 type MainStackParamList = {
   MainTabs: undefined;
-  ActivityDetail: { activityId?: string; inviteToken?: string; fromGameRoom?: boolean };
+  ActivityDetail: {
+    activityId?: string;
+    inviteToken?: string;
+    hostInvite?: boolean;
+    fromGameRoom?: boolean;
+  };
   CreateActivity: undefined;
   PostGameAttendance: { activityId: string };
   ChatThread: { conversationId: string; title?: string; activityId?: string; groupId?: string };
@@ -107,7 +125,7 @@ type MainStackParamList = {
 type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
 
 const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { activityId: routeActivityId, inviteToken, fromGameRoom } = route.params;
+  const { activityId: routeActivityId, inviteToken, hostInvite, fromGameRoom } = route.params;
   const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(routeActivityId);
   const activityId = resolvedActivityId || '';
   const { activity, loading, error, refetch } = useActivity(activityId);
@@ -118,6 +136,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [finalizing, setFinalizing] = useState(false);
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [joinRequestsOpen, setJoinRequestsOpen] = useState(false);
+  const [timeSheetOpen, setTimeSheetOpen] = useState(false);
+  const [courtSheetOpen, setCourtSheetOpen] = useState(false);
   const [openingChat, setOpeningChat] = useState(false);
   const [candidateLocations, setCandidateLocations] = useState<ActivityCandidateLocation[]>([]);
   const [preferredLocationId, setPreferredLocationId] = useState<string | null>(null);
@@ -167,6 +188,20 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         ? countReadyParticipants(activity, approvedParticipants)
         : { readyCount: 0, rosterCount: 0 },
     [activity, approvedParticipants]
+  );
+  const participantPreview = useMemo(
+    () => (activity ? getGameParticipantPreview(activity) : { names: [], players: [], total: 0 }),
+    [activity]
+  );
+  const pendingJoinItems = useMemo(
+    () =>
+      joinRequests.map((request) => ({
+        key: request.id,
+        username: request.user?.username?.trim() || 'Player',
+        userId: request.user?.id ?? request.user_id,
+        isPending: true,
+      })),
+    [joinRequests]
   );
 
   const canShowReviewForm = useMemo(
@@ -340,29 +375,63 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [routeActivityId]);
 
-  const arrivedViaInvite = useRef(Boolean(inviteToken && !routeActivityId));
+  const arrivedViaHostInvite = useRef(Boolean(hostInvite && inviteToken && !routeActivityId));
   const redirectedToRoom = useRef(false);
+  const [resolvingInvite, setResolvingInvite] = useState(false);
 
   useEffect(() => {
-    if (routeActivityId || !inviteToken || !user?.id) {
+    if (routeActivityId || !inviteToken || hostInvite) {
+      return;
+    }
+    let cancelled = false;
+    setResolvingInvite(true);
+    getActivityByInviteToken(inviteToken)
+      .then((found) => {
+        if (cancelled) {
+          return;
+        }
+        if (!found?.id) {
+          Alert.alert('Invite link', 'This invite is invalid or expired.');
+          return;
+        }
+        setResolvedActivityId(found.id);
+        navigation.setParams({ activityId: found.id, inviteToken: undefined });
+      })
+      .catch((err: Error) => {
+        if (!cancelled) {
+          Alert.alert('Invite link', err.message || 'Could not open this invite.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setResolvingInvite(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken, hostInvite, routeActivityId, navigation]);
+
+  useEffect(() => {
+    if (routeActivityId || !inviteToken || !hostInvite || !user?.id) {
       return;
     }
     setRedeemingInvite(true);
     joinGameViaInvite(inviteToken)
       .then((id) => {
         setResolvedActivityId(id);
-        navigation.setParams({ activityId: id, inviteToken: undefined });
+        navigation.setParams({ activityId: id, inviteToken: undefined, hostInvite: undefined });
       })
       .catch((err: Error) => {
         Alert.alert('Invite link', err.message || 'Could not join from invite.');
       })
       .finally(() => setRedeemingInvite(false));
-  }, [inviteToken, routeActivityId, user?.id, navigation]);
+  }, [inviteToken, hostInvite, routeActivityId, user?.id, navigation]);
 
   // After redeeming an invite, send approved joiners straight into the Game Room
   // (the modal Details sheet is for settings/history, not day-of coordination).
   useEffect(() => {
-    if (!arrivedViaInvite.current || redirectedToRoom.current) {
+    if (!arrivedViaHostInvite.current || redirectedToRoom.current) {
       return;
     }
     if (!activity || !user?.id || !canOpenActivityChat(activity, user.id)) {
@@ -561,13 +630,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [activity?.id, activity?.status, activity?.start_time, activity?.duration, activity]);
 
   const handleShareInvite = async () => {
-    if (!activity?.invite_token) {
+    if (!activity) {
       return;
     }
     try {
-      await Share.share({
-        message: `Join my ${activity.sport_type} game on Rally: ${buildGameInviteUrl(activity.invite_token)}`,
-      });
+      const message = isHost
+        ? buildHostGameInviteMessage(activity)
+        : buildGameShareMessage(activity);
+      await Share.share({ message });
     } catch {
       // User dismissed share sheet.
     }
@@ -699,6 +769,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     try {
       await rejectJoinRequest(requestId);
       await loadJoinRequests();
+      refetch();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to reject request');
     }
@@ -878,11 +949,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
-  if (redeemingInvite || (loading && !activity && activityId)) {
+  if (resolvingInvite || redeemingInvite || (loading && !activity && activityId)) {
     return (
       <View style={[styles.container, styles.loadingCenter]}>
         <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-        <Text style={styles.heroMeta}>{redeemingInvite ? 'Opening invite…' : 'Loading game…'}</Text>
+        <Text style={styles.heroMeta}>
+          {redeemingInvite ? 'Joining game…' : resolvingInvite ? 'Opening invite…' : 'Loading game…'}
+        </Text>
       </View>
     );
   }
@@ -945,28 +1018,86 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         minute: '2-digit',
       })
     : null;
+  const isRallyGame = Boolean(activity.regular_group_id);
+  const showHostToolsPanel = Boolean(
+    !isPastGame &&
+      ((showChat && !chatArchived && !fromGameRoom && !isRallyGame) ||
+        canEditSchedule ||
+        canScheduleNext ||
+        showShareLink ||
+        showInviteFriends ||
+        (isHost &&
+          !isRallyGame &&
+          (activity.status === 'active' || activity.status === 'completed')))
+  );
+
+  const manageGameActions: GameCardIconAction[] = (() => {
+    const actions: GameCardIconAction[] = [];
+    if (canEditSchedule) {
+      actions.push({
+        id: 'time',
+        label: 'Time',
+        icon: 'calendar-outline',
+        onPress: () => setTimeSheetOpen(true),
+      });
+      actions.push({
+        id: 'court',
+        label: 'Court',
+        icon: 'location-outline',
+        onPress: () => setCourtSheetOpen(true),
+      });
+    }
+    if (showShareLink) {
+      actions.push({
+        id: 'link',
+        label: isRallyGame ? 'Link' : 'Copy link',
+        icon: 'link-outline',
+        onPress: () => void handleShareInvite(),
+      });
+    }
+    if (showInviteFriends) {
+      actions.push({
+        id: 'friends',
+        label: 'Friends',
+        icon: 'person-add-outline',
+        onPress: () => setInviteFriendsOpen(true),
+        primary: true,
+      });
+    }
+    return actions;
+  })();
 
   return (
     <KeyboardSafeView style={styles.container}>
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
       <View style={styles.heroCard}>
         <View style={styles.heroTopRow}>
-          <Text style={styles.heroSport}>{activity.sport_type}</Text>
+          <GameCardTypePill
+            isRallyGame={isRallyGame}
+            inviteOnly={activity.visibility === 'invite_only'}
+          />
           <View style={styles.statusBadge}>
             <Text style={styles.statusBadgeText}>
               {isPastGame ? 'played' : activity.match_status || 'open'}
             </Text>
           </View>
         </View>
-        {!activity.regular_group_id ? (
-          <>
-            <Text style={styles.heroListingTitle}>
-              {activityListingHeadline(activity)}
-            </Text>
+        <View style={styles.heroIdentityRow}>
+          <SportIcon sport={activity.sport_type} size="md" variant="ring" />
+          <View style={styles.heroTitleBlock}>
+            <Text style={styles.heroListingTitle}>{activityListingHeadline(activity)}</Text>
+            <Text style={styles.heroSportLabel}>{activity.sport_type}</Text>
             {playIntentLabel(activity.play_intent) ? (
               <Text style={styles.heroIntent}>{playIntentLabel(activity.play_intent)}</Text>
             ) : null}
-          </>
+          </View>
+        </View>
+        {regularGroup ? (
+          <TouchableOpacity onPress={openRegularsCrew} style={styles.rallyCrewLink}>
+            <Ionicons name="people-outline" size={14} color={colors.primaryDark} />
+            <Text style={styles.rallyCrewLinkText}>{regularGroup.name}</Text>
+            <Ionicons name="chevron-forward" size={14} color={colors.primaryDark} />
+          </TouchableOpacity>
         ) : null}
         <Text style={styles.heroTime}>{timeLabel}</Text>
         <Text style={styles.heroLocation}>{activity.location?.name || 'Court TBD'}</Text>
@@ -983,6 +1114,33 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.courtReportLink}>Report court issue</Text>
           </TouchableOpacity>
         ) : null}
+        <GameCardWhoGoing
+          rosterItems={participantPreview.players}
+          totalCount={participantPreview.total}
+          pendingItems={isHost ? pendingJoinItems : []}
+          pendingCount={isHost ? joinRequests.length : 0}
+          maxVisible={6}
+          readySummary={
+            !isFinalized
+              ? `${readyCount} of ${rosterCount} marked ready${
+                  readyCount < rosterCount ? " · amber dot = still waiting" : ''
+                }`
+              : undefined
+          }
+          onPendingPress={
+            isHost && joinRequests.length > 0 ? () => setJoinRequestsOpen(true) : undefined
+          }
+          onPlayerPress={(player) => {
+            if (!player.userId) {
+              return;
+            }
+            openPlayerProfile(
+              { id: player.userId, username: player.username },
+              player.isHost ? 'Host' : player.isPending ? 'Requested to join' : 'Player'
+            );
+          }}
+          style={styles.whoGoingInHero}
+        />
         {!isPastGame ? (
           <>
             <View style={styles.seatBarWrap}>
@@ -1007,19 +1165,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {new Date(activity.preference_deadline).toLocaleString()}
           </Text>
         )}
-        <Text style={styles.gameKindBadge}>
-          {activity.regular_group_id ? PRODUCT_COPY.rallyGame : PRODUCT_COPY.publicGameShort}
-        </Text>
-        {activity.visibility === 'invite_only' ? (
-          <Text style={styles.inviteOnlyText}>Invite-only · hidden from Discover</Text>
-        ) : null}
         {showTonight ? (
           <Text style={styles.urgentText}>Need players tonight</Text>
-        ) : null}
-        {regularGroup ? (
-          <TouchableOpacity onPress={openRegularsCrew}>
-            <Text style={styles.regularGroupText}>{PRODUCT_COPY.rallyLabel(regularGroup.name)} →</Text>
-          </TouchableOpacity>
         ) : null}
         {!isHost ? (
           <HostPaymentHint activityId={activity.id} costNote={activity.cost_note} />
@@ -1082,142 +1229,147 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             {listingActive ? 'Listing open until' : 'Listing ended'}: {expiresLabel}
           </Text>
         ) : null}
-        {chatArchived && wasOnGame && !activity.regular_group_id ? (
-          <>
-            <Text style={styles.gameRoomHint}>{PRODUCT_COPY.archivedRoomHint}</Text>
+        {isRallyGame && !isPastGame && wasOnGame ? (
+          <Text style={styles.rallyHubHint}>{PRODUCT_COPY.rallyPlayTabHint}</Text>
+        ) : null}
+        {showChat && fromGameRoom && canGoBack ? (
+          <Text style={styles.gameRoomHint}>{PRODUCT_COPY.gameCardBackHint}</Text>
+        ) : null}
+      </View>
+
+      {showHostToolsPanel ? (
+        <View style={gameCardPanelStyles.panel}>
+          <Text style={gameCardPanelStyles.panelTitle}>
+            {isHost ? 'Manage game' : 'Invite players'}
+          </Text>
+
+          {chatArchived && wasOnGame && !isRallyGame ? (
+            <>
+              <Text style={styles.gameRoomHint}>{PRODUCT_COPY.archivedRoomHint}</Text>
+              <TouchableOpacity
+                style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
+                onPress={handleOpenGroupChat}
+                disabled={openingChat}
+              >
+                <Text style={styles.utilityButtonText}>
+                  {openingChat ? 'Opening…' : PRODUCT_COPY.viewArchivedChat}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
+
+          {showChat && !chatArchived && !fromGameRoom && !isRallyGame ? (
             <TouchableOpacity
               style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
               onPress={handleOpenGroupChat}
               disabled={openingChat}
             >
               <Text style={styles.utilityButtonText}>
-                {openingChat ? 'Opening…' : PRODUCT_COPY.viewArchivedChat}
+                {openingChat ? 'Opening…' : 'Open Game Room'}
               </Text>
             </TouchableOpacity>
-          </>
-        ) : null}
-        {showChat && !chatArchived && !fromGameRoom && !activity.regular_group_id ? (
-          <TouchableOpacity
-            style={[styles.gameRoomButton, openingChat && styles.utilityButtonDisabled]}
-            onPress={handleOpenGroupChat}
-            disabled={openingChat}
-          >
-            <Text style={styles.utilityButtonText}>
-              {openingChat ? 'Opening…' : 'Open Game Room'}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-        {showChat && fromGameRoom && canGoBack ? (
-          <Text style={styles.gameRoomHint}>{PRODUCT_COPY.gameCardBackHint}</Text>
-        ) : null}
-        {canEditSchedule ? (
-          <HostGameScheduleEditor activity={activity} onUpdated={() => void refetch()} />
-        ) : null}
-        {canScheduleNext ? (
-          <>
+          ) : null}
+
+          {manageGameActions.length > 0 ? (
+            <>
+              {canEditSchedule ? (
+                <Text style={styles.manageHint}>{PRODUCT_COPY.editGameScheduleHint}</Text>
+              ) : null}
+              <GameCardIconActionBar actions={manageGameActions} />
+            </>
+          ) : null}
+
+          {canScheduleNext ? (
+            <>
+              <View style={gameCardPanelStyles.divider} />
+              <GameCardSection title="Schedule next game">
+                <TouchableOpacity
+                  style={[styles.secondaryButton, schedulingNext && styles.utilityButtonDisabled]}
+                  onPress={handleScheduleNextGame}
+                  disabled={schedulingNext}
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {schedulingNext ? 'Scheduling…' : 'Pick next time'}
+                  </Text>
+                </TouchableOpacity>
+                {schedulePickerVisible ? (
+                  <View style={styles.schedulePickerBlock}>
+                    <ScheduleDateTimePicker
+                      visible={schedulePickerVisible}
+                      value={nextStartTime}
+                      onChange={setNextStartTime}
+                    />
+                    <View style={styles.schedulePickerRow}>
+                      <TouchableOpacity onPress={() => setSchedulePickerVisible(false)}>
+                        <Text style={styles.linkAction}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => void confirmScheduleNextGame()}
+                        disabled={schedulingNext}
+                      >
+                        <Text style={styles.linkActionPrimary}>
+                          {schedulingNext ? 'Scheduling…' : 'Confirm time'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : null}
+              </GameCardSection>
+            </>
+          ) : null}
+
+          {isHost &&
+          !isRallyGame &&
+          (activity.status === 'active' || activity.status === 'completed') ? (
             <TouchableOpacity
-              style={[styles.secondaryButton, schedulingNext && styles.utilityButtonDisabled]}
-              onPress={handleScheduleNextGame}
-              disabled={schedulingNext}
+              style={styles.inlineActionLink}
+              onPress={handleCreateRegularGroup}
+              disabled={creatingRegularGroup}
+              activeOpacity={0.85}
             >
-              <Text style={styles.secondaryButtonText}>
-                {schedulingNext ? 'Scheduling…' : 'Schedule next game'}
+              <Text style={styles.inlineLinkText}>
+                <Text style={styles.inlineLinkMuted}>{PRODUCT_COPY.saveAsRallyHint} </Text>
+                <Text style={styles.inlineLinkAction}>
+                  {creatingRegularGroup ? 'Saving…' : `${PRODUCT_COPY.saveAsRallyAction} →`}
+                </Text>
               </Text>
             </TouchableOpacity>
-            {schedulePickerVisible ? (
-              <View style={styles.schedulePickerBlock}>
-                <ScheduleDateTimePicker
-                  visible={schedulePickerVisible}
-                  value={nextStartTime}
-                  onChange={setNextStartTime}
-                />
-                <View style={styles.schedulePickerRow}>
-                  <TouchableOpacity onPress={() => setSchedulePickerVisible(false)}>
-                    <Text style={styles.linkAction}>Cancel</Text>
-                  </TouchableOpacity>
+          ) : null}
+
+          {regularGroup &&
+          !isPastGame &&
+          sportSupportsMiniTournament(regularGroup.sport_type) &&
+          (isHost || isGroupMember) ? (
+            <>
+              <View style={gameCardPanelStyles.divider} />
+              <GameCardSection
+                title="Mini tournaments"
+                hint="Private doubles round-robin for your Rally. Start when 4+ players join (even count)."
+              >
+                <TouchableOpacity
+                  style={[styles.secondaryButton, creatingTournament && styles.utilityButtonDisabled]}
+                  onPress={() => void handleCreateMiniTournament()}
+                  disabled={creatingTournament}
+                >
+                  <Text style={styles.secondaryButtonText}>
+                    {creatingTournament ? 'Creating…' : 'Start new mini tournament'}
+                  </Text>
+                </TouchableOpacity>
+                {groupTournaments.map((tournament) => (
                   <TouchableOpacity
-                    onPress={() => void confirmScheduleNextGame()}
-                    disabled={schedulingNext}
+                    key={tournament.id}
+                    style={styles.tournamentRow}
+                    onPress={() => openMiniTournament(tournament.id)}
                   >
-                    <Text style={styles.linkActionPrimary}>
-                      {schedulingNext ? 'Scheduling…' : 'Confirm time'}
-                    </Text>
+                    <Text style={styles.tournamentRowTitle}>{tournament.name}</Text>
+                    <Text style={styles.tournamentRowMeta}>{tournament.status}</Text>
                   </TouchableOpacity>
-                </View>
-              </View>
-            ) : null}
-          </>
-        ) : null}
-        {isHost &&
-        !activity.regular_group_id &&
-        (activity.status === 'active' || activity.status === 'completed') ? (
-          <TouchableOpacity
-            style={[styles.secondaryButton, creatingRegularGroup && styles.utilityButtonDisabled]}
-            onPress={handleCreateRegularGroup}
-            disabled={creatingRegularGroup}
-          >
-            <Text style={styles.secondaryButtonText}>
-              {creatingRegularGroup ? 'Saving…' : PRODUCT_COPY.saveAsRallyAction}
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-        {showShareLink || showInviteFriends ? (
-          <View style={styles.inviteActionRow}>
-            {showShareLink ? (
-              <TouchableOpacity
-                style={[styles.secondaryButton, styles.inviteActionBtn]}
-                onPress={() => void handleShareInvite()}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  {activity.regular_group_id
-                    ? PRODUCT_COPY.shareRallyGameLink
-                    : 'Share game invite link'}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-            {showInviteFriends ? (
-              <TouchableOpacity
-                style={[styles.utilityButton, styles.inviteActionBtn]}
-                onPress={() => setInviteFriendsOpen(true)}
-              >
-                <Text style={styles.utilityButtonText}>{PRODUCT_COPY.inviteFriendsToGame}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ) : null}
-        {regularGroup &&
-        !isPastGame &&
-        sportSupportsMiniTournament(regularGroup.sport_type) &&
-        (isHost || isGroupMember) ? (
-          <View style={styles.tournamentBlock}>
-            <Text style={styles.tournamentTitle}>Mini tournaments</Text>
-            <Text style={styles.tournamentHint}>
-              Private doubles round-robin for your Rally. Start when 4+ players join (even count).
-            </Text>
-            {isHost || isGroupMember ? (
-              <TouchableOpacity
-                style={[styles.secondaryButton, creatingTournament && styles.utilityButtonDisabled]}
-                onPress={() => void handleCreateMiniTournament()}
-                disabled={creatingTournament}
-              >
-                <Text style={styles.secondaryButtonText}>
-                  {creatingTournament ? 'Creating…' : 'Start new mini tournament'}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-            {groupTournaments.map((tournament) => (
-              <TouchableOpacity
-                key={tournament.id}
-                style={styles.tournamentRow}
-                onPress={() => openMiniTournament(tournament.id)}
-              >
-                <Text style={styles.tournamentRowTitle}>{tournament.name}</Text>
-                <Text style={styles.tournamentRowMeta}>{tournament.status}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ) : null}
-      </View>
+                ))}
+              </GameCardSection>
+            </>
+          ) : null}
+        </View>
+      ) : null}
 
       <CoachMark
         flag={ONBOARDING_FLAGS.COACH_REGULARS_SHOWN}
@@ -1272,57 +1424,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           </Text>
         </View>
       ) : null}
-
-      <View style={styles.participantsSection}>
-        <Text style={styles.sectionTitle}>Players</Text>
-        {!isFinalized ? (
-          <Text style={styles.readySummary}>
-            {readyCount} of {rosterCount} marked ready
-            {readyCount < rosterCount ? ' · amber dot = still waiting' : ''}
-          </Text>
-        ) : null}
-        {activity.user && (
-          <TouchableOpacity
-            style={styles.participantRow}
-            onPress={() => openPlayerProfile(activity.user!, 'Host')}
-          >
-            <Avatar
-              name={activity.user.username}
-              size="md"
-              readyState={getParticipantReadyState({ isHost: true, isFinalized })}
-            />
-            <View style={styles.participantInfo}>
-              <Text style={styles.participantName}>{activity.user.username}</Text>
-              <Text style={styles.participantRole}>Host · Ready</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-        {approvedParticipants.map((req) =>
-          req.user ? (
-            <TouchableOpacity
-              key={req.id}
-              style={styles.participantRow}
-              onPress={() => openPlayerProfile(req.user!, 'Player')}
-            >
-              <Avatar
-                name={req.user.username}
-                size="md"
-                readyState={getParticipantReadyState({
-                  readyAt: req.ready_at,
-                  isFinalized,
-                  isApproved: true,
-                })}
-              />
-              <View style={styles.participantInfo}>
-                <Text style={styles.participantName}>{req.user.username}</Text>
-                <Text style={styles.participantRole}>
-                  {req.ready_at ? "In ✓" : isFinalized ? 'Joined' : 'Tap I\'m in'}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ) : null
-        )}
-      </View>
 
       {!isHost && !isApprovedJoiner && (
         <View style={styles.ctaBlock}>
@@ -1490,53 +1591,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         </TouchableOpacity>
       ) : null}
 
-      {isHost && (
-        <View style={styles.requestsSection}>
-          <Text style={styles.sectionTitle}>Join Requests</Text>
-          {loadingRequests ? (
-            <ActivityIndicator color={PRIMARY_COLOR} />
-          ) : joinRequests.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No pending requests. New requests appear in real time while Game Room is open.
-            </Text>
-          ) : showChat ? (
-            <Text style={styles.emptyText}>
-              {joinRequests.length} pending request{joinRequests.length === 1 ? '' : 's'} — open
-              Game Room to approve or reject.
-            </Text>
-          ) : (
-            joinRequests.map((item) => (
-              <View key={item.id} style={styles.requestItem}>
-                <TouchableOpacity
-                  style={styles.requestUserTap}
-                  disabled={!item.user}
-                  onPress={() => item.user && openPlayerProfile(item.user, 'Requested to join')}
-                >
-                  <Text style={styles.requestUser}>
-                    {item.user?.username || 'Unknown user'}
-                  </Text>
-                  {item.user ? <PlayerTrustLine userId={item.user.id} /> : null}
-                </TouchableOpacity>
-                <View style={styles.requestActions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.approveButton]}
-                    onPress={() => handleApprove(item.id)}
-                  >
-                    <Text style={styles.actionButtonText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.rejectButton]}
-                    onPress={() => handleReject(item.id)}
-                  >
-                    <Text style={styles.actionButtonText}>Reject</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-      )}
-
       <PlayerProfileModal
         visible={!!profilePlayer}
         player={profilePlayer}
@@ -1548,13 +1602,45 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       />
 
       {activity ? (
-        <InviteFriendsToGameSheet
-          visible={inviteFriendsOpen}
-          activity={activity}
-          isRallyGame={Boolean(regularGroup)}
-          onClose={() => setInviteFriendsOpen(false)}
-        />
+        <>
+          <InviteFriendsToGameSheet
+            visible={inviteFriendsOpen}
+            activity={activity}
+            isRallyGame={Boolean(regularGroup)}
+            onClose={() => setInviteFriendsOpen(false)}
+          />
+          <ChangeGameTimeSheet
+            visible={timeSheetOpen}
+            activity={activity}
+            onClose={() => setTimeSheetOpen(false)}
+            onUpdated={() => void refetch()}
+          />
+          <ChangeGameCourtSheet
+            visible={courtSheetOpen}
+            activity={activity}
+            onClose={() => setCourtSheetOpen(false)}
+            onUpdated={() => void refetch()}
+          />
+        </>
       ) : null}
+
+      <JoinRequestsSheet
+        visible={joinRequestsOpen}
+        requests={joinRequests}
+        loading={loadingRequests}
+        gameLabel={
+          activity
+            ? `${activity.sport_type} · ${activity.location?.name || 'Court TBD'} · ${timeLabel}`
+            : undefined
+        }
+        onClose={() => setJoinRequestsOpen(false)}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onOpenProfile={(player) => {
+          setJoinRequestsOpen(false);
+          openPlayerProfile(player, 'Requested to join');
+        }}
+      />
     </ScrollView>
     </KeyboardSafeView>
   );
@@ -1603,6 +1689,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderRadius: radius.md,
   },
+  manageHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    lineHeight: 17,
+  },
   errorTitle: {
     fontSize: 18,
     fontWeight: '600',
@@ -1627,17 +1718,46 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  heroSport: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: colors.text,
+  heroIdentityRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  heroTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 2,
   },
   heroListingTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.text,
-    marginTop: spacing.sm,
     lineHeight: 24,
+  },
+  heroSportLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  rallyCrewLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+  },
+  rallyCrewLinkText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.primaryDark,
+  },
+  rallyHubHint: {
+    marginTop: spacing.sm,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   heroIntent: {
     fontSize: 13,
@@ -1671,7 +1791,7 @@ const styles = StyleSheet.create({
   courtReportLink: {
     marginTop: spacing.xs,
     fontSize: 13,
-    color: colors.primary,
+    color: colors.primaryDark,
     fontWeight: '600',
   },
   heroMeta: {
@@ -1682,52 +1802,8 @@ const styles = StyleSheet.create({
   seatBarWrap: {
     marginTop: spacing.sm,
   },
-  participantsSection: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md + 2,
-    marginBottom: spacing.md + 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  readySummary: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  participantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  participantAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  participantAvatarText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  participantInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  participantName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#111',
-  },
-  participantRole: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
+  whoGoingInHero: {
+    marginTop: spacing.md,
   },
   ctaBlock: {
     marginBottom: 12,
@@ -1749,57 +1825,21 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 4,
   },
-  gameKindBadge: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primaryDark,
-    marginTop: spacing.xs,
-  },
-  inviteOnlyText: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#555',
-  },
   urgentText: {
     marginTop: 6,
     fontSize: 12,
     fontWeight: '700',
     color: '#b42318',
   },
-  regularGroupText: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1e40af',
-  },
-  tournamentBlock: {
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  tournamentTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#222',
-    marginBottom: 4,
-  },
-  tournamentHint: {
-    fontSize: 13,
-    color: '#666',
-    lineHeight: 18,
-    marginBottom: spacing.sm,
-  },
   tournamentRow: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   tournamentRowTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: PRIMARY_COLOR,
+    color: colors.primaryDark,
   },
   tournamentRowMeta: {
     fontSize: 12,
@@ -1863,39 +1903,46 @@ const styles = StyleSheet.create({
   },
   linkAction: {
     fontSize: 15,
-    color: '#666',
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   linkActionPrimary: {
     fontSize: 15,
-    color: colors.primary,
+    color: colors.primaryDark,
     fontWeight: '700',
   },
   gameRoomButton: {
     backgroundColor: colors.primary,
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginTop: 12,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: 0,
     alignItems: 'center',
   },
   secondaryButton: {
-    marginTop: 10,
+    marginTop: 0,
     borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 10,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     alignItems: 'center',
   },
-  inviteActionRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  inviteActionBtn: {
-    flex: 1,
+  inlineActionLink: {
     marginTop: 0,
-    marginBottom: 0,
+    paddingVertical: spacing.xs,
+  },
+  inlineLinkText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  inlineLinkMuted: {
+    color: colors.textSecondary,
+  },
+  inlineLinkAction: {
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
   ctaRow: {
     flexDirection: 'row',
@@ -1931,22 +1978,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButtonText: {
-    color: colors.primary,
+    color: colors.primaryDark,
     fontWeight: '600',
+    fontSize: 14,
   },
   utilityButton: {
     backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
     alignItems: 'center',
   },
   utilityButtonDisabled: {
     opacity: 0.6,
   },
   utilityButtonText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontWeight: '700',
+    fontSize: 14,
   },
   preferenceCard: {
     borderWidth: 1,
@@ -2013,57 +2062,10 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 8,
   },
-  requestsSection: {
-    marginTop: 8,
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#e8ecf0',
-  },
-  requestUserTap: {
-    flex: 1,
-  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
-  },
-  emptyText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  requestItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  requestUser: {
-    fontSize: 16,
-    flex: 1,
-  },
-  requestActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  approveButton: {
-    backgroundColor: '#34C759',
-  },
-  rejectButton: {
-    backgroundColor: '#FF3B30',
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
   },
 });
 

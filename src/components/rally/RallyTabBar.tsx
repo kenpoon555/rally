@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.textInverse,
+    color: colors.onAccent,
     lineHeight: 14,
   },
   labelActive: {

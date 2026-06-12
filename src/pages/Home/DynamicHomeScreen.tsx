@@ -27,7 +27,7 @@ import { EmptyState, ScreenHeader } from '../../components/ui';
 import { NextUpCard } from '../../components/home/NextUpCard';
 import { MyGameListCard } from '../../components/game/MyGameListCard';
 import { TodaySectionHeader } from '../../components/home/TodaySectionHeader';
-import { RallyCarouselCard } from '../../components/home/RallyCarouselCard';
+import { RallyCarouselCard, RallyMemberPreview } from '../../components/home/RallyCarouselCard';
 import { RallyInviteCard } from '../../components/rally/RallyInviteCard';
 import { colors, spacing, typography } from '../../constants/theme';
 import { PRODUCT_COPY } from '../../constants/productCopy';
@@ -63,7 +63,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [glossaryOpen, setGlossaryOpen] = useState(false);
   const [rallyInvites, setRallyInvites] = useState<RallyFriendInvite[]>([]);
   const [inviteBusyId, setInviteBusyId] = useState<string | null>(null);
-  const [rallyMemberCounts, setRallyMemberCounts] = useState<Record<string, number>>({});
+  const [rallyMemberPreviews, setRallyMemberPreviews] = useState<Record<string, RallyMemberPreview>>({});
   const dashboard = useHomeDashboard(activeGames, user?.id);
 
   const loadRallyInvites = useCallback(async () => {
@@ -74,25 +74,31 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     }
   }, []);
 
-  const loadRallyMemberCounts = useCallback(async () => {
+  const loadRallyMemberPreviews = useCallback(async () => {
     const groups = regularGroups.slice(0, 8);
     if (groups.length === 0) {
-      setRallyMemberCounts({});
+      setRallyMemberPreviews({});
       return;
     }
 
     const entries = await Promise.all(
       groups.map(async (group) => {
         try {
-          const members = await getRegularGroupMembers(group.id);
-          return [group.id, members.length] as const;
+          const rows = await getRegularGroupMembers(group.id);
+          return [
+            group.id,
+            {
+              total: rows.length,
+              names: rows.map((row) => row.user?.username ?? 'Player'),
+            },
+          ] as const;
         } catch {
-          return [group.id, 0] as const;
+          return [group.id, { total: 0, names: [] }] as const;
         }
       })
     );
 
-    setRallyMemberCounts(Object.fromEntries(entries));
+    setRallyMemberPreviews(Object.fromEntries(entries));
   }, [regularGroups]);
 
   useFocusEffect(
@@ -109,8 +115,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   }, [user?.id, fetchLocation]);
 
   useEffect(() => {
-    void loadRallyMemberCounts();
-  }, [loadRallyMemberCounts]);
+    void loadRallyMemberPreviews();
+  }, [loadRallyMemberPreviews]);
 
   const handleAcceptRallyInvite = async (invite: RallyFriendInvite) => {
     setInviteBusyId(invite.id);
@@ -187,7 +193,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const handleRefresh = async () => {
     setRefreshing(true);
     refetch(true);
-    await Promise.all([loadRallyInvites(), loadRallyMemberCounts()]);
+    await Promise.all([loadRallyInvites(), loadRallyMemberPreviews()]);
     setRefreshing(false);
   };
 
@@ -313,6 +319,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
                   userLocation={location}
                   busy={openingGameId === entry.activity.id}
                   onPress={() => void openGameRoom(entry)}
+                  showStatusSignal={false}
                 />
               ))}
             </View>
@@ -352,7 +359,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
                   <RallyCarouselCard
                     key={group.id}
                     group={group}
-                    memberCount={rallyMemberCounts[group.id]}
+                    members={rallyMemberPreviews[group.id]}
                     accentIndex={index}
                     onPress={() => openCrew(group.id)}
                   />

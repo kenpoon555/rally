@@ -32,7 +32,8 @@ Last updated: 2026-06-01
 ### Repo location
 
 ```
-RallyApp/assets/branding/icon-1024.png   ← master
+RallyApp/assets/branding/icon-1024.png   ← master (production)
+RallyApp/assets/branding/logo/           ← all logo candidates + README
 RallyApp/scripts/generate-app-icons.sh     ← regenerates all sizes
 ```
 

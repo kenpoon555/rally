@@ -10,7 +10,8 @@ from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / 'assets' / 'branding'
-REVIEW_DIR = ROOT / 'docs' / 'design-review'
+CANDIDATES_DIR = OUT_DIR / 'logo' / 'candidates' / 'legacy-court-fresh'
+REVIEW_DIR = ROOT / 'docs' / 'design-review' / 'logo'
 
 # Variant B — soft dual (shipped mark)
 FIGURE = (6, 95, 73)  # #065F49 primaryDark
@@ -113,8 +114,9 @@ def main() -> None:
     master = trim_to_square(draw_mark(1024))
     master.save(OUT_DIR / 'rally-mark-1024.png')
 
+    CANDIDATES_DIR.mkdir(parents=True, exist_ok=True)
     for sz in (512, 256, 128, 64):
-        master.resize((sz, sz), Image.Resampling.LANCZOS).save(OUT_DIR / f'rally-mark-{sz}.png')
+        master.resize((sz, sz), Image.Resampling.LANCZOS).save(CANDIDATES_DIR / f'rally-mark-{sz}.png')
 
     on_cream(master).save(OUT_DIR / 'icon-1024.png', format='PNG', optimize=True)
     android_foreground(master).save(OUT_DIR / 'icon-android-foreground.png', format='PNG', optimize=True)

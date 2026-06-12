@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   actionFilledText: {
     fontSize: 11,
     fontWeight: '700',
-    color: colors.textInverse,
+    color: colors.onPrimary,
   },
   actionMuted: {
     paddingHorizontal: spacing.sm,

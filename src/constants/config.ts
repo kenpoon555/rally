@@ -9,6 +9,10 @@ const asNumber = (value: string | undefined, fallback: number): number => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+export const readEnvOptional = (key: string): string => {
+  return readEnv(key);
+};
+
 const readEnv = (key: string): string => {
   const nativeConfigModule = (NativeModules as Record<string, Record<string, unknown>>)
     .RNCConfigModule;

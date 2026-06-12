@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    color: colors.textInverse,
+    color: colors.onAccent,
     fontSize: 10,
     fontWeight: '700',
   },

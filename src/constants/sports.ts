@@ -326,6 +326,34 @@ export function getCreateGameSubtitle(sportName: string): string {
   return `Host a ${label} game at a nearby court or field.`;
 }
 
+/** Suggested listing titles on Create game — synced with sport_templates where present. */
+export const DEFAULT_LISTING_TITLES: Partial<Record<SportType, string>> = {
+  [SportType.PICKLEBALL]: 'Open play · bring paddle',
+  [SportType.BADMINTON]: 'Doubles · split court fee',
+  [SportType.BASKETBALL]: 'Pickup run · full court',
+  [SportType.TENNIS]: 'Casual hit · open court',
+  [SportType.VOLLEYBALL]: 'Open gym · all levels welcome',
+  [SportType.SOCCER]: 'Pickup match · need players',
+  [SportType.SQUASH]: 'Looking for a hitting partner',
+  [SportType.RACQUETBALL]: 'Open court · all levels',
+  [SportType.TABLE_TENNIS]: 'Casual games · bring paddle',
+  [SportType.ULTIMATE]: 'Pickup scrimmage · all welcome',
+  [SportType.RUNNING]: 'Group run · easy pace',
+  [SportType.HIKING]: 'Trail meetup · all paces',
+};
+
+export function getDefaultListingTitle(sportName: string, templateHint?: string | null): string {
+  const hint = templateHint?.trim();
+  if (hint) {
+    return hint;
+  }
+  const meta = getSportMetadata(sportName);
+  if (meta && DEFAULT_LISTING_TITLES[meta.name]) {
+    return DEFAULT_LISTING_TITLES[meta.name] as string;
+  }
+  return `${sportName} open game`;
+}
+
 export interface ActivityDetailMatchingCopy {
   statusSchedulingDescriptor: string;
   statusDetailLine?: string;

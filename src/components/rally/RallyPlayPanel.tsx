@@ -166,7 +166,6 @@ export const RallyPlayPanel: React.FC<Props> = ({
         key={card.activity_id}
         activity={activity}
         variant="rally"
-        gameModeLabel={PRODUCT_COPY.gameModePickup}
         isCurrent={isCurrent}
         showActions={viewer.show_actions}
         isHost={viewer.is_host}

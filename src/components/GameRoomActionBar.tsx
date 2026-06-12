@@ -2262,7 +2262,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   primaryBtnText: {
-    color: '#fff',
+    color: colors.onPrimary,
     fontWeight: '700',
     fontSize: 14,
   },

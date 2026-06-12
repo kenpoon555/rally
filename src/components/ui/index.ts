@@ -2,6 +2,7 @@ export { Button } from './Button';
 export { Card } from './Card';
 export { Chip } from './Chip';
 export { Avatar } from './Avatar';
+export { MemberAvatarStack } from './MemberAvatarStack';
 export { Badge } from './Badge';
 export { EmptyState } from './EmptyState';
 export { TextField } from './TextField';
