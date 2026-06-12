@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { RegularGroup } from '../../types/regularGroup';
 import { RegularGroupMemberRow } from '../../services/regularGroupService';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -109,7 +109,7 @@ export const RallyHubHeader: React.FC<Props> = ({
         )}
       </View>
       <View style={styles.row}>
-        <SportIcon sport={group.sport_type} size="lg" variant="ring" />
+        <SportIconForSurface sport={group.sport_type} surface="rallyHubHeader" />
         <View style={styles.body}>
           {editing && canEdit ? (
             <View style={styles.nameEditRow}>

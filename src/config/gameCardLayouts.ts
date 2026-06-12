@@ -1,4 +1,6 @@
 import { Activity } from '../types/activity';
+import type { SportIconPreset, SportIconSurface } from './sportIconPresets';
+import { resolveSportIconPreset } from './sportIconPresets';
 
 export type GameListCardVariant = 'open' | 'locked_welcoming' | 'my_game';
 
@@ -28,6 +30,8 @@ export type GameCardPreset = {
   showStatusSignal: boolean;
   showInlineActions: boolean;
   sessionVariant?: 'default' | 'rally';
+  /** Leading icon column — see module-sport-icon contract. */
+  sportIconSurface?: SportIconSurface;
 };
 
 /**
@@ -44,6 +48,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: false,
     showStatusSignal: true,
     showInlineActions: false,
+    sportIconSurface: 'statusSignal',
   },
   discoverLockedWelcoming: {
     layout: 'listRow',
@@ -54,6 +59,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: false,
     showStatusSignal: true,
     showInlineActions: false,
+    sportIconSurface: 'statusSignal',
   },
   myGamesRow: {
     layout: 'listRow',
@@ -64,6 +70,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'todayGameList',
   },
   homeNextUp: {
     layout: 'homeNextUp',
@@ -74,6 +81,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: false,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'todayGameList',
   },
   rallySession: {
     layout: 'sessionInline',
@@ -85,6 +93,7 @@ export const GAME_CARD_PRESETS = {
     showStatusSignal: false,
     showInlineActions: true,
     sessionVariant: 'rally',
+    sportIconSurface: 'rallySessionCard',
   },
   detailPickup: {
     layout: 'detailHero',
@@ -95,6 +104,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'detailHero',
   },
   detailRally: {
     layout: 'detailHero',
@@ -105,6 +115,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'detailHero',
   },
   mapTeaser: {
     layout: 'mapTeaser',
@@ -115,6 +126,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'todayGameList',
   },
 } as const satisfies Record<string, GameCardPreset>;
 
@@ -180,4 +192,10 @@ export function listRowFlagsFromPreset(preset: GameCardPreset): {
     showWhoGoing: preset.showWhoGoing,
     showStatusSignal: preset.showStatusSignal,
   };
+}
+
+export function sportIconPresetForGameCardList(
+  presetKey: GameCardPresetKey
+): SportIconPreset | null {
+  return resolveSportIconPreset(getGameCardPreset(presetKey).sportIconSurface);
 }

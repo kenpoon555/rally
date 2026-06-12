@@ -12,6 +12,22 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 | [flow-rally-session.md](./flow-rally-session.md) | **B** | Sees game → I'm in → host locks roster |
 | [module-game-card.md](./module-game-card.md) | **Module** | Config-driven presets; no duplicated session actions |
 | [module-invite-link.md](./module-invite-link.md) | **Module** | Host vs public URLs; landing + deep link routing |
+| [module-sport-icon.md](./module-sport-icon.md) | **Module** | Today plain vs Rally ring; named surfaces |
+
+## Sprint prep (draft contracts + rules)
+
+Not in validation loops yet — scaffolds for next sprint. Each has a matching `.cursor/rules/rally-*.mdc` rule.
+
+| Contract | Rule | Focus |
+|----------|------|-------|
+| [flow-game-room.md](./flow-game-room.md) | `rally-game-room.mdc` | Game chat + roster actions |
+| [flow-create-game.md](./flow-create-game.md) | `rally-create-game.mdc` | Create activity + host share |
+| [flow-play-screen.md](./flow-play-screen.md) | `rally-play-screen.mdc` | Discover / Today cards |
+| [flow-inbox.md](./flow-inbox.md) | `rally-inbox.mdc` | Chats tab filters + navigation |
+| [flow-profile.md](./flow-profile.md) | `rally-profile.mdc` | Profile + player modal |
+| [flow-auth-onboarding.md](./flow-auth-onboarding.md) | `rally-auth-onboarding.mdc` | Auth, pending deep links, coach marks |
+
+Loop A/B also have dedicated rules: `rally-flow-invite.mdc`, `rally-flow-rally-session.mdc`.
 
 ## How to validate
 
@@ -62,7 +78,8 @@ See [beta-testflight-play-internal.md](../beta-testflight-play-internal.md).
 |-------------|---------|
 | `…/functions/v1/game-invite?activity={id}` | **Public game** — HTTPS landing → game card → request |
 | `…/functions/v1/game-invite?token={token}&host=1` | **Host game** — HTTPS landing → auto-join |
-| `rallyapp://group-invite/{token}` | Join Rally (+ next game when scheduled) |
+| `…/functions/v1/rally-invite?token={token}` | **Rally group** — HTTPS landing → group join |
+| `rallyapp://group-invite/{token}` | Join Rally (direct scheme) |
 | `rallyapp://host-invite/{token}` | Host game invite (auto-join) |
 | `rallyapp://game/{activityId}` | Open game detail (request flow) |
 | `rallyapp://invite/{token}` | Legacy view-only invite |
@@ -121,11 +138,10 @@ How to reach each state (account, seed, navigation).
 
 ## Deferred contracts
 
-Add after Loop A + B pass:
+Add after sprint prep contracts pass validation:
 
-- `play-screen.md`
-- `create-game.md`
-- `game-room.md`
-- `inbox.md`
-- `profile.md`
-- `auth-onboarding.md` (standalone, if split from Loop A)
+- *(moved to sprint prep table above)*
+
+## Agent hooks (optional chaining)
+
+See `.cursor/hooks/README.md` — `stop` / `subagentStop` hooks can return `followup_message` to trigger the next Validator pass automatically (`hooks.json.example`).

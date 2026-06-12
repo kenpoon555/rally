@@ -11,7 +11,7 @@ import { Activity } from '../../types/activity';
 import { RegularGroup } from '../../types/regularGroup';
 import { GameRecapCard } from '../GameRecapCard';
 import { HostPaymentHint } from '../HostPaymentHint';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { VenueBlock } from '../VenueBlock';
 import { GameCardTypePill } from './GameCardTypePill';
 import { GameCardWhoGoing } from './GameCardWhoGoing';
@@ -117,7 +117,7 @@ export const GameCardDetailHero: React.FC<GameCardDetailHeroProps> = ({
       </View>
 
       <View style={styles.heroIdentityRow}>
-        <SportIcon sport={activity.sport_type} size="md" variant="ring" />
+        <SportIconForSurface sport={activity.sport_type} surface="detailHero" />
         <View style={styles.heroTitleBlock}>
           <Text style={styles.heroListingTitle}>{activityListingHeadline(activity)}</Text>
           <Text style={styles.heroSportLabel}>{activity.sport_type}</Text>

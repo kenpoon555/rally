@@ -18,7 +18,9 @@ import {
 } from '../../utils/activityHelpers';
 import { bucketDistanceMeters } from '../../utils/approximateLocation';
 import { formatDiscoverWhenLine } from '../../utils/todayDateUtils';
-import { SportIcon } from '../SportIcon';
+import { SportIconFromPreset } from '../SportIconForSurface';
+import type { SportIconPreset } from '../../config/sportIconPresets';
+import { getSportIconPreset } from '../../config/sportIconPresets';
 import { GameCardParticipantStack } from './GameCardParticipantStack';
 import { GAME_LIST_SIGNAL_COLUMN, GameListStatusSignal } from './GameListStatusSignal';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
@@ -48,8 +50,10 @@ export type GameListCardProps = {
   trailingAction?: React.ReactNode;
   muted?: boolean;
   showWhoGoing?: boolean;
-  /** Play discover uses status dot/lock; Today uses plain sport icon. */
+  /** Play discover uses status dot/lock; Today uses sport icon preset. */
   showStatusSignal?: boolean;
+  /** When status signal is off, which sport icon preset to render. */
+  sportIconPreset?: SportIconPreset | null;
 };
 
 export function formatGameCardDistance(
@@ -96,6 +100,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
   muted = false,
   showWhoGoing = false,
   showStatusSignal = true,
+  sportIconPreset,
 }) => {
   const isLockedWelcoming = variant === 'locked_welcoming';
   const isUrgent = isTonightUrgency(activity) && !isLockedWelcoming;
@@ -113,6 +118,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
 
   const trailingWidth = trailingAction ? 96 : 76;
   const leadingColumnWidth = showStatusSignal ? GAME_LIST_SIGNAL_COLUMN : 42;
+  const listIconPreset = sportIconPreset ?? getSportIconPreset('todayGameList');
 
   return (
     <TouchableOpacity
@@ -126,7 +132,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
           {showStatusSignal ? (
             <GameListStatusSignal locked={isLockedWelcoming} />
           ) : (
-            <SportIcon sport={activity.sport_type} size="md" variant="plain" />
+            <SportIconFromPreset sport={activity.sport_type} preset={listIconPreset} />
           )}
         </View>
 

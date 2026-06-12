@@ -69,7 +69,7 @@ import { setFocusedGameRoomActivityId } from '../utils/gameRoomFocus';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
 import { PlayerTrustLine } from './PlayerTrustLine';
 import { SessionRotationPanel } from './SessionRotationPanel';
-import { SportIcon } from './SportIcon';
+import { SportIconForSurface } from './SportIconForSurface';
 import { sportSupportsRotation } from '../constants/sports';
 import {
   createNeedPlayerPost,
@@ -1063,7 +1063,7 @@ export const GameRoomHeader: React.FC = () => {
         accessibilityRole="button"
         accessibilityLabel="Expand game details"
       >
-        <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
+        <SportIconForSurface sport={activity.sport_type} surface="gameRoomCollapsed" />
         <Text style={styles.collapsedBarText} numberOfLines={1}>
           {collapsedSummary}
         </Text>
@@ -1087,7 +1087,7 @@ export const GameRoomHeader: React.FC = () => {
   return (
     <View style={styles.header}>
       <View style={styles.compactTop}>
-        <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
+        <SportIconForSurface sport={activity.sport_type} surface="gameRoomCollapsed" />
         <TouchableOpacity
           style={styles.compactCopy}
           onPress={onTitlePress}

@@ -1,0 +1,20 @@
+---
+description: Game room chat chrome — read before editing GameRoom provider, header, or footer.
+globs:
+  - src/components/GameRoomActionBar.tsx
+  - src/pages/Chat/ChatThreadScreen.tsx
+  - src/services/gameCardSessionActions.ts
+alwaysApply: false
+---
+
+# Game room module
+
+Read **docs/contracts/flow-game-room.md** before changing game chat roster UI or session actions in the room.
+
+## Required patterns
+
+1. Roster actions (join, I'm in, lock, nudge) → `gameCardSessionActions.ts` — keep alerts/copy in one place.
+2. Do not duplicate `finalizeGameCommitment` / `setGameReady` handlers with different alert text.
+3. Header collapse/expand must not unmount chat composer in a way that loses draft text.
+
+Contract status: **draft** — fill Validator report before treating checklist as authoritative.

@@ -1,0 +1,24 @@
+---
+description: Auth and onboarding — read before editing login, session restore, or coach marks.
+globs:
+  - src/pages/Auth/**
+  - src/context/AuthContext.tsx
+  - src/services/pendingDeepLinkService.ts
+  - src/constants/onboardingFlags.ts
+  - src/components/CoachMark.tsx
+alwaysApply: false
+---
+
+# Auth & onboarding
+
+Read **docs/contracts/flow-auth-onboarding.md** before changing sign-in, session restore, or onboarding flags.
+
+For end-to-end invite behavior also read **docs/contracts/flow-invite-to-rally.md** (Loop A).
+
+## Required patterns
+
+1. Pending deep links stored on signed-out invite; replay once after auth.
+2. OAuth / magic link callbacks must not block the main thread at module load.
+3. Coach mark flags persist — do not reset on every app launch.
+
+Contract status: **draft**.

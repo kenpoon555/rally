@@ -5,6 +5,7 @@ import {
   gameListVariantFromPreset,
   getGameCardPreset,
   listRowFlagsFromPreset,
+  sportIconPresetForGameCardList,
 } from '../../config/gameCardLayouts';
 import { GameListCard, GameListCardProps } from './GameListCard';
 
@@ -13,7 +14,7 @@ type ListShellProps = {
   activity: Activity;
 } & Omit<
   GameListCardProps,
-  'activity' | 'showWhoGoing' | 'showStatusSignal' | 'variant'
+  'activity' | 'showWhoGoing' | 'showStatusSignal' | 'sportIconPreset' | 'variant'
 > & {
   variant?: GameListCardProps['variant'];
 };
@@ -44,6 +45,7 @@ export const GameCardShell: React.FC<ListShellProps> = ({
       variant={variant ?? gameListVariantFromPreset(presetKey, activity)}
       showWhoGoing={flags.showWhoGoing}
       showStatusSignal={flags.showStatusSignal}
+      sportIconPreset={sportIconPresetForGameCardList(presetKey)}
       {...rest}
     />
   );

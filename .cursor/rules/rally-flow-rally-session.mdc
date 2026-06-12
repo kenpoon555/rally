@@ -1,0 +1,25 @@
+---
+description: Loop B Rally session — read before changing Play tab, session cards, or I'm in / lock roster.
+globs:
+  - src/pages/Regulars/RegularsCrewScreen.tsx
+  - src/components/CrewGameSessionCard.tsx
+  - src/components/rally/RallySessionCard.tsx
+  - src/components/rally/RallyPlayPanel.tsx
+  - src/components/home/NextUpCard.tsx
+  - src/components/game/MyGameListCard.tsx
+alwaysApply: false
+---
+
+# Loop B — Rally session
+
+Read **docs/contracts/flow-rally-session.md** before changing session coordination UX.
+
+Validation: **.cursor/workflows/validate-contract.md** (Loop B Validator prompt).
+
+## Required patterns
+
+1. Session inline actions → `RallySessionCard` / `gameCardSessionActions` — no duplicated handlers.
+2. Today / My Games list cards → `GameCardShell` presets (`homeNextUp`, `myGamesRow`).
+3. Run Loop A before starting Loop B validation on a fresh build.
+
+Run `npm test -- gameCardLayouts` after preset changes.

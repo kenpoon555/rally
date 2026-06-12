@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { MemberAvatarStack } from '../ui/MemberAvatarStack';
 import { RegularGroup } from '../../types/regularGroup';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -36,7 +36,7 @@ export const RallyCarouselCard: React.FC<Props> = ({
       onPress={onPress}
       activeOpacity={0.9}
     >
-      <SportIcon sport={group.sport_type} size="md" variant="ghost" style={styles.icon} />
+      <SportIconForSurface sport={group.sport_type} surface="rallyCarousel" style={styles.icon} />
       <Text style={styles.name} numberOfLines={2}>
         {group.name}
       </Text>

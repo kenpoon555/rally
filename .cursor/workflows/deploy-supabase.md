@@ -7,7 +7,7 @@ Project ref: **`casljueycxsqexpkdiuq`** (preview; adjust if prod differs)
 ```bash
 cd RallyApp
 supabase db push --linked
-# or for a single file:
+# or for a single file (when db push history is out of sync):
 supabase db query -f supabase/migrations/NNN_name.sql --linked
 ```
 
@@ -17,6 +17,7 @@ supabase db query -f supabase/migrations/NNN_name.sql --linked
 supabase functions deploy send-push --project-ref casljueycxsqexpkdiuq
 supabase functions deploy sport-landing --project-ref casljueycxsqexpkdiuq
 supabase functions deploy game-invite --project-ref casljueycxsqexpkdiuq --no-verify-jwt
+supabase functions deploy rally-invite --project-ref casljueycxsqexpkdiuq --no-verify-jwt
 ```
 
 ## Secrets (one-time / rotate)

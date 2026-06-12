@@ -41,8 +41,9 @@ Use `discoverPresetKey()`, `gameListVariantFromPreset()`, and `listRowFlagsFromP
    - `instant` → `joinCrewGame` / roster (Rally)
    - `none` → navigate to detail
 3. **Share semantics** — use `shareModeForViewer(preset, { isHost })` + `shareGameInvite()`; never inline URL strings.
-4. **Session actions** — use `gameCardSessionActions` service, `createGameCardSessionActions`, or `RallySessionCard`; do not duplicate join/I'm in/lock/nudge in panels or Game Room.
-5. **Shared subcomponents** — prefer `GameCardParticipantStack`, `RosterSeatBar`, `GameCardTypePill`, `GameCardWhoGoing`, `GameCardSection`.
+4. **Sport icons** — use `sportIconSurface` on presets + `SportIconForSurface`; see [module-sport-icon.md](./module-sport-icon.md).
+5. **Session actions** — use `gameCardSessionActions` service, `createGameCardSessionActions`, or `RallySessionCard`; do not duplicate join/I'm in/lock/nudge in panels or Game Room.
+6. **Shared subcomponents** — prefer `GameCardParticipantStack`, `RosterSeatBar`, `GameCardTypePill`, `GameCardWhoGoing`, `GameCardSection`, `SportIconForSurface`.
 
 ## Pass/fail checklist
 

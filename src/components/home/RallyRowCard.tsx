@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { RegularGroup } from '../../types/regularGroup';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -13,7 +13,7 @@ type Props = {
 
 export const RallyRowCard: React.FC<Props> = ({ group, memberCount, onPress }) => (
   <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
-    <SportIcon sport={group.sport_type} size="md" variant="plain" />
+    <SportIconForSurface sport={group.sport_type} surface="rallyInviteCard" />
     <View style={styles.main}>
       <Text style={styles.name} numberOfLines={1}>
         {group.name}

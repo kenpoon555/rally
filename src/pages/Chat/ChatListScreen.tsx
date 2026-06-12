@@ -25,7 +25,7 @@ import {
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
 import { Avatar, Chip, EmptyState, ScreenHeader } from '../../components/ui';
-import { SportIcon } from '../../components/SportIcon';
+import { SportIconForSurface } from '../../components/SportIconForSurface';
 import { formatInboxMessageDate } from '../../utils/chatHelpers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -48,12 +48,20 @@ const FILTERS: { id: ChatInboxFilter; label: string }[] = [
 const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
   if (item.kind === 'game') {
     return (
-      <SportIcon sport={item.activity.sport_type} size="sm" variant="ring" style={styles.rowIcon} />
+      <SportIconForSurface
+        sport={item.activity.sport_type}
+        surface="inboxGameRow"
+        style={styles.rowIcon}
+      />
     );
   }
   if (item.kind === 'group') {
     return (
-      <SportIcon sport={item.group.sport_type} size="sm" variant="ring" style={styles.rowIcon} />
+      <SportIconForSurface
+        sport={item.group.sport_type}
+        surface="inboxRallyRow"
+        style={styles.rowIcon}
+      />
     );
   }
   if (item.profilePhotoUrl) {
