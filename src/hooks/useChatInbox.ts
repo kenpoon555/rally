@@ -58,6 +58,7 @@ export type FriendChatInboxItem = {
   key: string;
   userId: string;
   username: string;
+  profilePhotoUrl?: string | null;
   conversationId: string | null;
   unread: number;
   title: string;
@@ -216,6 +217,7 @@ function buildChatInbox(params: {
         key: `friend-${friendId}`,
         userId: friendId,
         username,
+        profilePhotoUrl: friend.friend?.profile_photo_url ?? null,
         conversationId: convoId,
         unread: convo ? params.unreadCounts[convo.id] || 0 : 0,
         title: `@${username}`,

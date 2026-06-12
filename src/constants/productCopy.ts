@@ -108,12 +108,14 @@ export const PRODUCT_COPY = {
   createGameCourtHint: 'Set the court on the game card after you post.',
   gameModePickup: 'Pickup',
   gameModeTournament: 'Tournament',
+  yourGame: 'Your game',
   shareRallyGameLink: 'Share game link',
   rallyMembersTab: 'Members',
   rallyPendingInvites: 'Invited · waiting',
   rallyPendingInvitesEmpty: 'No pending invites — tap + above to invite friends.',
   saveAsRallyConfirmBody:
     'Creates a Rally from this roster. Approved players join automatically; share a link to invite others.',
+  saveAsRallyHint: 'Same crew every week?',
   introSessions: 'Intro nights',
   findPlayers: 'Find players',
   findPlayersHint: 'Invite free agents and active seekers to fill open spots.',
@@ -194,6 +196,10 @@ export const PRODUCT_COPY = {
     'Invites them to this game only — not your whole Rally.',
   shareGameInviteLink: 'Share link instead',
   shareGameInviteLinkRally: 'Share link for this game',
+  shareGameInviteLinkHint:
+    'Anyone with the link can open the game card and request to join.',
+  shareHostGameInviteLinkHint:
+    'Your invite link lets them join immediately when spots are open.',
   gameFriendOnRoster: 'On roster',
   rallyInviteSent: 'Invited',
   rallyInviteInCrew: 'In Rally',

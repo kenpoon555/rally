@@ -9,6 +9,8 @@
 | **[vision.md](./vision.md)** | **Canonical strategy** — roadmap phases, build alignment, what to defer |
 | **[WHAT_NEXT.md](./WHAT_NEXT.md)** | Short pointer to this week's work |
 | **[market_call_02_ADVISOR_HANDOFF.md](./market_call_02_ADVISOR_HANDOFF.md)** | Latest advisor/engineering handoff + QA list |
+| **[HANDOFF_PRODUCT_AND_ENGINEERING_2026-06-07.md](./HANDOFF_PRODUCT_AND_ENGINEERING_2026-06-07.md)** | **Jun 3–7** — deploy fixes, Rally hub, keyboard, product review, open concerns |
+| **[contracts/](./contracts/)** | **Screen/flow pass-fail contracts** for agent validation loops (start: Loop A + B) |
 | **[01_executionplan.md](./01_executionplan.md)** | Feature tracker (schema, UI, rollout) |
 | [../ROADMAP.md](../ROADMAP.md) | Engineering history — what shipped |
 | [../../open_items.md](../../open_items.md) | Business stages, monetization gates |
@@ -30,7 +32,7 @@
 | [github-actions-preview.md](./github-actions-preview.md) | Preview branch builds |
 | [github-actions-production.md](./github-actions-production.md) | Production branch builds |
 | [PUSH_NOTIFICATIONS.md](./PUSH_NOTIFICATIONS.md) | FCM push registry + add-new checklist |
-| Agent workflows | [../.cursor/workflows/](../.cursor/workflows/) (promote, ship, deploy) |
+| Agent workflows | [../.cursor/workflows/](../.cursor/workflows/) — **validate-contract** (Loop A/B), promote, ship, deploy |
 | [APP_STORE_PLAY_STORE_PREP.md](./APP_STORE_PLAY_STORE_PREP.md) | TestFlight / Play / launch |
 | [beta-testflight-play-internal.md](./beta-testflight-play-internal.md) | Wider beta distribution |
 

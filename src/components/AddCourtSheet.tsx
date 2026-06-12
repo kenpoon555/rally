@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   addLink: {
     fontSize: 15,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.primaryDark,
   },
   input: {
     borderWidth: 1,

@@ -9,6 +9,8 @@ type Size = 'sm' | 'md' | 'lg';
 type Props = {
   name: string;
   size?: Size;
+  /** Yellow accent circle — inbox rows, matches SportIcon ring. */
+  tone?: 'default' | 'accent';
   /** @deprecated use readyState */
   ready?: boolean;
   readyState?: ParticipantReadyState;
@@ -37,10 +39,21 @@ function resolveReadyState(ready?: boolean, readyState?: ParticipantReadyState):
   return ready ? 'ready' : 'none';
 }
 
-export function Avatar({ name, size = 'md', ready = false, readyState, style }: Props) {
+export function Avatar({
+  name,
+  size = 'md',
+  tone = 'default',
+  ready = false,
+  readyState,
+  style,
+}: Props) {
   const s = sizes[size];
   const initials = initialsFromName(name);
-  const bg = AVATAR_PALETTE[initials.charCodeAt(0) % AVATAR_PALETTE.length];
+  const bg =
+    tone === 'accent'
+      ? colors.accent
+      : AVATAR_PALETTE[initials.charCodeAt(0) % AVATAR_PALETTE.length];
+  const textColor = tone === 'accent' ? colors.onAccent : colors.textInverse;
   const state = resolveReadyState(ready, readyState);
 
   return (
@@ -58,7 +71,7 @@ export function Avatar({ name, size = 'md', ready = false, readyState, style }: 
           },
         ]}
       >
-        <Text style={[styles.text, { fontSize: s.font }]}>{initials}</Text>
+        <Text style={[styles.text, { fontSize: s.font, color: textColor }]}>{initials}</Text>
       </View>
       {state === 'ready' ? (
         <View style={[styles.badge, styles.badgeReady, { width: s.badge, height: s.badge, borderRadius: s.badge / 2 }]}>

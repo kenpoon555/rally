@@ -4,7 +4,6 @@ import {
   Alert,
   FlatList,
   Modal,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -23,9 +22,9 @@ import { RegularGroup } from '../../types/regularGroup';
 import { Friend } from '../../types/friends';
 import { RallyOutgoingInvite } from '../../types/rallyInvite';
 import { Avatar, KeyboardSafeView } from '../ui';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
+import { shareRallyGroupInvite } from '../../services/inviteLinkService';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
 type Props = {
@@ -139,11 +138,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
     if (!group.invite_token) {
       return;
     }
-    const url = buildRegularGroupInviteUrl(group.invite_token);
-    await Share.share({
-      message: `Join our ${group.sport_type} Rally "${group.name}" on Rally: ${url}`,
-      url,
-    });
+    await shareRallyGroupInvite(group);
   };
 
   const renderAction = (row: FriendRow) => {
@@ -190,7 +185,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
         </View>
 
         <View style={styles.hero}>
-          <SportIcon sport={group.sport_type} size="lg" variant="plain" />
+          <SportIconForSurface sport={group.sport_type} surface="shareSheet" />
           <View style={styles.heroBody}>
             <Text style={styles.heroName} numberOfLines={2}>
               {group.name}

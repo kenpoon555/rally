@@ -18,19 +18,19 @@ const toneMap: Record<Tone, { bg: string; bgSelected: string; text: string; text
     bg: colors.background,
     bgSelected: colors.primary,
     text: colors.textSecondary,
-    textSelected: colors.textInverse,
+    textSelected: colors.onPrimary,
   },
   primary: {
     bg: colors.primaryLight,
     bgSelected: colors.primary,
     text: colors.primaryDark,
-    textSelected: colors.textInverse,
+    textSelected: colors.onPrimary,
   },
   accent: {
     bg: colors.accentSoft,
     bgSelected: colors.accent,
-    text: colors.accent,
-    textSelected: colors.textInverse,
+    text: colors.primaryDark,
+    textSelected: colors.onAccent,
   },
   success: {
     bg: colors.successSoft,
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.textInverse,
+    color: colors.onAccent,
   },
   badgeTextSelected: {
     color: colors.primaryDark,

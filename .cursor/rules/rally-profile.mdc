@@ -1,0 +1,20 @@
+---
+description: Profile and player modal — read before editing profile screen or scorecard.
+globs:
+  - src/pages/Profile/ProfileScreen.tsx
+  - src/components/PlayerProfileModal.tsx
+  - src/components/PlayerTrustLine.tsx
+alwaysApply: false
+---
+
+# Profile flow
+
+Read **docs/contracts/flow-profile.md** before changing profile, scorecard, or player modal preview.
+
+## Required patterns
+
+1. Profile mutations via services — not direct Supabase in components.
+2. Player modal must not leak private fields to non-host viewers.
+3. Sign out flows through `AuthContext` so pending deep links and realtime teardown stay consistent.
+
+Contract status: **draft**.

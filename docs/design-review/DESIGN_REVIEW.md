@@ -10,14 +10,14 @@
 
 | File | What it is |
 |------|------------|
-| `01_designer_logo.jpg` | Designer splash / logo |
+| `logo/01_designer_logo.jpg` | Designer splash / logo |
 | `02_designer_get_started.jpg` | Designer onboarding |
 | `03_designer_home_today.jpg` | Designer Home (→ our **Today**) |
 | `04_designer_discover_play.jpg` | Designer Discover (→ our **Play**) |
 | `05_concept_today_cream.png` | AI concept: Today + cream + map hero |
 | `06_concept_play_discover_cream.png` | AI concept: Play tab |
 | `07_concept_tab_bar_4tab_options.png` | 3 bottom-bar options for 4 tabs |
-| `08_concept_logo_onboarding_cream.png` | AI concept: splash + onboarding on cream |
+| `logo/08_concept_logo_onboarding_cream.png` | AI concept: splash + onboarding on cream |
 
 ---
 
@@ -29,7 +29,7 @@
 
 ## Screen-by-screen review
 
-### 1. Logo / Splash (`01_designer_logo.jpg`)
+### 1. Logo / Splash (`logo/01_designer_logo.jpg`)
 
 | Criterion | Designer | Verdict |
 |-----------|----------|---------|
@@ -38,7 +38,7 @@
 | **Function fit** | Brand only | ✅ Fine for splash |
 | **Bottom bar** | N/A | N/A |
 
-**Take:** Keep the orbital logo concept. Swap gray → cream `#F5F4F0`, lime → court green `#0B7A5E`. See `08_concept_logo_onboarding_cream.png`.
+**Take:** Keep the orbital logo concept. Swap gray → cream `#F5F4F0`, lime → court green `#0B7A5E`. See `logo/08_concept_logo_onboarding_cream.png`. All candidates: [logo/](./logo/) · [assets/branding/logo/](../assets/branding/logo/).
 
 ---
 

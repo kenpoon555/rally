@@ -19,8 +19,8 @@ export interface DiscoverSportFiltersProps {
   moreLabel?: string;
 }
 
-const ICON_RING = 52;
-const ICON_GLYPH = 26;
+const ICON_RING = 56;
+const ICON_GLYPH = 34;
 
 type MoreItemProps = {
   label: string;
@@ -28,25 +28,21 @@ type MoreItemProps = {
   onPress: () => void;
 };
 
-const MoreFilterItem: React.FC<MoreItemProps> = ({ label, selected, onPress }) => {
-  const iconColor = selected ? colors.primary : colors.text;
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
-      accessibilityRole="button"
-      accessibilityLabel={`${label}, all sports`}
-    >
-      <View style={[styles.iconRing, selected && styles.iconRingSelected]}>
-        <MaterialCommunityIcons name="dots-horizontal" size={ICON_GLYPH} color={iconColor} />
-      </View>
-      <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-};
+const MoreFilterItem: React.FC<MoreItemProps> = ({ label, selected, onPress }) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
+    accessibilityRole="button"
+    accessibilityLabel={`${label}, all sports`}
+  >
+    <View style={[styles.iconRing, selected && styles.iconRingSelected]}>
+      <MaterialCommunityIcons name="dots-horizontal" size={ICON_GLYPH} color={colors.text} />
+    </View>
+    <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
+      {label}
+    </Text>
+  </Pressable>
+);
 
 /** Play tab sport row — icon stacked above label (designer Discover style). */
 export const DiscoverSportFilters: React.FC<DiscoverSportFiltersProps> = ({
@@ -110,12 +106,14 @@ const styles = StyleSheet.create({
     borderRadius: ICON_RING / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: colors.accent,
     marginBottom: spacing.xs,
   },
   iconRingSelected: {
     borderColor: colors.primary,
+    borderWidth: 3,
   },
   label: {
     fontSize: 12,
@@ -125,6 +123,6 @@ const styles = StyleSheet.create({
   },
   labelSelected: {
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.primaryDark,
   },
 });

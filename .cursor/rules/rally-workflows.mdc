@@ -9,6 +9,6 @@ alwaysApply: true
 - **Skills** (domain depth): `.cursor/skills/` — e.g. `push-notifications`, `cli-first`
 - **Rules** (constraints): `.cursor/rules/` — this folder
 
-When the user asks to ship, promote, deploy, or add push → open the relevant workflow first.
+When the user asks to ship, promote, deploy, add push, validate a contract, or run Loop A/B → open the relevant workflow first (`validate-contract.md` for contract loops).
 
 **CLI first:** If `gh`, `supabase`, `eas`, `git`, or `npm` can do the job, run it yourself. Read `.cursor/skills/cli-first/SKILL.md` when unsure.

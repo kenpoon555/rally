@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -23,7 +22,7 @@ import { RegularGroup } from '../../types/regularGroup';
 import { MiniTournament } from '../../types/miniTournament';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ensureCrewConversation } from '../../services/chatService';
-import { buildRegularGroupInviteUrl } from '../../navigation/deepLinking';
+import { shareRallyGroupInvite } from '../../services/inviteLinkService';
 import { updateRegularGroupName } from '../../services/regularGroupService';
 import { RallyTabBar, RallyHubTab } from '../../components/rally/RallyTabBar';
 import { RallyHubHeader } from '../../components/rally/RallyHubHeader';
@@ -140,9 +139,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     sharePromptHandled.current = true;
     navigation.setParams({ promptShareInvite: false } as never);
-    void Share.share({
-      message: `Join our ${group.sport_type} Rally "${group.name}" on Rally — one tap to get in: ${buildRegularGroupInviteUrl(group.invite_token)}`,
-    });
+    void shareRallyGroupInvite(group);
   }, [group, navigation, promptShareInvite]);
 
   useEffect(() => {
