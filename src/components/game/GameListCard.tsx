@@ -22,19 +22,16 @@ import { SportIcon } from '../SportIcon';
 import { GameCardParticipantStack } from './GameCardParticipantStack';
 import { GAME_LIST_SIGNAL_COLUMN, GameListStatusSignal } from './GameListStatusSignal';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
+import {
+  type GameListCardVariant,
+  gameListCardVariantForActivity,
+} from '../../config/gameCardLayouts';
+
+export type { GameListCardVariant };
+export { gameListCardVariantForActivity };
 
 const METERS_PER_MILE = 1609.344;
 const CARD_MIN_HEIGHT = 88;
-
-export type GameListCardVariant = 'open' | 'locked_welcoming' | 'my_game';
-
-export function gameListCardVariantForActivity(activity: Activity): GameListCardVariant {
-  const missing = activity.missing_players ?? 0;
-  if (activity.match_status === 'finalized' && missing > 0) {
-    return 'locked_welcoming';
-  }
-  return 'my_game';
-}
 
 export type GameListCardProps = {
   activity: Activity;

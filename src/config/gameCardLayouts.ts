@@ -1,5 +1,7 @@
 import { Activity } from '../types/activity';
 
+export type GameListCardVariant = 'open' | 'locked_welcoming' | 'my_game';
+
 /** Visual shell — one component family, multiple layouts. */
 export type GameCardLayout =
   | 'listRow'
@@ -141,4 +143,41 @@ export function shareModeForViewer(
     return 'none';
   }
   return options.isHost ? 'host' : 'public';
+}
+
+export function discoverPresetKey(sectionKey: 'open' | 'locked'): GameCardPresetKey {
+  return sectionKey === 'locked' ? 'discoverLockedWelcoming' : 'discoverOpen';
+}
+
+/** Derive list-row visual variant from preset + activity state. */
+export function gameListVariantFromPreset(
+  presetKey: GameCardPresetKey,
+  activity: Activity
+): GameListCardVariant {
+  if (presetKey === 'discoverOpen') {
+    return 'open';
+  }
+  if (presetKey === 'discoverLockedWelcoming') {
+    return 'locked_welcoming';
+  }
+  return gameListCardVariantForActivity(activity);
+}
+
+/** @deprecated Use gameListVariantFromPreset — kept for gradual migration. */
+export function gameListCardVariantForActivity(activity: Activity): GameListCardVariant {
+  const missing = activity.missing_players ?? 0;
+  if (activity.match_status === 'finalized' && missing > 0) {
+    return 'locked_welcoming';
+  }
+  return 'my_game';
+}
+
+export function listRowFlagsFromPreset(preset: GameCardPreset): {
+  showWhoGoing: boolean;
+  showStatusSignal: boolean;
+} {
+  return {
+    showWhoGoing: preset.showWhoGoing,
+    showStatusSignal: preset.showStatusSignal,
+  };
 }

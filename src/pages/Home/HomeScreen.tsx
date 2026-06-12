@@ -42,7 +42,8 @@ import { DiscoverErrorState } from '../../components/discover/DiscoverErrorState
 import { DiscoverSportFilters } from '../../components/discover/DiscoverSportFilters';
 import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
 import { DiscoverSectionHeader } from '../../components/discover/DiscoverSectionHeader';
-import { GameListCard } from '../../components/game/GameListCard';
+import { GameCardShell } from '../../components/game/GameCardShell';
+import { discoverPresetKey } from '../../config/gameCardLayouts';
 import { CompactFreeAgentRow } from '../../components/discover/CompactFreeAgentRow';
 import { toUserErrorMessage } from '../../utils/errorMessages';
 import { BETA_REGION } from '../../constants/betaRegion';
@@ -489,11 +490,11 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
             <DiscoverSectionHeader title={section.title} subtitle={section.subtitle} />
           )}
           renderItem={({ item, section }) => (
-            <GameListCard
+            <GameCardShell
+              presetKey={discoverPresetKey(section.key === 'locked' ? 'locked' : 'open')}
               activity={item}
               userLocation={discoverLocation}
               isHost={item.user_id === user?.id}
-              variant={section.key === 'locked' ? 'locked_welcoming' : 'open'}
               onPress={() => openActivityDetail(item.id)}
             />
           )}

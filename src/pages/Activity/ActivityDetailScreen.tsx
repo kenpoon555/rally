@@ -44,16 +44,13 @@ import {
   getTournamentsForGroup,
 } from '../../services/miniTournamentService';
 import { MiniTournament } from '../../types/miniTournament';
+import { GameCardDetailHero } from '../../components/game/GameCardDetailHero';
 import { detailPresetForActivity, shareModeForViewer } from '../../config/gameCardLayouts';
 import { shareGameInvite } from '../../services/inviteLinkService';
 import { RegularGroup } from '../../types/regularGroup';
 import { PlayerReviewForm } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
-import { VenueBlock } from '../../components/VenueBlock';
-import { SportIcon } from '../../components/SportIcon';
-import { GameRecapCard } from '../../components/GameRecapCard';
 import { getGameRecapIdForActivity } from '../../services/gameRecapService';
-import { HostPaymentHint } from '../../components/HostPaymentHint';
 import { reportCourtIssue, CourtReportType } from '../../services/courtService';
 import { supabase } from '../../services/api/supabase';
 import {
@@ -80,7 +77,6 @@ import {
   getReviewsByReviewerForActivity,
   submitPlayerReview,
 } from '../../services/reviewService';
-import { activityListingHeadline, playIntentLabel } from '../../constants/playIntent';
 import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
 import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
@@ -95,10 +91,7 @@ import {
   GameCardIconActionBar,
 } from '../../components/game/GameCardIconActionBar';
 import { GameCardSection, gameCardPanelStyles } from '../../components/game/GameCardSection';
-import { GameCardTypePill } from '../../components/game/GameCardTypePill';
-import { GameCardWhoGoing } from '../../components/game/GameCardWhoGoing';
 import { JoinRequestsSheet } from '../../components/game/JoinRequestsSheet';
-import { RosterSeatBar } from '../../components/game/RosterSeatBar';
 import { Ionicons } from '@expo/vector-icons';
 
 type MainStackParamList = {
@@ -950,7 +943,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <View style={[styles.container, styles.loadingCenter]}>
         <ActivityIndicator size="large" color={PRIMARY_COLOR} />
-        <Text style={styles.heroMeta}>
+        <Text style={styles.loadingLabel}>
           {redeemingInvite ? 'Joining game…' : resolvingInvite ? 'Opening invite…' : 'Loading game…'}
         </Text>
       </View>
@@ -1067,172 +1060,56 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <KeyboardSafeView style={styles.container}>
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
-      <View style={styles.heroCard}>
-        <View style={styles.heroTopRow}>
-          <GameCardTypePill
-            isRallyGame={isRallyGame}
-            inviteOnly={activity.visibility === 'invite_only'}
-          />
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusBadgeText}>
-              {isPastGame ? 'played' : activity.match_status || 'open'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.heroIdentityRow}>
-          <SportIcon sport={activity.sport_type} size="md" variant="ring" />
-          <View style={styles.heroTitleBlock}>
-            <Text style={styles.heroListingTitle}>{activityListingHeadline(activity)}</Text>
-            <Text style={styles.heroSportLabel}>{activity.sport_type}</Text>
-            {playIntentLabel(activity.play_intent) ? (
-              <Text style={styles.heroIntent}>{playIntentLabel(activity.play_intent)}</Text>
-            ) : null}
-          </View>
-        </View>
-        {regularGroup ? (
-          <TouchableOpacity onPress={openRegularsCrew} style={styles.rallyCrewLink}>
-            <Ionicons name="people-outline" size={14} color={colors.primaryDark} />
-            <Text style={styles.rallyCrewLinkText}>{regularGroup.name}</Text>
-            <Ionicons name="chevron-forward" size={14} color={colors.primaryDark} />
-          </TouchableOpacity>
-        ) : null}
-        <Text style={styles.heroTime}>{timeLabel}</Text>
-        <Text style={styles.heroLocation}>{activity.location?.name || 'Court TBD'}</Text>
-        {isPastGame && recapId ? (
-          <View style={styles.recapWrap}>
-            <GameRecapCard recapId={recapId} />
-          </View>
-        ) : null}
-        {activity.location_id && !isPastGame ? (
-          <VenueBlock locationId={activity.location_id} compact />
-        ) : null}
-        {activity.location_id && !isPastGame && (isHost || isApprovedJoiner) ? (
-          <TouchableOpacity onPress={handleReportCourt}>
-            <Text style={styles.courtReportLink}>Report court issue</Text>
-          </TouchableOpacity>
-        ) : null}
-        <GameCardWhoGoing
-          rosterItems={participantPreview.players}
-          totalCount={participantPreview.total}
-          pendingItems={isHost ? pendingJoinItems : []}
-          pendingCount={isHost ? joinRequests.length : 0}
-          maxVisible={6}
-          readySummary={
-            !isFinalized
-              ? `${readyCount} of ${rosterCount} marked ready${
-                  readyCount < rosterCount ? " · amber dot = still waiting" : ''
-                }`
-              : undefined
+      <GameCardDetailHero
+        activity={activity}
+        timeLabel={timeLabel}
+        isRallyGame={isRallyGame}
+        isPastGame={isPastGame}
+        isHost={Boolean(isHost)}
+        isFinalized={isFinalized}
+        wasOnGame={wasOnGame}
+        fromGameRoom={fromGameRoom}
+        canGoBack={canGoBack}
+        showChat={showChat}
+        showTonight={showTonight}
+        listingActive={listingActive}
+        regularGroup={regularGroup}
+        recapId={recapId}
+        rosterItems={participantPreview.players}
+        rosterTotal={participantPreview.total}
+        pendingItems={pendingJoinItems}
+        pendingCount={joinRequests.length}
+        readyCount={readyCount}
+        rosterCount={rosterCount}
+        statusSchedulingDescriptor={detailCopy.statusSchedulingDescriptor}
+        statusDetailLine={detailCopy.statusDetailLine}
+        collectingDeadlineLabel={detailCopy.collectingDeadlineLabel}
+        preferenceDeadline={activity.preference_deadline}
+        expiresLabel={expiresLabel}
+        showPostGameAttendance={showPostGameAttendance}
+        sessionNoteDraft={sessionNoteDraft}
+        costNoteDraft={costNoteDraft}
+        savingSessionNote={savingSessionNote}
+        savingCostNote={savingCostNote}
+        onOpenRegularGroup={openRegularsCrew}
+        onReportCourt={handleReportCourt}
+        onPendingPress={
+          isHost && joinRequests.length > 0 ? () => setJoinRequestsOpen(true) : undefined
+        }
+        onPlayerPress={(player) => {
+          if (!player.userId) {
+            return;
           }
-          onPendingPress={
-            isHost && joinRequests.length > 0 ? () => setJoinRequestsOpen(true) : undefined
-          }
-          onPlayerPress={(player) => {
-            if (!player.userId) {
-              return;
-            }
-            openPlayerProfile(
-              { id: player.userId, username: player.username },
-              player.isHost ? 'Host' : player.isPending ? 'Requested to join' : 'Player'
-            );
-          }}
-          style={styles.whoGoingInHero}
-        />
-        {!isPastGame ? (
-          <>
-            <View style={styles.seatBarWrap}>
-              <RosterSeatBar
-                sportType={activity.sport_type}
-                activity={activity}
-                variant="wide"
-                align="left"
-              />
-            </View>
-            <Text style={styles.heroMeta}>{detailCopy.statusSchedulingDescriptor}</Text>
-          </>
-        ) : null}
-        {!isPastGame && !!detailCopy.statusDetailLine && activity.scheduling_mode === 'flex' && (
-          <Text style={styles.statusDetailLine}>{detailCopy.statusDetailLine}</Text>
-        )}
-        {!isPastGame &&
-        !!activity.preference_deadline &&
-        activity.match_status === 'collecting' && (
-          <Text style={styles.deadlineText}>
-            {detailCopy.collectingDeadlineLabel}:{' '}
-            {new Date(activity.preference_deadline).toLocaleString()}
-          </Text>
-        )}
-        {showTonight ? (
-          <Text style={styles.urgentText}>Need players tonight</Text>
-        ) : null}
-        {!isHost ? (
-          <HostPaymentHint activityId={activity.id} costNote={activity.cost_note} />
-        ) : null}
-        {!isHost && activity.session_note ? (
-          <Text style={styles.costNoteText}>Session: {activity.session_note}</Text>
-        ) : null}
-        {isHost && !isPastGame ? (
-          <View style={styles.costNoteBlock}>
-            <Text style={styles.costNoteLabel}>
-              Session announcement (optional)
-              {savingSessionNote ? ' · Saving…' : ''}
-            </Text>
-            <TextInput
-              style={styles.costNoteInput}
-              value={sessionNoteDraft}
-              onChangeText={setSessionNoteDraft}
-              onBlur={() => void handleSaveSessionNote()}
-              placeholder="e.g. Court 3 · bring cash for lights"
-              maxLength={200}
-            />
-          </View>
-        ) : null}
-        {isHost && !isPastGame ? (
-          <View style={styles.costNoteBlock}>
-            <Text style={styles.costNoteLabel}>
-              Cost note (optional)
-              {savingCostNote ? ' · Saving…' : ''}
-            </Text>
-            <TextInput
-              style={styles.costNoteInput}
-              value={costNoteDraft}
-              onChangeText={setCostNoteDraft}
-              onBlur={() => void handleSaveCostNote()}
-              placeholder="e.g. ~$8/person court · BYO drinks"
-              maxLength={120}
-            />
-            <Text style={styles.costNoteHint}>
-              Saves when you leave the field. Shown in Details and Game Room.
-            </Text>
-          </View>
-        ) : null}
-        {isPastGame && (activity.session_note || activity.cost_note) ? (
-          <View style={styles.pastNotesBlock}>
-            {activity.session_note ? (
-              <Text style={styles.costNoteText}>Session: {activity.session_note}</Text>
-            ) : null}
-            {activity.cost_note ? (
-              <Text style={styles.costNoteText}>Cost: {activity.cost_note}</Text>
-            ) : null}
-          </View>
-        ) : null}
-        {isPastGame && !recapId && isHost && showPostGameAttendance ? (
-          <Text style={styles.pastGameHint}>
-            Record who showed up to generate a shareable recap for your Rally.
-          </Text>
-        ) : null}
-        {expiresLabel ? (
-          <Text style={styles.expiresText}>
-            {listingActive ? 'Listing open until' : 'Listing ended'}: {expiresLabel}
-          </Text>
-        ) : null}
-        {isRallyGame && !isPastGame && wasOnGame ? (
-          <Text style={styles.rallyHubHint}>{PRODUCT_COPY.rallyPlayTabHint}</Text>
-        ) : null}
-        {showChat && fromGameRoom && canGoBack ? (
-          <Text style={styles.gameRoomHint}>{PRODUCT_COPY.gameCardBackHint}</Text>
-        ) : null}
-      </View>
+          openPlayerProfile(
+            { id: player.userId, username: player.username },
+            player.isHost ? 'Host' : player.isPending ? 'Requested to join' : 'Player'
+          );
+        }}
+        onSessionNoteChange={setSessionNoteDraft}
+        onSessionNoteBlur={() => void handleSaveSessionNote()}
+        onCostNoteChange={setCostNoteDraft}
+        onCostNoteBlur={() => void handleSaveCostNote()}
+      />
 
       {showHostToolsPanel ? (
         <View style={gameCardPanelStyles.panel}>
@@ -1701,106 +1578,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
-  },
-  heroCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.md + 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  heroIdentityRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  heroTitleBlock: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  heroListingTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    lineHeight: 24,
-  },
-  heroSportLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  rallyCrewLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  rallyCrewLinkText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primaryDark,
-  },
-  rallyHubHint: {
-    marginTop: spacing.sm,
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  heroIntent: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primaryDark,
-    marginTop: spacing.xs,
-  },
-  statusBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.pill,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.primaryDark,
-    textTransform: 'capitalize',
-  },
-  heroTime: {
-    marginTop: spacing.md,
-    fontSize: 16,
-    fontWeight: '600',
-    color: colors.text,
-  },
-  heroLocation: {
-    marginTop: spacing.xs + 2,
-    fontSize: 15,
-    color: colors.textSecondary,
-  },
-  courtReportLink: {
-    marginTop: spacing.xs,
-    fontSize: 13,
-    color: colors.primaryDark,
-    fontWeight: '600',
-  },
-  heroMeta: {
-    marginTop: spacing.xs,
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  seatBarWrap: {
-    marginTop: spacing.sm,
-  },
-  whoGoingInHero: {
-    marginTop: spacing.md,
   },
   ctaBlock: {
     marginBottom: 12,

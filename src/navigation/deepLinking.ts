@@ -55,10 +55,20 @@ const UUID_PATTERN = '[0-9a-f-]{36}';
 
 function parseInviteWebUrl(url: string): ParsedDeepLink | null {
   try {
-    if (!url.includes('/functions/v1/game-invite')) {
+    const parsed = new URL(url);
+    const path = parsed.pathname;
+
+    if (path.includes('/functions/v1/rally-invite')) {
+      const inviteToken = parsed.searchParams.get('token') || undefined;
+      if (inviteToken) {
+        return { type: 'groupInvite', groupInviteToken: inviteToken };
+      }
       return null;
     }
-    const parsed = new URL(url);
+
+    if (!path.includes('/functions/v1/game-invite')) {
+      return null;
+    }
 
     const activityId = parsed.searchParams.get('activity') || undefined;
     const inviteToken = parsed.searchParams.get('token') || undefined;

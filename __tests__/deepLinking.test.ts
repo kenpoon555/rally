@@ -40,4 +40,16 @@ describe('parseAppDeepLink', () => {
       activityId,
     });
   });
+
+  it('parses HTTPS rally-invite links', () => {
+    const token = '600c0g8d-2222-3333-4444-555555555555';
+    expect(
+      parseAppDeepLink(
+        `https://example.supabase.co/functions/v1/rally-invite?token=${token}`
+      )
+    ).toEqual({
+      type: 'groupInvite',
+      groupInviteToken: token,
+    });
+  });
 });

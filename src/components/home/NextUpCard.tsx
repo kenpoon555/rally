@@ -12,7 +12,8 @@ import { Button } from '../ui';
 import { MyGameEntry } from '../../services/activityService';
 import { RegularGroup } from '../../types/regularGroup';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
-import { GameListCard, gameListCardVariantForActivity } from '../game/GameListCard';
+import { GameCardShell } from '../game/GameCardShell';
+import { gameListCardVariantForActivity } from '../../config/gameCardLayouts';
 import { TodaySectionDotLabel } from './TodaySectionDotLabel';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
 import type { HostLockReadiness } from '../../utils/activityHelpers';
@@ -125,7 +126,8 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
     return (
       <View style={styles.section}>
         <TodaySectionDotLabel label="NEXT UP" />
-        <GameListCard
+        <GameCardShell
+          presetKey="homeNextUp"
           activity={nextGame.activity}
           userLocation={userLocation}
           isHost={nextGame.role === 'host'}
@@ -133,7 +135,6 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
           onPress={() => onOpenGameRoom(nextGame)}
           disabled={busy}
           busy={busy}
-          showStatusSignal={false}
         />
         {hostLock || footerHint ? (
           <View style={styles.cardFooter}>
