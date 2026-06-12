@@ -53,7 +53,7 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 - [ ] Locked card shows finalized / locked copy
 
 ### Today alignment (game card UI)
-- [ ] Next Up + Also on calendar use **plain sport icon** (no green dot / lock signal)
+- [ ] Next Up + Also on calendar + Rallies carousel use plain sport icons (no ring)
 - [ ] Same card structure as Play list (title, venue, time, spots pill) — signals only on Play discover
 
 ### Game detail

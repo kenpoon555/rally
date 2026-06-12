@@ -26,19 +26,25 @@ import { useActivity } from '../hooks/useActivities';
 import { useAuth } from '../hooks/useAuth';
 import {
   approveJoinRequest,
-  finalizeGameCommitment,
   getActivityJoinRequests,
   hostTransferAndExit,
   leaveGame,
-  nudgeSessionRoster,
   rejectJoinRequest,
   scheduleNextGameFromActivity,
   scheduleGroupNextGame,
-  setGameReady,
   updateActivity,
   removeFromRoster,
 } from '../services/activityService';
-import { isRegularGroupMember, joinCrewGame } from '../services/regularGroupService';
+import { isRegularGroupMember } from '../services/regularGroupService';
+import {
+  confirmLockRoster,
+  confirmUndoImIn,
+  joinCrewGameWithFeedback,
+  lockGameRoster,
+  nudgeGameRoster,
+  setGameReadyState,
+  showNudgeSent,
+} from '../services/gameCardSessionActions';
 import { supabase } from '../services/api/supabase';
 import { JoinRequest } from '../types/activity';
 import {
@@ -63,7 +69,7 @@ import { setFocusedGameRoomActivityId } from '../utils/gameRoomFocus';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
 import { PlayerTrustLine } from './PlayerTrustLine';
 import { SessionRotationPanel } from './SessionRotationPanel';
-import { SportIcon } from './SportIcon';
+import { SportIconForSurface } from './SportIconForSurface';
 import { sportSupportsRotation } from '../constants/sports';
 import {
   createNeedPlayerPost,
@@ -367,11 +373,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     }
     setJoiningCrew(true);
     try {
-      const result = await joinCrewGame(activity.id);
+      await joinCrewGameWithFeedback(activity.id);
       await refetch();
-      if (result === 'waitlisted') {
-        Alert.alert(PRODUCT_COPY.waitlistSectionTitle, PRODUCT_COPY.onWaitlistHint);
-      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Could not join game.';
       Alert.alert('Join failed', message);
@@ -408,7 +411,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     setReadyOverride(ready);
     setSettingReady(true);
     try {
-      await setGameReady(activity.id, ready);
+      await setGameReadyState(activity.id, ready);
       await refetch();
     } catch (error: unknown) {
       setReadyOverride(null);
@@ -430,7 +433,9 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     if (!activity || !iAmReady || isHost) {
       return;
     }
-    void applyReady(false);
+    confirmUndoImIn(() => {
+      void applyReady(false);
+    });
   };
 
   const handleScheduleNextGame = () => {
@@ -562,28 +567,18 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
       );
       return;
     }
-    Alert.alert(
-      'Lock roster?',
-      'Roster will lock. Only confirmed players stay on the court list.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Lock roster',
-          onPress: async () => {
-            setFinalizing(true);
-            try {
-              await finalizeGameCommitment(activity.id);
-              await refetch();
-            } catch (error: unknown) {
-              const message = error instanceof Error ? error.message : 'Could not lock roster.';
-              Alert.alert('Lock failed', message);
-            } finally {
-              setFinalizing(false);
-            }
-          },
-        },
-      ]
-    );
+    confirmLockRoster(async () => {
+      setFinalizing(true);
+      try {
+        await lockGameRoster(activity.id);
+        await refetch();
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Could not lock roster.';
+        Alert.alert('Lock failed', message);
+      } finally {
+        setFinalizing(false);
+      }
+    });
   };
 
   const courtName = activity?.location?.name || 'Court TBD';
@@ -679,11 +674,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     setNudging(true);
     void (async () => {
       try {
-        const count = await nudgeSessionRoster(activity.id);
-        Alert.alert(
-          PRODUCT_COPY.nudgeRosterSent,
-          `Reminder sent to ${count} player${count === 1 ? '' : 's'}.`
-        );
+        const count = await nudgeGameRoster(activity.id);
+        showNudgeSent(count);
       } catch (error: unknown) {
         Alert.alert(
           'Could not nudge',
@@ -1071,7 +1063,7 @@ export const GameRoomHeader: React.FC = () => {
         accessibilityRole="button"
         accessibilityLabel="Expand game details"
       >
-        <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
+        <SportIconForSurface sport={activity.sport_type} surface="gameRoomCollapsed" />
         <Text style={styles.collapsedBarText} numberOfLines={1}>
           {collapsedSummary}
         </Text>
@@ -1095,7 +1087,7 @@ export const GameRoomHeader: React.FC = () => {
   return (
     <View style={styles.header}>
       <View style={styles.compactTop}>
-        <SportIcon sport={activity.sport_type} size="sm" variant="plain" />
+        <SportIconForSurface sport={activity.sport_type} surface="gameRoomCollapsed" />
         <TouchableOpacity
           style={styles.compactCopy}
           onPress={onTitlePress}

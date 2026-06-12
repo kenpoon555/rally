@@ -319,7 +319,6 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
                   userLocation={location}
                   busy={openingGameId === entry.activity.id}
                   onPress={() => void openGameRoom(entry)}
-                  showStatusSignal={false}
                 />
               ))}
             </View>

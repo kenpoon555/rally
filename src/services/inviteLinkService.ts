@@ -91,8 +91,16 @@ export async function shareGameInvite(
   await Share.share({ message });
 }
 
-export function buildRallyGroupInviteUrl(inviteToken: string): string {
+function buildWebRallyInviteUrl(inviteToken: string): string {
+  const base = functionsBase();
+  if (base) {
+    return `${base}/rally-invite?token=${encodeURIComponent(inviteToken)}`;
+  }
   return buildRegularGroupInviteUrl(inviteToken);
+}
+
+export function buildRallyGroupInviteUrl(inviteToken: string): string {
+  return buildWebRallyInviteUrl(inviteToken);
 }
 
 export function buildRallyGroupInviteMessage(group: Pick<RegularGroup, 'name' | 'sport_type' | 'invite_token'>): string {

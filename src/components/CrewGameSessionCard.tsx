@@ -10,7 +10,7 @@ import { RosterSeatBar } from './game/RosterSeatBar';
 import { GameCardParticipantStack } from './game/GameCardParticipantStack';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import { SportBadge } from './SportBadge';
-import { SportIcon } from './SportIcon';
+import { SportIconForSurface } from './SportIconForSurface';
 import { getSportMetadata } from '../constants/sports';
 import { colors, radius, spacing, typography } from '../constants/theme';
 import { SessionCardLockReadiness } from '../types/sessionCard';
@@ -128,7 +128,11 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
         {!isRally ? <SportBadge sport={activity.sport_type} style={styles.sportBadge} /> : null}
         {isRally ? (
           <View style={styles.rallyHeaderRow}>
-            <SportIcon sport={activity.sport_type} size="sm" variant="ring" style={styles.rallySportIcon} />
+            <SportIconForSurface
+              sport={activity.sport_type}
+              surface="rallySessionCard"
+              style={styles.rallySportIcon}
+            />
             <View style={styles.rallyHeaderMain}>
               <Text style={[styles.title, styles.titleRally]} numberOfLines={2}>
                 {headline}

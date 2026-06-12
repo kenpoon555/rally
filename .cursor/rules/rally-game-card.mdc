@@ -19,8 +19,9 @@ Read **docs/contracts/module-game-card.md** before changing card layouts or join
 
 1. Pick a preset from `src/config/gameCardLayouts.ts` (`GAME_CARD_PRESETS`) — do not invent per-screen layout flags.
 2. Session inline actions → `RallySessionCard` or `createGameCardSessionActions()` — no duplicated join/I'm in/lock/nudge handlers.
-3. Share from game surfaces → `shareGameInvite()` with `shareModeForViewer()` (see invite-links rule).
-4. Reuse shared subcomponents: `GameCardParticipantStack`, `RosterSeatBar`, `GameCardTypePill`, `GameCardWhoGoing`, `GameCardSection`.
+3. Sport icons on cards → `sportIconSurface` preset field + `SportIconForSurface` (see `rally-sport-icon` rule).
+4. Share from game surfaces → `shareGameInvite()` with `shareModeForViewer()` (see invite-links rule).
+5. Reuse shared subcomponents: `GameCardParticipantStack`, `RosterSeatBar`, `GameCardTypePill`, `GameCardWhoGoing`, `GameCardSection`, `GameCardShell`, `GameCardDetailHero`.
 
 ## Join modes
 

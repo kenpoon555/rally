@@ -5,7 +5,8 @@ import {
   getMyGameListCardSpots,
   needsConfirmPlaying,
 } from '../../utils/activityHelpers';
-import { GameListCard, gameListCardVariantForActivity } from './GameListCard';
+import { GameCardShell } from './GameCardShell';
+import { gameListCardVariantForActivity } from '../../config/gameCardLayouts';
 import { ImInTrailingAction } from './ImInTrailingAction';
 
 export type MyGameListCardProps = {
@@ -18,7 +19,6 @@ export type MyGameListCardProps = {
   actionBusy?: boolean;
   onPress: () => void;
   onConfirmIn?: () => void;
-  showStatusSignal?: boolean;
 };
 
 export const MyGameListCard: React.FC<MyGameListCardProps> = ({
@@ -31,7 +31,6 @@ export const MyGameListCard: React.FC<MyGameListCardProps> = ({
   actionBusy,
   onPress,
   onConfirmIn,
-  showStatusSignal = true,
 }) => {
   const { activity, role } = entry;
   const isHost = role === 'host';
@@ -66,7 +65,8 @@ export const MyGameListCard: React.FC<MyGameListCardProps> = ({
   ]);
 
   return (
-    <GameListCard
+    <GameCardShell
+      presetKey="myGamesRow"
       activity={activity}
       userLocation={userLocation}
       isHost={isHost}
@@ -79,7 +79,6 @@ export const MyGameListCard: React.FC<MyGameListCardProps> = ({
       openSpots={spots.openSpots}
       showChevron={!showImInAction}
       trailingAction={trailingAction}
-      showStatusSignal={showStatusSignal}
     />
   );
 };

@@ -1,4 +1,8 @@
 import { Activity } from '../types/activity';
+import type { SportIconPreset, SportIconSurface } from './sportIconPresets';
+import { resolveSportIconPreset } from './sportIconPresets';
+
+export type GameListCardVariant = 'open' | 'locked_welcoming' | 'my_game';
 
 /** Visual shell — one component family, multiple layouts. */
 export type GameCardLayout =
@@ -26,6 +30,8 @@ export type GameCardPreset = {
   showStatusSignal: boolean;
   showInlineActions: boolean;
   sessionVariant?: 'default' | 'rally';
+  /** Leading icon column — see module-sport-icon contract. */
+  sportIconSurface?: SportIconSurface;
 };
 
 /**
@@ -42,6 +48,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: false,
     showStatusSignal: true,
     showInlineActions: false,
+    sportIconSurface: 'statusSignal',
   },
   discoverLockedWelcoming: {
     layout: 'listRow',
@@ -52,6 +59,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: false,
     showStatusSignal: true,
     showInlineActions: false,
+    sportIconSurface: 'statusSignal',
   },
   myGamesRow: {
     layout: 'listRow',
@@ -62,6 +70,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'todayGameList',
   },
   homeNextUp: {
     layout: 'homeNextUp',
@@ -72,6 +81,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: false,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'todayGameList',
   },
   rallySession: {
     layout: 'sessionInline',
@@ -83,6 +93,7 @@ export const GAME_CARD_PRESETS = {
     showStatusSignal: false,
     showInlineActions: true,
     sessionVariant: 'rally',
+    sportIconSurface: 'rallySessionCard',
   },
   detailPickup: {
     layout: 'detailHero',
@@ -93,6 +104,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'detailHero',
   },
   detailRally: {
     layout: 'detailHero',
@@ -103,6 +115,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'detailHero',
   },
   mapTeaser: {
     layout: 'mapTeaser',
@@ -113,6 +126,7 @@ export const GAME_CARD_PRESETS = {
     showWhoGoing: true,
     showStatusSignal: false,
     showInlineActions: false,
+    sportIconSurface: 'todayGameList',
   },
 } as const satisfies Record<string, GameCardPreset>;
 
@@ -141,4 +155,47 @@ export function shareModeForViewer(
     return 'none';
   }
   return options.isHost ? 'host' : 'public';
+}
+
+export function discoverPresetKey(sectionKey: 'open' | 'locked'): GameCardPresetKey {
+  return sectionKey === 'locked' ? 'discoverLockedWelcoming' : 'discoverOpen';
+}
+
+/** Derive list-row visual variant from preset + activity state. */
+export function gameListVariantFromPreset(
+  presetKey: GameCardPresetKey,
+  activity: Activity
+): GameListCardVariant {
+  if (presetKey === 'discoverOpen') {
+    return 'open';
+  }
+  if (presetKey === 'discoverLockedWelcoming') {
+    return 'locked_welcoming';
+  }
+  return gameListCardVariantForActivity(activity);
+}
+
+/** @deprecated Use gameListVariantFromPreset — kept for gradual migration. */
+export function gameListCardVariantForActivity(activity: Activity): GameListCardVariant {
+  const missing = activity.missing_players ?? 0;
+  if (activity.match_status === 'finalized' && missing > 0) {
+    return 'locked_welcoming';
+  }
+  return 'my_game';
+}
+
+export function listRowFlagsFromPreset(preset: GameCardPreset): {
+  showWhoGoing: boolean;
+  showStatusSignal: boolean;
+} {
+  return {
+    showWhoGoing: preset.showWhoGoing,
+    showStatusSignal: preset.showStatusSignal,
+  };
+}
+
+export function sportIconPresetForGameCardList(
+  presetKey: GameCardPresetKey
+): SportIconPreset | null {
+  return resolveSportIconPreset(getGameCardPreset(presetKey).sportIconSurface);
 }

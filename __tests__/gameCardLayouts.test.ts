@@ -1,7 +1,9 @@
 import {
   GAME_CARD_PRESETS,
   detailPresetForActivity,
+  discoverPresetKey,
   gameKindFromActivity,
+  gameListVariantFromPreset,
   shareModeForViewer,
 } from '../src/config/gameCardLayouts';
 
@@ -28,5 +30,19 @@ describe('gameCardLayouts', () => {
   it('keeps rally session preset inline actions enabled', () => {
     expect(GAME_CARD_PRESETS.rallySession.showInlineActions).toBe(true);
     expect(GAME_CARD_PRESETS.rallySession.sessionVariant).toBe('rally');
+  });
+
+  it('maps discover sections to preset keys', () => {
+    expect(discoverPresetKey('open')).toBe('discoverOpen');
+    expect(discoverPresetKey('locked')).toBe('discoverLockedWelcoming');
+  });
+
+  it('derives list variants from preset keys', () => {
+    const openActivity = { missing_players: 2, match_status: 'open' } as any;
+    expect(gameListVariantFromPreset('discoverOpen', openActivity)).toBe('open');
+    expect(gameListVariantFromPreset('discoverLockedWelcoming', openActivity)).toBe(
+      'locked_welcoming'
+    );
+    expect(gameListVariantFromPreset('myGamesRow', openActivity)).toBe('my_game');
   });
 });

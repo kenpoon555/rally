@@ -1,12 +1,14 @@
-import { Alert } from 'react-native';
 import { useMemo } from 'react';
+import { Alert } from 'react-native';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import {
-  finalizeGameCommitment,
-  nudgeSessionRoster,
-  setGameReady,
-} from '../services/activityService';
-import { joinCrewGame } from '../services/regularGroupService';
+  confirmUndoImIn,
+  joinCrewGameWithFeedback,
+  lockGameRoster,
+  nudgeGameRoster,
+  setGameReadyState,
+  showNudgeSent,
+} from '../services/gameCardSessionActions';
 
 type Options = {
   activityId: string;
@@ -24,7 +26,6 @@ export type GameCardSessionActionHandlers = {
   onNudge?: () => Promise<void>;
 };
 
-/** Factory for list rendering — safe to call inside `.map()`. */
 export function createGameCardSessionActions({
   activityId,
   isHost,
@@ -45,10 +46,7 @@ export function createGameCardSessionActions({
   const onJoin = async () => {
     setBusyActivityId(activityId);
     try {
-      const result = await joinCrewGame(activityId);
-      if (result === 'waitlisted') {
-        Alert.alert('Waitlist', 'Game is full. You are on the waitlist if a spot opens.');
-      }
+      await joinCrewGameWithFeedback(activityId);
       await onReload();
     } catch (error: unknown) {
       Alert.alert('Join failed', error instanceof Error ? error.message : 'Try again.');
@@ -57,33 +55,23 @@ export function createGameCardSessionActions({
     }
   };
 
-  const onConfirmIn = () => runBusy(() => setGameReady(activityId, true));
-  const onLockRoster = () => runBusy(() => finalizeGameCommitment(activityId));
+  const onConfirmIn = () => runBusy(() => setGameReadyState(activityId, true));
+  const onLockRoster = () => runBusy(() => lockGameRoster(activityId));
 
   const onUndoImIn = isHost
     ? undefined
     : () => {
-        Alert.alert(PRODUCT_COPY.undoImInTitle, PRODUCT_COPY.undoImInBody, [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: PRODUCT_COPY.undoImIn,
-            style: 'destructive',
-            onPress: () => {
-              void runBusy(() => setGameReady(activityId, false));
-            },
-          },
-        ]);
+        confirmUndoImIn(() => {
+          void runBusy(() => setGameReadyState(activityId, false));
+        });
       };
 
   const onNudge = canNudge
     ? async () => {
         setBusyActivityId(activityId);
         try {
-          const count = await nudgeSessionRoster(activityId);
-          Alert.alert(
-            PRODUCT_COPY.nudgeRosterSent,
-            `Reminder sent to ${count} player${count === 1 ? '' : 's'}.`
-          );
+          const count = await nudgeGameRoster(activityId);
+          showNudgeSent(count);
         } catch (error: unknown) {
           Alert.alert('Could not nudge', error instanceof Error ? error.message : 'Try again.');
         } finally {
@@ -101,7 +89,6 @@ export function createGameCardSessionActions({
   };
 }
 
-/** Hook wrapper when a single activity id is stable for the component lifetime. */
 export function useGameCardSessionActions(options: Options): GameCardSessionActionHandlers {
   return useMemo(
     () => createGameCardSessionActions(options),

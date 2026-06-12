@@ -22,7 +22,7 @@ import { RegularGroup } from '../../types/regularGroup';
 import { Friend } from '../../types/friends';
 import { RallyOutgoingInvite } from '../../types/rallyInvite';
 import { Avatar, KeyboardSafeView } from '../ui';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { shareRallyGroupInvite } from '../../services/inviteLinkService';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -185,7 +185,7 @@ export const InviteFriendsToRallySheet: React.FC<Props> = ({
         </View>
 
         <View style={styles.hero}>
-          <SportIcon sport={group.sport_type} size="lg" variant="plain" />
+          <SportIconForSurface sport={group.sport_type} surface="shareSheet" />
           <View style={styles.heroBody}>
             <Text style={styles.heroName} numberOfLines={2}>
               {group.name}

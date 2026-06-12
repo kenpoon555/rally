@@ -1,0 +1,32 @@
+---
+description: Sport icon surfaces and variants — use when editing SportIcon or any screen sport glyph.
+globs:
+  - src/components/SportIcon.tsx
+  - src/components/SportIconForSurface.tsx
+  - src/config/sportIconPresets.ts
+  - src/config/gameCardLayouts.ts
+  - src/components/game/GameListCard.tsx
+  - src/components/game/GameCardShell.tsx
+  - src/components/game/GameCardDetailHero.tsx
+  - src/components/CrewGameSessionCard.tsx
+  - src/components/home/RallyCarouselCard.tsx
+  - src/components/home/RallyRowCard.tsx
+  - src/components/rally/RallyHubHeader.tsx
+  - src/components/rally/RallyInviteCard.tsx
+  - src/components/discover/SportFilterIconItem.tsx
+  - src/pages/Chat/ChatListScreen.tsx
+alwaysApply: false
+---
+
+# Sport icon module
+
+Read **docs/contracts/module-sport-icon.md** before changing sport glyphs or leading-column icons on cards.
+
+## Required patterns
+
+1. Screens → `SportIconForSurface` with a key from `SPORT_ICON_SURFACES` — no inline `variant=` / `size=`.
+2. Game list rows → `sportIconSurface` on `GAME_CARD_PRESETS` + `GameCardShell` / `sportIconPresetForGameCardList`.
+3. **All surfaces are plain** — no yellow ring on list, inbox, Rally, or detail icons.
+4. Glyph name mapping stays in `SportIcon.tsx` (`getSportIconName`) — do not duplicate icon name maps.
+
+Run `npm test -- sportIconPresets` after surface or preset changes.

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { getSportMetadata } from '../../constants/sports';
 import { colors, spacing } from '../../constants/theme';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 
 function filterLabel(sport: string): string {
   const meta = getSportMetadata(sport);
@@ -31,7 +31,12 @@ export const SportFilterIconItem: React.FC<SportFilterIconItemProps> = ({
       accessibilityState={{ selected }}
       accessibilityLabel={`${label} filter`}
     >
-      <SportIcon sport={sport} variant="filter" selected={selected} style={styles.icon} />
+      <SportIconForSurface
+        sport={sport}
+        surface="discoverSportFilter"
+        selected={selected}
+        style={styles.icon}
+      />
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={2}>
         {label}
       </Text>
