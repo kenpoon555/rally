@@ -1,26 +1,34 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { SportIcon } from '../SportIcon';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SportIconForSurface } from '../SportIconForSurface';
+import { MemberAvatarStack } from '../ui/MemberAvatarStack';
 import { RegularGroup } from '../../types/regularGroup';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
-const ACCENT_COLORS = [colors.info, colors.primary, colors.accent];
+const ACCENT_COLORS = [colors.accent, colors.primary, colors.accentSoft];
 const CARD_WIDTH = 220;
+
+export type RallyMemberPreview = {
+  total: number;
+  names: string[];
+};
 
 type Props = {
   group: RegularGroup;
-  memberCount?: number;
+  members?: RallyMemberPreview;
   accentIndex?: number;
   onPress: () => void;
 };
 
 export const RallyCarouselCard: React.FC<Props> = ({
   group,
-  memberCount,
+  members,
   accentIndex = 0,
   onPress,
 }) => {
   const accent = ACCENT_COLORS[accentIndex % ACCENT_COLORS.length];
+  const memberNames = members?.names ?? [];
+  const memberTotal = members?.total ?? memberNames.length;
 
   return (
     <TouchableOpacity
@@ -28,19 +36,31 @@ export const RallyCarouselCard: React.FC<Props> = ({
       onPress={onPress}
       activeOpacity={0.9}
     >
-      <SportIcon sport={group.sport_type} size="md" variant="plain" style={styles.icon} />
+      <SportIconForSurface sport={group.sport_type} surface="rallyCarousel" style={styles.icon} />
       <Text style={styles.name} numberOfLines={2}>
         {group.name}
       </Text>
       <Text style={styles.sport} numberOfLines={1}>
         {group.sport_type}
       </Text>
-      <Text style={styles.detail} numberOfLines={1}>
-        {memberCount != null
-          ? `${memberCount} member${memberCount === 1 ? '' : 's'}`
-          : 'Your Rally'}
-        {group.is_partner_rally ? ' · Partner' : ''}
-      </Text>
+
+      <View style={styles.footer}>
+        {memberTotal > 0 ? (
+          <MemberAvatarStack
+            names={memberNames}
+            totalCount={memberTotal}
+            maxVisible={4}
+            overlapping
+          />
+        ) : (
+          <Text style={styles.detail}>Your Rally</Text>
+        )}
+        {group.is_partner_rally ? (
+          <View style={styles.partnerChip}>
+            <Text style={styles.partnerText}>Partner</Text>
+          </View>
+        ) : null}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -57,6 +77,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderLeftWidth: 4,
+    minHeight: 148,
   },
   icon: {
     marginBottom: spacing.sm,
@@ -71,9 +92,26 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
   detail: {
     ...typography.caption,
     color: colors.textTertiary,
-    marginTop: spacing.xs,
+  },
+  partnerChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+  },
+  partnerText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primaryDark,
   },
 });

@@ -7,12 +7,13 @@ import {
   formatActivityTime,
 } from '../utils/activityHelpers';
 import { RosterSeatBar } from './game/RosterSeatBar';
+import { GameCardParticipantStack } from './game/GameCardParticipantStack';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import { SportBadge } from './SportBadge';
+import { SportIconForSurface } from './SportIconForSurface';
+import { getSportMetadata } from '../constants/sports';
 import { colors, radius, spacing, typography } from '../constants/theme';
 import { SessionCardLockReadiness } from '../types/sessionCard';
-import { GameModeChip } from './rally/GameModeChip';
-
 export type CrewGameSessionCardVariant = 'default' | 'rally';
 
 export type CrewGameSessionCardProps = {
@@ -31,7 +32,6 @@ export type CrewGameSessionCardProps = {
   lockReadiness?: SessionCardLockReadiness;
   waitlistPosition?: number | null;
   variant?: CrewGameSessionCardVariant;
-  gameModeLabel?: string;
   onJoin?: () => void;
   onConfirmIn?: () => void;
   onUndoImIn?: () => void;
@@ -40,6 +40,15 @@ export type CrewGameSessionCardProps = {
   showNudge?: boolean;
   onOpenDetails?: () => void;
 };
+
+function YourGameTag() {
+  return (
+    <View style={styles.yourGameTag}>
+      <Ionicons name="people" size={12} color={colors.text} />
+      <Text style={styles.yourGameText}>{PRODUCT_COPY.yourGame}</Text>
+    </View>
+  );
+}
 
 export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   activity,
@@ -57,7 +66,6 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
   lockReadiness,
   waitlistPosition,
   variant = 'default',
-  gameModeLabel,
   onJoin,
   onConfirmIn,
   onUndoImIn,
@@ -104,6 +112,9 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
     activity.cost_note?.trim() ? activity.cost_note.trim() : null,
   ].filter(Boolean);
 
+  const showYourGameTag = isRally && !isPast && (isOnRoster || isHost);
+  const sportLabel = getSportMetadata(activity.sport_type)?.shortLabel ?? activity.sport_type;
+
   return (
     <View
       style={[
@@ -115,25 +126,34 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
     >
       <TouchableOpacity onPress={onOpenDetails} disabled={!onOpenDetails}>
         {!isRally ? <SportBadge sport={activity.sport_type} style={styles.sportBadge} /> : null}
-        {isRally && gameModeLabel ? (
-          <GameModeChip label={gameModeLabel} kind="activity" />
-        ) : null}
         {isRally ? (
-          <>
-            <Text style={[styles.title, styles.titleRally]} numberOfLines={2}>
-              {headline}
-            </Text>
-            {listingTitle ? (
-              <Text style={styles.subline} numberOfLines={1}>
-                {timeLabel}
+          <View style={styles.rallyHeaderRow}>
+            <SportIconForSurface
+              sport={activity.sport_type}
+              surface="rallySessionCard"
+              style={styles.rallySportIcon}
+            />
+            <View style={styles.rallyHeaderMain}>
+              <Text style={[styles.title, styles.titleRally]} numberOfLines={2}>
+                {headline}
               </Text>
-            ) : null}
-          </>
-        ) : (
+              <Text style={styles.rallySportLabel} numberOfLines={1}>
+                {sportLabel}
+              </Text>
+            </View>
+            {showYourGameTag ? <YourGameTag /> : null}
+          </View>
+        ) : null}
+        {isRally && listingTitle ? (
+          <Text style={styles.subline} numberOfLines={1}>
+            {timeLabel}
+          </Text>
+        ) : null}
+        {!isRally ? (
           <Text style={styles.title} numberOfLines={1}>
             {court}
           </Text>
-        )}
+        ) : null}
         {metaLine ? (
           <Text style={styles.meta} numberOfLines={2}>
             {metaLine}
@@ -162,6 +182,7 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
             <Ionicons name="chevron-forward" size={16} color={colors.textTertiary} />
           </View>
         ) : null}
+        <GameCardParticipantStack activity={activity} maxVisible={4} style={styles.avatarRow} />
       </TouchableOpacity>
 
       {!isPast && showActions ? (
@@ -247,7 +268,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   cardCurrent: {
-    borderColor: colors.primary,
+    borderColor: colors.accent,
     borderWidth: 2,
   },
   cardPast: {
@@ -265,6 +286,42 @@ const styles = StyleSheet.create({
     marginTop: 0,
     fontSize: 15,
     lineHeight: 20,
+  },
+  rallyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  rallySportIcon: {
+    marginRight: 0,
+    marginTop: 2,
+  },
+  rallyHeaderMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  rallySportLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  yourGameTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  yourGameText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.text,
   },
   subline: {
     ...typography.caption,
@@ -321,6 +378,9 @@ const styles = StyleSheet.create({
   openLink: {
     ...typography.caption,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.primaryDark,
+  },
+  avatarRow: {
+    marginTop: spacing.sm,
   },
 });

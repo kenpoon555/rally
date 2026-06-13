@@ -5,7 +5,8 @@ import {
   getMyGameListCardSpots,
   needsConfirmPlaying,
 } from '../../utils/activityHelpers';
-import { GameListCard, gameListCardVariantForActivity } from './GameListCard';
+import { GameCardShell } from './GameCardShell';
+import { gameListCardVariantForActivity } from '../../config/gameCardLayouts';
 import { ImInTrailingAction } from './ImInTrailingAction';
 
 export type MyGameListCardProps = {
@@ -64,7 +65,8 @@ export const MyGameListCard: React.FC<MyGameListCardProps> = ({
   ]);
 
   return (
-    <GameListCard
+    <GameCardShell
+      presetKey="myGamesRow"
       activity={activity}
       userLocation={userLocation}
       isHost={isHost}

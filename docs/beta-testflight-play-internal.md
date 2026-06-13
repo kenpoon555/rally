@@ -1,6 +1,17 @@
 # Beta distribution — TestFlight + Google Play internal testing
 
-Last updated: 2026-05-06
+Last updated: 2026-06-07
+
+## Install links (invite landing page)
+
+| Platform | URL | Where set |
+|----------|-----|-----------|
+| **iOS TestFlight** | https://testflight.apple.com/join/gBcW7gA2 | Supabase secret `IOS_INSTALL_URL` + EAS `production` env |
+| **Android** | https://play.google.com/store/apps/details?id=app.rally.sports | Supabase secret `ANDROID_INSTALL_URL` |
+
+Refresh URLs: `node scripts/fetch-beta-install-urls.mjs` then update Supabase secrets.
+
+**Android internal testers:** If the Play Store listing is not public yet, copy the **opt-in link** from Play Console → **Testing** → **Internal testing** and set `ANDROID_INSTALL_URL` to that URL instead.
 
 Prerequisites: EAS production/preview builds configured ([eas-build-and-credentials.md](eas-build-and-credentials.md)); crash reporting optional via `SENTRY_DSN` in `.env` / EAS secrets ([../.env.example](../.env.example)).
 

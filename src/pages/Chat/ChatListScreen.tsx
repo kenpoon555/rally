@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -23,9 +24,8 @@ import {
   getOrCreateDirectConversation,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
-import { Chip, EmptyState, ScreenHeader } from '../../components/ui';
-import { SportIcon } from '../../components/SportIcon';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Avatar, Chip, EmptyState, ScreenHeader } from '../../components/ui';
+import { SportIconForSurface } from '../../components/SportIconForSurface';
 import { formatInboxMessageDate } from '../../utils/chatHelpers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -47,16 +47,29 @@ const FILTERS: { id: ChatInboxFilter; label: string }[] = [
 
 const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
   if (item.kind === 'game') {
-    return <SportIcon sport={item.activity.sport_type} size="sm" variant="plain" style={styles.rowIcon} />;
+    return (
+      <SportIconForSurface
+        sport={item.activity.sport_type}
+        surface="inboxGameRow"
+        style={styles.rowIcon}
+      />
+    );
   }
   if (item.kind === 'group') {
-    return <SportIcon sport={item.group.sport_type} size="sm" variant="plain" style={styles.rowIcon} />;
+    return (
+      <SportIconForSurface
+        sport={item.group.sport_type}
+        surface="inboxRallyRow"
+        style={styles.rowIcon}
+      />
+    );
   }
-  return (
-    <View style={styles.rowIconFriend}>
-      <MaterialCommunityIcons name="message-text-outline" size={18} color={colors.primaryDark} />
-    </View>
-  );
+  if (item.profilePhotoUrl) {
+    return (
+      <Image source={{ uri: item.profilePhotoUrl }} style={[styles.rowAvatarImage, styles.rowIcon]} />
+    );
+  }
+  return <Avatar name={item.username} size="sm" tone="accent" style={styles.rowIcon} />;
 };
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
@@ -362,14 +375,10 @@ const styles = StyleSheet.create({
   rowIcon: {
     marginRight: spacing.sm,
   },
-  rowIconFriend: {
+  rowAvatarImage: {
     width: 32,
     height: 32,
-    borderRadius: radius.sm,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
+    borderRadius: 16,
   },
   rowTitle: {
     flex: 1,

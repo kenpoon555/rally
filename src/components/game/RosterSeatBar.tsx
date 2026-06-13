@@ -11,6 +11,7 @@ const DOT_COMPACT = 10;
 const DOT_WIDE = 12;
 const ICON_COMPACT = 7;
 const ICON_WIDE = 8;
+const BAR_WIDTH_COMPACT = 54;
 
 type Props = {
   sportType: string;
@@ -24,7 +25,32 @@ type Props = {
   variant?: 'compact' | 'wide';
 };
 
-/** Seat dots: sport icon = filled, open ring = empty. Caption reads naturally. */
+function RosterProgressBar({
+  filled,
+  total,
+  tone,
+  width,
+}: {
+  filled: number;
+  total: number;
+  tone: 'full' | 'open';
+  width: number;
+}) {
+  const ratio = total > 0 ? Math.min(filled / total, 1) : 0;
+  return (
+    <View style={[styles.barTrack, { width }]}>
+      <View
+        style={[
+          styles.barFill,
+          { width: `${Math.max(ratio * 100, ratio > 0 ? 8 : 0)}%` },
+          tone === 'full' && styles.barFillFull,
+        ]}
+      />
+    </View>
+  );
+}
+
+/** Roster meter — progress bar on list cards, seat dots on wide/detail rows. */
 export const RosterSeatBar: React.FC<Props> = ({
   sportType,
   activity,
@@ -41,8 +67,8 @@ export const RosterSeatBar: React.FC<Props> = ({
   const dotSize = isWide ? DOT_WIDE : DOT_COMPACT;
   const iconSize = isWide ? ICON_WIDE : ICON_COMPACT;
 
-  const seatDots = (
-    <View style={[styles.dotsRow, isWide ? styles.dotsRowWide : styles.dotsRowCompact]}>
+  const meter = isWide ? (
+    <View style={[styles.dotsRow, styles.dotsRowWide]}>
       {Array.from({ length: slots }, (_, index) => {
         const taken = index < filledDots;
         return taken ? (
@@ -68,6 +94,13 @@ export const RosterSeatBar: React.FC<Props> = ({
         );
       })}
     </View>
+  ) : (
+    <RosterProgressBar
+      filled={filled}
+      total={total}
+      tone={tone}
+      width={BAR_WIDTH_COMPACT}
+    />
   );
 
   const caption = (
@@ -90,7 +123,7 @@ export const RosterSeatBar: React.FC<Props> = ({
         align === 'right' ? styles.alignRight : styles.alignLeft,
       ]}
     >
-      {seatDots}
+      {meter}
       {caption}
     </View>
   );
@@ -109,7 +142,7 @@ const styles = StyleSheet.create({
   },
   stackCompact: {
     gap: 4,
-    maxWidth: 112,
+    maxWidth: BAR_WIDTH_COMPACT,
   },
   alignRight: {
     alignSelf: 'flex-end',
@@ -119,6 +152,21 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'flex-start',
   },
+  barTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+  },
+  barFill: {
+    height: '100%',
+    borderRadius: 3,
+    backgroundColor: colors.primary,
+    minWidth: 0,
+  },
+  barFillFull: {
+    backgroundColor: colors.success,
+  },
   dotsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -127,10 +175,6 @@ const styles = StyleSheet.create({
   dotsRowWide: {
     gap: 5,
     width: '100%',
-  },
-  dotsRowCompact: {
-    gap: 3,
-    justifyContent: 'flex-end',
   },
   seat: {
     alignItems: 'center',
@@ -154,7 +198,7 @@ const styles = StyleSheet.create({
   },
   captionCompact: {
     ...typography.caption,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.1,
   },

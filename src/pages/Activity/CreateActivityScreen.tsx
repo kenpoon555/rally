@@ -5,7 +5,6 @@ import {
   Keyboard,
   Platform,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -34,8 +33,10 @@ import {
   getDefaultLaunchSportName,
   getCourtSearchRadiiForSport,
   getCreateGameSubtitle,
+  getDefaultListingTitle,
   getSportRosterDefaults,
   resolvePreferredSportForLaunch,
+  sortSportsForPlayTab,
   SportType,
 } from '../../constants/sports';
 import {
@@ -46,7 +47,7 @@ import {
 } from '../../components/ui';
 import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
 import { createActivity } from '../../services/activityService';
-import { buildGameInviteUrl } from '../../navigation/deepLinking';
+import { shareGameInvite } from '../../services/inviteLinkService';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
 import {
   getAllActivityLocations,
@@ -86,7 +87,7 @@ type Props = NativeStackScreenProps<MainStackParamList, 'CreateActivity'>;
 type LocationWithDistance = ActivityLocation & { distanceMeters: number | null };
 
 const CREATE_GAME_MINUTE_INTERVAL = 30;
-const CREATE_GAME_SPORT_BAR_COUNT = 4;
+const CREATE_GAME_SPORT_BAR_COUNT = 3;
 
 function defaultPublicGameStartTime(): Date {
   const next = new Date();
@@ -135,9 +136,17 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const [isIntroSession, setIsIntroSession] = useState(false);
   const [titleHint, setTitleHint] = useState<string | null>(null);
   const [costNote, setCostNote] = useState('');
-  const [listingTitle, setListingTitle] = useState('');
+  const [listingTitle, setListingTitle] = useState(() => {
+    const prefill = route.params?.prefillTitle?.trim();
+    if (prefill) {
+      return prefill;
+    }
+    return getDefaultListingTitle(resolvePreferredSportForLaunch(user?.preferred_sports?.[0]));
+  });
   const [sessionNote, setSessionNote] = useState('');
   const didRequestInitialLocationRef = useRef(false);
+  const listingTitleTouchedRef = useRef(false);
+  const hasPrefillTitle = Boolean(route.params?.prefillTitle?.trim());
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [locationSearch, setLocationSearch] = useState('');
@@ -174,6 +183,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     if (route.params?.prefillTitle?.trim()) {
       setListingTitle(route.params.prefillTitle.trim());
+      listingTitleTouchedRef.current = true;
     }
     const groupId = route.params?.prefillGroupId;
     if (groupId) {
@@ -201,24 +211,32 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       if (ACTIVITY_DURATIONS.includes(durationMins as (typeof ACTIVITY_DURATIONS)[number])) {
         setDuration(durationMins as (typeof ACTIVITY_DURATIONS)[number]);
       }
-      setTitleHint(hint);
+      const suggestedTitle = getDefaultListingTitle(sportType, hint);
+      setTitleHint(suggestedTitle);
+      if (!listingTitleTouchedRef.current && !hasPrefillTitle) {
+        setListingTitle(suggestedTitle);
+      }
     })();
-  }, [sportType]);
+  }, [sportType, hasPrefillTitle]);
 
   const rosterDefaults = useMemo(() => getSportRosterDefaults(sportType), [sportType]);
   const rosterExpectationCopy = formatRosterExpectation(rosterMin, rosterMax);
 
+  const orderedSports = useMemo(() => sortSportsForPlayTab(sports), [sports]);
+
   const sportBarSports = useMemo(() => {
-    const primary = sports.slice(0, CREATE_GAME_SPORT_BAR_COUNT);
+    const primary = orderedSports.slice(0, CREATE_GAME_SPORT_BAR_COUNT);
     if (primary.some((sport) => sport.name === sportType)) {
       return primary;
     }
-    const selected = sports.find((sport) => sport.name === sportType);
+    const selected = orderedSports.find((sport) => sport.name === sportType);
     if (!selected) {
       return primary;
     }
     return [...primary.slice(0, CREATE_GAME_SPORT_BAR_COUNT - 1), selected];
-  }, [sportType, sports]);
+  }, [sportType, orderedSports]);
+
+  const extraSportCount = Math.max(0, orderedSports.length - CREATE_GAME_SPORT_BAR_COUNT);
 
   const adjustRosterMin = (delta: number) => {
     setRosterMin((prev) => {
@@ -561,12 +579,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       navigation.replace(ROUTES.ACTIVITY.DETAIL as any, { activityId: created.id });
 
       // Don't make the host hunt for the share button — open the invite sheet right away.
-      const inviteUrl = created.invite_token ? buildGameInviteUrl(created.invite_token) : null;
-      if (inviteUrl) {
+      if (created.invite_token) {
         try {
-          await Share.share({
-            message: `I'm hosting ${created.sport_type} on Rally — tap to join my game: ${inviteUrl}`,
-          });
+          await shareGameInvite(created, { asHost: true });
           void setOnboardingFlag(ONBOARDING_FLAGS.COACH_SHARE_SHOWN);
         } catch {
           // Host dismissed the share sheet; the link is still on the Details screen.
@@ -641,23 +656,31 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
               >
                 <MaterialCommunityIcons
                   name={getSportIconName(sport.name)}
-                  size={15}
+                  size={14}
                   color={selected ? colors.primaryDark : colors.textSecondary}
                   style={styles.sportChipIcon}
                 />
-                <Text style={[styles.sportBarChipText, selected && styles.sportBarChipTextSelected]}>
+                <Text
+                  style={[styles.sportBarChipText, selected && styles.sportBarChipTextSelected]}
+                  numberOfLines={1}
+                >
                   {sport.name}
                 </Text>
               </TouchableOpacity>
             );
           })}
-          {sports.length > CREATE_GAME_SPORT_BAR_COUNT ? (
+          {extraSportCount > 0 ? (
             <TouchableOpacity
-              style={styles.sportBarMore}
+              style={styles.sportBarMoreChip}
               onPress={() => setSportPickerOpen(true)}
               activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel={`All sports, ${extraSportCount} more`}
             >
-              <Text style={styles.sportBarMoreText}>See more</Text>
+              <Text style={styles.sportBarMoreTitle} numberOfLines={1}>
+                All sports{' '}
+                <Text style={styles.sportBarMoreSub}>(+{extraSportCount})</Text>
+              </Text>
             </TouchableOpacity>
           ) : null}
         </ScrollView>
@@ -667,8 +690,11 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           <TextInput
             style={styles.input}
             value={listingTitle}
-            onChangeText={setListingTitle}
-            placeholder={titleHint ?? 'Saturday doubles · casual'}
+            onChangeText={(text) => {
+              listingTitleTouchedRef.current = true;
+              setListingTitle(text);
+            }}
+            placeholder={titleHint ?? getDefaultListingTitle(sportType)}
             placeholderTextColor={colors.textTertiary}
             maxLength={80}
           />
@@ -832,9 +858,20 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           </Text>
         ) : null}
 
-        <TouchableOpacity style={styles.addCourtBtn} onPress={() => setAddCourtSheetVisible(true)}>
-          <Text style={styles.addCourtBtnText}>
-            {locations.length === 0 ? 'Add a court near you' : "Can't find your court? Add one"}
+        <TouchableOpacity
+          style={styles.addCourtLink}
+          onPress={() => setAddCourtSheetVisible(true)}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.rallyLinkText}>
+            {locations.length === 0 ? (
+              <Text style={styles.rallyLinkAction}>Add a court near you →</Text>
+            ) : (
+              <Text>
+                <Text style={styles.rallyLinkMuted}>Can&apos;t find your court? </Text>
+                <Text style={styles.rallyLinkAction}>Add One →</Text>
+              </Text>
+            )}
           </Text>
         </TouchableOpacity>
 
@@ -859,10 +896,16 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         <TouchableOpacity
           style={styles.moreToggle}
           onPress={() => setShowMoreOptions((value) => !value)}
+          activeOpacity={0.85}
         >
           <Text style={styles.moreToggleText}>
-            {showMoreOptions ? 'Hide options ▲' : 'More options ▼'}
+            {showMoreOptions ? 'Hide options' : 'More options'}
           </Text>
+          <Ionicons
+            name={showMoreOptions ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.primaryDark}
+          />
         </TouchableOpacity>
 
         {showMoreOptions ? (
@@ -960,7 +1003,8 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           }}
         >
           <Text style={styles.rallyLinkText}>
-            Creating for {PRODUCT_COPY.rally}? Open your Rally →
+            <Text style={styles.rallyLinkMuted}>Creating for {PRODUCT_COPY.rally}? </Text>
+            <Text style={styles.rallyLinkAction}>Open your Rally →</Text>
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -1026,14 +1070,15 @@ const styles = StyleSheet.create({
   sportBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
+    gap: spacing.xs,
+    paddingRight: spacing.lg,
   },
   sportBarChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    flexShrink: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
@@ -1045,24 +1090,35 @@ const styles = StyleSheet.create({
   },
   sportBarChipText: {
     ...typography.bodyMedium,
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
   },
   sportBarChipTextSelected: {
     color: colors.primaryDark,
   },
-  sportBarMore: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    justifyContent: 'center',
+  sportBarMoreChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  sportBarMoreText: {
+  sportBarMoreTitle: {
     ...typography.bodyMedium,
-    fontSize: 14,
-    color: colors.primary,
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
+  sportBarMoreSub: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textTertiary,
   },
   sportChipIcon: {
-    marginRight: 6,
+    marginRight: 4,
   },
   emptyCourtBlock: {
     marginTop: spacing.sm,
@@ -1202,7 +1258,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   mapRefreshText: {
-    color: colors.primary,
+    color: colors.primaryDark,
     fontWeight: '600',
     fontSize: 12,
   },
@@ -1270,14 +1326,10 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     paddingVertical: spacing.sm,
   },
-  addCourtBtn: {
+  addCourtLink: {
     marginTop: spacing.sm,
     marginBottom: spacing.md,
-  },
-  addCourtBtnText: {
-    ...typography.bodyMedium,
-    color: colors.primary,
-    fontSize: 14,
+    paddingVertical: spacing.xs,
   },
   devLink: {
     marginBottom: spacing.sm,
@@ -1286,13 +1338,18 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   moreToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
     marginTop: spacing.md,
     alignSelf: 'flex-start',
+    paddingVertical: spacing.xs,
   },
   moreToggleText: {
     ...typography.bodyMedium,
-    color: colors.primary,
+    color: colors.primaryDark,
     fontSize: 14,
+    fontWeight: '600',
   },
   moreBlock: {
     marginTop: spacing.sm,
@@ -1363,11 +1420,19 @@ const styles = StyleSheet.create({
   rallyLink: {
     marginTop: spacing.lg,
     marginBottom: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   rallyLinkText: {
     ...typography.bodyMedium,
-    color: colors.primary,
     fontSize: 14,
+    lineHeight: 20,
+  },
+  rallyLinkMuted: {
+    color: colors.textSecondary,
+  },
+  rallyLinkAction: {
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
   footer: {
     borderTopWidth: 1,

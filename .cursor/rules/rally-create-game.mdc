@@ -1,0 +1,19 @@
+---
+description: Create game flow — read before editing CreateActivity or host-first share after create.
+globs:
+  - src/pages/Activity/CreateActivityScreen.tsx
+  - src/services/activityService.ts
+alwaysApply: false
+---
+
+# Create game flow
+
+Read **docs/contracts/flow-create-game.md** before changing game creation or post-create share.
+
+## Required patterns
+
+1. Post-create host share → `shareGameInvite(activity, { asHost: true })`.
+2. Activity writes stay in `activityService.ts`.
+3. New fields → migration + types — never write to Supabase from the screen.
+
+Contract status: **draft**.

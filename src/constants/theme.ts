@@ -1,20 +1,23 @@
 import { Platform, TextStyle, ViewStyle } from 'react-native';
 
-/** Rally design tokens — Court Fresh palette (coordination-first, sporty, warm). */
+/** Rally design tokens — Neon palette (designer onboarding, 2026-06). */
 
 export const colors = {
-  primary: '#0B7A5E',
-  primaryDark: '#065F49',
-  primaryLight: '#E6F4EF',
-  accent: '#E8622A',
-  accentSoft: '#FFF0E8',
-  background: '#F5F4F0',
+  primary: '#B1E248',
+  primaryDark: '#6B8F1E',
+  primaryLight: '#F0FAD4',
+  accent: '#FCFD59',
+  accentSoft: '#FFFDE6',
+  background: '#EEEDEB',
   surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
   text: '#141916',
   textSecondary: '#5A635E',
   textTertiary: '#8A918C',
   textInverse: '#FFFFFF',
+  /** Text on lime/yellow fills — white fails contrast on #B1E248 / #FCFD59 */
+  onPrimary: '#141916',
+  onAccent: '#141916',
   border: '#E0E4E1',
   borderStrong: '#C8CEC9',
   success: '#1F9D55',

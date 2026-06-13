@@ -97,6 +97,45 @@ export const getApprovedParticipants = (activity: Activity): JoinRequest[] => {
   return (activity.join_requests || []).filter((r) => r.status === 'approved');
 };
 
+/** Avatar row item for game cards. */
+export type GameParticipantAvatar = {
+  key: string;
+  username: string;
+  userId?: string;
+  isHost?: boolean;
+  isPending?: boolean;
+};
+
+/** Display names for game-card avatar rows (host first, then approved roster). */
+export function getGameParticipantPreview(activity: Activity): {
+  names: string[];
+  players: GameParticipantAvatar[];
+  total: number;
+} {
+  const players: GameParticipantAvatar[] = [];
+  if (activity.user?.username?.trim()) {
+    players.push({
+      key: `host-${activity.user.id}`,
+      username: activity.user.username.trim(),
+      userId: activity.user.id,
+      isHost: true,
+    });
+  }
+  for (const req of sortApprovedRosterParticipants(getApprovedParticipants(activity))) {
+    const name = req.user?.username?.trim();
+    if (name && req.user_id !== activity.user_id) {
+      players.push({
+        key: req.id,
+        username: name,
+        userId: req.user?.id ?? req.user_id,
+      });
+    }
+  }
+  const names = players.map((player) => player.username);
+  const total = Math.max(activity.player_count ?? 0, names.length, players.length > 0 ? 1 : 0);
+  return { names, players, total };
+};
+
 /** Roster strip order: I'm in first, then earlier join requests first. */
 export const sortApprovedRosterParticipants = (participants: JoinRequest[]): JoinRequest[] => {
   return [...participants].sort((a, b) => {
@@ -234,6 +273,26 @@ export function getRosterSeatCaption(
     return { label: '1 spot open', tone: 'open' };
   }
   return { label: `${open} spots open`, tone: 'open' };
+}
+
+/** Trailing pill on Play discover list cards. */
+export function getGameListSpotsBadgeLabel(
+  activity: Pick<Activity, 'missing_players' | 'player_count' | 'roster_max' | 'match_status'>,
+  lockedWelcoming: boolean
+): string {
+  if (lockedWelcoming) {
+    return 'Almost full';
+  }
+  const missing = activity.missing_players ?? 0;
+  if (missing > 0) {
+    return missing === 1 ? '1 spot left' : `${missing} spots left`;
+  }
+  const { filled, total } = getRosterSeatCounts(activity);
+  const open = Math.max(total - filled, 0);
+  if (open <= 0) {
+    return 'Full';
+  }
+  return open === 1 ? '1 spot left' : `${open} spots left`;
 }
 
 export function getRosterSeatCounts(
@@ -420,7 +479,10 @@ export function shouldShowInDiscoverFeed(activity: Activity, userId?: string): b
   if (activity.visibility === 'invite_only') {
     return false;
   }
-  if (activity.match_status === 'finalized' || activity.match_status === 'cancelled') {
+  if (activity.match_status === 'cancelled') {
+    return false;
+  }
+  if (activity.match_status === 'finalized' && (activity.missing_players ?? 0) <= 0) {
     return false;
   }
   if (!userId) {

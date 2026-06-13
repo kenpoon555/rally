@@ -1,0 +1,22 @@
+---
+description: Discover and Today play surfaces — read before editing Home discover cards or presets.
+globs:
+  - src/pages/Home/HomeScreen.tsx
+  - src/pages/Home/DynamicHomeScreen.tsx
+  - src/pages/Home/MapScreen.tsx
+  - src/components/game/GameCardShell.tsx
+  - src/config/gameCardLayouts.ts
+alwaysApply: false
+---
+
+# Play / Discover screen
+
+Read **docs/contracts/flow-play-screen.md** before changing Discover, Today game lists, or map teasers.
+
+## Required patterns
+
+1. List cards → `GameCardShell` + preset from `gameCardLayouts.ts`.
+2. Use `discoverPresetKey()` / `gameListVariantFromPreset()` — no per-screen `showStatusSignal` overrides.
+3. See **rally-game-card** rule for preset table.
+
+Contract status: **draft**.

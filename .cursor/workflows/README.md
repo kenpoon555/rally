@@ -20,6 +20,7 @@ Step-by-step playbooks for recurring multi-step tasks. **Read the matching workf
 
 | Workflow | Use when |
 |----------|----------|
+| [validate-contract.md](./validate-contract.md) | **Loop A/B** — Builder → Validator → Fixer against `docs/contracts/` |
 | [promote-branch.md](./promote-branch.md) | Push dev → PR preview → main → production |
 | [ship-feature.md](./ship-feature.md) | New feature / bugfix with service + optional migration + push |
 | [deploy-supabase.md](./deploy-supabase.md) | Migrations + edge functions |

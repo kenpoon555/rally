@@ -1,0 +1,31 @@
+---
+description: Game card presets and shared session actions — use when editing game card components or surfaces.
+globs:
+  - src/components/game/**
+  - src/components/CrewGameSessionCard.tsx
+  - src/components/rally/RallySessionCard.tsx
+  - src/components/rally/RallyPlayPanel.tsx
+  - src/config/gameCardLayouts.ts
+  - src/hooks/useGameCardSessionActions.ts
+  - src/pages/Activity/ActivityDetailScreen.tsx
+alwaysApply: false
+---
+
+# Game card module
+
+Read **docs/contracts/module-game-card.md** before changing card layouts or join behavior.
+
+## Required patterns
+
+1. Pick a preset from `src/config/gameCardLayouts.ts` (`GAME_CARD_PRESETS`) — do not invent per-screen layout flags.
+2. Session inline actions → `RallySessionCard` or `createGameCardSessionActions()` — no duplicated join/I'm in/lock/nudge handlers.
+3. Sport icons on cards → `sportIconSurface` preset field + `SportIconForSurface` (see `rally-sport-icon` rule).
+4. Share from game surfaces → `shareGameInvite()` with `shareModeForViewer()` (see invite-links rule).
+5. Reuse shared subcomponents: `GameCardParticipantStack`, `RosterSeatBar`, `GameCardTypePill`, `GameCardWhoGoing`, `GameCardSection`, `GameCardShell`, `GameCardDetailHero`.
+
+## Join modes
+
+- **pickup / public:** `joinMode: 'request'` → host approves
+- **Rally:** `joinMode: 'instant'` → roster join/waitlist
+
+Run `npm test -- gameCardLayouts` after preset changes.

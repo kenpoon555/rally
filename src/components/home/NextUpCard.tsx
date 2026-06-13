@@ -1,28 +1,19 @@
 import React, { useMemo } from 'react';
 import {
-  ActivityIndicator,
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import MapView from 'react-native-maps';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Button } from '../ui';
 import { MyGameEntry } from '../../services/activityService';
 import { RegularGroup } from '../../types/regularGroup';
-import { activityCourtName, activityGameName } from '../../constants/playIntent';
-import {
-  getActivityRosterSummary,
-  getDistanceToActivity,
-  isTonightUrgency,
-} from '../../utils/activityHelpers';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
-import { formatGameCardDistance } from '../game/GameListCard';
-import { RosterSeatBar } from '../game/RosterSeatBar';
-import { formatDiscoverWhenLine } from '../../utils/todayDateUtils';
-import { getSportIconName } from '../SportIcon';
+import { GameCardShell } from '../game/GameCardShell';
+import { gameListCardVariantForActivity } from '../../config/gameCardLayouts';
+import { TodaySectionDotLabel } from './TodaySectionDotLabel';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
 import type { HostLockReadiness } from '../../utils/activityHelpers';
 
@@ -44,29 +35,32 @@ export interface NextUpCardProps {
   };
 }
 
-function HeroShell({
-  children,
-  onPress,
-  disabled,
+function LockChip({
+  hostLock,
 }: {
-  children: React.ReactNode;
-  onPress?: () => void;
-  disabled?: boolean;
+  hostLock: { readiness: HostLockReadiness; hint: string };
 }) {
-  const body = <View style={styles.heroBlock}>{children}</View>;
-  if (!onPress) {
-    return body;
-  }
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.96} disabled={disabled}>
-      {body}
-    </TouchableOpacity>
+    <View
+      style={[
+        styles.lockChip,
+        hostLock.readiness === 'ready' && styles.lockChipReady,
+      ]}
+    >
+      <Text
+        style={[
+          styles.lockChipText,
+          hostLock.readiness === 'ready' && styles.lockChipTextReady,
+        ]}
+      >
+        {hostLock.hint}
+      </Text>
+    </View>
   );
 }
 
 function MapPreview({
   mapRegion,
-  busy,
 }: {
   mapRegion: {
     latitude: number;
@@ -74,7 +68,6 @@ function MapPreview({
     latitudeDelta: number;
     longitudeDelta: number;
   };
-  busy?: boolean;
 }) {
   return (
     <View style={styles.mapWrap}>
@@ -87,14 +80,10 @@ function MapPreview({
         rotateEnabled={false}
         liteMode={Platform.OS === 'android'}
         pointerEvents="none"
-      >
-        <Marker coordinate={{ latitude: mapRegion.latitude, longitude: mapRegion.longitude }} />
-      </MapView>
-      {busy ? (
-        <View style={styles.busyOverlay}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
-      ) : null}
+      />
+      <View style={styles.quietPin}>
+        <MaterialCommunityIcons name="map-marker-radius" size={28} color={colors.primary} />
+      </View>
     </View>
   );
 }
@@ -110,17 +99,15 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
   footerHint,
   hostLock,
 }) => {
-  const activity = nextGame?.activity;
-
   const coords = useMemo(() => {
-    if (activity?.location) {
-      return parseGeographyCoordinates(activity.location.location);
+    if (nextGame?.activity.location) {
+      return parseGeographyCoordinates(nextGame.activity.location.location);
     }
     if (userLocation) {
       return [userLocation.longitude, userLocation.latitude] as const;
     }
     return [LA_FALLBACK.longitude, LA_FALLBACK.latitude] as const;
-  }, [activity?.location, userLocation]);
+  }, [nextGame?.activity.location, userLocation]);
 
   const mapRegion = useMemo(() => {
     const [lng, lat] = coords;
@@ -134,100 +121,26 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
 
   if (nextGame) {
     const busy = openingGameId === nextGame.activity.id;
-    const game = nextGame.activity;
-    const isHost = nextGame.role === 'host';
-    const hasCustomTitle = Boolean(game.listing_title?.trim());
-    const headline = hasCustomTitle ? activityGameName(game) : activityCourtName(game);
-    const courtName = activityCourtName(game);
-    const whenLine = formatDiscoverWhenLine(game.start_time);
-    const distanceMeters = userLocation ? getDistanceToActivity(game, userLocation) : null;
-    const distanceLabel = formatGameCardDistance(distanceMeters, !isHost);
-    const roleLabel = isHost ? 'Hosting' : 'Joined';
-    const durationLabel = game.duration ? `${game.duration} min` : null;
-
-    const { onRoster } = getActivityRosterSummary(game);
-    const hostLabel = game.user?.username ? `@${game.user.username}` : null;
-    const isTonight = isTonightUrgency(game);
-    const sportIcon = getSportIconName(game.sport_type);
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>NEXT UP</Text>
-        <HeroShell onPress={() => onOpenGameRoom(nextGame)} disabled={busy}>
-          <MapPreview mapRegion={mapRegion} busy={busy} />
-          <View style={styles.detailsPanel}>
-            <View style={styles.titleRow}>
-              <View style={styles.iconColumn}>
-                <MaterialCommunityIcons name={sportIcon} size={28} color={colors.text} />
-              </View>
-              <View style={styles.titleBody}>
-                <View style={styles.headlineRow}>
-                  <Text style={styles.headline} numberOfLines={2}>
-                    {headline}
-                  </Text>
-                  {isTonight ? (
-                    <View style={styles.tonightBadge}>
-                      <Text style={styles.tonightText}>Tonight</Text>
-                    </View>
-                  ) : null}
-                </View>
-                {hasCustomTitle ? (
-                  <Text style={styles.courtLine} numberOfLines={1}>
-                    {courtName}
-                  </Text>
-                ) : null}
-              </View>
-            </View>
-
-            <Text style={styles.whenLine} numberOfLines={1}>
-              {whenLine}
-            </Text>
-
-            <View style={styles.distanceRow}>
-              <Ionicons name="location-outline" size={13} color={colors.textTertiary} />
-              <Text style={styles.distance} numberOfLines={1}>
-                {distanceLabel ?? 'Distance unavailable'}
-              </Text>
-            </View>
-
-            <Text style={styles.metaLine} numberOfLines={1}>
-              {[game.sport_type, roleLabel, durationLabel].filter(Boolean).join(' · ')}
-            </Text>
-
-            {hostLabel ? (
-              <Text style={styles.metaLine} numberOfLines={1}>
-                Host {hostLabel}
-              </Text>
-            ) : null}
-
-            <RosterSeatBar
-              sportType={game.sport_type}
-              activity={game}
-              onRoster={onRoster}
-              variant="wide"
-              align="left"
-            />
-
-            {hostLock ? (
-              <View
-                style={[
-                  styles.lockChip,
-                  hostLock.readiness === 'ready' && styles.lockChipReady,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.lockChipText,
-                    hostLock.readiness === 'ready' && styles.lockChipTextReady,
-                  ]}
-                >
-                  {hostLock.hint}
-                </Text>
-              </View>
-            ) : null}
+        <TodaySectionDotLabel label="NEXT UP" />
+        <GameCardShell
+          presetKey="homeNextUp"
+          activity={nextGame.activity}
+          userLocation={userLocation}
+          isHost={nextGame.role === 'host'}
+          variant={gameListCardVariantForActivity(nextGame.activity)}
+          onPress={() => onOpenGameRoom(nextGame)}
+          disabled={busy}
+          busy={busy}
+        />
+        {hostLock || footerHint ? (
+          <View style={styles.cardFooter}>
+            {hostLock ? <LockChip hostLock={hostLock} /> : null}
             {footerHint ? <Text style={styles.footerHint}>{footerHint}</Text> : null}
           </View>
-        </HeroShell>
+        ) : null}
       </View>
     );
   }
@@ -236,8 +149,8 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
     const isGroupHost = fallbackGroup.host_id === currentUserId;
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>YOUR RALLY</Text>
-        <HeroShell>
+        <TodaySectionDotLabel label="YOUR RALLY" />
+        <View style={styles.heroBlock}>
           <MapPreview mapRegion={mapRegion} />
           <View style={styles.detailsPanel}>
             <Text style={styles.headline} numberOfLines={2}>
@@ -262,36 +175,22 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
               </Text>
             )}
           </View>
-        </HeroShell>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionLabel}>NEXT UP</Text>
-      <HeroShell>
-        <View style={styles.mapWrap}>
-          <MapView
-            style={styles.map}
-            region={mapRegion}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            pitchEnabled={false}
-            rotateEnabled={false}
-            liteMode={Platform.OS === 'android'}
-            pointerEvents="none"
-          />
-          <View style={styles.quietPin}>
-            <MaterialCommunityIcons name="map-marker-radius" size={28} color={colors.primary} />
-          </View>
-        </View>
+      <TodaySectionDotLabel label="NEXT UP" />
+      <View style={styles.heroBlock}>
+        <MapPreview mapRegion={mapRegion} />
         <View style={styles.detailsPanel}>
           <Text style={styles.headline}>Nothing scheduled yet</Text>
           <Text style={styles.metaLine}>Court, time, and roster details appear here.</Text>
           <Text style={styles.waiting}>Use Play to find open games nearby.</Text>
         </View>
-      </HeroShell>
+      </View>
     </View>
   );
 };
@@ -300,19 +199,18 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.lg,
   },
-  sectionLabel: {
-    ...typography.label,
-    color: colors.primary,
+  cardFooter: {
     marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    marginTop: spacing.xs,
+    gap: spacing.xs,
   },
   heroBlock: {
     marginHorizontal: spacing.lg,
     borderRadius: radius.lg,
     backgroundColor: colors.surface,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+    borderWidth: 2,
+    borderColor: colors.primary,
     ...shadows.card,
   },
   mapWrap: {
@@ -345,85 +243,16 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  iconColumn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  titleBody: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  headlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
   headline: {
     ...typography.bodyMedium,
     fontSize: 17,
     fontWeight: '700',
     color: colors.text,
-    flexShrink: 1,
-  },
-  courtLine: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  tonightBadge: {
-    borderWidth: 1,
-    borderColor: colors.accent,
-    borderRadius: radius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-  },
-  tonightText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.accent,
-  },
-  whenLine: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  distanceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    minHeight: 16,
-  },
-  distance: {
-    fontSize: 12,
-    color: colors.textTertiary,
-    flexShrink: 1,
   },
   metaLine: {
     ...typography.caption,
     color: colors.textSecondary,
     lineHeight: 18,
-  },
-  spotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    marginTop: spacing.sm,
-  },
-  statText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
   },
   actionBtn: {
     alignSelf: 'flex-start',
@@ -439,11 +268,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.warning,
     lineHeight: 16,
-    marginTop: spacing.xs,
   },
   lockChip: {
     alignSelf: 'flex-start',
-    marginTop: spacing.sm,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.sm,
@@ -463,11 +290,5 @@ const styles = StyleSheet.create({
   },
   lockChipTextReady: {
     color: colors.success,
-  },
-  busyOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
