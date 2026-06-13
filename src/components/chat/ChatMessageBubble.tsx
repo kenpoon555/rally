@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   messageTextMine: {
-    color: colors.textInverse,
+    color: colors.onPrimary,
   },
   messageMeta: {
     ...typography.caption,
@@ -98,6 +98,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   messageMetaMine: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(20, 25, 22, 0.55)',
   },
 });

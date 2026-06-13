@@ -76,7 +76,18 @@ export const listFreeAgentPosts = async (
   if (error) {
     throw new Error(error.message);
   }
-  return (data as FreeAgentPost[] | null) ?? [];
+  if (Array.isArray(data)) {
+    return data as FreeAgentPost[];
+  }
+  if (typeof data === 'string') {
+    try {
+      const parsed = JSON.parse(data) as unknown;
+      return Array.isArray(parsed) ? (parsed as FreeAgentPost[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
 };
 
 export const inviteFreeAgent = async (

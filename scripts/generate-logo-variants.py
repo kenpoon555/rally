@@ -10,7 +10,7 @@ from typing import Literal
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
-REVIEW_DIR = ROOT / 'docs' / 'design-review'
+REVIEW_DIR = ROOT / 'docs' / 'design-review' / 'logo'
 
 CREAM = (245, 244, 240)
 PRIMARY = (11, 122, 94)  # #0B7A5E

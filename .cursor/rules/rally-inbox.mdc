@@ -1,0 +1,19 @@
+---
+description: Inbox / Chats tab — read before editing chat list, filters, or row navigation.
+globs:
+  - src/pages/Chat/ChatListScreen.tsx
+  - src/hooks/useChatInbox.ts
+alwaysApply: false
+---
+
+# Inbox flow
+
+Read **docs/contracts/flow-inbox.md** before changing the Chats tab list, filters, or open behavior.
+
+## Required patterns
+
+1. Inbox data → `useChatInbox` / `useChatInboxWithRealtime` — keep fetch logic out of the screen.
+2. Game rows must open game chat with GameRoom chrome when applicable.
+3. Realtime subscriptions cleaned up on unmount / sign-out.
+
+Contract status: **draft**.

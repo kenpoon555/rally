@@ -38,13 +38,14 @@ function availabilityHint(preset: FreeAgentPost['availability']['preset']): stri
 export const CompactFreeAgentRow: React.FC<Props> = ({ post, onInvite, inviting = false }) => {
   const preset = post.availability?.preset ?? 'flexible';
   const area = post.city || 'LA';
+  const username = post.username?.trim() || 'player';
 
   return (
     <View style={styles.card}>
-      <Avatar name={post.username} size="md" style={styles.avatar} />
+      <Avatar name={username} size="md" style={styles.avatar} />
       <View style={styles.main}>
         <Text style={styles.title} numberOfLines={1}>
-          @{post.username} · {post.sport}
+          @{username} · {post.sport}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
           {availabilityHint(preset)} · {area} · {formatRelativeTime(post.created_at)}
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   inviteText: {
-    color: colors.textInverse,
+    color: colors.onPrimary,
     fontSize: 13,
     fontWeight: '700',
   },

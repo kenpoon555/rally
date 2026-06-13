@@ -25,8 +25,9 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
   },
 };
 
+/** @deprecated Use buildHostGameInviteUrl from inviteLinkService for share sheets. */
 export function buildGameInviteUrl(inviteToken: string): string {
-  return `${APP_SCHEME}://invite/${inviteToken}`;
+  return `${APP_SCHEME}://host-invite/${inviteToken}`;
 }
 
 export function buildRegularGroupInviteUrl(inviteToken: string): string {
@@ -41,31 +42,81 @@ export function buildSportLandingUrl(sportSlug: string): string {
   return `${APP_SCHEME}://la/${sportSlug.toLowerCase()}`;
 }
 
-/** Parse rallyapp://game/:id, rallyapp://invite/:token, rallyapp://auth/callback */
-export function parseAppDeepLink(url: string): {
-  type: 'auth' | 'game' | 'invite' | 'groupInvite' | 'sportLanding' | 'unknown';
+export type ParsedDeepLink = {
+  type: 'auth' | 'game' | 'invite' | 'hostInvite' | 'groupInvite' | 'sportLanding' | 'unknown';
   activityId?: string;
   inviteToken?: string;
   groupInviteToken?: string;
   sportSlug?: string;
-} {
+};
+
+const UUID_PATTERN = '[0-9a-f-]{36}';
+
+function parseInviteWebUrl(url: string): ParsedDeepLink | null {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname;
+
+    if (path.includes('/functions/v1/rally-invite')) {
+      const inviteToken = parsed.searchParams.get('token') || undefined;
+      if (inviteToken) {
+        return { type: 'groupInvite', groupInviteToken: inviteToken };
+      }
+      return null;
+    }
+
+    if (!path.includes('/functions/v1/game-invite')) {
+      return null;
+    }
+
+    const activityId = parsed.searchParams.get('activity') || undefined;
+    const inviteToken = parsed.searchParams.get('token') || undefined;
+    const isHost = parsed.searchParams.get('host') === '1';
+
+    if (isHost && inviteToken) {
+      return { type: 'hostInvite', inviteToken };
+    }
+    if (activityId) {
+      return { type: 'game', activityId };
+    }
+    if (inviteToken) {
+      return { type: 'invite', inviteToken };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Parse rallyapp:// and HTTPS game-invite URLs. */
+export function parseAppDeepLink(url: string): ParsedDeepLink {
   try {
     const normalized = url.trim();
     if (normalized.includes('auth/callback')) {
       return { type: 'auth' };
     }
 
-    const groupInviteMatch = normalized.match(/group-invite\/([0-9a-f-]{36})/i);
+    const webInvite = parseInviteWebUrl(normalized);
+    if (webInvite) {
+      return webInvite;
+    }
+
+    const groupInviteMatch = normalized.match(new RegExp(`group-invite/(${UUID_PATTERN})`, 'i'));
     if (groupInviteMatch) {
       return { type: 'groupInvite', groupInviteToken: groupInviteMatch[1] };
     }
 
-    const inviteMatch = normalized.match(/invite\/([0-9a-f-]{36})/i);
+    const hostInviteMatch = normalized.match(new RegExp(`host-invite/(${UUID_PATTERN})`, 'i'));
+    if (hostInviteMatch) {
+      return { type: 'hostInvite', inviteToken: hostInviteMatch[1] };
+    }
+
+    const inviteMatch = normalized.match(new RegExp(`invite/(${UUID_PATTERN})`, 'i'));
     if (inviteMatch) {
       return { type: 'invite', inviteToken: inviteMatch[1] };
     }
 
-    const gameMatch = normalized.match(/game\/([0-9a-f-]{36})/i);
+    const gameMatch = normalized.match(new RegExp(`game/(${UUID_PATTERN})`, 'i'));
     if (gameMatch) {
       return { type: 'game', activityId: gameMatch[1] };
     }
@@ -83,10 +134,17 @@ export function parseAppDeepLink(url: string): {
 
 export function navigateGameDeepLink(
   navigate: (name: string, params?: object) => void,
-  parsed: ReturnType<typeof parseAppDeepLink>
+  parsed: ParsedDeepLink
 ): void {
   if (parsed.type === 'game' && parsed.activityId) {
     navigate(ROUTES.ACTIVITY.DETAIL, { activityId: parsed.activityId });
+    return;
+  }
+  if (parsed.type === 'hostInvite' && parsed.inviteToken) {
+    navigate(ROUTES.ACTIVITY.DETAIL, {
+      inviteToken: parsed.inviteToken,
+      hostInvite: true,
+    });
     return;
   }
   if (parsed.type === 'invite' && parsed.inviteToken) {

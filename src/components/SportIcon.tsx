@@ -26,19 +26,33 @@ type Size = 'sm' | 'md' | 'lg';
 const BOX: Record<Size, number> = { sm: 32, md: 36, lg: 44 };
 const GLYPH: Record<Size, number> = { sm: 18, md: 20, lg: 24 };
 
-type Variant = 'tile' | 'plain';
+type Variant = 'tile' | 'plain' | 'ring' | 'filter' | 'ghost';
 
 type Props = {
   sport: string;
   size?: Size;
   style?: ViewStyle;
-  /** `plain` matches game list cards — glyph only, no green tile */
+  /** Glyph only — Today game cards, no border or fill. */
   variant?: Variant;
+  /** Highlight border when `variant="filter"` (Play sport row). */
+  selected?: boolean;
 };
 
 /** Plain list-card icon sizing (no background tile). */
 const PLAIN_COLUMN: Record<Size, number> = { sm: 36, md: 42, lg: 48 };
 const PLAIN_GLYPH: Record<Size, number> = { sm: 28, md: 34, lg: 40 };
+
+/** Yellow ring sizing — detail / inbox rows with fill. */
+const RING_BOX: Record<Size, number> = { sm: 32, md: 42, lg: 52 };
+const RING_GLYPH: Record<Size, number> = { sm: 18, md: 26, lg: 30 };
+
+/** Play tab sport filter — bordered circle, no fill. */
+const FILTER_BOX = 56;
+const FILTER_GLYPH = 34;
+
+/** Rally carousel — no border/fill, larger glyph in circular footprint. */
+const GHOST_BOX: Record<Size, number> = { sm: 36, md: 42, lg: 48 };
+const GHOST_GLYPH: Record<Size, number> = { sm: 28, md: 32, lg: 36 };
 
 export function getSportIconName(sport: string): IconName {
   const meta = getSportMetadata(sport);
@@ -52,8 +66,65 @@ export function getSportIconName(sport: string): IconName {
   return 'account-group';
 }
 
-export function SportIcon({ sport, size = 'md', style, variant = 'tile' }: Props) {
+export function SportIcon({ sport, size = 'md', style, variant = 'tile', selected = false }: Props) {
   const iconName = getSportIconName(sport);
+
+  if (variant === 'filter') {
+    return (
+      <View
+        style={[
+          styles.filterRing,
+          {
+            width: FILTER_BOX,
+            height: FILTER_BOX,
+            borderRadius: FILTER_BOX / 2,
+            borderWidth: selected ? 3 : 2,
+            borderColor: selected ? colors.primary : colors.accent,
+          },
+          style,
+        ]}
+      >
+        <MaterialCommunityIcons name={iconName} size={FILTER_GLYPH} color={colors.text} />
+      </View>
+    );
+  }
+
+  if (variant === 'ghost') {
+    const box = GHOST_BOX[size];
+    const glyph = GHOST_GLYPH[size];
+    return (
+      <View
+        style={[
+          { width: box, height: box, alignItems: 'center', justifyContent: 'center' },
+          style,
+        ]}
+      >
+        <MaterialCommunityIcons name={iconName} size={glyph} color={colors.text} />
+      </View>
+    );
+  }
+
+  if (variant === 'ring') {
+    const box = RING_BOX[size];
+    const glyph = RING_GLYPH[size];
+    return (
+      <View
+        style={[
+          styles.ring,
+          {
+            width: box,
+            height: box,
+            borderRadius: box / 2,
+            borderWidth: selected ? 3 : 2,
+            borderColor: selected ? colors.primary : colors.accent,
+          },
+          style,
+        ]}
+      >
+        <MaterialCommunityIcons name={iconName} size={glyph} color={colors.onAccent} />
+      </View>
+    );
+  }
 
   if (variant === 'plain') {
     const column = PLAIN_COLUMN[size];
@@ -103,6 +174,16 @@ export function SportIconFallback({ sport, size = 'md', style }: Props) {
 }
 
 const styles = StyleSheet.create({
+  filterRing: {
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ring: {
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   box: {
     backgroundColor: colors.primaryLight,
     alignItems: 'center',

@@ -1,0 +1,29 @@
+---
+description: Loop A invite flow — read before changing auth, deep links, or Rally join from URL.
+globs:
+  - src/context/AuthContext.tsx
+  - src/navigation/deepLinking.ts
+  - src/navigation/processDeepLink.ts
+  - src/services/pendingDeepLinkService.ts
+  - src/pages/Home/DynamicHomeScreen.tsx
+  - src/services/regularGroupService.ts
+  - supabase/functions/game-invite/**
+  - supabase/functions/rally-invite/**
+alwaysApply: false
+---
+
+# Loop A — Invite to Rally
+
+Read **docs/contracts/flow-invite-to-rally.md** before changing invite → auth → join behavior.
+
+Manual run: **docs/contracts/MANUAL-RUN-loop-a.md**  
+Validation workflow: **.cursor/workflows/validate-contract.md**
+
+## Required patterns
+
+1. Deep link parsing → `parseAppDeepLink` + tests in `__tests__/deepLinking.test.ts`.
+2. Signed-out links → `pendingDeepLinkService`; replay after login in `AuthContext`.
+3. Share URLs → `inviteLinkService.ts` only (see `rally-invite-links` rule).
+4. Do not mark Loop A checklist items pass without Validator evidence.
+
+Run Loop A Validator before merging invite/auth changes.

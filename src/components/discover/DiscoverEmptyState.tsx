@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../ui';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { RegularGroup } from '../../types/regularGroup';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { BETA_COPY } from '../../constants/betaCopy';
@@ -29,7 +29,7 @@ export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
   <View style={[styles.wrap, fill && styles.wrapFill]}>
     <View style={styles.card}>
       <View style={styles.iconRow}>
-        <SportIcon sport={sport} size="lg" style={styles.sportIcon} />
+        <SportIconForSurface sport={sport} surface="discoverEmptyState" style={styles.sportIcon} />
       </View>
 
       <Text style={styles.title}>{PRODUCT_COPY.discoverEmptyTitle(sportLabel)}</Text>

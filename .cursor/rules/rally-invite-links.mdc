@@ -1,0 +1,26 @@
+---
+description: Invite link builders and share flows — use when editing deep links, share sheets, or invite landing.
+globs:
+  - src/services/inviteLinkService.ts
+  - src/navigation/deepLinking.ts
+  - src/navigation/processDeepLink.ts
+  - src/services/pendingDeepLinkService.ts
+  - supabase/functions/game-invite/**
+  - src/components/game/InviteFriendsToGameSheet.tsx
+  - src/components/rally/InviteFriendsToRallySheet.tsx
+alwaysApply: false
+---
+
+# Invite link module
+
+Read **docs/contracts/module-invite-link.md** before changing share URLs or deep link routing.
+
+## Required patterns
+
+1. All game share URLs/messages → `src/services/inviteLinkService.ts` only.
+2. Host share → `shareGameInvite(activity, { asHost: true })` (auto-join when spots open).
+3. Public share → `shareGameInvite(activity, { asHost: false })` (game card → request).
+4. Rally share → `shareRallyGroupInvite(group)` — do not inline `rallyapp://group-invite` strings.
+5. Deep link parsing changes → update `parseAppDeepLink` **and** `__tests__/deepLinking.test.ts`.
+
+Run `npm test -- deepLinking` after link shape changes.

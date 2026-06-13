@@ -1,13 +1,15 @@
 # Design Review v2 — Logo, Today, Play
 
 **Date:** 2026-06-06  
-**Mocks:** `09_concept_today_v2.png`, `14_concept_today_alt_schedule.png`, `11_logo_comparison.png`, **`14_concept_play_v4_games.png`** + **`15_concept_play_v4_players.png`** (current Play direction)
+**Mocks:** `09_concept_today_v2.png`, `14_concept_today_alt_schedule.png`, `logo/11_logo_comparison.png`, **`14_concept_play_v4_games.png`** + **`15_concept_play_v4_players.png`** (current Play direction)
+
+**Logo candidates:** [logo/](./logo/) · [assets/branding/logo/](../../assets/branding/logo/)
 
 ---
 
 ## 1. Logo comparison
 
-See `11_logo_comparison.png`
+See `logo/11_logo_comparison.png`
 
 | | Designer (`01_designer_logo.jpg`) | Current app (`RallyMark` + `icon-1024.png`) | Concept (`08` / v2) |
 |--|-----------------------------------|---------------------------------------------|---------------------|
@@ -179,7 +181,7 @@ This is the **ASAP play** surface — players free in the next few hours.
 | `09_concept_today_v2.png` | Today — clean header, RALLIES, map hero |
 | `14_concept_today_alt_schedule.png` | Today alt — week strip, game cards, list rallies |
 | `10_concept_play_v2.png` | Play — compact cards, Games/Players, See all, Looking for Players |
-| `11_logo_comparison.png` | Logo three-way comparison |
+| `logo/11_logo_comparison.png` | Logo three-way comparison |
 
 ---
 

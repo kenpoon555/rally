@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SportIcon } from '../SportIcon';
+import { SportIconForSurface } from '../SportIconForSurface';
 import { RallyFriendInvite } from '../../types/rallyInvite';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -13,7 +13,7 @@ type Props = {
 
 export const RallyInviteCard: React.FC<Props> = ({ invite, busy, onAccept, onDecline }) => (
   <View style={styles.card}>
-    <SportIcon sport={invite.sport_type} size="md" variant="plain" />
+    <SportIconForSurface sport={invite.sport_type} surface="rallyInviteCard" />
     <View style={styles.body}>
       <Text style={styles.eyebrow}>Rally invite</Text>
       <Text style={styles.title} numberOfLines={2}>
