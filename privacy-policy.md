@@ -41,7 +41,7 @@ We may disclose information if required by law or to protect the rights and safe
 
 - **Location:** You can disable location permissions in device settings; some features may not work.
 - **Notifications:** You can disable push notifications in device settings or in the App where available.
-- **Account deletion or data requests:** Email us at [kunyupoon495@gmail.com](mailto:kunyupoon495@gmail.com).
+- **Account deletion or data requests:** Email us at [kunyupoon495@gmail.com](mailto:kunyupoon495@gmail.com), or follow [Delete your Rally account](delete-account.html).
 
 ## Children
 
