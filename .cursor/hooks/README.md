@@ -4,12 +4,18 @@ Hooks run after agent events. See Cursor **Settings → Hooks** and the Hooks ou
 
 ## Automated contract chain (Validator → Fixer → Validator)
 
-**One chat.** You paste the Validator prompt once; the `stop` hook submits Fixer / re-Validator follow-ups in the **same** conversation.
+**One Agent chat.** You do not need a new chat per role. The `stop` hook submits Fixer / re-Validator **only when validation fails** — pass exits immediately.
+
+### Why not fully automatic from terminal?
+
+Cursor has **no API** for a shell script to open Agent or send the first message. Hooks only run **after** an Agent turn ends (`followup_message`). So something must kick off turn 1:
+
+| Kickoff | How |
+|---------|-----|
+| **Recommended** | One permanent Agent chat: ask it to run the start script + Validator in the same turn |
+| **Fallback** | `./validation-loop-start.sh <id> --paste` → copy long prompt |
 
 ### Setup (once)
-
-1. Ensure `.cursor/hooks.json` exists (copy from `hooks.json.example` if needed).
-2. Make scripts executable:
 
 ```bash
 chmod +x .cursor/hooks/contract-validation-chain.py
@@ -17,41 +23,58 @@ chmod +x .cursor/hooks/validation-loop-start.sh
 chmod +x .cursor/hooks/validation-loop-stop.sh
 ```
 
-3. Restart Cursor after changing `hooks.json`.
+Restart Cursor after `hooks.json` changes. Confirm under **Settings → Hooks**.
 
-### Start a chain
+### Start a chain (one Agent chat — recommended)
 
-From `RallyApp/`:
+Pin **one** Agent chat. Each new contract, send **one short message**:
 
-```bash
-./.cursor/hooks/validation-loop-start.sh flow-rally-session
+```
+Run ./.cursor/hooks/validation-loop-start.sh flow-rally-session and complete the Validator phase in this same turn.
 ```
 
-The script:
+The Agent runs the script (creates `.validation-session.json`), validates, writes the state file, and stops. The hook then:
 
-- Writes `docs/contracts/.validation-session.json` (`chain_enabled: true`)
-- Prints **one Validator prompt** → copy into **one** Cursor Agent chat
+| Result | Same chat |
+|--------|-----------|
+| **pass** | `VALIDATION_GREEN` — done, no Fixer |
+| **fail** | Auto **Fixer** follow-up → then **Validator** again |
+| **needs_builder** | Pauses (or **Builder** if you used `--builder`) |
 
-Optional — auto-chain **Builder** when Validator reports `needs_builder`:
+Next contract when green (same chat):
 
-```bash
-./.cursor/hooks/validation-loop-start.sh flow-availability-poll --builder
+```
+Run ./.cursor/hooks/validation-loop-start.sh flow-inbox and complete the Validator phase in this same turn.
 ```
 
-### What happens next (no copy-paste)
-
-| Agent finishes | Hook auto-submits |
-|----------------|-------------------|
-| Validator → **pass** | `VALIDATION_GREEN` message; chain stops |
-| Validator → **fail** | **Fixer** prompt (same chat) |
-| Fixer → done | **Validator** again |
-| Validator → **needs_builder** | Pauses (or **Builder** if `--builder`) |
-| 3 Fixer rounds exhausted | Stop + message to log blockers |
-
-Stop anytime:
+### Start from terminal only (optional)
 
 ```bash
-./.cursor/hooks/validation-loop-stop.sh
+./.cursor/hooks/validation-loop-start.sh flow-rally-session --paste
+```
+
+Copy the printed prompt into Agent — use only if you are not asking Agent to run the script.
+
+Quiet (session file only — Agent already knows what to do):
+
+```bash
+./.cursor/hooks/validation-loop-start.sh flow-rally-session --quiet
+```
+
+### Exit conditions
+
+| Condition | Result |
+|-----------|--------|
+| Validator **pass** | Chain stops (`VALIDATION_GREEN`) |
+| **3 Fixer rounds** | Chain stops — log blockers |
+| **needs_builder** (no `--builder`) | Pauses for you |
+| `./validation-loop-stop.sh` | You stop it |
+
+Poll / missing UI:
+
+```bash
+# Agent message:
+Run ./.cursor/hooks/validation-loop-start.sh flow-availability-poll --builder and complete Validator this turn.
 ```
 
 ### State file

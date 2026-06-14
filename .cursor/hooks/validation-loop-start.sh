@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # Start an automated Validator → Fixer → Validator chain for one contract.
+#
+# Recommended (one Agent chat forever):
+#   Tell Agent: "Run ./.cursor/hooks/validation-loop-start.sh flow-rally-session
+#   and complete Validator in this same turn."
+#
 # Usage:
 #   ./.cursor/hooks/validation-loop-start.sh flow-rally-session
 #   ./.cursor/hooks/validation-loop-start.sh flow-availability-poll --builder
+#   ./.cursor/hooks/validation-loop-start.sh flow-rally-session --paste   # full prompt for copy/paste
+#   ./.cursor/hooks/validation-loop-start.sh flow-rally-session --quiet   # session file only
 
 set -euo pipefail
 
@@ -11,19 +18,25 @@ cd "$ROOT"
 
 CONTRACT_ID="${1:-}"
 AUTO_BUILDER="false"
+MODE="agent"
 
 if [[ -z "$CONTRACT_ID" ]]; then
-  echo "Usage: $0 <contract-id> [--builder]"
+  echo "Usage: $0 <contract-id> [--builder] [--paste | --quiet]"
   echo "Example: $0 flow-rally-session"
   echo "Contract ids match docs/contracts/<id>.md (no .md suffix)."
+  echo ""
+  echo "Recommended: stay in one Agent chat and say:"
+  echo "  Run ./.cursor/hooks/validation-loop-start.sh <contract-id> and complete Validator this turn."
   exit 1
 fi
 
 shift || true
 for arg in "$@"; do
-  if [[ "$arg" == "--builder" ]]; then
-    AUTO_BUILDER="true"
-  fi
+  case "$arg" in
+    --builder) AUTO_BUILDER="true" ;;
+    --paste) MODE="paste" ;;
+    --quiet) MODE="quiet" ;;
+  esac
 done
 
 CONTRACT_PATH="docs/contracts/${CONTRACT_ID}.md"
@@ -56,25 +69,16 @@ PY
 
 chmod +x .cursor/hooks/contract-validation-chain.py 2>/dev/null || true
 
-cat <<EOF
+if [[ "$MODE" == "quiet" ]]; then
+  echo "validation-session-ready contract_id=${CONTRACT_ID} path=${CONTRACT_PATH} chain_enabled=true"
+  exit 0
+fi
 
-══════════════════════════════════════════════════════════════
- Rally validation chain STARTED: ${CONTRACT_ID}
-══════════════════════════════════════════════════════════════
+if [[ "$MODE" == "paste" ]]; then
+  cat <<EOF
 
- ONE chat only — paste the prompt below into Cursor Agent.
- The stop hook will auto-submit Fixer / re-Validator in the SAME chat.
-
- Prerequisites:
-   • hooks.json uses contract-validation-chain.py (see .cursor/hooks/README.md)
-   • Metro + iOS sim running
-
- Stop chain anytime:
-   ./.cursor/hooks/validation-loop-stop.sh
-
-──────────────────────────────────────────────────────────────
- COPY FROM HERE → Cursor Agent (single chat)
-──────────────────────────────────────────────────────────────
+Chain started: ${CONTRACT_ID}
+Paste into Agent (only if not running the script from Agent):
 
 You are the Validator agent for Rally contract validation.
 
@@ -102,14 +106,27 @@ When finished, write RallyApp/docs/contracts/.validation-session.json with:
 - max_fixer_rounds: 3
 - chain_enabled: true
 
-──────────────────────────────────────────────────────────────
+EOF
+  exit 0
+fi
 
-After you paste once:
-  • Fail → hook submits Fixer in same chat → then Validator again (up to 3 Fixer rounds)
-  • Pass → hook replies VALIDATION_GREEN and stops
-  • needs_builder → chain pauses (use --builder on start to auto-chain Builder)
+# Default: agent mode — Agent ran this script or user forwards one line to Agent
+cat <<EOF
+validation-chain-started contract_id=${CONTRACT_ID} session=${SESSION_FILE}
 
-Next contract when green:
-  ./.cursor/hooks/validation-loop-start.sh <next-contract-id>
+Continue in THIS Agent turn as Validator (do not wait for another user message):
 
+1. Read ${CONTRACT_PATH}, .cursor/workflows/validate-contract.md, docs/store-review-test-accounts.md
+2. Validate on iOS simulator (Monrovia demo). Do not fix app code unless a later hook message says Fixer.
+3. Screenshots → docs/contracts/screenshots/${CONTRACT_ID}/
+4. Return pass/fail table + failed rows only
+5. Write ${SESSION_FILE} with phase "validator_done", status "pass"|"fail"|"needs_builder", failed_rows, fixer_round 0, chain_enabled true
+
+Hook behavior after you stop (same chat):
+  pass → VALIDATION_GREEN, chain stops
+  fail → Fixer auto-followup, then Validator again (max 3 Fixer rounds)
+  needs_builder → pauses${AUTO_BUILDER:+ (auto_builder enabled — Builder will chain)}
+
+Stop chain: ./.cursor/hooks/validation-loop-stop.sh
+Next contract when green: ./.cursor/hooks/validation-loop-start.sh <next-id>
 EOF

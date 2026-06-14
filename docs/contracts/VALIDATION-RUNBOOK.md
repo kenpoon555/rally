@@ -6,44 +6,33 @@
 
 ---
 
-## Automated chain (recommended) — one chat, not three
+## One Agent chat (recommended)
 
-You do **not** need a new agent chat for Fixer or re-Validator. The Cursor **stop hook** chains roles in the **same** chat.
+Cursor **cannot** start Agent from the terminal alone — hooks only fire **after** an Agent turn. So use **one pinned Agent chat** for all validation work.
 
-### How to start
+Each new contract, send **one line** (no paste):
 
-```bash
-cd RallyApp
-./.cursor/hooks/validation-loop-start.sh flow-rally-session
+```
+Run ./.cursor/hooks/validation-loop-start.sh flow-rally-session and complete the Validator phase in this same turn.
 ```
 
-1. Script prints **one Validator prompt**.
-2. Paste it into **one** Cursor Agent chat.
-3. Walk away (mostly) — on fail, hook auto-submits **Fixer**, then **Validator** again (max 3 Fixer rounds).
+The Agent runs the script, validates, writes `.validation-session.json`, and stops. The hook chains **only on fail**:
 
-Stop anytime:
+| Result | Same chat |
+|--------|-----------|
+| **pass** | `VALIDATION_GREEN` — stops (no Fixer) |
+| **fail** | Hook auto-sends **Fixer** → then **Validator** again |
+| 3 Fixer rounds | Stops |
 
-```bash
-./.cursor/hooks/validation-loop-stop.sh
+Stop: `./.cursor/hooks/validation-loop-stop.sh`
+
+Next item (same chat):
+
+```
+Run ./.cursor/hooks/validation-loop-start.sh flow-inbox and complete the Validator phase in this same turn.
 ```
 
-Next contract when green:
-
-```bash
-./.cursor/hooks/validation-loop-start.sh flow-inbox
-```
-
-| Mode | When to use |
-|------|-------------|
-| **Automated chain** | Default — Item 1–9 baseline |
-| **Manual three chats** | Below — when you want clean context per role |
-| **`/loop`** | Regression watch — Validator only, no Fixer |
-
-Poll / missing UI — start with `--builder` so Builder can chain after `needs_builder`:
-
-```bash
-./.cursor/hooks/validation-loop-start.sh flow-availability-poll --builder
-```
+Fallback if you prefer terminal + paste: `./.cursor/hooks/validation-loop-start.sh flow-rally-session --paste`
 
 ---
 
