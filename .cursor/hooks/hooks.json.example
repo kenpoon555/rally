@@ -4,7 +4,7 @@
     "stop": [
       {
         "command": ".cursor/hooks/contract-validation-chain.py",
-        "loop_limit": 9
+        "loop_limit": 40
       }
     ]
   }

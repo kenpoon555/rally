@@ -6,35 +6,27 @@
 
 ---
 
-## One Agent chat (recommended)
+## One Agent chat — single contract OR full queue
 
-Cursor **cannot** start Agent from the terminal alone — hooks only fire **after** an Agent turn. So use **one pinned Agent chat** for all validation work.
-
-Each new contract, send **one line** (no paste):
+**Queue mode (recommended after Loop A green):** one chain runs baseline Items 2–5 automatically on pass.
 
 ```
-Run ./.cursor/hooks/validation-loop-start.sh flow-rally-session and complete the Validator phase in this same turn.
+Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session and complete Validator this turn.
 ```
 
-The Agent runs the script, validates, writes `.validation-session.json`, and stops. The hook chains **only on fail**:
+| Mode | Command |
+|------|---------|
+| **One contract** | `validation-loop-start.sh flow-rally-session` |
+| **Full queue** | `validation-loop-start.sh --queue baseline --from flow-rally-session` |
+| **Resume queue** | same `--queue` + `--from` where you stopped |
 
-| Result | Same chat |
-|--------|-----------|
-| **pass** | `VALIDATION_GREEN` — stops (no Fixer) |
-| **fail** | Hook auto-sends **Fixer** → then **Validator** again |
-| 3 Fixer rounds | Stops |
+Queues defined in [validation-queues.json](./validation-queues.json): `baseline` · `phase1a` · `phase1b` · `phase1c`
 
-Stop: `./.cursor/hooks/validation-loop-stop.sh`
+On **pass** in queue mode → hook auto-starts **next** contract Validator (same chat).  
+On **fail** → Fixer → Validator for **current** contract only (3 rounds cap).  
+When queue finishes → `VALIDATION_GREEN_ALL`.
 
-Next item (same chat):
-
-```
-Run ./.cursor/hooks/validation-loop-start.sh flow-inbox and complete the Validator phase in this same turn.
-```
-
-Fallback if you prefer terminal + paste: `./.cursor/hooks/validation-loop-start.sh flow-rally-session --paste`
-
----
+Single contract mode:
 
 ## Manual cycle (memorize this)
 

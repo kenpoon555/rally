@@ -171,20 +171,14 @@ Validation green on affected contracts **before** production merge.
 ## Quick start commands
 
 ```bash
-# Layer 1 — persona review (one persona per Agent session)
-# See docs/product-review/personas.md for persona-id
+# Layer 3 — baseline queue (Items 2–5, one Agent chat)
+./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session
 
-# Layer 1 — consolidate after ≥3 reviews
-# Agent: consolidate per .cursor/skills/product-review-consolidator/SKILL.md
-
-# Layer 2 — human merges contract PR
-
-# Layer 3 — proof
+# Layer 3 — single contract
 ./.cursor/hooks/validation-loop-start.sh flow-rally-session
-# Agent: run script + Validator same turn
 
-# Layer 4 — ship
-# promote-branch workflow
+# Layer 3 — later sprints
+./.cursor/hooks/validation-loop-start.sh --queue phase1a
 ```
 
 ---

@@ -1,57 +1,124 @@
 #!/usr/bin/env bash
-# Start an automated Validator → Fixer → Validator chain for one contract.
+# Start automated Validator → Fixer → Validator chain (one or many contracts).
 #
-# Recommended (one Agent chat forever):
-#   Tell Agent: "Run ./.cursor/hooks/validation-loop-start.sh flow-rally-session
-#   and complete Validator in this same turn."
-#
-# Usage:
+# Single contract:
 #   ./.cursor/hooks/validation-loop-start.sh flow-rally-session
-#   ./.cursor/hooks/validation-loop-start.sh flow-availability-poll --builder
-#   ./.cursor/hooks/validation-loop-start.sh flow-rally-session --paste   # full prompt for copy/paste
-#   ./.cursor/hooks/validation-loop-start.sh flow-rally-session --quiet   # session file only
+#
+# Full baseline queue (5 contracts, one Agent chat):
+#   ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session
+#
+# Agent one-liner:
+#   Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session
+#   and complete Validator this turn.
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-CONTRACT_ID="${1:-}"
+QUEUES_FILE="docs/contracts/validation-queues.json"
+SESSION_FILE="docs/contracts/.validation-session.json"
 AUTO_BUILDER="false"
 MODE="agent"
+QUEUE_NAME=""
+FROM_ID=""
+CONTRACT_ID=""
 
-if [[ -z "$CONTRACT_ID" ]]; then
-  echo "Usage: $0 <contract-id> [--builder] [--paste | --quiet]"
-  echo "Example: $0 flow-rally-session"
-  echo "Contract ids match docs/contracts/<id>.md (no .md suffix)."
-  echo ""
-  echo "Recommended: stay in one Agent chat and say:"
-  echo "  Run ./.cursor/hooks/validation-loop-start.sh <contract-id> and complete Validator this turn."
+usage() {
+  cat <<EOF
+Usage:
+  $0 <contract-id> [--builder] [--paste | --quiet]
+  $0 --queue <name> [--from <contract-id>] [--builder] [--paste | --quiet]
+
+Queues (see ${QUEUES_FILE}):
+  baseline   Loop A/B + hub + inbox + play-screen (5)
+  phase1a    attendance, host-nudges, analytics (3)
+  phase1b    availability-poll (1)
+  phase1c    rotation, tourney, leaderboard (3)
+
+Agent:
+  Run $0 --queue baseline --from flow-rally-session and complete Validator this turn.
+EOF
   exit 1
-fi
+}
 
-shift || true
-for arg in "$@"; do
+ARGS=("$@")
+i=0
+while [[ $i -lt ${#ARGS[@]} ]]; do
+  arg="${ARGS[$i]}"
   case "$arg" in
+    --queue)
+      i=$((i + 1))
+      QUEUE_NAME="${ARGS[$i]:-}"
+      ;;
+    --from)
+      i=$((i + 1))
+      FROM_ID="${ARGS[$i]:-}"
+      ;;
     --builder) AUTO_BUILDER="true" ;;
     --paste) MODE="paste" ;;
     --quiet) MODE="quiet" ;;
+    --help|-h) usage ;;
+    *)
+      if [[ -z "$CONTRACT_ID" && -z "$QUEUE_NAME" ]]; then
+        CONTRACT_ID="$arg"
+      fi
+      ;;
   esac
+  i=$((i + 1))
 done
 
-CONTRACT_PATH="docs/contracts/${CONTRACT_ID}.md"
-if [[ ! -f "$CONTRACT_PATH" ]]; then
-  echo "Missing contract: $CONTRACT_PATH"
-  exit 1
-fi
-
-SESSION_FILE="docs/contracts/.validation-session.json"
-mkdir -p docs/contracts
-
-python3 - <<PY
-import json
+if [[ -n "$QUEUE_NAME" ]]; then
+  eval "$(python3 - <<PY
+import json, sys
 from pathlib import Path
 
+queues = json.loads(Path("${QUEUES_FILE}").read_text())
+name = "${QUEUE_NAME}"
+if name not in queues:
+    print(f'echo "Unknown queue: {name}" >&2; exit 1', file=sys.stderr)
+    sys.exit(1)
+full = queues[name]["contracts"]
+from_id = "${FROM_ID}"
+if from_id:
+    if from_id not in full:
+        print(f'echo "--from {from_id} not in queue" >&2; exit 1', file=sys.stderr)
+        sys.exit(1)
+    idx = full.index(from_id)
+else:
+    idx = 0
+    from_id = full[0]
+
+auto = "${AUTO_BUILDER}" == "true"
+session = {
+    "contract_id": from_id,
+    "contract_path": f"docs/contracts/{from_id}.md",
+    "phase": "started",
+    "status": "running",
+    "failed_rows": [],
+    "fixer_round": 0,
+    "max_fixer_rounds": 3,
+    "chain_enabled": True,
+    "auto_builder": auto,
+    "queue_name": name,
+    "queue": full,
+    "queue_index": idx,
+}
+Path("${SESSION_FILE}").write_text(json.dumps(session, indent=2) + "\\n")
+print(f'CONTRACT_ID="{from_id}"')
+print(f'QUEUE_LEN="{len(full)}"')
+print(f'QUEUE_POS="{idx + 1}"')
+PY
+)"
+elif [[ -n "$CONTRACT_ID" ]]; then
+  CONTRACT_PATH="docs/contracts/${CONTRACT_ID}.md"
+  if [[ ! -f "$CONTRACT_PATH" ]]; then
+    echo "Missing contract: $CONTRACT_PATH"
+    exit 1
+  fi
+  python3 - <<PY
+import json
+from pathlib import Path
 auto_builder = "${AUTO_BUILDER}" == "true"
 session = {
     "contract_id": "${CONTRACT_ID}",
@@ -66,69 +133,39 @@ session = {
 }
 Path("${SESSION_FILE}").write_text(json.dumps(session, indent=2) + "\\n")
 PY
+else
+  usage
+fi
 
+CONTRACT_PATH="docs/contracts/${CONTRACT_ID}.md"
 chmod +x .cursor/hooks/contract-validation-chain.py 2>/dev/null || true
 
 if [[ "$MODE" == "quiet" ]]; then
-  echo "validation-session-ready contract_id=${CONTRACT_ID} path=${CONTRACT_PATH} chain_enabled=true"
+  if [[ -n "$QUEUE_NAME" ]]; then
+    echo "validation-session-ready queue=${QUEUE_NAME} contract_id=${CONTRACT_ID} chain_enabled=true"
+  else
+    echo "validation-session-ready contract_id=${CONTRACT_ID} chain_enabled=true"
+  fi
   exit 0
 fi
 
 if [[ "$MODE" == "paste" ]]; then
-  cat <<EOF
-
-Chain started: ${CONTRACT_ID}
-Paste into Agent (only if not running the script from Agent):
-
-You are the Validator agent for Rally contract validation.
-
-Read:
-- RallyApp/${CONTRACT_PATH}
-- RallyApp/.cursor/workflows/validate-contract.md
-- RallyApp/docs/store-review-test-accounts.md
-
-Validate on iOS simulator (Monrovia demo seed). Do not fix app code.
-
-Steps:
-1. npm start + iOS sim booted
-2. Seed if needed: node scripts/seed-monrovia-basketball-rally-demo.mjs
-3. Run every checklist row in the contract
-4. Save screenshots to docs/contracts/screenshots/${CONTRACT_ID}/
-5. Return full pass/fail markdown table + failed rows only
-
-When finished, write RallyApp/docs/contracts/.validation-session.json with:
-- contract_id: "${CONTRACT_ID}"
-- contract_path: "${CONTRACT_PATH}"
-- phase: "validator_done"
-- status: "pass" OR "fail" OR "needs_builder"
-- failed_rows: array of failed checklist lines (empty if pass)
-- fixer_round: 0
-- max_fixer_rounds: 3
-- chain_enabled: true
-
-EOF
+  echo "Chain started: ${CONTRACT_ID}${QUEUE_NAME:+ (queue ${QUEUE_NAME})}"
   exit 0
 fi
 
-# Default: agent mode — Agent ran this script or user forwards one line to Agent
 cat <<EOF
-validation-chain-started contract_id=${CONTRACT_ID} session=${SESSION_FILE}
+validation-chain-started contract_id=${CONTRACT_ID} session=${SESSION_FILE}${QUEUE_NAME:+ queue=${QUEUE_NAME} position=${QUEUE_POS:-1}/${QUEUE_LEN:-1}}
 
-Continue in THIS Agent turn as Validator (do not wait for another user message):
+Continue in THIS Agent turn as Validator:
 
 1. Read ${CONTRACT_PATH}, .cursor/workflows/validate-contract.md, docs/store-review-test-accounts.md
-2. Validate on iOS simulator (Monrovia demo). Do not fix app code unless a later hook message says Fixer.
+2. Validate on iOS simulator. Do not fix app code.
 3. Screenshots → docs/contracts/screenshots/${CONTRACT_ID}/
-4. Return pass/fail table + failed rows only
-5. Write ${SESSION_FILE} with phase "validator_done", status "pass"|"fail"|"needs_builder"|"needs_human"|"blocked_external", failed_rows, fixer_round 0, chain_enabled true
+4. Write ${SESSION_FILE} — preserve queue_name, queue, queue_index if present
 
-Hook behavior after you stop (same chat):
-  pass → VALIDATION_GREEN, chain stops
-  fail → Fixer auto-followup, then Validator again (max 3 Fixer rounds)
-  needs_builder → pauses${AUTO_BUILDER:+ (auto_builder enabled — Builder will chain)}
-  needs_human → PAUSED — human must update contract H* gates, then restart chain
-  blocked_external → PAUSED — fix Supabase/seed/device, then restart chain (no Fixer)
+On pass: ${QUEUE_NAME:+auto-advance to next contract in queue · }same chat
+On fail: Fixer → Validator (max 3 Fixer rounds per contract)
 
-Stop chain: ./.cursor/hooks/validation-loop-stop.sh
-Next contract when green: ./.cursor/hooks/validation-loop-start.sh <next-id>
+Stop: ./.cursor/hooks/validation-loop-stop.sh
 EOF

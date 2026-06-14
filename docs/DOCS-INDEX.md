@@ -68,7 +68,9 @@ Cursor does not execute workflows like CI. Workflows are **instructions the Agen
 | [store-review-test-accounts.md](./store-review-test-accounts.md) | Demo accounts |
 | `docs/contracts/screenshots/` | Proof artifacts |
 
-**Start:** `Run ./.cursor/hooks/validation-loop-start.sh {contract-id} and complete Validator this turn.`
+**Start (one contract):** `Run ./.cursor/hooks/validation-loop-start.sh {contract-id} and complete Validator this turn.`
+
+**Start (baseline queue, Items 2–5):** `Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session and complete Validator this turn.`
 
 ### Layer 4 — Ship (*release*)
 
@@ -116,11 +118,8 @@ Cursor does not execute workflows like CI. Workflows are **instructions the Agen
 
 Copy to your notes; check off as you go.
 
-- [x] **Item 1** — `flow-invite-to-rally` (Loop A) ← you are here
-- [ ] **Item 2** — `flow-rally-session` (Loop B) ← **do this next**
-- [ ] **Item 3** — `module-rally-hub`
-- [ ] **Item 4** — `flow-inbox`
-- [ ] **Item 5** — `flow-play-screen`
+- [x] **Item 1** — `flow-invite-to-rally` (Loop A)
+- [ ] **Items 2–5** — run as one queue: `--queue baseline --from flow-rally-session`
 - [ ] Items 6–9 — see [validation-queue.md](./contracts/validation-queue.md)
 - [ ] **Then** Layer 1 product review sprint (6 personas → consolidator)
 

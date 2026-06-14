@@ -36,12 +36,87 @@ def followup(message: str) -> None:
     print(json.dumps({"followup_message": message}))
 
 
+def queue_fields_snippet(session: dict) -> str:
+    queue = session.get("queue")
+    if not queue:
+        return ""
+    qname = session.get("queue_name", "")
+    qidx = session.get("queue_index", 0)
+    qlen = len(queue)
+    return f"""
+- queue_name: "{qname}"
+- queue: {json.dumps(queue)}
+- queue_index: {qidx}  (current: {qidx + 1}/{qlen})
+Preserve queue fields exactly when updating the session file.
+"""
+
+
+def advance_queue(session: dict) -> str | None:
+    queue = session.get("queue") or []
+    idx = int(session.get("queue_index", 0))
+    nxt = idx + 1
+    if nxt >= len(queue):
+        return None
+    cid = queue[nxt]
+    session["queue_index"] = nxt
+    session["contract_id"] = cid
+    session["contract_path"] = f"docs/contracts/{cid}.md"
+    session["fixer_round"] = 0
+    session["failed_rows"] = []
+    session["phase"] = "validator_pending"
+    session["status"] = "running"
+    return cid
+
+
+def handle_pass(session: dict) -> None:
+    cid = session.get("contract_id")
+    queue = session.get("queue") or []
+    qname = session.get("queue_name")
+
+    if queue:
+        nxt = advance_queue(session)
+        if nxt:
+            save_session(session)
+            idx = session["queue_index"]
+            followup(
+                f"VALIDATION_GREEN for {cid} ({idx}/{len(queue)} in queue {qname}). "
+                f"Starting next contract: {nxt}. "
+                + validator_prompt(session)
+            )
+            return
+        session["phase"] = "done"
+        session["chain_enabled"] = False
+        session["status"] = "pass"
+        save_session(session)
+        followup(
+            f"VALIDATION_GREEN_ALL — queue '{qname}' complete ({len(queue)} contracts). "
+            "Update Last validated on each contract. "
+            "Next: product review (Layer 1) or ./validation-loop-start.sh --queue phase1a"
+        )
+        return
+
+    session["phase"] = "done"
+    session["chain_enabled"] = False
+    session["status"] = "pass"
+    save_session(session)
+    followup(
+        f"VALIDATION_GREEN for {cid}. Chain stopped. "
+        "Update the contract with Last validated date. "
+        "Run ./.cursor/hooks/validation-loop-start.sh <next-id> or --queue baseline --from <id>"
+    )
+
+
 def validator_prompt(session: dict) -> str:
     cid = session["contract_id"]
     path = session.get("contract_path") or f"docs/contracts/{cid}.md"
     rnd = session.get("fixer_round", 0)
+    queue_note = ""
+    if session.get("queue"):
+        idx = int(session.get("queue_index", 0))
+        qlen = len(session["queue"])
+        queue_note = f"\nQueue progress: {idx + 1}/{qlen} ({session.get('queue_name', '')})\n"
     return f"""You are the Validator agent for Rally contract validation.
-
+{queue_note}
 Read:
 - RallyApp/{path}
 - RallyApp/{WORKFLOW}
@@ -61,12 +136,10 @@ When finished, write RallyApp/docs/contracts/.validation-session.json with:
 - contract_path: "{path}"
 - phase: "validator_done"
 - status: "pass" OR "fail" OR "needs_builder" OR "needs_human" OR "blocked_external"
-  - needs_human: undecided product gate (H* in contract) — do not guess
-  - blocked_external: Supabase/seed/device/service down — not a code bug
-- failed_rows: array of failed checklist lines OR gate IDs OR dependency IDs (empty if pass)
+- failed_rows: array (empty if pass)
 - fixer_round: {rnd}
 - max_fixer_rounds: {session.get("max_fixer_rounds", 3)}
-- chain_enabled: true
+- chain_enabled: true{queue_fields_snippet(session)}
 """
 
 
@@ -99,7 +172,7 @@ When finished, write RallyApp/docs/contracts/.validation-session.json with:
 - failed_rows: (keep the same list you were given)
 - fixer_round: {rnd}
 - max_fixer_rounds: {session.get("max_fixer_rounds", 3)}
-- chain_enabled: true
+- chain_enabled: true{queue_fields_snippet(session)}
 """
 
 
@@ -125,12 +198,12 @@ When finished, write RallyApp/docs/contracts/.validation-session.json with:
 - failed_rows: []
 - fixer_round: {rnd}
 - max_fixer_rounds: {session.get("max_fixer_rounds", 3)}
-- chain_enabled: true
+- chain_enabled: true{queue_fields_snippet(session)}
 """
 
 
 def main() -> None:
-    _ = sys.stdin.read()  # stop hook payload (unused)
+    _ = sys.stdin.read()
 
     session = load_session()
     if not session or not session.get("chain_enabled"):
@@ -142,15 +215,7 @@ def main() -> None:
     fixer_round = int(session.get("fixer_round", 0))
 
     if phase == "validator_done" and status == "pass":
-        session["phase"] = "done"
-        session["chain_enabled"] = False
-        session["status"] = "pass"
-        save_session(session)
-        followup(
-            f"VALIDATION_GREEN for {session.get('contract_id')}. "
-            "Chain stopped. Update the contract with Last validated date. "
-            "Run ./.cursor/hooks/validation-loop-start.sh <next-contract-id> for the next item."
-        )
+        handle_pass(session)
         return
 
     if phase == "validator_done" and status == "needs_human":
@@ -162,9 +227,9 @@ def main() -> None:
         followup(
             f"CHAIN PAUSED — human decision required for {session.get('contract_id')}. "
             f"Items: {rows_text}. "
-            "Update the contract (resolve H* gates), merge docs, then re-run: "
-            f"./.cursor/hooks/validation-loop-start.sh {session.get('contract_id')}. "
-            "Do not run Fixer for product policy questions."
+            "Update contract H* gates, then resume: "
+            f"./.cursor/hooks/validation-loop-start.sh --queue {session.get('queue_name', 'baseline')} "
+            f"--from {session.get('contract_id')}"
         )
         return
 
@@ -176,9 +241,7 @@ def main() -> None:
         rows_text = "; ".join(rows) if rows else "see contract External dependencies"
         followup(
             f"CHAIN PAUSED — external dependency blocked for {session.get('contract_id')}. "
-            f"Items: {rows_text}. "
-            "Fix environment (Supabase, seed, device, API), then re-run validation-loop-start. "
-            "Fixer cannot resolve external outages."
+            f"Items: {rows_text}. Fix environment, then resume queue from same contract."
         )
         return
 
@@ -190,8 +253,9 @@ def main() -> None:
             save_session(session)
             followup(
                 f"Validator reported needs_builder for {session.get('contract_id')}. "
-                "Chain paused — open a Builder chat or re-run with: "
-                f"./.cursor/hooks/validation-loop-start.sh {session.get('contract_id')} --builder"
+                "Resume with: "
+                f"./.cursor/hooks/validation-loop-start.sh --queue {session.get('queue_name') or session.get('contract_id')} "
+                "--builder --from " + str(session.get("contract_id"))
             )
             return
         session["phase"] = "builder_pending"
@@ -223,7 +287,10 @@ def main() -> None:
             save_session(session)
             followup(
                 f"Stopped after {max_rounds} Fixer rounds for {session.get('contract_id')}. "
-                "Log blockers in the contract Open issues and rethink (contract vs bug)."
+                "Log blockers in contract Open issues. "
+                "Resume queue after fix: "
+                f"./.cursor/hooks/validation-loop-start.sh --queue {session.get('queue_name', 'baseline')} "
+                f"--from {session.get('contract_id')}"
             )
             return
         fixer_round += 1

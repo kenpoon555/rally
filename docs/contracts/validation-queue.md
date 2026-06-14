@@ -20,7 +20,31 @@ Run **Validator first** on every contract before any Builder work. Shared state 
 
 One contract per Builder PR. Do not batch unrelated features.
 
-## Three chats (not one `/loop` for everything)
+## One validation loop — many contracts (`--queue`)
+
+Same Agent chat + same hook. After each **pass**, auto-advances to the next contract.
+
+```bash
+./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session
+```
+
+Queue definitions: [validation-queues.json](./validation-queues.json)
+
+| Queue | Contracts |
+|-------|-----------|
+| `baseline` | invite → session → hub → inbox → play-screen |
+| `phase1a` | attendance, host-nudges, analytics |
+| `phase1b` | availability-poll |
+| `phase1c` | rotation, tourney, leaderboard |
+
+On **fail**: Fixer → Validator for current contract only (max 3 rounds).  
+On **pause** (`needs_human`, `blocked_external`, max rounds): resume with same `--queue --from {contract-id}`.
+
+Agent one-liner:
+
+```
+Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session and complete Validator this turn.
+```
 
 | Chat | Role | May edit code? |
 |------|------|----------------|

@@ -1,0 +1,34 @@
+{
+  "baseline": {
+    "description": "Sprint 0 — lock what v1 shipped (Loop A/B + core screens)",
+    "contracts": [
+      "flow-invite-to-rally",
+      "flow-rally-session",
+      "module-rally-hub",
+      "flow-inbox",
+      "flow-play-screen"
+    ]
+  },
+  "phase1a": {
+    "description": "Shipped but unvalidated",
+    "contracts": [
+      "flow-post-game-attendance",
+      "flow-host-nudges",
+      "module-analytics-events"
+    ]
+  },
+  "phase1b": {
+    "description": "Retention features (poll first)",
+    "contracts": [
+      "flow-availability-poll"
+    ]
+  },
+  "phase1c": {
+    "description": "Group stickiness",
+    "contracts": [
+      "flow-rotation-pairing",
+      "flow-mini-tournament",
+      "module-rally-leaderboard"
+    ]
+  }
+}

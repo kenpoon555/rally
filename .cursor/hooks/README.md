@@ -25,15 +25,21 @@ chmod +x .cursor/hooks/validation-loop-stop.sh
 
 Restart Cursor after `hooks.json` changes. Confirm under **Settings → Hooks**.
 
-### Start a chain (one Agent chat — recommended)
+### Start a chain (one Agent chat)
 
-Pin **one** Agent chat. Each new contract, send **one short message**:
+**Baseline queue (recommended after Loop A green):**
+
+```
+Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session and complete the Validator phase in this same turn.
+```
+
+**Single contract:**
 
 ```
 Run ./.cursor/hooks/validation-loop-start.sh flow-rally-session and complete the Validator phase in this same turn.
 ```
 
-The Agent runs the script (creates `.validation-session.json`), validates, writes the state file, and stops. The hook then:
+Queues: `baseline` · `phase1a` · `phase1b` · `phase1c` — see `docs/contracts/validation-queues.json`
 
 | Result | Same chat |
 |--------|-----------|
