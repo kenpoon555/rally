@@ -1,6 +1,8 @@
 # Rally agent development layers
 
 **Last updated:** 2026-06-15  
+**Doc index (read this first):** [DOCS-INDEX.md](./DOCS-INDEX.md) — grouped by layer/topic; agents search by task keyword.
+
 **Related:** [VALIDATION-RUNBOOK.md](./contracts/VALIDATION-RUNBOOK.md) · [post-v1-roadmap-contracts.md](./post-v1-roadmap-contracts.md)
 
 This doc is the map for how Rally uses agents, contracts, and human gates as the product grows toward autopilot.
