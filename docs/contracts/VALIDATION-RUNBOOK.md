@@ -2,11 +2,52 @@
 
 **For you (human).** One contract at a time. Same three prompts every time — only the path and contract id change.
 
-**Related:** [validation-queue.md](./validation-queue.md) (sprint order) · [validate-contract.md](../../.cursor/workflows/validate-contract.md) (agent rules)
+**Related:** [validation-queue.md](./validation-queue.md) (sprint order) · [validate-contract.md](../../.cursor/workflows/validate-contract.md) (agent rules) · [hooks README](../../.cursor/hooks/README.md) (automated chain)
 
 ---
 
-## The cycle (memorize this)
+## Automated chain (recommended) — one chat, not three
+
+You do **not** need a new agent chat for Fixer or re-Validator. The Cursor **stop hook** chains roles in the **same** chat.
+
+### How to start
+
+```bash
+cd RallyApp
+./.cursor/hooks/validation-loop-start.sh flow-rally-session
+```
+
+1. Script prints **one Validator prompt**.
+2. Paste it into **one** Cursor Agent chat.
+3. Walk away (mostly) — on fail, hook auto-submits **Fixer**, then **Validator** again (max 3 Fixer rounds).
+
+Stop anytime:
+
+```bash
+./.cursor/hooks/validation-loop-stop.sh
+```
+
+Next contract when green:
+
+```bash
+./.cursor/hooks/validation-loop-start.sh flow-inbox
+```
+
+| Mode | When to use |
+|------|-------------|
+| **Automated chain** | Default — Item 1–9 baseline |
+| **Manual three chats** | Below — when you want clean context per role |
+| **`/loop`** | Regression watch — Validator only, no Fixer |
+
+Poll / missing UI — start with `--builder` so Builder can chain after `needs_builder`:
+
+```bash
+./.cursor/hooks/validation-loop-start.sh flow-availability-poll --builder
+```
+
+---
+
+## Manual cycle (memorize this)
 
 ```
 ┌─────────────┐

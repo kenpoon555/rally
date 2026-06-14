@@ -1,6 +1,9 @@
 # APNs key (secret; upload to Firebase once, then store backup elsewhere)
 *.p8
 
+# Contract validation chain (local session state)
+docs/contracts/.validation-session.json
+
 # OSX
 #
 .DS_Store
