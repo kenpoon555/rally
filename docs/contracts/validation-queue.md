@@ -1,5 +1,7 @@
 # Validation queue — post-v1
 
+**Human runbook (start here):** [VALIDATION-RUNBOOK.md](./VALIDATION-RUNBOOK.md) — Item 1 prompts filled in, fix vs build decision tree, progress checklist.
+
 **Index:** [post-v1-roadmap-contracts.md](../post-v1-roadmap-contracts.md)  
 **Workflow:** [.cursor/workflows/validate-contract.md](../../.cursor/workflows/validate-contract.md)
 
