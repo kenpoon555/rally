@@ -6,9 +6,11 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 
 **Rule:** No Builder on a new feature without its contract. Bug fixes → Validator on affected contract before `production`.
 
+**Master map (Layers 1–4):** [agent-development-layers.md](./agent-development-layers.md)
+
 **Author contracts:** `.cursor/skills/write-contract/SKILL.md` · [author-contract.md](../.cursor/workflows/author-contract.md)
 
-**Persona product review:** `.cursor/skills/product-review/SKILL.md` · [product-review.md](../.cursor/workflows/product-review.md)
+**Persona product review:** [personas.md](./product-review/personas.md) · `.cursor/skills/product-review/SKILL.md` · [consolidate-product-reviews.md](../.cursor/workflows/consolidate-product-reviews.md)
 
 ## Active loops (run every preview PR)
 

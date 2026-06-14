@@ -1,53 +1,55 @@
 # Workflow: Product review (persona UX)
 
-**Upstream of contracts.** Simulates user feedback; does **not** replace Validator.
+**Layer 1.** Simulates user feedback; does **not** replace Validator.
 
-Load skill: `.cursor/skills/product-review/SKILL.md`
+Load skill: `.cursor/skills/product-review/SKILL.md`  
+Personas: [personas.md](../../docs/product-review/personas.md) (12 personas · 10 sports)
 
 ## Loop
 
 ```mermaid
 flowchart LR
-  P[Persona review Agent] --> R[review.md + screenshots]
-  R --> H[Human approves]
-  H --> C[Contract PR]
-  C --> V[validation-loop-start.sh]
-  V --> B[Builder if needed]
-  B --> Val[Validator → Fixer chain]
+  P1[Persona review 1] --> P2[Persona review 2]
+  P2 --> Pn[Persona review n]
+  Pn --> C[Consolidator agent]
+  C --> S[synthesis.md]
+  S --> H[Human approves]
+  H --> WC[write-contract / contract PR]
+  WC --> V[validation-loop-start.sh]
 ```
 
-## Start (one Agent chat)
-
-**Casual player:**
+## Step 1 — Persona review (one persona per Agent chat)
 
 ```
-Product review: casual badminton player per .cursor/skills/product-review/SKILL.md.
-Use iOS sim + Monrovia demo. Screenshot friction, write docs/product-review/casual/YYYY-MM-DD-review.md.
-No code changes. No Validator.
+Product review: persona volleyball-host per docs/product-review/personas.md and .cursor/skills/product-review/SKILL.md.
+iOS sim + Monrovia demo. Write docs/product-review/volleyball-host/YYYY-MM-DD-review.md + screenshots.
+No code. No Validator.
 ```
 
-**Hardcore organizer:**
+Repeat for other persona-ids (suggested minimum 6 — see `personas.md` batch list).
+
+## Step 2 — Consolidator (separate Agent chat)
+
+After ≥3 reviews:
 
 ```
-Product review: hardcore badminton host per .cursor/skills/product-review/SKILL.md.
-Focus Rally hub Play, lock roster, polls. Same output rules.
+Consolidate all docs/product-review/**/*-review.md per .cursor/skills/product-review-consolidator/SKILL.md.
+Write docs/product-review/consolidated/YYYY-MM-DD-synthesis.md. Propose contract diffs with cost estimates. No src/.
 ```
 
-## Output checklist
+See [consolidate-product-reviews.md](./consolidate-product-reviews.md).
 
-- [ ] Screenshots under `docs/product-review/{persona}/`
-- [ ] Prioritized friction table with suggested contract changes
-- [ ] Explicit "not in scope for this persona"
-- [ ] No app code diff unless user asked
+## Step 3 — Human → Layer 2 → Layer 3
 
-## Handoff
-
-Human → update contract → `./.cursor/hooks/validation-loop-start.sh {contract-id}` → existing validation chain.
+Approve synthesis → contract PR → `./.cursor/hooks/validation-loop-start.sh {contract-id}`
 
 ## Not the same as
 
-| | Product review | Validation |
-|--|----------------|------------|
-| Pass/fail vs contract | No | Yes |
-| Uses hook chain | No | Yes |
-| Can change code | No (default) | Fixer yes |
+| | Product review | Consolidator | Validation |
+|--|----------------|--------------|------------|
+| Edits code | No | No (contracts only w/ approval) | Fixer yes |
+| Hook chain | No | No | Yes |
+
+## Master doc
+
+[agent-development-layers.md](../../docs/agent-development-layers.md)

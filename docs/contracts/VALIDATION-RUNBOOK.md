@@ -2,7 +2,7 @@
 
 **For you (human).** One contract at a time. Same three prompts every time — only the path and contract id change.
 
-**Related:** [validation-queue.md](./validation-queue.md) (sprint order) · [validate-contract.md](../../.cursor/workflows/validate-contract.md) (agent rules) · [hooks README](../../.cursor/hooks/README.md) (automated chain)
+**Related:** [validation-queue.md](./validation-queue.md) · [validate-contract.md](../../.cursor/workflows/validate-contract.md) · [agent-development-layers.md](../agent-development-layers.md) · [hooks README](../../.cursor/hooks/README.md)
 
 ---
 
