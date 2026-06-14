@@ -81,12 +81,18 @@ Save to `docs/contracts/screenshots/flow-rally-session/`:
 5. `05-roster-locked.png` — both roles see locked state on card
 6. `06-today-next-up.png` — Today card (plain icon, no signal)
 7. `07-game-detail-whos-going.png` — detail hero with avatar row
+8. `08-post-game-attendance-host.png` — host CTA on past locked session (see `flow-post-game-attendance.md`)
+
+### Session card polish (Phase 1.1)
+
+See also [module-game-card.md](./module-game-card.md) — empty host Play, lock readiness hint, roster seat bar.
 
 ## Out of scope
 
 - Play discover open games / locked · still welcoming sections
-- Mini tournament flows
-- Create public pickup game (see future `create-game.md`)
+- Mini tournament — [flow-mini-tournament.md](./flow-mini-tournament.md)
+- Availability poll — [flow-availability-poll.md](./flow-availability-poll.md)
+- Create public pickup game — [flow-create-game.md](./flow-create-game.md)
 - Push notifications for join approved
 
 ## Open issues

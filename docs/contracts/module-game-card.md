@@ -53,6 +53,18 @@ Use `discoverPresetKey()`, `gameListVariantFromPreset()`, and `listRowFlagsFromP
 - [ ] Rally vs pickup visible on detail (`GameCardTypePill`) and session (`sessionVariant: rally`)
 - [ ] Unit tests in `__tests__/gameCardLayouts.test.ts` pass
 
+### Session card polish (Phase 1.1)
+
+- [ ] Empty host Play state uses preset/session card — no ad-hoc empty UI on screen
+- [ ] Lock readiness hint visible to host when policy almost met
+- [ ] Roster seat bar consistent on `CrewGameSessionCard` and detail hero
+- [ ] Venue / cost / session note fields visible on detail hero when set (Phase 2.2 partial)
+
+### Venue block (Phase 2.2 — partial)
+
+- [ ] Court name + session note render on session card and detail
+- [ ] Cost note (text only) visible to roster members — no payment processing
+
 ## Related
 
 - [module-invite-link.md](./module-invite-link.md)

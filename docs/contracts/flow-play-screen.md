@@ -25,6 +25,7 @@ North-star: **Open Discover → see open games with preset-driven cards → tap 
 | **Discover locked welcoming** | Finalized + spots | `discoverLockedWelcoming` variant |
 | **Today Next Up** | DynamicHome | `homeNextUp` — plain sport icon via `todayGameList`, no status dot |
 | **Empty Discover** | No listings | Empty state — no crash |
+| **Today empty (new host)** | User with zero Rallies / no Next Up | CTA: Create a Rally + Find a game — no dead screen |
 | **Sport filter** | Deep link or param | Filtered list updates |
 
 ## Pass/fail checklist
@@ -34,10 +35,11 @@ North-star: **Open Discover → see open games with preset-driven cards → tap 
 - [ ] Tap navigates to `ActivityDetail` with correct id
 - [ ] Pull-to-refresh reloads without duplicate rows
 - [ ] Map teaser (if enabled) uses `mapTeaser` preset
+- [ ] **Today empty:** new user / no Rallies sees Create Rally + Discover CTAs (no blank screen)
 
 ## Screenshots required
 
-`docs/contracts/screenshots/flow-play-screen/` — discover open, locked welcoming, today next up, empty.
+`docs/contracts/screenshots/flow-play-screen/` — discover open, locked welcoming, today next up, today empty host, discover empty.
 
 ## Out of scope
 
