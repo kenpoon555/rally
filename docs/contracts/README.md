@@ -2,146 +2,92 @@
 
 Written pass/fail targets for agent validation loops. See [advisoragent.md](../../../advisoragent.md) for the workflow (Builder → Validator → Fixer).
 
-**Do not contract every modal yet.** Start with flows that block friend testing.
+**Master index (status + when to validate):** [post-v1-roadmap-contracts.md](../post-v1-roadmap-contracts.md)
 
-## Active contracts (priority)
+**Rule:** No Builder on a new feature without its contract. Bug fixes → Validator on affected contract before `production`.
 
-| Contract | Loop | North-star step |
-|----------|------|-----------------|
-| [flow-invite-to-rally.md](./flow-invite-to-rally.md) | **A** | Friend taps link → installs → signs in → lands in Rally |
-| [flow-rally-session.md](./flow-rally-session.md) | **B** | Sees game → I'm in → host locks roster |
-| [module-game-card.md](./module-game-card.md) | **Module** | Config-driven presets; no duplicated session actions |
-| [module-invite-link.md](./module-invite-link.md) | **Module** | Host vs public URLs; landing + deep link routing |
-| [module-sport-icon.md](./module-sport-icon.md) | **Module** | Today plain vs Rally ring; named surfaces |
+## Active loops (run every preview PR)
 
-## Sprint prep (draft contracts + rules)
+| Contract | Loop | North-star |
+|----------|------|------------|
+| [flow-invite-to-rally.md](./flow-invite-to-rally.md) | **A** | Friend taps link → signs in → lands in Rally |
+| [flow-rally-session.md](./flow-rally-session.md) | **B** | Session card → I'm in → host locks roster |
 
-Not in validation loops yet — scaffolds for next sprint. Each has a matching `.cursor/rules/rally-*.mdc` rule.
+## Core modules (run when touched)
 
-| Contract | Rule | Focus |
-|----------|------|-------|
-| [flow-game-room.md](./flow-game-room.md) | `rally-game-room.mdc` | Game chat + roster actions |
-| [flow-create-game.md](./flow-create-game.md) | `rally-create-game.mdc` | Create activity + host share |
-| [flow-play-screen.md](./flow-play-screen.md) | `rally-play-screen.mdc` | Discover / Today cards |
-| [flow-inbox.md](./flow-inbox.md) | `rally-inbox.mdc` | Chats tab filters + navigation |
-| [flow-profile.md](./flow-profile.md) | `rally-profile.mdc` | Profile + player modal |
-| [flow-auth-onboarding.md](./flow-auth-onboarding.md) | `rally-auth-onboarding.mdc` | Auth, pending deep links, coach marks |
+| Contract | Focus |
+|----------|--------|
+| [module-game-card.md](./module-game-card.md) | Presets, shells, session actions |
+| [module-invite-link.md](./module-invite-link.md) | URLs, landing, deep links |
+| [module-sport-icon.md](./module-sport-icon.md) | Icon surfaces |
+| [module-rally-hub.md](./module-rally-hub.md) | Chat / Play / Members tabs |
+| [module-analytics-events.md](./module-analytics-events.md) | Event names + retention SQL |
 
-Loop A/B also have dedicated rules: `rally-flow-invite.mdc`, `rally-flow-rally-session.mdc`.
+## Shipped flows (validate before production)
+
+| Contract | Focus |
+|----------|--------|
+| [flow-game-room.md](./flow-game-room.md) | Game chat + roster actions |
+| [flow-create-game.md](./flow-create-game.md) | Create activity + share |
+| [flow-play-screen.md](./flow-play-screen.md) | Discover / Today + empty states |
+| [flow-inbox.md](./flow-inbox.md) | Inbox filters + navigation |
+| [flow-profile.md](./flow-profile.md) | Profile + player modal |
+| [flow-auth-onboarding.md](./flow-auth-onboarding.md) | Auth, legal gate, deep links |
+| [flow-post-game-attendance.md](./flow-post-game-attendance.md) | Host marks attendance |
+| [flow-host-nudges.md](./flow-host-nudges.md) | Roster nudge + push |
+
+## Phase 1+ features (validate before feature merge)
+
+| Contract | Phase | Build status |
+|----------|-------|--------------|
+| [flow-availability-poll.md](./flow-availability-poll.md) | 1.2 | Backend shipped |
+| [flow-rotation-pairing.md](./flow-rotation-pairing.md) | 1.3 | Backend shipped |
+| [flow-mini-tournament.md](./flow-mini-tournament.md) | 1.4 | Partial |
+| [module-rally-leaderboard.md](./module-rally-leaderboard.md) | 1.5 | Partial |
+| [flow-post-game-recap.md](./flow-post-game-recap.md) | 2.1 | Partial |
+| [flow-crew-dormancy-nudge.md](./flow-crew-dormancy-nudge.md) | Ops | **Not built** |
+
+Loop A/B rules: `rally-flow-invite.mdc`, `rally-flow-rally-session.mdc`. Sprint prep rules: `rally-*.mdc` per flow in table above.
 
 ## How to validate
 
 **Workflow (copy-paste prompts):** [.cursor/workflows/validate-contract.md](../../.cursor/workflows/validate-contract.md)
 
-1. **Builder** — Read the contract. Fix only what fails the checklist. Do not change unrelated screens.
-2. **Validator** — Run iOS simulator (and Android for keyboard items). Capture screenshots for each required state. Return a pass/fail table.
-3. **Fixer** — Fix only failed rows from the validator report. No new behavior.
+1. **Builder** — Read the contract. Fix only what fails the checklist.
+2. **Validator** — Run iOS simulator (Android for keyboard/push). Screenshots + pass/fail table. **No code changes.**
+3. **Fixer** — Fix only failed rows. Max **2–3** rounds then log blocker.
 
-Open **three Cursor chats** (or run phases in order): Validator first on current build, then Fixer if needed, Builder only if the flow is missing.
+Open **three Cursor chats** (or phases in order): Validator first, Fixer if needed, Builder only if flow missing.
 
 ### Stop conditions
 
 - All checklist items pass, **or**
-- Same failure repeats after **2–3** fix attempts → log blocker in the contract's **Open issues** section and stop the loop.
+- Same failure after **2–3** fix attempts → log in contract **Open issues** and stop.
 
 ### Demo data (linked preview)
 
-| Role | Account | Notes |
-|------|---------|-------|
-| Host | `marcus@rally-mvrhoops.demo` | Monrovia basketball Rally (`Julian Fisher Park Regulars`) |
-| Member / tester | `@kunyu` (kenpoon4real) | Already member of demo Rally after seed |
-| Seeds | `scripts/seed-monrovia-basketball-rally-demo.mjs` + `supabase/scripts/seed_monrovia_basketball_rally_demo.sql` | Run before Loop B if hub is empty |
+| Role | Account |
+|------|---------|
+| Host | `marcus@rally-mvrhoops.demo` |
+| Member | `@kunyu` |
+| Seeds | `scripts/seed-monrovia-basketball-rally-demo.mjs` + `supabase/scripts/seed_monrovia_basketball_rally_demo.sql` |
 
-### Testing without public App Store
-
-Rally is on **TestFlight (internal)** and **Play internal testing** — not the public App Store. Loop A is still valid; only the **install** step changes.
-
-| Tier | Who | Install | Invite link test |
-|------|-----|---------|------------------|
-| **1 — Simulator / dev** | You, agents | `npm run ios` / Metro | `xcrun simctl openurl booted "rallyapp://group-invite/…"` |
-| **2 — Beta build** | Friends with TestFlight / Play invite | Tester installs from TestFlight or Play internal link first | Then tap `rallyapp://…` link (Messages, Notes, Safari) |
-| **3 — Public store** | Everyone | App Store search | Same deep links + optional universal links (future) |
-
-**What Loop A validates without App Store:** auth, deep link routing, invite accept, Rally join — once the app binary is on the device (sim or beta).
-
-**What Loop A does not require:** public listing, App Store SEO, or “tap link → auto-install from store” (that needs universal links + live store page).
-
-**Friend beta playbook (two steps):** (1) Send TestFlight or Play internal invite → friend installs Rally. (2) Send Rally invite link (`group-invite` URL or in-app friend invite). Friend opens link → app handles join.
-
-See [beta-testflight-play-internal.md](../beta-testflight-play-internal.md).
-
-**Manual step-by-step:** [MANUAL-RUN-loop-a.md](./MANUAL-RUN-loop-a.md)
-
-### Deep link schemes
-
-| URL pattern | Purpose |
-|-------------|---------|
-| `…/functions/v1/game-invite?activity={id}` | **Public game** — HTTPS landing → game card → request |
-| `…/functions/v1/game-invite?token={token}&host=1` | **Host game** — HTTPS landing → auto-join |
-| `…/functions/v1/rally-invite?token={token}` | **Rally group** — HTTPS landing → group join |
-| `rallyapp://group-invite/{token}` | Join Rally (direct scheme) |
-| `rallyapp://host-invite/{token}` | Host game invite (auto-join) |
-| `rallyapp://game/{activityId}` | Open game detail (request flow) |
-| `rallyapp://invite/{token}` | Legacy view-only invite |
-| `rallyapp://auth/callback?...` | Magic link / OAuth return |
-
-Build game URLs via `src/services/inviteLinkService.ts`. Rally scheme URLs via `buildRallyGroupInviteUrl()` in the same module.
+See [store-review-test-accounts.md](../store-review-test-accounts.md) · [MANUAL-RUN-loop-a.md](./MANUAL-RUN-loop-a.md)
 
 ### Screenshot output
 
-Save under `docs/contracts/screenshots/{contract-id}/` with names from each contract's **Screenshots required** section. Git-ignore large PNG dumps if needed; keep filenames stable for diff review.
+`docs/contracts/screenshots/{contract-id}/` — filenames from each contract's **Screenshots required** section.
 
 ## Contract template
 
-Copy for future screens (`play-screen.md`, `inbox.md`, etc.):
-
-```markdown
-# [Name] contract
-
-**Contract id:** `kebab-name`
-**Screens:** list routes / components
-**Last validated:** YYYY-MM-DD · build N · platform
-
-## Purpose
-One sentence.
-
-## Demo setup
-How to reach each state (account, seed, navigation).
-
-## Required states
-
-| State | How to reach | Must show |
-|-------|--------------|-----------|
-| ... | ... | ... |
-
-## Pass/fail checklist
-- [ ] No redbox / render error
-- [ ] Loads in < 3s (cold start to interactive)
-- [ ] ...
-
-## Screenshots required
-1. `state-name.png` — description
-
-## Out of scope
-- ...
-
-## Open issues
-| Date | Blocker | Owner |
-|------|---------|-------|
-```
+See bottom of previous README revision — use for any new `flow-*.md` or `module-*.md`.
 
 ## Related docs
 
-- [QA_BETA_CREW_CHECKLIST.md](../QA_BETA_CREW_CHECKLIST.md) — broader manual QA
-- [HANDOFF_PRODUCT_AND_ENGINEERING_2026-06-07.md](../HANDOFF_PRODUCT_AND_ENGINEERING_2026-06-07.md)
-- [.cursor/skills/rally-mobile-ui/SKILL.md](../../.cursor/skills/rally-mobile-ui/SKILL.md) — mobile UI tokens
+- [post-v1-roadmap-contracts.md](../post-v1-roadmap-contracts.md)
+- [vision.md](../vision.md)
+- [QA_BETA_CREW_CHECKLIST.md](../QA_BETA_CREW_CHECKLIST.md)
 
-## Deferred contracts
+## Deferred (no contract until scoped)
 
-Add after sprint prep contracts pass validation:
-
-- *(moved to sprint prep table above)*
-
-## Agent hooks (optional chaining)
-
-See `.cursor/hooks/README.md` — `stop` / `subagentStop` hooks can return `followup_message` to trigger the next Validator pass automatically (`hooks.json.example`).
+Payments, Teams, Leagues, Need Players / Free Agent boards, rich chat media.
