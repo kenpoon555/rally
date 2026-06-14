@@ -120,12 +120,14 @@ Continue in THIS Agent turn as Validator (do not wait for another user message):
 2. Validate on iOS simulator (Monrovia demo). Do not fix app code unless a later hook message says Fixer.
 3. Screenshots → docs/contracts/screenshots/${CONTRACT_ID}/
 4. Return pass/fail table + failed rows only
-5. Write ${SESSION_FILE} with phase "validator_done", status "pass"|"fail"|"needs_builder", failed_rows, fixer_round 0, chain_enabled true
+5. Write ${SESSION_FILE} with phase "validator_done", status "pass"|"fail"|"needs_builder"|"needs_human"|"blocked_external", failed_rows, fixer_round 0, chain_enabled true
 
 Hook behavior after you stop (same chat):
   pass → VALIDATION_GREEN, chain stops
   fail → Fixer auto-followup, then Validator again (max 3 Fixer rounds)
   needs_builder → pauses${AUTO_BUILDER:+ (auto_builder enabled — Builder will chain)}
+  needs_human → PAUSED — human must update contract H* gates, then restart chain
+  blocked_external → PAUSED — fix Supabase/seed/device, then restart chain (no Fixer)
 
 Stop chain: ./.cursor/hooks/validation-loop-stop.sh
 Next contract when green: ./.cursor/hooks/validation-loop-start.sh <next-id>

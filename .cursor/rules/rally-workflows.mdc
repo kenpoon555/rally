@@ -9,8 +9,10 @@ alwaysApply: true
 - **Skills** (domain depth): `.cursor/skills/` — e.g. `push-notifications`, `cli-first`
 - **Rules** (constraints): `.cursor/rules/` — this folder
 
-When the user asks to ship, promote, deploy, add push, validate a contract, run Loop A/B, or **start a validation chain** → open the relevant workflow first (`validate-contract.md` for contract loops).
+When the user asks to ship, promote, deploy, add push, validate a contract, run Loop A/B, **write a contract**, **product review / persona feedback**, or **start a validation chain** → open the relevant workflow first.
 
-**Validation chain (one Agent chat):** User says `Run ./.cursor/hooks/validation-loop-start.sh <contract-id> and complete Validator this turn` → run the script, then validate in the same turn; write `docs/contracts/.validation-session.json` when done. Hook chains Fixer only on fail.
+**Validation chain (one loop, any contract):** `Run ./.cursor/hooks/validation-loop-start.sh <contract-id> and complete Validator this turn` — hook chains Fixer only on `fail`. Stops on `pass`, `needs_human`, `blocked_external`, or max Fixer rounds.
+
+**Product review:** `.cursor/workflows/product-review.md` — no validation hook; outputs feed contract updates first.
 
 **CLI first:** If `gh`, `supabase`, `eas`, `git`, or `npm` can do the job, run it yourself. Read `.cursor/skills/cli-first/SKILL.md` when unsure.

@@ -66,9 +66,22 @@ Quiet (session file only — Agent already knows what to do):
 | Condition | Result |
 |-----------|--------|
 | Validator **pass** | Chain stops (`VALIDATION_GREEN`) |
-| **3 Fixer rounds** | Chain stops — log blockers |
+| Validator **fail** | Auto **Fixer** → **Validator** (max 3 rounds) |
 | **needs_builder** (no `--builder`) | Pauses for you |
+| **needs_human** | **Pauses** — undecided product gate in contract; update contract, restart chain |
+| **blocked_external** | **Pauses** — Supabase/seed/device down; Fixer won't help |
 | `./validation-loop-stop.sh` | You stop it |
+
+### One loop, many contracts
+
+Same hook + same Agent chat pattern — only the contract id changes:
+
+```bash
+./.cursor/hooks/validation-loop-start.sh flow-invite-to-rally   # green
+./.cursor/hooks/validation-loop-start.sh flow-rally-session     # next item
+```
+
+Only one active chain (`chain_enabled: true`) at a time.
 
 Poll / missing UI:
 

@@ -60,8 +60,10 @@ When finished, write RallyApp/docs/contracts/.validation-session.json with:
 - contract_id: "{cid}"
 - contract_path: "{path}"
 - phase: "validator_done"
-- status: "pass" OR "fail" OR "needs_builder" (use needs_builder if whole UI/flow is missing)
-- failed_rows: array of failed checklist lines (empty if pass)
+- status: "pass" OR "fail" OR "needs_builder" OR "needs_human" OR "blocked_external"
+  - needs_human: undecided product gate (H* in contract) — do not guess
+  - blocked_external: Supabase/seed/device/service down — not a code bug
+- failed_rows: array of failed checklist lines OR gate IDs OR dependency IDs (empty if pass)
 - fixer_round: {rnd}
 - max_fixer_rounds: {session.get("max_fixer_rounds", 3)}
 - chain_enabled: true
@@ -148,6 +150,35 @@ def main() -> None:
             f"VALIDATION_GREEN for {session.get('contract_id')}. "
             "Chain stopped. Update the contract with Last validated date. "
             "Run ./.cursor/hooks/validation-loop-start.sh <next-contract-id> for the next item."
+        )
+        return
+
+    if phase == "validator_done" and status == "needs_human":
+        session["phase"] = "blocked"
+        session["chain_enabled"] = False
+        save_session(session)
+        rows = session.get("failed_rows") or []
+        rows_text = "; ".join(rows) if rows else "see contract Human decision gates"
+        followup(
+            f"CHAIN PAUSED — human decision required for {session.get('contract_id')}. "
+            f"Items: {rows_text}. "
+            "Update the contract (resolve H* gates), merge docs, then re-run: "
+            f"./.cursor/hooks/validation-loop-start.sh {session.get('contract_id')}. "
+            "Do not run Fixer for product policy questions."
+        )
+        return
+
+    if phase == "validator_done" and status == "blocked_external":
+        session["phase"] = "blocked"
+        session["chain_enabled"] = False
+        save_session(session)
+        rows = session.get("failed_rows") or []
+        rows_text = "; ".join(rows) if rows else "see contract External dependencies"
+        followup(
+            f"CHAIN PAUSED — external dependency blocked for {session.get('contract_id')}. "
+            f"Items: {rows_text}. "
+            "Fix environment (Supabase, seed, device, API), then re-run validation-loop-start. "
+            "Fixer cannot resolve external outages."
         )
         return
 
