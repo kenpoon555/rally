@@ -148,7 +148,7 @@ Validation green on affected contracts **before** production merge.
 | Persona product review | 1 | No |
 | Review consolidator | 1 | No |
 | Author / update contract | 2 | No |
-| Validation chain (Validator → Fixer) | 3 | **Yes** (`stop` hook) |
+| Validation chain (Validator → Fixer) | 3 | Self-chain primary; hook backup |
 | `/loop` regression watch | 3 | Optional interval; Validator only |
 | Ship / promote | 4 | GitHub Actions only |
 

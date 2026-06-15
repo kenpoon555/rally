@@ -30,5 +30,12 @@
       "flow-mini-tournament",
       "module-rally-leaderboard"
     ]
+  },
+  "phase2": {
+    "description": "Recap + game card venue",
+    "contracts": [
+      "flow-post-game-recap",
+      "module-game-card"
+    ]
   }
 }

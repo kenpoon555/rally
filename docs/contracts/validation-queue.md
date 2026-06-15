@@ -36,6 +36,7 @@ Queue definitions: [validation-queues.json](./validation-queues.json)
 | `phase1a` | attendance, host-nudges, analytics |
 | `phase1b` | availability-poll |
 | `phase1c` | rotation, tourney, leaderboard |
+| `phase2` | post-game-recap, module-game-card (venue) |
 
 On **fail**: Fixer → Validator for current contract only (max 3 rounds).  
 On **pause** (`needs_human`, `blocked_external`, max rounds): resume with same `--queue --from {contract-id}`.

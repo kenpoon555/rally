@@ -4,9 +4,10 @@
 
 | Doc | Purpose |
 |-----|---------|
-| **[DOCS-INDEX.md](./DOCS-INDEX.md)** | **Master index** — what to read by layer/task; agents search here |
-| **[agent-development-layers.md](./agent-development-layers.md)** | Layers 1–4 map (product → contract → validate → ship) |
-| **[contracts/VALIDATION-RUNBOOK.md](./contracts/VALIDATION-RUNBOOK.md)** | What to run today (validation one-liners) |
+| **[DOCS-INDEX.md](./DOCS-INDEX.md)** | **Master index** — what to read by layer/task |
+| **[develop-process-and-costs.md](./develop-process-and-costs.md)** | Branching, validation progress, monthly costs |
+| **[agent-development-layers.md](./agent-development-layers.md)** | Layers 1–4 map |
+| **[contracts/VALIDATION-RUNBOOK.md](./contracts/VALIDATION-RUNBOOK.md)** | Validation one-liners |
 
 ## Strategy & roadmap
 

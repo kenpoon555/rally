@@ -6,6 +6,7 @@
 
 | Read | When |
 |------|------|
+| [develop-process-and-costs.md](./develop-process-and-costs.md) | Branching, costs, validation progress, known agent issues |
 | [agent-development-layers.md](./agent-development-layers.md) | Once — how everything fits |
 | [contracts/VALIDATION-RUNBOOK.md](./contracts/VALIDATION-RUNBOOK.md) | When validating — one line per contract |
 | [post-v1-roadmap-contracts.md](./post-v1-roadmap-contracts.md) | What's on the roadmap + contract links |
@@ -118,8 +119,10 @@ Cursor does not execute workflows like CI. Workflows are **instructions the Agen
 
 Copy to your notes; check off as you go.
 
-- [x] **Item 1** — `flow-invite-to-rally` (Loop A)
-- [ ] **Items 2–5** — run as one queue: `--queue baseline --from flow-rally-session`
+- [x] **Items 2–5** — `--queue baseline` ✅
+- [x] **phase1a** ✅ · **phase1b** ✅ · **phase1c** 🔄
+- [ ] **phase2** — recap + game-card venue
+- [ ] **Layer 1** product review — after 1c green
 - [ ] Items 6–9 — see [validation-queue.md](./contracts/validation-queue.md)
 - [ ] **Then** Layer 1 product review sprint (6 personas → consolidator)
 

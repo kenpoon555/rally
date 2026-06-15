@@ -3,11 +3,12 @@
 ## dev → preview
 
 1. `git checkout dev && git pull`
-2. `npm run verify`
-3. `git push origin dev`
-4. `gh pr create --base preview --head dev` (or update existing PR)
-5. Wait for CI green → merge
-6. Preview EAS build runs on merge (see Actions)
+2. Run validation on affected contracts (Loop A/B minimum for `dev → preview`)
+3. `npm run verify`
+4. `git push origin dev`
+5. `gh pr create --base preview --head dev`
+6. Wait for CI green → merge
+7. **Optional:** GitHub Actions → **Deploy preview (EAS)** (manual — saves build credits)
 
 ## preview → main
 
