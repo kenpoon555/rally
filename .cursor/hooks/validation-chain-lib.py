@@ -20,6 +20,7 @@ After you write `.validation-session.json`, **do not stop and do not ask the hum
 2. Read `docs/contracts/.validation-next.md`
 3. If next role is fixer/validator/builder → **continue as that role in THIS SAME TURN** (same response)
 4. Only stop when next action is `stop` (green, paused, or max Fixer rounds)
+5. After pass on one contract in a queue → **immediately** self-chain Validator for the **next** contract (re-seed via CLI first) — no human handoff
 
 Never say "tell Fixer", "re-run Validator", or "say if you want Fixer" when chain_enabled is true.
 """
@@ -114,7 +115,12 @@ Validate on iOS simulator (Monrovia demo). Do not fix app code.
 
 Steps:
 1. npm start + iOS sim booted
-2. Seed if needed: supabase db query --linked -f supabase/scripts/seed_monrovia_basketball_rally_demo.sql
+2. **Always re-seed yourself** (never ask the human) — prior validation may have finalized games:
+   ```bash
+   supabase db query --linked -f supabase/scripts/seed_monrovia_basketball_rally_demo.sql
+   node scripts/seed-monrovia-basketball-rally-demo.mjs
+   ```
+   You have Supabase CLI + linked project — run these before checklist rows. Only use `blocked_external` if CLI actually fails.
 3. Run every checklist row; screenshots → docs/contracts/screenshots/{cid}/
 4. Pass/fail table + failed_rows as **strings** (not bare numbers)
 

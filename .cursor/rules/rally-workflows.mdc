@@ -11,7 +11,7 @@ alwaysApply: true
 
 When the user asks to ship, promote, deploy, add push, validate a contract, run Loop A/B, **write a contract**, **product review**, **consolidate reviews**, or **what doc to read** → open [DOCS-INDEX.md](../../docs/DOCS-INDEX.md) for the right file, then the matching workflow/skill.
 
-**Validation chain:** Self-chain is **primary** (agent runs `python3 .cursor/hooks/validation-chain-next.py` after every session write and continues same turn). Cursor `stop` hook is **backup only**.
+**Validation chain:** Self-chain is **primary**. After session write → `python3 .cursor/hooks/validation-chain-next.py` → continue same turn. **Never ask human to run supabase seed** — run `supabase db query --linked -f …` yourself. Hook is backup only.
 
 Start: `Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session and complete Validator; self-chain until stop.`
 
