@@ -162,12 +162,11 @@ Continue in THIS Agent turn as Validator:
 1. Read ${CONTRACT_PATH}, .cursor/workflows/validate-contract.md, docs/store-review-test-accounts.md
 2. Validate on iOS simulator. Do not fix app code.
 3. Screenshots → docs/contracts/screenshots/${CONTRACT_ID}/
-4. Write ${SESSION_FILE} — preserve queue_name, queue, queue_index if present
+4. Write ${SESSION_FILE} — preserve queue fields if present
+5. Run python3 .cursor/hooks/validation-chain-next.py and SELF-CHAIN (continue Fixer/Validator in SAME turn — do not ask human)
 
-On pass: ${QUEUE_NAME:+auto-advance to next contract in queue · }same chat
-On fail: Fixer → Validator (max 3 Fixer rounds per contract)
+On pass: ${QUEUE_NAME:+auto-advance to next contract · }same chat via self-chain
+On fail: Fixer → Validator via self-chain (max 3 Fixer rounds; sim-only may retry Validator once without extra Fixer round)
 
-If hook did not auto-send Fixer (you messaged mid-turn): ./.cursor/hooks/validation-loop-continue.sh
-
-Stop: ./.cursor/hooks/validation-loop-stop.sh
+If stuck: ./.cursor/hooks/validation-loop-continue.sh
 EOF

@@ -3,6 +3,7 @@
 
 # Contract validation chain (local session state)
 docs/contracts/.validation-session.json
+docs/contracts/.validation-next.md
 
 # OSX
 #

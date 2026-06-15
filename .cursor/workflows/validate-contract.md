@@ -57,12 +57,12 @@ flowchart LR
 
 ## Hook chain rules (Validator MUST follow)
 
-1. **End your turn after writing** `docs/contracts/.validation-session.json` — do **not** ask the human to "send to Fixer" or "tell Fixer". The `stop` hook submits Fixer automatically.
-2. **`failed_rows`** must be **strings** (full checklist line + notes), never bare numbers like `[2, 4]`.
-3. **Seed / SQL bug in repo** → `status: "fail"` → **Fixer** fixes SQL/scripts. You may run `supabase db query --linked -f …` yourself if CLI works.
-4. **`blocked_external`** only when Agent cannot fix env in-session: wrong Supabase project, no network, no CLI, physical device required. **Not** for fixable seed SQL bugs.
-5. **Sim tap / automation brittle** but product works → `fail` with Fixer row for `testID` / `accessibilityLabel` on action buttons — not `needs_human`.
-6. If human interrupts mid-turn, they can run `./.cursor/hooks/validation-loop-continue.sh` to print the next Fixer/Validator prompt.
+1. **SELF-CHAIN (primary):** After writing `.validation-session.json`, run `python3 .cursor/hooks/validation-chain-next.py` and continue as the next role **in the same turn**. Do not ask the human to invoke Fixer/Validator. Cursor `stop` hook is backup only.
+2. **`failed_rows`** must be **strings**, never bare numbers like `[2, 4]`.
+3. **Seed / SQL bug in repo** → `status: "fail"` → Fixer. Run `supabase db query --linked -f …` yourself when CLI works.
+4. **`blocked_external`** only when env cannot be fixed in-session (wrong project, no CLI).
+5. **Sim tap / Metro / modal flakes** after Fixer round 1 → chain may retry Validator once without consuming another Fixer round (`sim_automation retry`). Fixer adds testIDs only; no product logic changes for flakes.
+6. Human mid-turn message: agent reads `.validation-next.md` and resumes self-chain.
 
 ---
 
