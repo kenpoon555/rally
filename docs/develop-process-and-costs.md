@@ -15,7 +15,8 @@ Single reference for how we build, branch, validate, ship, and what it costs at 
 | **phase1a** | attendance, host-nudges, analytics | ✅ Done |
 | **phase1b** | availability-poll | ✅ Done |
 | **phase1c** | rotation, mini-tournament, leaderboard | 🔄 In progress / next |
-| **phase2** | post-game-recap, game-card venue | ⬜ After 1c |
+| **phase2-recap** | post-game-recap | ⬜ After 1c |
+| **phase2-game-card** | module-game-card | ⬜ After game-card PR |
 | **ops** | crew-dormancy-nudge | ⬜ Not built |
 
 After **phase1c** green → optional **Layer 1 product review** (personas → consolidator) before big contract changes for v1.1 store build.
@@ -140,10 +141,11 @@ Index: [post-v1-roadmap-contracts.md](./post-v1-roadmap-contracts.md)
 
 ## What to do after phase1c
 
-1. **Validate phase2** (or add to `validation-queues.json`):
+1. **Validate phase2-recap** (recap only):
    ```bash
-   ./.cursor/hooks/validation-loop-start.sh --queue phase2 --builder
+   ./.cursor/hooks/validation-loop-start.sh --queue phase2-recap --builder
    ```
+2. **PR module-game-card** to `dev`, then `--queue phase2-game-card`
 2. **Layer 1 product review** — 6 personas → consolidator → contract PRs for v1.1 polish
 3. **Merge `docs/post-v1-contracts` PR** to `dev` if not merged (contracts + hooks + this doc)
 4. **Promote** `dev → preview` when ready for tester build

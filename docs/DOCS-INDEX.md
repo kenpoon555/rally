@@ -121,7 +121,7 @@ Copy to your notes; check off as you go.
 
 - [x] **Items 2–5** — `--queue baseline` ✅
 - [x] **phase1a** ✅ · **phase1b** ✅ · **phase1c** 🔄
-- [ ] **phase2** — recap + game-card venue
+- [ ] **phase2-recap** · **phase2-game-card** (after game-card PR)
 - [ ] **Layer 1** product review — after 1c green
 - [ ] Items 6–9 — see [validation-queue.md](./contracts/validation-queue.md)
 - [ ] **Then** Layer 1 product review sprint (6 personas → consolidator)

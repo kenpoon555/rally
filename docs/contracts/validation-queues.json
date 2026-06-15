@@ -31,10 +31,15 @@
       "module-rally-leaderboard"
     ]
   },
-  "phase2": {
-    "description": "Recap + game card venue",
+  "phase2-recap": {
+    "description": "Post-game recap only (run before module-game-card PR)",
     "contracts": [
-      "flow-post-game-recap",
+      "flow-post-game-recap"
+    ]
+  },
+  "phase2-game-card": {
+    "description": "Game card module + venue block (PR to dev first, then validate)",
+    "contracts": [
       "module-game-card"
     ]
   }
