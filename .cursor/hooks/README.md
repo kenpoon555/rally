@@ -4,16 +4,7 @@ Hooks run after agent events. See Cursor **Settings → Hooks** and the Hooks ou
 
 ## Automated contract chain (Validator → Fixer → Validator)
 
-**One Agent chat.** You do not need a new chat per role. The `stop` hook submits Fixer / re-Validator **only when validation fails** — pass exits immediately.
-
-### Why not fully automatic from terminal?
-
-Cursor has **no API** for a shell script to open Agent or send the first message. Hooks only run **after** an Agent turn ends (`followup_message`). So something must kick off turn 1:
-
-| Kickoff | How |
-|---------|-----|
-| **Recommended** | One permanent Agent chat: ask it to run the start script + Validator in the same turn |
-| **Fallback** | `./validation-loop-start.sh <id> --paste` → copy long prompt |
+**Primary: agent self-chain** (not the Cursor hook). After every session write, agent runs `python3 .cursor/hooks/validation-chain-next.py` and continues Fixer/Validator in the **same turn**. Hook is backup only. See `docs/contracts/.validation-next.md`.
 
 ### Setup (once)
 
