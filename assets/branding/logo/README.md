@@ -16,9 +16,9 @@ Regenerate production masters:
 
 ```bash
 cd RallyApp
-python3 scripts/generate-rally-mark.py          # court-fresh production
-python3 scripts/generate-rally-mark-neon.py       # neon soft-dual candidate
-./scripts/generate-app-icons.sh   # after replacing icon-1024.png
+python3 scripts/generate-rally-mark-neon.py   # neon soft-dual → production masters + candidates
+./scripts/generate-app-icons.sh             # sync ios/ + android/ mipmaps (required before EAS)
+python3 scripts/generate-rally-mark.py        # legacy court-fresh (deprecated)
 ```
 
 ## Candidates (not shipped)

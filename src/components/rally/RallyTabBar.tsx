@@ -27,6 +27,8 @@ export const RallyTabBar: React.FC<Props> = ({ active, onChange, playActionCount
           style={styles.tab}
           onPress={() => onChange(tab.id)}
           activeOpacity={0.7}
+          testID={`rally-hub-tab-${tab.id}`}
+          accessibilityLabel={tab.label}
         >
           <View style={styles.labelRow}>
             <Text style={[styles.label, selected && styles.labelActive]}>{tab.label}</Text>

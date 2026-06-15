@@ -311,7 +311,8 @@ async function seedRally(locId) {
     'id'
   );
 
-  const readyMembers = MEMBER_IDS.slice(1, 5);
+  // derek–casey + devin ready; riley not ready (Validator taps I'm in); kunyu ready for lock-at-8
+  const readyMembers = [...MEMBER_IDS.slice(1, 5), MEMBER_IDS[6]];
   const joinedNotReady = [MEMBER_IDS[5]];
   for (const userId of readyMembers) {
     await upsert(

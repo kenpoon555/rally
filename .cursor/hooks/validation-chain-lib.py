@@ -313,7 +313,9 @@ def compute_next(session: dict) -> dict:
             "prompt": fixer_prompt(session),
         }
 
-    if phase == "validator_pending":
+    if phase in ("started", "validator_pending"):
+        if phase == "started":
+            session["phase"] = "validator_pending"
         save_session(session)
         return {"action": "validator", "reason": "continue validation", "prompt": validator_prompt(session)}
 

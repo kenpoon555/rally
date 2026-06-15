@@ -343,18 +343,20 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   useLayoutEffect(() => {
     navigation.setOptions({
       gestureEnabled: canGoBack,
-      headerBackVisible: canGoBack,
-      headerLeft: canGoBack
-        ? undefined
-        : () => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('MainTabs' as never)}
-              hitSlop={8}
-              style={styles.headerCloseBtn}
-            >
-              <Text style={styles.headerCloseText}>Close</Text>
-            </TouchableOpacity>
-          ),
+      headerBackVisible: false,
+      headerLeft: () => (
+        <TouchableOpacity
+          onPress={() =>
+            canGoBack ? navigation.goBack() : navigation.navigate('MainTabs' as never)
+          }
+          hitSlop={8}
+          style={styles.headerCloseBtn}
+          testID="activity-detail-close"
+          accessibilityLabel={canGoBack ? 'Back' : 'Close'}
+        >
+          <Text style={styles.headerCloseText}>{canGoBack ? 'Back' : 'Close'}</Text>
+        </TouchableOpacity>
+      ),
     });
   }, [canGoBack, navigation]);
 
@@ -374,6 +376,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
     let cancelled = false;
     setResolvingInvite(true);
+    const timeout = setTimeout(() => {
+      if (!cancelled) {
+        setResolvingInvite(false);
+        Alert.alert('Invite link', 'Could not open this invite. Try again.');
+      }
+    }, 10000);
+
     getActivityByInviteToken(inviteToken)
       .then((found) => {
         if (cancelled) {
@@ -392,14 +401,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         }
       })
       .finally(() => {
-        if (!cancelled) {
-          setResolvingInvite(false);
-        }
+        clearTimeout(timeout);
+        setResolvingInvite(false);
       });
     return () => {
       cancelled = true;
+      clearTimeout(timeout);
     };
-  }, [inviteToken, hostInvite, routeActivityId, navigation]);
+  }, [inviteToken, hostInvite, routeActivityId]);
 
   useEffect(() => {
     if (routeActivityId || !inviteToken || !hostInvite || !user?.id) {
@@ -415,7 +424,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         Alert.alert('Invite link', err.message || 'Could not join from invite.');
       })
       .finally(() => setRedeemingInvite(false));
-  }, [inviteToken, hostInvite, routeActivityId, user?.id, navigation]);
+  }, [inviteToken, hostInvite, routeActivityId, user?.id]);
 
   // After redeeming an invite, send approved joiners straight into the Game Room
   // (the modal Details sheet is for settings/history, not day-of coordination).
@@ -1439,6 +1448,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           style={[styles.utilityButton, finalizing && styles.utilityButtonDisabled]}
           onPress={handleFinalizeMatch}
           disabled={finalizing}
+          testID="activity-detail-lock-roster"
+          accessibilityLabel="Lock roster"
         >
           <Text style={styles.utilityButtonText}>
             {finalizing ? 'Locking...' : 'Lock roster'}
@@ -1447,7 +1458,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       ) : null}
 
       {isFinalized && (
-        <Text style={styles.finalizedBanner}>Roster locked — game is finalized</Text>
+        <Text style={styles.finalizedBanner} testID="activity-detail-roster-locked">
+          Roster locked — game is finalized
+        </Text>
       )}
 
       {showPostGameAttendance ? (

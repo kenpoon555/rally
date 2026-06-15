@@ -97,7 +97,13 @@ export const RallyHubHeader: React.FC<Props> = ({
   return (
     <View style={[styles.wrap, { paddingTop: Math.max(insets.top, spacing.sm) }]}>
       <View style={styles.topRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={8}
+          testID="rally-hub-back"
+          accessibilityLabel="Back"
+        >
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </TouchableOpacity>
         {onInviteFriends ? (

@@ -21,7 +21,17 @@ export type ProductEventName =
   | 'poll_created'
   | 'poll_voted'
   | 'rotation_generated'
-  | 'recap_shared';
+  | 'recap_shared'
+  | 'free_agent_post_created'
+  | 'free_agent_invited'
+  | 'need_post_created'
+  | 'game_friend_invited'
+  | 'fill_in_invited'
+  | 'concierge_request_submitted'
+  | 'captain_application_submitted'
+  | 'captain_feedback_submitted'
+  | 'rally_friend_invite_sent'
+  | 'rally_friend_invite_accepted';
 
 export interface RateLimitResult {
   allowed: boolean;
