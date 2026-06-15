@@ -167,5 +167,7 @@ Continue in THIS Agent turn as Validator:
 On pass: ${QUEUE_NAME:+auto-advance to next contract in queue · }same chat
 On fail: Fixer → Validator (max 3 Fixer rounds per contract)
 
+If hook did not auto-send Fixer (you messaged mid-turn): ./.cursor/hooks/validation-loop-continue.sh
+
 Stop: ./.cursor/hooks/validation-loop-stop.sh
 EOF

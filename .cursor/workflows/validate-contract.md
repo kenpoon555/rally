@@ -55,6 +55,15 @@ flowchart LR
 
 **Stop when:** all checklist items pass **or** the same failure repeats after **2–3** Fixer rounds → log in contract **Open issues** and stop.
 
+## Hook chain rules (Validator MUST follow)
+
+1. **End your turn after writing** `docs/contracts/.validation-session.json` — do **not** ask the human to "send to Fixer" or "tell Fixer". The `stop` hook submits Fixer automatically.
+2. **`failed_rows`** must be **strings** (full checklist line + notes), never bare numbers like `[2, 4]`.
+3. **Seed / SQL bug in repo** → `status: "fail"` → **Fixer** fixes SQL/scripts. You may run `supabase db query --linked -f …` yourself if CLI works.
+4. **`blocked_external`** only when Agent cannot fix env in-session: wrong Supabase project, no network, no CLI, physical device required. **Not** for fixable seed SQL bugs.
+5. **Sim tap / automation brittle** but product works → `fail` with Fixer row for `testID` / `accessibilityLabel` on action buttons — not `needs_human`.
+6. If human interrupts mid-turn, they can run `./.cursor/hooks/validation-loop-continue.sh` to print the next Fixer/Validator prompt.
+
 ---
 
 ## 1. Builder — copy/paste prompt

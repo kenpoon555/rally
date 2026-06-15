@@ -36,6 +36,24 @@ def followup(message: str) -> None:
     print(json.dumps({"followup_message": message}))
 
 
+def normalize_failed_rows(session: dict) -> list[str]:
+    """failed_rows must be strings; Validator sometimes writes row numbers by mistake."""
+    raw = session.get("failed_rows") or []
+    cid = session.get("contract_id", "contract")
+    out: list[str] = []
+    for row in raw:
+        if isinstance(row, str) and row.strip():
+            out.append(row.strip())
+        elif isinstance(row, (int, float)):
+            out.append(
+                f"Checklist row {int(row)} | Fail | See Validator report in {cid} — "
+                "fix seed SQL / demo ready_at / testID or a11y on session card actions for sim taps"
+            )
+        elif row is not None:
+            out.append(str(row))
+    return out
+
+
 def queue_fields_snippet(session: dict) -> str:
     queue = session.get("queue")
     if not queue:
@@ -147,7 +165,7 @@ def fixer_prompt(session: dict) -> str:
     cid = session["contract_id"]
     path = session.get("contract_path") or f"docs/contracts/{cid}.md"
     rnd = session.get("fixer_round", 1)
-    rows = session.get("failed_rows") or []
+    rows = normalize_failed_rows(session)
     rows_text = "\n".join(f"- {row}" for row in rows) if rows else "- (see last Validator table)"
     return f"""You are the Fixer agent for Rally contract validation.
 
@@ -270,7 +288,8 @@ def main() -> None:
         return
 
     if phase == "validator_done" and status == "fail":
-        failed_rows = session.get("failed_rows") or []
+        failed_rows = normalize_failed_rows(session)
+        session["failed_rows"] = failed_rows
         if not failed_rows:
             session["phase"] = "blocked"
             session["chain_enabled"] = False
@@ -297,6 +316,10 @@ def main() -> None:
         session["fixer_round"] = fixer_round
         session["phase"] = "fixer_pending"
         save_session(session)
+        followup(fixer_prompt(session))
+        return
+
+    if phase == "fixer_pending":
         followup(fixer_prompt(session))
         return
 
