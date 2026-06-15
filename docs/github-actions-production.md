@@ -11,9 +11,9 @@ Builds and submissions: [expo.dev builds](https://expo.dev/accounts/kendrewpoon/
 ## Branch flow (full pipeline)
 
 ```text
-dev        →  PR → preview     →  merge triggers preview EAS builds (internal testers)
+dev        →  PR → preview     →  CI on PR; preview EAS **manual** (Actions workflow_dispatch)
 preview    →  PR → main        →  CI only (stable)
-main       →  PR → production  →  merge triggers production build + store submit
+main       →  PR → production  →  production build + store submit
 ```
 
 **Suggested order when promoting Stage 1:**
