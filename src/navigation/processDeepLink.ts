@@ -5,8 +5,34 @@ import { navigationRef } from './navigationRef';
 import { parseAppDeepLink } from './deepLinking';
 import { storePendingDeepLink } from '../services/pendingDeepLinkService';
 import { joinGroupAndNextGame } from '../services/regularGroupService';
+import { resolveActivityIdFromInviteToken } from '../services/activityService';
 import { ensureActivityGroupConversation } from '../services/chatService';
 import { supabase } from '../services/api/supabase';
+
+const NAV_READY_POLL_MS = 50;
+const NAV_READY_TIMEOUT_MS = 8000;
+
+async function waitForNavigationReady(): Promise<boolean> {
+  if (navigationRef.isReady()) {
+    return true;
+  }
+  const deadline = Date.now() + NAV_READY_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, NAV_READY_POLL_MS));
+    if (navigationRef.isReady()) {
+      return true;
+    }
+  }
+  return navigationRef.isReady();
+}
+
+async function navigateDeepLink(name: string, params?: object): Promise<boolean> {
+  if (!(await waitForNavigationReady())) {
+    return false;
+  }
+  (navigationRef as any).navigate(name, params);
+  return true;
+}
 
 export async function processDeepLink(url: string, options?: { allowStorePending?: boolean }): Promise<void> {
   const allowStorePending = options?.allowStorePending !== false;
@@ -14,10 +40,13 @@ export async function processDeepLink(url: string, options?: { allowStorePending
   try {
     const parsed = parseAppDeepLink(url);
 
-    if (parsed.type === 'sportLanding' && parsed.sportSlug && navigationRef.isReady()) {
-      (navigationRef as any).navigate(ROUTES.LANDING.SPORT, {
-        sportSlug: parsed.sportSlug,
-      });
+    if (parsed.type === 'unknown') {
+      Alert.alert('Invalid invite', 'This invite link is not valid or has expired.');
+      return;
+    }
+
+    if (parsed.type === 'sportLanding' && parsed.sportSlug) {
+      await navigateDeepLink(ROUTES.LANDING.SPORT, { sportSlug: parsed.sportSlug });
       return;
     }
 
@@ -41,25 +70,33 @@ export async function processDeepLink(url: string, options?: { allowStorePending
       return;
     }
 
-    if (parsed.type === 'game' && parsed.activityId && navigationRef.isReady()) {
-      (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
-        activityId: parsed.activityId,
-      });
+    if (parsed.type === 'game' && parsed.activityId) {
+      await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, { activityId: parsed.activityId });
       return;
     }
 
-    if (parsed.type === 'hostInvite' && parsed.inviteToken && navigationRef.isReady()) {
-      (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
+    if (parsed.type === 'hostInvite' && parsed.inviteToken) {
+      await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, {
         inviteToken: parsed.inviteToken,
         hostInvite: true,
       });
       return;
     }
 
-    if (parsed.type === 'invite' && parsed.inviteToken && navigationRef.isReady()) {
-      (navigationRef as any).navigate(ROUTES.ACTIVITY.DETAIL, {
-        inviteToken: parsed.inviteToken,
-      });
+    if (parsed.type === 'invite' && parsed.inviteToken) {
+      try {
+        const activityId = await resolveActivityIdFromInviteToken(parsed.inviteToken);
+        if (!activityId) {
+          Alert.alert('Invite link', 'This invite is invalid or expired.');
+          return;
+        }
+        await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, { activityId });
+      } catch (err: unknown) {
+        Alert.alert(
+          'Invite link',
+          err instanceof Error ? err.message : 'Could not open this invite.'
+        );
+      }
       return;
     }
 
@@ -83,24 +120,28 @@ export async function processDeepLink(url: string, options?: { allowStorePending
           );
         }
 
-        if (conversationId && navigationRef.isReady()) {
-          (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+        if (conversationId) {
+          const opened = await navigateDeepLink(ROUTES.CHAT.THREAD, {
             conversationId,
             activityId: activityId ?? undefined,
             groupId,
             title: PRODUCT_COPY.rallyChat,
           });
-          return;
+          if (opened) {
+            return;
+          }
         }
 
-        if (activityId && navigationRef.isReady()) {
+        if (activityId) {
           try {
             const gameConvoId = await ensureActivityGroupConversation(activityId);
-            (navigationRef as any).navigate(ROUTES.CHAT.THREAD, {
+            const opened = await navigateDeepLink(ROUTES.CHAT.THREAD, {
               conversationId: gameConvoId,
               activityId,
             });
-            return;
+            if (opened) {
+              return;
+            }
           } catch {
             // Joined the crew but couldn't open the room — fall back to a confirmation.
           }

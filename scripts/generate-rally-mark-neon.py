@@ -9,9 +9,10 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
-CANDIDATES_DIR = ROOT / 'assets' / 'branding' / 'logo' / 'candidates' / 'neon-soft-dual'
+BRANDING = ROOT / 'assets' / 'branding'
+CANDIDATES_DIR = BRANDING / 'logo' / 'candidates' / 'neon-soft-dual'
 REVIEW_DIR = ROOT / 'docs' / 'design-review' / 'logo' / 'neon-theme'
-SOURCE_DIR = ROOT / 'assets' / 'branding' / 'logo' / 'source'
+SOURCE_DIR = BRANDING / 'logo' / 'source'
 
 # Neon theme — same geometry as legacy variant B, new palette (theme.ts / COLORS.md)
 FIGURE = (107, 143, 30)  # #6B8F1E primaryDark (green arcs, like legacy)
@@ -88,6 +89,16 @@ def on_background(mark: Image.Image, bg: tuple[int, int, int], canvas: int = 102
     return out
 
 
+def adaptive_foreground(mark: Image.Image, canvas: int = 1024, mark_scale: float = 0.62) -> Image.Image:
+    """Transparent adaptive-icon layer (Android safe zone ~66%)."""
+    out = Image.new('RGBA', (canvas, canvas), (0, 0, 0, 0))
+    mark_px = int(canvas * mark_scale)
+    scaled = mark.resize((mark_px, mark_px), Image.Resampling.LANCZOS)
+    offset = (canvas - mark_px) // 2
+    out.paste(scaled, (offset, offset), scaled)
+    return out
+
+
 def comparison_sheet() -> Image.Image:
     """Legacy court-fresh vs neon soft-dual on each theme background."""
     legacy_path = ROOT / 'assets' / 'branding' / 'logo' / 'candidates' / 'legacy-court-fresh' / 'rally-mark-256.png'
@@ -150,8 +161,15 @@ def main() -> None:
     comparison_sheet().save(REVIEW_DIR / 'legacy_vs_neon_soft_dual.png', optimize=True)
     write_svg()
 
+    # Production masters (EAS bare workflow reads native ios/ + android/ after generate-app-icons.sh)
+    on_background(master, CANVAS).save(BRANDING / 'icon-1024.png', optimize=True)
+    adaptive_foreground(master).save(BRANDING / 'icon-android-foreground.png', optimize=True)
+    master.save(BRANDING / 'rally-mark-1024.png', optimize=True)
+
     print(f'Wrote neon soft-dual mark to {CANDIDATES_DIR}')
+    print(f'Production masters in {BRANDING}')
     print(f'Previews in {REVIEW_DIR}')
+    print('Next: ./scripts/generate-app-icons.sh')
 
 
 if __name__ == '__main__':

@@ -123,6 +123,7 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
         isCurrent && styles.cardCurrent,
         isPast && styles.cardPast,
       ]}
+      testID="session-card"
     >
       <TouchableOpacity onPress={onOpenDetails} disabled={!onOpenDetails}>
         {!isRally ? <SportBadge sport={activity.sport_type} style={styles.sportBadge} /> : null}
@@ -155,7 +156,11 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
           </Text>
         ) : null}
         {metaLine ? (
-          <Text style={styles.meta} numberOfLines={2}>
+          <Text
+            style={styles.meta}
+            numberOfLines={2}
+            testID={isFinalized ? 'session-card-roster-locked' : undefined}
+          >
             {metaLine}
           </Text>
         ) : null}
@@ -212,6 +217,8 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
                 variant="ghost"
                 onPress={onUndoImIn}
                 disabled={busy}
+                accessibilityLabel={PRODUCT_COPY.undoImIn}
+                testID="session-card-undo-im-in"
               />
             </>
           ) : null}
@@ -225,6 +232,8 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
               variant="secondary"
               onPress={onConfirmIn}
               disabled={busy}
+              accessibilityLabel={PRODUCT_COPY.imIn}
+              testID="session-card-im-in"
             />
           ) : null}
           {isHost && !isFinalized && showNudge && onNudge ? (
@@ -243,6 +252,8 @@ export const CrewGameSessionCard: React.FC<CrewGameSessionCardProps> = ({
               size="sm"
               onPress={onLockRoster}
               disabled={busy || !canLock}
+              accessibilityLabel="Lock roster"
+              testID="session-card-lock-roster"
             />
           ) : null}
           {busy ? <ActivityIndicator size="small" color={colors.primary} /> : null}
