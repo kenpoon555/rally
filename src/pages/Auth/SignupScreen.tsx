@@ -7,15 +7,13 @@ import { TERMS_SUMMARY } from '../../constants/legal';
 import { AuthScreenLayout } from '../../components/AuthScreenLayout';
 import { Button, TextField } from '../../components/ui';
 import { colors, radius, spacing } from '../../constants/theme';
-
-type AuthStackParamList = {
-  Login: undefined;
-  Signup: undefined;
-};
+import { AGE_CATEGORY_LABELS } from '../../types/ageCategory';
+import type { AuthStackParamList } from './AgeGateScreen';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
 
-const SignupScreen: React.FC<Props> = ({ navigation }) => {
+const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
+  const ageCategory = route.params?.ageCategory ?? 'adult_18_plus';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -31,7 +29,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await signUp(email, password, username);
+      await signUp(email, password, username, ageCategory);
     } catch (error: any) {
       Alert.alert('Signup Failed', toAuthErrorMessage(error, 'Unable to create account right now.'));
     } finally {
@@ -42,7 +40,7 @@ const SignupScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <AuthScreenLayout
       title="Get Started"
-      subtitle="Create an account to host games and join players in LA."
+      subtitle={`Create an account (${AGE_CATEGORY_LABELS[ageCategory]}) to host games and join players in LA.`}
     >
       <TextField
         label="Username"

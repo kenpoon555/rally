@@ -39,6 +39,7 @@ export const createUserProfile = async (
     email?: string;
     phone?: string;
     preferred_sports?: string[];
+    age_category?: import('../types/ageCategory').AgeCategory;
   }
 ): Promise<User> => {
   try {
@@ -70,6 +71,7 @@ export const createUserProfile = async (
       username: profileData.username,
       ...(profileData.email && { email: profileData.email }),
       ...(profileData.phone && { phone: profileData.phone }),
+      ...(profileData.age_category && { age_category: profileData.age_category }),
       ...(profileData.preferred_sports?.length
         ? { preferred_sports: profileData.preferred_sports }
         : { preferred_sports: [getDefaultLaunchSportName()] }),
@@ -262,4 +264,14 @@ export const searchUsers = async (query: string): Promise<User[]> => {
   }
 
   return (data || []) as User[];
+};
+
+/**
+ * Permanently delete the signed-in user's account (App Store 5.1.1(v)).
+ */
+export const deleteOwnAccount = async (): Promise<void> => {
+  const { error } = await supabase.rpc('delete_own_account');
+  if (error) {
+    throw new Error(error.message || 'Failed to delete account');
+  }
 };

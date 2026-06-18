@@ -408,7 +408,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [inviteToken, hostInvite, routeActivityId]);
+  }, [inviteToken, hostInvite, routeActivityId, navigation]);
 
   useEffect(() => {
     if (routeActivityId || !inviteToken || !hostInvite || !user?.id) {
@@ -424,7 +424,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         Alert.alert('Invite link', err.message || 'Could not join from invite.');
       })
       .finally(() => setRedeemingInvite(false));
-  }, [inviteToken, hostInvite, routeActivityId, user?.id]);
+  }, [inviteToken, hostInvite, routeActivityId, user?.id, navigation]);
 
   // After redeeming an invite, send approved joiners straight into the Game Room
   // (the modal Details sheet is for settings/history, not day-of coordination).

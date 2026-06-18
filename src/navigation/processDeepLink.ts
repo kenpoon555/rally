@@ -100,6 +100,20 @@ export async function processDeepLink(url: string, options?: { allowStorePending
       return;
     }
 
+    if (parsed.type === 'classEnroll' && parsed.classEnrollToken) {
+      if (!session?.user) {
+        if (allowStorePending) {
+          await storePendingDeepLink(url);
+        }
+        Alert.alert('Sign in required', 'Log in as a parent or guardian to enroll a student.');
+        return;
+      }
+      await navigateDeepLink(ROUTES.COACH_PARENT.PARENT_CLASS_INVITE, {
+        inviteToken: parsed.classEnrollToken,
+      });
+      return;
+    }
+
     if (parsed.type === 'groupInvite' && parsed.groupInviteToken) {
       if (!session?.user) {
         if (allowStorePending) {

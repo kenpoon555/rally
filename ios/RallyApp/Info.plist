@@ -46,17 +46,12 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>We need your location to detect when you're at a sports venue</string>
-    <key>NSLocationAlwaysUsageDescription</key>
-    <string>We need your location to detect when you're at a sports venue</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>We need your location to find nearby sports activities</string>
     <key>RCTNewArchEnabled</key>
     <true/>
     <key>UIBackgroundModes</key>
     <array>
-      <string>location</string>
       <string>remote-notification</string>
     </array>
     <key>UILaunchStoryboardName</key>

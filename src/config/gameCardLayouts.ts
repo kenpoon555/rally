@@ -128,6 +128,18 @@ export const GAME_CARD_PRESETS = {
     showInlineActions: false,
     sportIconSurface: 'todayGameList',
   },
+  /** Play → Classes discover (v1.1). Filter list by selected sport — module-coach-parent-navigation */
+  classDiscover: {
+    layout: 'listRow',
+    gameKind: 'pickup',
+    joinMode: 'request',
+    shareMode: 'none',
+    showHostTools: false,
+    showWhoGoing: true,
+    showStatusSignal: false,
+    showInlineActions: false,
+    sportIconSurface: 'statusSignal',
+  },
 } as const satisfies Record<string, GameCardPreset>;
 
 export type GameCardPresetKey = keyof typeof GAME_CARD_PRESETS;

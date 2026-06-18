@@ -10,11 +10,11 @@ description: >-
 
 Contracts are the **source of truth** for autopilot (Builder → Validator → Fixer). A vague contract produces confident wrong code.
 
-**Read first:** `docs/contracts/flow-invite-to-rally.md` (gold template) · `docs/post-v1-roadmap-contracts.md` · `advisoragent.md`
+**Read first:** `docs/contracts/flow-invite-to-rally.md` (gold template) · `docs/post-v1-roadmap-contracts.md` · `docs/launch-roadmap-jun-2026.md` (GTM gates — no Coach Pro/payments until GTM 3)
 
 ## When to use
 
-- New feature before any Builder PR
+- New feature before any Builder PR — **check [launch-roadmap-jun-2026.md](../../docs/launch-roadmap-jun-2026.md) GTM gate first**
 - Product review proposes behavior changes → update contract first
 - Validator keeps failing for ambiguous requirements → clarify contract, not code
 

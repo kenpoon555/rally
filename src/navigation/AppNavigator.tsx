@@ -13,6 +13,8 @@ import { colors, PRIMARY_COLOR } from '../constants/theme';
 import { AppTabBar } from '../components/navigation/AppTabBar';
 
 import WelcomeScreen from '../pages/Auth/WelcomeScreen';
+import AgeGateScreen from '../pages/Auth/AgeGateScreen';
+import Under13BlockedScreen from '../pages/Auth/Under13BlockedScreen';
 import LoginScreen from '../pages/Auth/LoginScreen';
 import SignupScreen from '../pages/Auth/SignupScreen';
 import HomeScreen from '../pages/Home/HomeScreen';
@@ -30,6 +32,14 @@ import BetaFeedbackScreen from '../pages/Feedback/BetaFeedbackScreen';
 import MiniTournamentScreen from '../pages/Tournament/MiniTournamentScreen';
 import RegularsCrewScreen from '../pages/Regulars/RegularsCrewScreen';
 import SportLandingScreen from '../pages/Landing/SportLandingScreen';
+import FamilyProfilesScreen from '../pages/CoachParent/FamilyProfilesScreen';
+import AddChildProfileScreen from '../pages/CoachParent/AddChildProfileScreen';
+import GuardianConsentScreen from '../pages/CoachParent/GuardianConsentScreen';
+import ClassDetailScreen from '../pages/CoachParent/ClassDetailScreen';
+import ChildProfilePickerScreen from '../pages/CoachParent/ChildProfilePickerScreen';
+import ParentClassInviteScreen from '../pages/CoachParent/ParentClassInviteScreen';
+import EnrollmentConfirmationScreen from '../pages/CoachParent/EnrollmentConfirmationScreen';
+import CoachProfileScreen from '../pages/CoachParent/CoachProfileScreen';
 import { OnboardingModal } from '../components/OnboardingModal';
 import { linking } from './deepLinking';
 import TosAcceptanceGate from '../components/TosAcceptanceGate';
@@ -39,12 +49,20 @@ import { TOS_VERSION } from '../constants/legal';
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+import { AGE_GATE_ONBOARDING } from '../constants/parentStudentFlags';
+
 const AuthStack = () => (
   <Stack.Navigator
     initialRouteName={ROUTES.AUTH.WELCOME}
     screenOptions={{ headerShown: false }}
   >
     <Stack.Screen name={ROUTES.AUTH.WELCOME} component={WelcomeScreen} />
+    {AGE_GATE_ONBOARDING ? (
+      <>
+        <Stack.Screen name={ROUTES.AUTH.AGE_GATE} component={AgeGateScreen} />
+        <Stack.Screen name={ROUTES.AUTH.UNDER_13_BLOCKED} component={Under13BlockedScreen} />
+      </>
+    ) : null}
     <Stack.Screen name={ROUTES.AUTH.LOGIN} component={LoginScreen} />
     <Stack.Screen name={ROUTES.AUTH.SIGNUP} component={SignupScreen} />
   </Stack.Navigator>
@@ -152,6 +170,46 @@ const MainStack = () => (
       name={ROUTES.LANDING.SPORT}
       component={SportLandingScreen}
       options={{ title: 'Rally' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.FAMILY_PROFILES}
+      component={FamilyProfilesScreen}
+      options={{ title: 'Family Profiles' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.GUARDIAN_CONSENT}
+      component={GuardianConsentScreen}
+      options={{ title: 'Guardian Consent' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.ADD_CHILD_PROFILE}
+      component={AddChildProfileScreen}
+      options={{ title: 'Add Child Profile' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.CLASS_DETAIL}
+      component={ClassDetailScreen}
+      options={{ title: 'Class' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.CHILD_PICKER}
+      component={ChildProfilePickerScreen}
+      options={{ title: 'Enroll' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.PARENT_CLASS_INVITE}
+      component={ParentClassInviteScreen}
+      options={{ title: 'Class Invite' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.ENROLLMENT_CONFIRMATION}
+      component={EnrollmentConfirmationScreen}
+      options={{ title: 'Enrolled' }}
+    />
+    <Stack.Screen
+      name={ROUTES.COACH_PARENT.COACH_PROFILE}
+      component={CoachProfileScreen}
+      options={{ title: 'Coach Profile' }}
     />
   </Stack.Navigator>
 );

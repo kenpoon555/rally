@@ -4,6 +4,7 @@ import {
   Alert,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -33,6 +34,7 @@ import { RallyPlayPanel } from '../../components/rally/RallyPlayPanel';
 import { RallyCrewPanel } from '../../components/rally/RallyCrewPanel';
 import { KeyboardSafeView } from '../../components/ui';
 import { colors, spacing } from '../../constants/theme';
+import { devTestCrewDormancyNudge } from '../../services/crewDormancyNudgeService';
 
 export type RegularsCrewStackParams = {
   RegularsCrew: {
@@ -61,6 +63,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   const [renaming, setRenaming] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteRefreshToken, setInviteRefreshToken] = useState(0);
+  const [dormancyTestBusy, setDormancyTestBusy] = useState(false);
 
   const activities = useMemo(
     () => sessionCards.map((card) => activityFromSessionCard(card)),
@@ -212,6 +215,29 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
 
       <RallyTabBar active={tab} onChange={setTab} playActionCount={playActionCount} />
 
+      {__DEV__ && isHost ? (
+        <TouchableOpacity
+          style={styles.devNudgeButton}
+          disabled={dormancyTestBusy}
+          accessibilityLabel="Test dormancy nudge (dev)"
+          onPress={() => {
+            setDormancyTestBusy(true);
+            void devTestCrewDormancyNudge(groupId)
+              .catch((error: unknown) => {
+                Alert.alert(
+                  PRODUCT_COPY.rally,
+                  error instanceof Error ? error.message : 'Could not send dormancy nudge.'
+                );
+              })
+              .finally(() => setDormancyTestBusy(false));
+          }}
+        >
+          <Text style={styles.devNudgeButtonText}>
+            {dormancyTestBusy ? 'Sending dormancy nudge…' : 'Test dormancy nudge (dev)'}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
       {tab === 'chat' ? (
         <RallyChatPanel
           groupId={groupId}
@@ -268,6 +294,21 @@ const styles = StyleSheet.create({
   },
   error: {
     color: colors.error,
+  },
+  devNudgeButton: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: 8,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  devNudgeButtonText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
 

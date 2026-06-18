@@ -50,9 +50,9 @@ export const formatRecapShareText = (recap: GameRecap): string => {
 
 export const shareGameRecap = async (recap: GameRecap): Promise<void> => {
   const message = formatRecapShareText(recap);
-  await Share.share({ message });
   await trackProductEvent('recap_shared', {
     recap_id: recap.recap_id,
     activity_id: recap.activity_id,
   });
+  await Share.share({ message });
 };

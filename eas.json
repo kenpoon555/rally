@@ -14,13 +14,21 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "APP_ENV": "preview"
+        "APP_ENV": "preview",
+        "EXPO_PUBLIC_ENABLE_COACH_FOUNDATION": "true",
+        "EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE": "true",
+        "EXPO_PUBLIC_ENABLE_PARENT_PILOT": "true",
+        "EXPO_PUBLIC_ENABLE_COACH_OPS": "true"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "APP_ENV": "production"
+        "APP_ENV": "production",
+        "EXPO_PUBLIC_ENABLE_COACH_FOUNDATION": "true",
+        "EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE": "true",
+        "EXPO_PUBLIC_ENABLE_PARENT_PILOT": "true",
+        "EXPO_PUBLIC_ENABLE_COACH_OPS": "true"
       }
     }
   },
