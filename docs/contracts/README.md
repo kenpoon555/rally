@@ -2,7 +2,9 @@
 
 Written pass/fail targets for agent validation loops. See [advisoragent.md](../../../advisoragent.md) for the workflow (Builder → Validator → Fixer).
 
-**Master index (status + when to validate):** [post-v1-roadmap-contracts.md](../post-v1-roadmap-contracts.md)
+**Master index (status + when to validate):** [post-v1-roadmap-contracts.md](../post-v1-roadmap-contracts.md)  
+**Advisor review (all contracts):** [advisory-handoff-contracts-jun-2026.md](../advisory-handoff-contracts-jun-2026.md)  
+**Go-to-market plan (Jun 2026):** [launch-roadmap-jun-2026.md](../launch-roadmap-jun-2026.md)
 
 **Rule:** No Builder on a new feature without its contract. Bug fixes → Validator on affected contract before `production`.
 
@@ -94,6 +96,20 @@ See bottom of previous README revision — use for any new `flow-*.md` or `modul
 - [vision.md](../vision.md)
 - [QA_BETA_CREW_CHECKLIST.md](../QA_BETA_CREW_CHECKLIST.md)
 
+## Coach / parent / student (minors — draft, no Builder until v1.2)
+
+**Track:** [coach-parent-student/README.md](../coach-parent-student/README.md) — separate from adult GTM beta.
+
+| Contract | Release |
+|----------|---------|
+| [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md) | v1.2 |
+| [module-student-profile.md](./module-student-profile.md) | v1.2 |
+| [module-student-visibility.md](./module-student-visibility.md) | v1.2 |
+| [flow-parent-guardian-consent.md](./flow-parent-guardian-consent.md) | v1.2 — lawyer H* |
+| [flow-student-class-enrollment.md](./flow-student-class-enrollment.md) | v1.3 pilot |
+| [flow-coach-minor-class-roster.md](./flow-coach-minor-class-roster.md) | v1.3 pilot |
+| [flow-coach-class-operations.md](./flow-coach-class-operations.md) | v1.4 |
+
 ## Deferred (no contract until scoped)
 
-Payments, Teams, Leagues, Need Players / Free Agent boards, rich chat media.
+Payments, Teams, Leagues, Need Players / Free Agent boards, rich chat media, academy org v2.0.

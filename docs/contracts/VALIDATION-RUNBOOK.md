@@ -370,6 +370,49 @@ Do **not** skip step 1 and jump to Builder.
 
 ---
 
+## phase2-recap — Post-game recap
+
+| Field | Value |
+|-------|--------|
+| Contract file | `docs/contracts/flow-post-game-recap.md` |
+| Contract id | `flow-post-game-recap` |
+| Prerequisite | `flow-post-game-attendance` green |
+| Queue | `--queue phase2-recap` |
+
+```bash
+./.cursor/hooks/validation-loop-start.sh --queue phase2-recap --builder
+```
+
+Agent one-liner:
+
+```
+Run ./.cursor/hooks/validation-loop-start.sh --queue phase2-recap --builder and self-chain until stop. Re-seed via supabase CLI yourself.
+```
+
+---
+
+## phase2-game-card — Detail hero + venue notes
+
+| Field | Value |
+|-------|--------|
+| Contract file | `docs/contracts/module-game-card.md` |
+| Contract id | `module-game-card` |
+| Screenshots folder | `docs/contracts/screenshots/module-game-card/` |
+| Prerequisite | phase2-recap green |
+| Note | **Narrow scope** — does not re-test Discover/Today/session flows (already baseline green) |
+
+```bash
+./.cursor/hooks/validation-loop-start.sh --queue phase2-game-card --builder
+```
+
+Agent one-liner:
+
+```
+Run ./.cursor/hooks/validation-loop-start.sh --queue phase2-game-card --builder and self-chain until stop. Re-seed via supabase CLI yourself. Validate sim rows + audit rows in module-game-card.md only.
+```
+
+---
+
 ## Template for any later item
 
 Fill in the table, then copy the Validator block and swap two strings.

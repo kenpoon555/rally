@@ -23,11 +23,39 @@ North-star: **Crew lifecycle queryable in Supabase — created → invite → re
 | `rotation_generated` | Host generates rotation | `activity_id`, `rotation_id` |
 | `recap_shared` | User shares recap | `recap_id`, `activity_id` |
 
+## Beta scorecard events (GTM 2 blocker — [launch-roadmap-jun-2026.md](../launch-roadmap-jun-2026.md))
+
+**Required before first real-group beta readout.** Add to `ProductEventName` before implementing.
+
+| Event | When fired | Maps to scorecard | GTM 2 |
+|-------|------------|-------------------|-------|
+| `invite_link_opened` | Deep link / universal link received | Invite links opened | **Required** |
+| `signup_completed` | First successful auth after install | Users installed / onboarded | **Required** |
+| `crew_joined` | User becomes Rally member | Users joined Rally | **Required** |
+| `game_ready_set` | Member taps I'm in (`ready_at` set) | Users tapped I'm in | **Required** |
+| `roster_locked` | Host finalizes roster | Games locked | **Required** |
+| `attendance_submitted` | Host submits attendance form | Attendance submitted | **Required** |
+| `recap_viewed` | Recap screen opened | Recap seen | **Required** |
+| `second_session_scheduled` | Schedule next / duplicate game | Second sessions scheduled | **Required** |
+
+Existing events that partially cover scorecard: `crew_invite_redeemed`, `crew_replayed`, `recap_shared` (P1 share only).
+
+## Coach / parent / student track (v1.3+ — no PII)
+
+See [coach-parent-student/implementation-plan.md](../coach-parent-student/implementation-plan.md). Add when implementing — **never** include child name or DOB in payload.
+
+| Event | When fired |
+|-------|------------|
+| `student_profile_created` | Parent creates profile |
+| `student_enrolled` | Enrollment complete |
+| `coach_minor_roster_viewed` | Coach opens class roster |
+| `parent_consent_recorded` | Guardian attestation saved |
+
 ## Funnel events (add when implementing dormancy / host tools)
 
 | Event | Status |
 |-------|--------|
-| `crew_dormancy_nudge_sent` | **Planned** — see `flow-crew-dormancy-nudge.md` |
+| `crew_dormancy_nudge_sent` | Host dormancy push sent — see `flow-crew-dormancy-nudge.md` |
 | `first_game_locked` | **Planned** — add before scaling marketing |
 | `first_invite_sent` | **Planned** — optional |
 
@@ -48,6 +76,12 @@ SELECT * FROM analytics_crew_funnel_30d;
 - [ ] No PII in event payload (no email, no precise location)
 - [ ] Unit test or typecheck passes for new event names
 
+### GTM 2 scorecard (blocker before beta readout)
+
+- [ ] All eight **Required** beta scorecard events wired in app (see table above)
+- [ ] `analytics_crew_funnel_30d` returns non-empty rows after one demo loop
+- [ ] Validator can query linked Supabase views without PII leak
+
 ## Out of scope
 
 - Third-party analytics SDKs (Amplitude, etc.)
@@ -55,7 +89,7 @@ SELECT * FROM analytics_crew_funnel_30d;
 
 ## Related
 
-- [open_items.md](../../../open_items.md) — north-star metric
+- [launch-roadmap-jun-2026.md](../launch-roadmap-jun-2026.md) — weekly scorecard
 - [FOUNDER_WEEK2_CHECKLIST.md](../FOUNDER_WEEK2_CHECKLIST.md)
 
 ## Open issues

@@ -42,5 +42,48 @@
     "contracts": [
       "module-game-card"
     ]
+  },
+  "ops": {
+    "description": "Operational retention automation",
+    "contracts": [
+      "flow-crew-dormancy-nudge"
+    ]
+  },
+  "gtm1-launch-gate": {
+    "description": "Real-device launch gate for first beta cohorts",
+    "contracts": [
+      "flow-invite-to-rally",
+      "flow-rally-session",
+      "flow-post-game-attendance",
+      "flow-post-game-recap"
+    ]
+  },
+  "v1.1-coach-foundation": {
+    "description": "Adult coach entrances before parent/student flows",
+    "contracts": [
+      "module-coach-parent-navigation"
+    ]
+  },
+  "v1.2-parent-student-core": {
+    "description": "Parent/student safety foundation (post-legal gates)",
+    "contracts": [
+      "flow-age-gate-onboarding",
+      "module-student-profile",
+      "module-student-visibility",
+      "flow-parent-guardian-consent"
+    ]
+  },
+  "v1.3-parent-pilot": {
+    "description": "Coach-parent pilot enrollment and private class roster",
+    "contracts": [
+      "flow-student-class-enrollment",
+      "flow-coach-minor-class-roster"
+    ]
+  },
+  "v1.4-coach-ops": {
+    "description": "Coach class operations (cancel/defer/reassign)",
+    "contracts": [
+      "flow-coach-class-operations"
+    ]
   }
 }
