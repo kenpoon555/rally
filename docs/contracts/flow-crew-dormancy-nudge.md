@@ -1,10 +1,10 @@
 # Flow — Crew dormancy nudge (ops)
 
 **Contract id:** `flow-crew-dormancy-nudge`  
-**Status:** Draft — **not built** (contract before implementation)  
+**Status:** Implemented  
 **Phase:** Ops / retention  
 **Trigger:** No scheduled game in Rally for N days (default **14**)  
-**Related code:** TBD — Supabase cron or Edge Function + push template
+**Related code:** `065_crew_dormancy_nudge.sql`, `send-push` (`crew_dormancy_nudge`), `process-crew-dormancy-nudges`, `crewDormancyNudgeService.ts`, `navigationRef.ts`
 
 ## Purpose
 
@@ -23,12 +23,12 @@ North-star: **Rally inactive 14d → captain gets push → tap opens Rally Play 
 
 ## Pass/fail checklist (when implemented)
 
-- [ ] Trigger fires only when last completed/scheduled game > N days ago
-- [ ] Active Rally with upcoming game does **not** get nudge
-- [ ] Tap notification routes to correct Rally
-- [ ] Opt-out respects quiet hours / notification prefs if present
-- [ ] `crew_dormancy_nudge_sent` event logged (add to `module-analytics-events.md`)
-- [ ] Manual test hook in dev (`__DEV__` or admin) for Validator
+- [x] Trigger fires only when last completed/scheduled game > N days ago
+- [x] Active Rally with upcoming game does **not** get nudge
+- [x] Tap notification routes to correct Rally
+- [x] Opt-out respects quiet hours / notification prefs if present
+- [x] `crew_dormancy_nudge_sent` event logged (add to `module-analytics-events.md`)
+- [x] Manual test hook in dev (`__DEV__` or admin) for Validator
 
 ## Screenshots required
 
@@ -43,4 +43,4 @@ North-star: **Rally inactive 14d → captain gets push → tap opens Rally Play 
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06 | Not implemented — Builder must not ship without this contract updated | — |
+| — | — | — |

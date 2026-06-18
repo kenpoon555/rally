@@ -2,10 +2,21 @@
 
 **Human runbook (start here):** [VALIDATION-RUNBOOK.md](./VALIDATION-RUNBOOK.md) — Item 1 prompts filled in, fix vs build decision tree, progress checklist.
 
+**Go-to-market gates:** [launch-roadmap-jun-2026.md](../launch-roadmap-jun-2026.md) — GTM 1 launch gate before broad feature validation  
 **Index:** [post-v1-roadmap-contracts.md](../post-v1-roadmap-contracts.md)  
 **Workflow:** [.cursor/workflows/validate-contract.md](../../.cursor/workflows/validate-contract.md)
 
 Run **Validator first** on every contract before any Builder work. Shared state = the contract file + pass/fail table pasted in PR or contract **Open issues**.
+
+## GTM vs contract sprints (Jun 2026)
+
+| GTM phase | Validation focus |
+|-----------|------------------|
+| **GTM 1 — Launch** | Loop A/B · attendance · recap **P0** · **device** invite re-test |
+| **GTM 2 — Real groups** | Pain-driven flow fixes + **`module-analytics-events` scorecard events (blocker)** |
+| **GTM 3 — Retention** | Dormancy, coach contracts when scoped |
+
+phase1c (rotation, tourney, leaderboard) and phase2-game-card are **optional before first beta** — run when test groups need them.
 
 ## Implementation order (suggested)
 
@@ -15,7 +26,7 @@ Run **Validator first** on every contract before any Builder work. Shared state 
 | **1a** | `flow-post-game-attendance`, `flow-host-nudges`, `module-analytics-events` | Shipped but unvalidated |
 | **1b** | `flow-availability-poll` | Backend exists; highest retention ROI |
 | **1c** | `flow-rotation-pairing`, `flow-mini-tournament`, `module-rally-leaderboard` | Group stickiness |
-| **2** | `flow-post-game-recap`, `module-game-card` venue block | After attendance path green |
+| **2** | `flow-post-game-recap` ✅ · `module-game-card` detail/venue | GTM 1 recap done; game-card optional pre-beta |
 | **Ops** | `flow-crew-dormancy-nudge` | Build only after baseline green |
 
 One contract per Builder PR. Do not batch unrelated features.
@@ -38,6 +49,34 @@ Queue definitions: [validation-queues.json](./validation-queues.json)
 | `phase1c` | rotation, tourney, leaderboard |
 | `phase2-recap` | post-game-recap only |
 | `phase2-game-card` | module-game-card (after PR to dev) |
+| `ops` | crew-dormancy-nudge |
+| `gtm1-launch-gate` | invite, rally-session, attendance, recap (device gate) |
+| `v1.1-coach-foundation` | coach/parent entrance module (adult) |
+| `v1.2-parent-student-core` | age gate, student profile, visibility, guardian consent |
+| `v1.3-parent-pilot` | student enrollment + coach minor roster |
+| `v1.4-coach-ops` | coach class operations (cancel/defer/reassign) |
+
+## Recommended run order (copy-paste)
+
+| When | Queue | Command |
+|------|-------|---------|
+| GTM 1 (device) | `gtm1-launch-gate` | `./.cursor/hooks/validation-loop-start.sh --queue gtm1-launch-gate --builder` |
+| Optional | `phase2-game-card` | `... --queue phase2-game-card --builder` |
+| **GTM 2 start** | `module-analytics-events` | Validator on scorecard events before week-1 beta readout |
+| After GTM 2 | `v1.1-coach-foundation` | `... --queue v1.1-coach-foundation --builder` |
+| After P0 + lawyer | `v1.2-parent-student-core` | `... --queue v1.2-parent-student-core --builder` |
+| Pilot | `v1.3-parent-pilot` | `... --queue v1.3-parent-pilot --builder` |
+| Coach Pro | `v1.4-coach-ops` | `... --queue v1.4-coach-ops --builder` |
+
+Readiness: [validation-readiness.md](../coach-parent-student/validation-readiness.md)
+
+### GTM 2 analytics blocker (not a queue — run before first beta readout)
+
+Wire and validate [module-analytics-events.md](./module-analytics-events.md) **beta scorecard** rows:
+
+`invite_link_opened` → `signup_completed` → `crew_joined` → `game_ready_set` → `roster_locked` → `attendance_submitted` → `recap_viewed` → `second_session_scheduled`
+
+Without these, weekly scorecard in [launch-roadmap-jun-2026.md](../launch-roadmap-jun-2026.md) is guesswork.
 
 On **fail**: Fixer → Validator for current contract only (max 3 rounds).  
 On **pause** (`needs_human`, `blocked_external`, max rounds): resume with same `--queue --from {contract-id}`.

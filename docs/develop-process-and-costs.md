@@ -1,9 +1,25 @@
 # Develop process, branching & monthly costs
 
 **Last updated:** 2026-06-15  
-**Index:** [DOCS-INDEX.md](./DOCS-INDEX.md) · [agent-development-layers.md](./agent-development-layers.md)
+**Index:** [DOCS-INDEX.md](./DOCS-INDEX.md) · [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) · [agent-development-layers.md](./agent-development-layers.md)
 
 Single reference for how we build, branch, validate, ship, and what it costs at current scale.
+
+**This quarter:** Let store review finish if build is acceptable. **GTM plan:** [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md).
+
+---
+
+## Go-to-market priority (Jun 2026)
+
+| GTM | Goal | Build? |
+|-----|------|--------|
+| **GTM 1** | Launch gate — invite → join → I'm in → lock → attendance → recap on **real devices** | Fixes only; no feature expansion |
+| **GTM 2** | 3–5 real groups, one game each; 2+ schedule second session | Small release from pain |
+| **GTM 3** | Retention wedge + Founding Organizer/Coach (manual billing) | Evidence-driven contracts |
+
+**Weekly scorecard:** [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md#weekly-scorecard)
+
+**Store review:** Plan 1–3 days, buffer 1 week. Do not replace in-review build unless P0.
 
 ---
 
@@ -14,12 +30,12 @@ Single reference for how we build, branch, validate, ship, and what it costs at 
 | **baseline** | invite, session, hub, inbox, play-screen | ✅ Done |
 | **phase1a** | attendance, host-nudges, analytics | ✅ Done |
 | **phase1b** | availability-poll | ✅ Done |
-| **phase1c** | rotation, mini-tournament, leaderboard | 🔄 In progress / next |
-| **phase2-recap** | post-game-recap | ⬜ After 1c |
-| **phase2-game-card** | module-game-card | ⬜ After game-card PR |
+| **phase1c** | rotation, mini-tournament, leaderboard | 🔄 When test groups need it |
+| **phase2-recap** | post-game-recap | ✅ Done |
+| **phase2-game-card** | module-game-card | ⬜ Optional pre-beta |
 | **ops** | crew-dormancy-nudge | ⬜ Not built |
 
-After **phase1c** green → optional **Layer 1 product review** (personas → consolidator) before big contract changes for v1.1 store build.
+After **launch gate** on device → **GTM 2** real group tests → Layer 1 product review from real feedback (not before).
 
 ```bash
 ./.cursor/hooks/validation-loop-start.sh --queue phase1c --builder
@@ -139,17 +155,15 @@ Index: [post-v1-roadmap-contracts.md](./post-v1-roadmap-contracts.md)
 
 ---
 
-## What to do after phase1c
+## What to do next (Jun 2026)
 
-1. **Validate phase2-recap** (recap only):
-   ```bash
-   ./.cursor/hooks/validation-loop-start.sh --queue phase2-recap --builder
-   ```
-2. **PR module-game-card** to `dev`, then `--queue phase2-game-card`
-2. **Layer 1 product review** — 6 personas → consolidator → contract PRs for v1.1 polish
-3. **Merge `docs/post-v1-contracts` PR** to `dev` if not merged (contracts + hooks + this doc)
-4. **Promote** `dev → preview` when ready for tester build
-5. **Store:** waiting on Apple public review; Google closed testing — no extra infra cost
+See [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) for full P0/P1/P2 checklist.
+
+1. **GTM 1:** Device-test invite loop; let store review finish unless P0
+2. **Optional:** `--queue phase2-game-card` if venue/detail blocks beta
+3. **GTM 2:** One real group → weekly scorecard → small fix release
+4. **P1:** Beta scorecard events — [module-analytics-events.md](./contracts/module-analytics-events.md)
+5. **Do not:** Coach Pro, payments, Teams/Leagues until GTM 2 passes
 
 ---
 

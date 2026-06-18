@@ -3,6 +3,8 @@
 **Last updated:** 2026-06-15  
 **Doc index (read this first):** [DOCS-INDEX.md](./DOCS-INDEX.md) — grouped by layer/topic; agents search by task keyword.
 
+**Active go-to-market plan:** [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) — store review, beta groups, monetization gates (Jun 2026).
+
 **Related:** [VALIDATION-RUNBOOK.md](./contracts/VALIDATION-RUNBOOK.md) · [post-v1-roadmap-contracts.md](./post-v1-roadmap-contracts.md)
 
 This doc is the map for how Rally uses agents, contracts, and human gates as the product grows toward autopilot.
@@ -42,6 +44,8 @@ This doc is the map for how Rally uses agents, contracts, and human gates as the
 
 **Rule:** Layers flow downward. Never skip Layer 2 (contract) before Builder. Never skip Layer 3 (validation) before production.
 
+**Jun 2026 gate:** [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) — finish GTM 1 launch gate (device invite loop) before Layer 1 drives large contract changes. Real group feedback (GTM 2) beats sim-only personas for prioritization. Do not contract Coach Pro / payments until GTM 3 evidence.
+
 ---
 
 ## Layer 1 — Product review
@@ -61,7 +65,7 @@ This doc is the map for how Rally uses agents, contracts, and human gates as the
 1. **Persona reviewer** — one persona per session; sim walkthrough; friction table; no code
 2. **Consolidator** — reads all `*-review.md`; ranks pain by frequency/severity; drafts contract updates
 
-**Human gate:** Approve consolidator output before Layer 2.
+**Human gate:** Approve consolidator output before Layer 2. **Prefer real group feedback (GTM 2) over sim-only personas** when prioritizing — see [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md).
 
 **Not wired to validation hook.**
 
