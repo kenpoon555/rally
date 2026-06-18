@@ -23,6 +23,7 @@ Requires secret `FIREBASE_SERVER_KEY` on the Supabase project.
 | Host declines join | `join_request_rejected` | Player | `rejectJoinRequest` → `notifyPlayerOfJoinRejection` | Activity detail | ✅ |
 | Host locks roster | `game_finalized` | Approved players | `finalizeGameCommitment` → `notifyGameFinalized` | Activity detail | ✅ |
 | Host nudges roster | `roster_nudge` | Approved, not ready | `nudgeSessionRoster` → `notifyRosterNudge` | Activity detail | ✅ |
+| Crew dormancy nudge | `crew_dormancy_nudge` | Rally host (14d idle) | `process-crew-dormancy-nudges` cron or `devTestCrewDormancyNudge` | Rally hub Play tab | ✅ |
 | Host invites free agent | `free_agent_invite` | Target user | `inviteFreeAgent` → `notifyFreeAgentInvite` | Activity detail | ✅ |
 | Host invites fill-in | `fill_in_invite` | Target user | `inviteFillIn` → `notifyFillInInvite` | Activity detail | ✅ |
 | New chat message | `chat_message` | Conversation members | `sendConversationMessage` → `notifyConversationMessage` | Chat thread | ✅ |

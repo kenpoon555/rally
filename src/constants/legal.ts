@@ -12,3 +12,6 @@ export const FULL_LEGAL_SECTIONS = [
   { title: 'Activity waiver', body: WAIVER_TEXT },
   { title: 'Location & identity', body: PRIVACY_LOCATION_TEXT },
 ] as const;
+
+/** In-app legal reference until hosted privacy policy URL ships. */
+export const PRIVACY_POLICY_URL = 'https://rally.app/privacy';

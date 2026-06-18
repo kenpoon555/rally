@@ -7,6 +7,7 @@ type Props = {
   value?: string;
   onPress?: () => void;
   showChevron?: boolean;
+  destructive?: boolean;
 };
 
 export const ProfileSettingsRow: React.FC<Props> = ({
@@ -14,6 +15,7 @@ export const ProfileSettingsRow: React.FC<Props> = ({
   value,
   onPress,
   showChevron = true,
+  destructive = false,
 }) => (
   <TouchableOpacity
     style={styles.row}
@@ -22,8 +24,8 @@ export const ProfileSettingsRow: React.FC<Props> = ({
     activeOpacity={onPress ? 0.7 : 1}
   >
     <View style={styles.main}>
-      <Text style={styles.label}>{label}</Text>
-      {value ? <Text style={styles.value}>{value}</Text> : null}
+      <Text style={[styles.label, destructive && styles.destructiveLabel]}>{label}</Text>
+      {value ? <Text style={[styles.value, destructive && styles.destructiveValue]}>{value}</Text> : null}
     </View>
     {showChevron && onPress ? <Text style={styles.chevron}>›</Text> : null}
   </TouchableOpacity>
@@ -54,5 +56,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.textTertiary,
     marginLeft: 8,
+  },
+  destructiveLabel: {
+    color: colors.error ?? '#C0392B',
+  },
+  destructiveValue: {
+    color: colors.error ?? '#C0392B',
   },
 });

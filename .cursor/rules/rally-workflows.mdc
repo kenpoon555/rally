@@ -9,6 +9,12 @@ alwaysApply: true
 - **Skills** (domain depth): `.cursor/skills/` — e.g. `push-notifications`, `cli-first`
 - **Rules** (constraints): `.cursor/rules/` — this folder
 
-When the user asks to ship, promote, deploy, add push, validate a contract, or run Loop A/B → open the relevant workflow first (`validate-contract.md` for contract loops).
+When the user asks to ship, promote, deploy, add push, validate a contract, run Loop A/B, **write a contract**, **product review**, **consolidate reviews**, **beta launch**, **store review**, or **what doc to read** → open [DOCS-INDEX.md](../../docs/DOCS-INDEX.md) for the right file, then the matching workflow/skill. **Product priorities:** [launch-roadmap-jun-2026.md](../../docs/launch-roadmap-jun-2026.md).
+
+**Validation chain:** Self-chain is **primary**. After session write → `python3 .cursor/hooks/validation-chain-next.py` → continue same turn. **Never ask human to run supabase seed** — run `supabase db query --linked -f …` yourself. Hook is backup only.
+
+Start: `Run ./.cursor/hooks/validation-loop-start.sh --queue baseline --from flow-rally-session and complete Validator; self-chain until stop.`
+
+Resume: `Run ./.cursor/hooks/validation-loop-continue.sh and self-chain per .validation-next.md`
 
 **CLI first:** If `gh`, `supabase`, `eas`, `git`, or `npm` can do the job, run it yourself. Read `.cursor/skills/cli-first/SKILL.md` when unsure.

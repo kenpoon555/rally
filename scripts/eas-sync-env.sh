@@ -19,6 +19,16 @@ fi
   [[ -n "${GOOGLE_PLACES_API_KEY_ANDROID:-}" ]] && printf 'GOOGLE_PLACES_API_KEY_ANDROID=%s\n' "$GOOGLE_PLACES_API_KEY_ANDROID"
   [[ -n "${GOOGLE_MAPS_API_KEY_ANDROID:-}" ]] && printf 'GOOGLE_MAPS_API_KEY_ANDROID=%s\n' "$GOOGLE_MAPS_API_KEY_ANDROID"
   [[ -n "${SENTRY_DSN:-}" ]] && printf 'SENTRY_DSN=%s\n' "$SENTRY_DSN"
+  # Coach/parent/student UI — set via eas.json profile env (closed beta testers).
+  for cps_flag in \
+    EXPO_PUBLIC_ENABLE_COACH_FOUNDATION \
+    EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE \
+    EXPO_PUBLIC_ENABLE_PARENT_PILOT \
+    EXPO_PUBLIC_ENABLE_COACH_OPS
+  do
+    cps_val="${!cps_flag:-}"
+    [[ -n "$cps_val" ]] && printf '%s=%s\n' "$cps_flag" "$cps_val"
+  done
 } >"$ENV_FILE"
 
 echo "eas-sync-env: wrote ${ENV_FILE} for react-native-config (Supabase + optional keys)."

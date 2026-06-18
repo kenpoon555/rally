@@ -1278,16 +1278,28 @@ export const joinGameViaInvite = async (inviteToken: string): Promise<string> =>
   return data as string;
 };
 
-export const getActivityByInviteToken = async (inviteToken: string): Promise<Activity | null> => {
-  const { data, error } = await supabase
-    .from('activities')
-    .select('id')
-    .eq('invite_token', inviteToken)
-    .maybeSingle();
-  if (error || !data?.id) {
+export const resolveActivityIdFromInviteToken = async (
+  inviteToken: string
+): Promise<string | null> => {
+  const { data, error } = await supabase.rpc('get_game_invite_preview', {
+    p_invite_token: inviteToken,
+  });
+  if (error) {
+    throw new Error(error.message);
+  }
+  const preview = data as { found?: boolean; activity_id?: string } | null;
+  if (!preview?.found || !preview.activity_id) {
     return null;
   }
-  return getActivityById(data.id as string);
+  return preview.activity_id;
+};
+
+export const getActivityByInviteToken = async (inviteToken: string): Promise<Activity | null> => {
+  const activityId = await resolveActivityIdFromInviteToken(inviteToken);
+  if (!activityId) {
+    return null;
+  }
+  return getActivityById(activityId);
 };
 
 /**
