@@ -78,6 +78,7 @@ type MainStackParamList = {
         prefillStartTime?: string;
         prefillTitle?: string;
         prefillGroupId?: string;
+        createMode?: 'class';
       }
     | undefined;
 };
@@ -637,6 +638,14 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         ]}
         {...keyboardAwareScrollProps}
       >
+        {route.params?.createMode === 'class' ? (
+          <View style={styles.classModeBanner}>
+            <Text style={styles.classModeTitle}>Class / Clinic</Text>
+            <Text style={styles.classModeBody}>
+              Coach-only create flow — enrollments and roster ship in v1.3.
+            </Text>
+          </View>
+        ) : null}
         <ScreenHeader title={PRODUCT_COPY.createGame} subtitle={getCreateGameSubtitle(sportType)} />
 
         <Text style={styles.sectionLabel}>Sport</Text>
@@ -1057,6 +1066,25 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing.lg,
+  },
+  classModeBanner: {
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  classModeTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  classModeBody: {
+    marginTop: 4,
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   sectionLabel: {
     ...typography.label,

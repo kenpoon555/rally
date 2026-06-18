@@ -1,4 +1,5 @@
 import { SportType } from '../constants/sports';
+import { AgeCategory } from './ageCategory';
 
 export type PreferredPayment = 'venmo' | 'zelle' | 'cash' | 'paypal' | 'other';
 
@@ -28,6 +29,8 @@ export interface User {
   timezone?: string | null;
   payment_note?: string | null;
   preferred_payment?: PreferredPayment | null;
+  is_coach?: boolean;
+  age_category?: AgeCategory | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Alert } from 'react-native';
 import {
+  confirmLockRoster,
   confirmUndoImIn,
   joinCrewGameWithFeedback,
   lockGameRoster,
@@ -21,7 +22,7 @@ export type GameCardSessionActionHandlers = {
   onJoin: () => Promise<void>;
   onConfirmIn: () => Promise<void>;
   onUndoImIn?: () => void;
-  onLockRoster: () => Promise<void>;
+  onLockRoster: () => void;
   onNudge?: () => Promise<void>;
 };
 
@@ -55,7 +56,10 @@ export function createGameCardSessionActions({
   };
 
   const onConfirmIn = () => runBusy(() => setGameReadyState(activityId, true));
-  const onLockRoster = () => runBusy(() => lockGameRoster(activityId));
+  const onLockRoster = () =>
+    confirmLockRoster(() => {
+      void runBusy(() => lockGameRoster(activityId));
+    });
 
   const onUndoImIn = isHost
     ? undefined

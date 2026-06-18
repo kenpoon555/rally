@@ -1,17 +1,18 @@
 # Rally — vision & strategy (canonical)
 
-**Last updated:** 2026-06-04  
-**Status:** Single source of truth for product direction. Supersedes advisor planning docs (see [archive/](./archive/)).
+**Last updated:** 2026-06-15  
+**Status:** Long-term product direction. **Active go-to-market plan:** [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) (Jun 2026 — store review, beta groups, monetization gates).  
+**Supersedes:** advisor planning docs in [archive/](./archive/) for day-to-day priorities.
 
-**Context:** Rally is live. Existing groups use it as group chat. Goal: keep members in the app, then attract players who cannot find others.
+**Context:** App near live / in App Store review. **This quarter:** prove real groups complete the core loop before expanding Coach Pro, discovery, or payments.
 
 **Core strategy:** Rally should become **chat + sports operating system**, not better group chat. Win on things WhatsApp cannot do well.
 
-**Ops (not duplicated here):** [FOUNDER_WEEK2_CHECKLIST.md](./FOUNDER_WEEK2_CHECKLIST.md) · [PUNISHMENT_AND_TRUST.md](./PUNISHMENT_AND_TRUST.md) · [ROSTER_COMMITMENT_POLICY.md](./ROSTER_COMMITMENT_POLICY.md) · [archive/SHIPPED_AND_DEFERRED_2026-06.md](./archive/SHIPPED_AND_DEFERRED_2026-06.md)
+**Ops (not duplicated here):** [FOUNDER_WEEK2_CHECKLIST.md](./FOUNDER_WEEK2_CHECKLIST.md) · [PUNISHMENT_AND_TRUST.md](./PUNISHMENT_AND_TRUST.md) · [ROSTER_COMMITMENT_POLICY.md](./ROSTER_COMMITMENT_POLICY.md) · [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) · [archive/SHIPPED_AND_DEFERRED_2026-06.md](./archive/SHIPPED_AND_DEFERRED_2026-06.md)
 
 ---
 
-## Alignment with the app today (2026-06-04)
+## Alignment with the app today (2026-06-15)
 
 | Vision item | Status | Notes |
 |-------------|--------|--------|
@@ -19,24 +20,26 @@
 | Session / game cards (Join, I'm in, lock) | **Shipped** | Rally chat + game room + Discover `GameCard` |
 | Listing title + play intent (Discover) | **Shipped** | Stage 1 browse for strangers |
 | Waitlist | **Shipped** | |
-| Post-game attendance → reliability | **Partial** | Host marks on **Game card** after lock + end time |
-| Mini tournament in Rally | **Partial** | Racket sports only; hidden for basketball/soccer/ultimate |
+| Post-game attendance → reliability | **Shipped** | Validated phase1a |
+| Post-game recap | **Shipped** | Validated phase2-recap |
+| Mini tournament in Rally | **Partial** | Racket sports only; phase1c |
 | Schedule next / invite link | **Shipped** | |
 | Friends, inbox, trust preview | **Shipped** | No public feed |
 | Admin metrics | **Shipped** | Admin → Metrics (migration 035) |
-| Availability poll | **Not built** | Phase 1.2 |
-| Auto rotation / pairing | **Not built** | Phase 1.3 — **next big bet** with tourney |
-| In-group leaderboard | **Not built** | Phase 1.5 |
-| Post-game recap | **Not built** | Phase 2.1 |
-| Rich court/venue block | **Partial** | Seeded courts + cost/session notes |
-| Payment handle on profile | **Not built** | Cost note on game only |
-| Need Players / Free Agent boards | **Not built** | Phase 4 |
-| Sport Captain program | **Not built** | Start relationships in parallel |
+| Availability poll | **Shipped** | Backend + UI; phase1b validated |
+| Auto rotation / pairing | **Partial** | phase1c |
+| In-group leaderboard | **Partial** | phase1c |
+| Rich court/venue block | **Partial** | phase2-game-card contract |
+| Host nudges | **Shipped** | phase1a |
+| Payment handle on profile | **Not built** | Cost note on game only — monetization GTM 3 |
+| Need Players / Free Agent boards | **Deferred** | After real group validation — [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) |
+| Sport Captain program | **Relationships first** | GTM 2 — not code sprint |
+| Coach / Organizer Pro | **Deferred** | Manual founding offers before Stripe — GTM 3 |
 | Group calls, audio, stickers | **Deferred** | Correct per vision |
 
-**Verdict:** Aligns with **Phase 0** and early **Phase 1**. Gaps are poll, rotation, recap, boards — not a wrong direction. **Tension:** Stage 1 Discover work targets strangers; this vision prioritizes **Rally retention first** — both valid; vision build order is retention → liquidity.
+**Verdict:** Core loop is shippable. **Next risk is expansion before repeat use** — see [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md). Retention → liquidity build order unchanged; Discover is secondary until GTM 2 passes.
 
-**North star:** `analytics_crew_lifecycle.retained` (% Rallies replay in 14 days).
+**North star:** `analytics_crew_lifecycle.retained` (% Rallies replay in 14 days) + weekly scorecard in launch roadmap.
 
 ---
 

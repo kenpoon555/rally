@@ -1,0 +1,14 @@
+{
+  "contract_id": "flow-rally-session",
+  "contract_path": "docs/contracts/flow-rally-session.md",
+  "phase": "validator_done",
+  "status": "fail",
+  "failed_rows": [
+    "3 | Member I'm in | Fail | Button does not update roster"
+  ],
+  "fixer_round": 1,
+  "max_fixer_rounds": 3,
+  "chain_enabled": true,
+  "auto_builder": false,
+  "updated_at": "2026-06-07T12:00:00+00:00"
+}
