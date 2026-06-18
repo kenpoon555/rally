@@ -1,19 +1,21 @@
 # Rally docs
 
-**Last updated:** 2026-06-02
-
-## Start here
+## Start here (2026)
 
 | Doc | Purpose |
 |-----|---------|
-| **[vision.md](./vision.md)** | **Canonical strategy** — roadmap phases, build alignment, what to defer |
-| **[WHAT_NEXT.md](./WHAT_NEXT.md)** | Short pointer to this week's work |
-| **[market_call_02_ADVISOR_HANDOFF.md](./market_call_02_ADVISOR_HANDOFF.md)** | Latest advisor/engineering handoff + QA list |
-| **[HANDOFF_PRODUCT_AND_ENGINEERING_2026-06-07.md](./HANDOFF_PRODUCT_AND_ENGINEERING_2026-06-07.md)** | **Jun 3–7** — deploy fixes, Rally hub, keyboard, product review, open concerns |
-| **[contracts/](./contracts/)** | **Screen/flow pass-fail contracts** for agent validation loops (start: Loop A + B) |
-| **[01_executionplan.md](./01_executionplan.md)** | Feature tracker (schema, UI, rollout) |
-| [../ROADMAP.md](../ROADMAP.md) | Engineering history — what shipped |
-| [../../open_items.md](../../open_items.md) | Business stages, monetization gates |
+| **[DOCS-INDEX.md](./DOCS-INDEX.md)** | **Master index** — what to read by layer/task |
+| **[develop-process-and-costs.md](./develop-process-and-costs.md)** | Branching, validation progress, monthly costs |
+| **[agent-development-layers.md](./agent-development-layers.md)** | Layers 1–4 map |
+| **[contracts/VALIDATION-RUNBOOK.md](./contracts/VALIDATION-RUNBOOK.md)** | Validation one-liners |
+
+## Strategy & roadmap
+
+| Doc | Purpose |
+|-----|---------|
+| **[vision.md](./vision.md)** | Canonical strategy |
+| **[post-v1-roadmap-contracts.md](./post-v1-roadmap-contracts.md)** | Post-v1 contracts + validation order |
+| **[WHAT_NEXT.md](./WHAT_NEXT.md)** | Short pointer (may be stale — prefer DOCS-INDEX) |
 
 ## Ops (this week)
 
@@ -35,6 +37,8 @@
 | Agent workflows | [../.cursor/workflows/](../.cursor/workflows/) — **validate-contract** (Loop A/B), promote, ship, deploy |
 | [APP_STORE_PLAY_STORE_PREP.md](./APP_STORE_PLAY_STORE_PREP.md) | TestFlight / Play / launch |
 | [beta-testflight-play-internal.md](./beta-testflight-play-internal.md) | Wider beta distribution |
+| [store-review-test-accounts.md](./store-review-test-accounts.md) | **Apple + Play reviewer login** (copy-paste) |
+| [play-console-app-content-checklist.md](./play-console-app-content-checklist.md) | **Play 4/11 checklist** — what CLI can/can't do + answers |
 
 ## Dev setup
 

@@ -15,6 +15,7 @@ import { WelcomeTogetherIllustration } from '../../components/auth/WelcomeTogeth
 import { Button } from '../../components/ui';
 import { WELCOME_SLIDES } from '../../constants/brand';
 import { BETA_COPY } from '../../constants/betaCopy';
+import { AGE_GATE_ONBOARDING } from '../../constants/parentStudentFlags';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
@@ -88,7 +89,12 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
           size="lg"
           style={styles.cta}
           textStyle={styles.ctaText}
-          onPress={() => navigation.navigate(ROUTES.AUTH.SIGNUP)}
+          onPress={() =>
+            navigation.navigate(
+              AGE_GATE_ONBOARDING ? ROUTES.AUTH.AGE_GATE : ROUTES.AUTH.SIGNUP,
+              AGE_GATE_ONBOARDING ? undefined : { ageCategory: 'adult_18_plus' as const }
+            )
+          }
         />
         <Pressable
           accessibilityRole="button"

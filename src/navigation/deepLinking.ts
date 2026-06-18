@@ -21,6 +21,7 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
       [ROUTES.ACTIVITY.DETAIL]: 'game/:activityId',
       [ROUTES.ACTIVITY.CREATE]: 'create',
       [ROUTES.LANDING.SPORT]: 'la/:sportSlug',
+      [ROUTES.COACH_PARENT.PARENT_CLASS_INVITE]: 'class-enroll/:inviteToken',
     },
   },
 };
@@ -42,12 +43,17 @@ export function buildSportLandingUrl(sportSlug: string): string {
   return `${APP_SCHEME}://la/${sportSlug.toLowerCase()}`;
 }
 
+export function buildClassEnrollmentInviteUrl(inviteToken: string): string {
+  return `${APP_SCHEME}://class-enroll/${inviteToken}`;
+}
+
 export type ParsedDeepLink = {
-  type: 'auth' | 'game' | 'invite' | 'hostInvite' | 'groupInvite' | 'sportLanding' | 'unknown';
+  type: 'auth' | 'game' | 'invite' | 'hostInvite' | 'groupInvite' | 'sportLanding' | 'classEnroll' | 'unknown';
   activityId?: string;
   inviteToken?: string;
   groupInviteToken?: string;
   sportSlug?: string;
+  classEnrollToken?: string;
 };
 
 const UUID_PATTERN = '[0-9a-f-]{36}';
@@ -126,6 +132,11 @@ export function parseAppDeepLink(url: string): ParsedDeepLink {
       return { type: 'sportLanding', sportSlug: landingMatch[1].toLowerCase() };
     }
 
+    const classEnrollMatch = normalized.match(new RegExp(`class-enroll/(${UUID_PATTERN})`, 'i'));
+    if (classEnrollMatch) {
+      return { type: 'classEnroll', classEnrollToken: classEnrollMatch[1] };
+    }
+
     return { type: 'unknown' };
   } catch {
     return { type: 'unknown' };
@@ -149,5 +160,11 @@ export function navigateGameDeepLink(
   }
   if (parsed.type === 'invite' && parsed.inviteToken) {
     navigate(ROUTES.ACTIVITY.DETAIL, { inviteToken: parsed.inviteToken });
+    return;
+  }
+  if (parsed.type === 'classEnroll' && parsed.classEnrollToken) {
+    navigate(ROUTES.COACH_PARENT.PARENT_CLASS_INVITE, {
+      inviteToken: parsed.classEnrollToken,
+    });
   }
 }

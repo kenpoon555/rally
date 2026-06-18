@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
-import { updateUserProfile } from '../../services/userService';
+import { updateUserProfile, deleteOwnAccount } from '../../services/userService';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
 import { resolveUserDefaultSport } from '../../constants/sports';
 import { ROUTES } from '../../constants/routes';
@@ -73,6 +73,10 @@ import { FreeAgentAvailabilityPreset, FreeAgentInvite, MyFreeAgentPost } from '.
 import { formatActivityTime } from '../../utils/activityHelpers';
 import { submitConciergeRequest } from '../../services/conciergeService';
 import { submitCaptainFeedback } from '../../services/captainFeedbackService';
+import { useCoachParent } from '../../hooks/useCoachParent';
+import { ProfileFamilySection } from '../../components/coachParent/ProfileFamilySection';
+import { ProfileCoachToolsSection } from '../../components/coachParent/ProfileCoachToolsSection';
+import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
 import {
   listMyPendingFillInvites,
   respondFillInvite,
@@ -90,6 +94,7 @@ const ProfileScreen: React.FC = () => {
   const { sports } = useSportsCatalog();
   const defaultSport = resolveUserDefaultSport(user?.preferred_sports?.[0]);
   const [profileTab, setProfileTab] = useState<ProfileTab>('me');
+  const { showFamily, showCoachTools, students } = useCoachParent();
 
   const openActivityDetail = (activityId: string) => {
     navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
@@ -449,6 +454,44 @@ const ProfileScreen: React.FC = () => {
         },
       },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your Rally account and profile data. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Are you sure?',
+              'Your account will be permanently deleted.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete permanently',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      await deleteOwnAccount();
+                      await signOut();
+                    } catch (error: unknown) {
+                      Alert.alert(
+                        'Error',
+                        error instanceof Error ? error.message : 'Failed to delete account'
+                      );
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleSignOut = () => {
@@ -1226,6 +1269,22 @@ const ProfileScreen: React.FC = () => {
 
       {profileTab === 'settings' ? (
       <>
+      {showFamily && user ? <ProfileFamilySection students={students} /> : null}
+      {showCoachTools && user ? <ProfileCoachToolsSection user={user} /> : null}
+      {__DEV__ && CLASS_INBOX_ANNOUNCE ? (
+        <View style={styles.sectionCard}>
+          <Text style={styles.groupLabel}>Validator</Text>
+          <ProfileSettingsRow
+            label="Test class enroll picker"
+            value="Child profile picker"
+            onPress={() =>
+              navigation.navigate(ROUTES.COACH_PARENT.CHILD_PICKER as never, {
+                classTitle: 'Beginner Badminton',
+              } as never)
+            }
+          />
+        </View>
+      ) : null}
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Payments</Text>
         <Text style={styles.hint}>
@@ -1401,6 +1460,12 @@ const ProfileScreen: React.FC = () => {
           onPress={() =>
             setLegalModal({ title: 'Location & privacy', body: PRIVACY_LOCATION_TEXT })
           }
+        />
+        <ProfileSettingsRow
+          label="Delete account"
+          value="Permanent — cannot be undone"
+          onPress={handleDeleteAccount}
+          destructive
         />
       </View>
 

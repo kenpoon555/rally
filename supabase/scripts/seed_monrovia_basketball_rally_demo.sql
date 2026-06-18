@@ -224,17 +224,24 @@ begin
     'open',
     'Full court 5v5. Meet at the south courts.',
     'Morning pickup run',
-    'casual_only',
     8,
-    10
+    10,
+    'casual_only'
   )
   on conflict (id) do update set
     regular_group_id = v_group,
     start_time = excluded.start_time,
     status = 'active',
     match_status = 'open',
+    finalized_at = null,
+    finalized_by = null,
     player_count = 7,
     missing_players = 3,
+    listing_title = excluded.listing_title,
+    play_intent = excluded.play_intent,
+    roster_min = excluded.roster_min,
+    roster_max = excluded.roster_max,
+    session_note = excluded.session_note,
     updated_at = now();
 
   foreach v_uid in array v_members[2:5] loop
@@ -261,7 +268,22 @@ begin
     now() - interval '2 days',
     null
   )
-  on conflict (activity_id, user_id) do update set status = 'approved';
+  on conflict (activity_id, user_id) do update set
+    status = 'approved',
+    ready_at = null;
+
+  insert into public.join_requests (activity_id, user_id, status, requested_at, responded_at, ready_at)
+  values (
+    v_upcoming,
+    v_members[7],
+    'approved',
+    now() - interval '2 days',
+    now() - interval '2 days',
+    now() - interval '1 day'
+  )
+  on conflict (activity_id, user_id) do update set
+    status = 'approved',
+    ready_at = coalesce(join_requests.ready_at, now());
 
   insert into public.join_requests (activity_id, user_id, status, requested_at, responded_at, ready_at)
   values (

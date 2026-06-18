@@ -1,8 +1,9 @@
 # Flow — Game room (chat + roster actions)
 
 **Contract id:** `flow-game-room`  
-**Status:** Draft — sprint prep (not yet in validation loop)  
+**Status:** Draft — validate before production; **gtm1 adjunct** if groups use Inbox chat  
 **Screens:** `ChatThreadScreen`, `GameRoomHeader`, `GameRoomFooter`  
+**Related:** [flow-rally-session.md](./flow-rally-session.md) (hub Play tab path — primary GTM 1)  
 **Related code:** `src/components/GameRoomActionBar.tsx`, `src/pages/Chat/ChatThreadScreen.tsx`, `src/services/gameCardSessionActions.ts`
 
 ## Purpose

@@ -8,6 +8,9 @@ Step-by-step playbooks for recurring multi-step tasks. **Read the matching workf
 |-------|----------|-----------------|
 | **Rules** | `.cursor/rules/*.mdc` | Always (or when matching files are open) — constraints, stack, conventions |
 | **Skills** | `.cursor/skills/*/SKILL.md` | Domain playbooks the agent loads when a task matches the skill description |
+| | `product-review` | Persona UX review (12 sport × commitment personas) |
+| | `product-review-consolidator` | Merge reviews → pain themes → contract proposals |
+| | `write-contract` | Author contracts (performance, cost, deps, gates) |
 | **Workflows** | `.cursor/workflows/*.md` | Ordered checklists for multi-step procedures (this folder) |
 | **Hooks** | `.cursor/hooks.json` | Automated scripts on agent events (optional, not set up yet) |
 | **GitHub Actions** | `.github/workflows/` | CI/CD on push — not read by the agent unless asked |
@@ -20,7 +23,10 @@ Step-by-step playbooks for recurring multi-step tasks. **Read the matching workf
 
 | Workflow | Use when |
 |----------|----------|
-| [validate-contract.md](./validate-contract.md) | **Loop A/B** — Builder → Validator → Fixer against `docs/contracts/` |
+| [product-review.md](./product-review.md) | **Persona UX review** — sim walkthrough → feedback |
+| [consolidate-product-reviews.md](./consolidate-product-reviews.md) | **Consolidate reviews** → pain themes → contract diffs |
+| [author-contract.md](./author-contract.md) | **Write/update** a contract — performance, cost, deps, gates |
+| [validate-contract.md](./validate-contract.md) | **Proof loop** — Validator → Fixer against `docs/contracts/` |
 | [promote-branch.md](./promote-branch.md) | Push dev → PR preview → main → production |
 | [ship-feature.md](./ship-feature.md) | New feature / bugfix with service + optional migration + push |
 | [deploy-supabase.md](./deploy-supabase.md) | Migrations + edge functions |

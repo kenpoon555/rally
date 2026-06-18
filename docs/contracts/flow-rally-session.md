@@ -11,7 +11,15 @@ Host and members coordinate one Rally session: see upcoming game, confirm **I'm 
 
 North-star: **Friend in Rally → sees session card → taps I'm in → host locks → locked state visible.**
 
-## Demo setup
+## Scope vs related contracts
+
+| Path | This contract | Related |
+|------|---------------|---------|
+| Rally hub Play tab → session card → detail | **In scope** — primary GTM 1 path | — |
+| Inbox → game chat → I'm in / lock | **Out of scope** | [flow-game-room.md](./flow-game-room.md) — validate before production or add to gtm1 adjunct |
+| Deep link → join Rally | **Out of scope** | [flow-invite-to-rally.md](./flow-invite-to-rally.md) — Loop A |
+
+**GTM 1 (`gtm1-launch-gate`):** hub + Today + detail path required. Game-room path recommended if groups coordinate via Inbox chat.
 
 1. Seeds applied (same as Loop A):
    ```bash
@@ -33,6 +41,8 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 | **Session card — ready** | Member after I'm in | Tap I'm in | Ready state persists after pull-to-refresh |
 | **Session card — host lock** | Host | All required ready (per policy) | **Lock roster** enabled when rules met |
 | **Locked session** | Both | After host locks | `finalized` / "Roster locked" on card + detail |
+| **Roster full** | Member | Session at capacity | Join blocked or waitlist copy — no crash |
+| **Waitlist** | Member | Full session with waitlist enabled | Clear waitlist state if product supports |
 | **Today Next Up** | Member with next game | Today tab | Game list card (plain sport icon, **no** status dot) |
 | **Game detail** | Member | Tap session card → View game | Who's going inside hero card; manage panel for host only |
 
@@ -51,6 +61,8 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 - [ ] Host sees lock readiness hint when applicable
 - [ ] **Lock roster** succeeds; non-host cannot lock
 - [ ] Locked card shows finalized / locked copy
+- [ ] **Roster full:** member sees clear copy (cannot join / waitlist) — no crash
+- [ ] **Non-host** cannot lock, cannot access host-only manage actions on detail
 
 ### Today alignment (game card UI)
 - [ ] Next Up + Also on calendar + Rallies carousel use plain sport icons (no ring)
@@ -81,13 +93,20 @@ Save to `docs/contracts/screenshots/flow-rally-session/`:
 5. `05-roster-locked.png` — both roles see locked state on card
 6. `06-today-next-up.png` — Today card (plain icon, no signal)
 7. `07-game-detail-whos-going.png` — detail hero with avatar row
+8. `08-post-game-attendance-host.png` — host CTA on past locked session (see `flow-post-game-attendance.md`)
+
+### Session card polish (Phase 1.1)
+
+Validated with Loop B — see [module-game-card.md](./module-game-card.md) for preset/shell reference. Detail hero + venue notes validated in **phase2-game-card** sprint.
 
 ## Out of scope
 
 - Play discover open games / locked · still welcoming sections
-- Mini tournament flows
-- Create public pickup game (see future `create-game.md`)
+- Mini tournament — [flow-mini-tournament.md](./flow-mini-tournament.md)
+- Availability poll — [flow-availability-poll.md](./flow-availability-poll.md)
+- Create public pickup game — [flow-create-game.md](./flow-create-game.md)
 - Push notifications for join approved
+- Inbox → game chat coordination — see [flow-game-room.md](./flow-game-room.md)
 
 ## Open issues
 
