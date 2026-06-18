@@ -106,6 +106,7 @@ Cursor does not execute workflows like CI. Workflows are **instructions the Agen
 | **weekly scorecard / metrics** | launch-roadmap-jun-2026.md, module-analytics-events.md |
 | **cost / budget** | write-contract skill § cost, google-cloud-budget.md |
 | **advisory / handoff** | advisory-handoff-jun-2026.md, **advisory-handoff-contracts-jun-2026.md** (full contract catalog) |
+| **App Store rejection** | app-store-rejection-jun-2026.md |
 | **launch / beta / GTM** | launch-roadmap-jun-2026.md |
 | **parent / student / coach / minors / COPPA** | coach-parent-student/README.md, parent-student-coach-ui-ideas.md |
 | **env / keys** | env-and-api-keys.md |

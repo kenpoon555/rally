@@ -1,6 +1,8 @@
 export const ROUTES = {
   AUTH: {
     WELCOME: 'Welcome',
+    AGE_GATE: 'AgeGate',
+    UNDER_13_BLOCKED: 'Under13Blocked',
     LOGIN: 'Login',
     SIGNUP: 'Signup',
   },
@@ -45,5 +47,15 @@ export const ROUTES = {
   },
   LANDING: {
     SPORT: 'SportLanding',
+  },
+  COACH_PARENT: {
+    FAMILY_PROFILES: 'FamilyProfiles',
+    ADD_CHILD_PROFILE: 'AddChildProfile',
+    GUARDIAN_CONSENT: 'GuardianConsent',
+    CLASS_DETAIL: 'ClassDetail',
+    CHILD_PICKER: 'ChildProfilePicker',
+    COACH_PROFILE: 'CoachProfile',
+    PARENT_CLASS_INVITE: 'ParentClassInvite',
+    ENROLLMENT_CONFIRMATION: 'EnrollmentConfirmation',
   },
 } as const;

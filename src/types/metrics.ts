@@ -31,7 +31,8 @@ export type ProductEventName =
   | 'captain_application_submitted'
   | 'captain_feedback_submitted'
   | 'rally_friend_invite_sent'
-  | 'rally_friend_invite_accepted';
+  | 'rally_friend_invite_accepted'
+  | 'crew_dormancy_nudge_sent';
 
 export interface RateLimitResult {
   allowed: boolean;

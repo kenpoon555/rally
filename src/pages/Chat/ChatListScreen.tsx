@@ -28,6 +28,9 @@ import { Avatar, Chip, EmptyState, ScreenHeader } from '../../components/ui';
 import { SportIconForSurface } from '../../components/SportIconForSurface';
 import { formatInboxMessageDate } from '../../utils/chatHelpers';
 import { colors, radius, spacing, typography } from '../../constants/theme';
+import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
+import { listClassAnnouncements } from '../../services/coachParentService';
+import { ClassAnnouncementInboxItem } from '../../types/coachParent';
 
 type TabParamList = {
   Home: undefined;
@@ -72,19 +75,38 @@ const ChatRowIcon: React.FC<{ item: ChatInboxItem }> = ({ item }) => {
   return <Avatar name={item.username} size="sm" tone="accent" style={styles.rowIcon} />;
 };
 
+type InboxFilter = ChatInboxFilter | 'announcements';
+
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
-  const [filter, setFilter] = useState<ChatInboxFilter>('friends');
+  const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<ClassAnnouncementInboxItem[]>([]);
 
   useFocusEffect(
     useCallback(() => {
       load({ force: false });
-    }, [load])
+      if (CLASS_INBOX_ANNOUNCE) {
+        void listClassAnnouncements(user?.id).then(setAnnouncements);
+      }
+    }, [load, user?.id])
   );
 
-  const visibleItems = useMemo(() => filterChatInbox(items, filter), [items, filter]);
+  const filters = useMemo(() => {
+    const base: { id: InboxFilter; label: string }[] = [...FILTERS];
+    if (CLASS_INBOX_ANNOUNCE) {
+      base.push({ id: 'announcements', label: 'Classes' });
+    }
+    return base;
+  }, []);
+
+  const visibleItems = useMemo(() => {
+    if (filter === 'announcements') {
+      return [];
+    }
+    return filterChatInbox(items, filter);
+  }, [items, filter]);
   const unreadByFilter = useMemo(() => sumUnreadByFilter(items), [items]);
 
   const openRallyHub = (
@@ -225,7 +247,9 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const emptyCopy =
-    filter === 'games'
+    filter === 'announcements'
+      ? 'No class announcements yet. Coaches message parents here — not children.'
+      : filter === 'games'
       ? 'No active game rooms. Host or join from Play — archived chat moves to My Games after 2 days.'
       : filter === 'rallies'
         ? 'No Rally chats yet. Start a Rally from Today or save one from a game.'
@@ -242,11 +266,11 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.filterRow}>
         <View style={styles.filterSegment}>
-          {FILTERS.map((f) => (
+          {filters.map((f) => (
             <Chip
               key={f.id}
               label={f.label}
-              badge={unreadByFilter[f.id]}
+              badge={f.id === 'announcements' ? 0 : unreadByFilter[f.id as ChatInboxFilter]}
               selected={filter === f.id}
               tone="primary"
               compact
@@ -259,7 +283,25 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
 
       {errorText ? <Text style={styles.errorText}>{errorText}</Text> : null}
 
-      {loading && visibleItems.length === 0 ? (
+      {filter === 'announcements' ? (
+        <FlatList
+          data={announcements}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <View style={styles.row}>
+              <View style={styles.rowMain}>
+                <Text style={styles.rowTitle}>{item.class_title}</Text>
+                <Text style={styles.rowSubtitle}>{item.preview}</Text>
+                <Text style={styles.announceMeta}>To parents · not child DM</Text>
+              </View>
+            </View>
+          )}
+          contentContainerStyle={announcements.length === 0 ? styles.emptyList : undefined}
+          ListEmptyComponent={
+            <EmptyState icon="📣" title="Nothing here yet" message={emptyCopy} />
+          }
+        />
+      ) : loading && visibleItems.length === 0 ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -388,6 +430,11 @@ const styles = StyleSheet.create({
   rowTitleUnread: {
     fontWeight: '700',
     color: colors.text,
+  },
+  announceMeta: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
   },
   rowSubtitle: {
     marginTop: spacing.xs,

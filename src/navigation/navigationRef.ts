@@ -56,5 +56,13 @@ export function navigateFromNotificationData(data: Record<string, string> | unde
       title: data.title || 'Chat',
       activityId: data.activity_id || undefined,
     });
+    return;
+  }
+
+  if (type === 'crew_dormancy_nudge' && data.group_id) {
+    navigationRef.navigate(ROUTES.REGULAR_GROUP.CREW as any, {
+      groupId: data.group_id,
+      initialTab: 'play',
+    });
   }
 }

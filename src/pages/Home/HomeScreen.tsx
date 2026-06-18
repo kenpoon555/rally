@@ -53,6 +53,10 @@ import { PRODUCT_COPY } from '../../constants/productCopy';
 import { SportType } from '../../constants/sports';
 import { FREE_AGENT_SPORTS, listFreeAgentPosts } from '../../services/freeAgentService';
 import { FreeAgentPost } from '../../types/freeAgent';
+import { COACH_CLASSES_DISCOVER } from '../../constants/coachParentFlags';
+import { useCoachParent } from '../../hooks/useCoachParent';
+import { coachClassToActivity, listDiscoverClasses, userIsCoach } from '../../services/coachParentService';
+import { CreateRolePickerSheet } from '../../components/coachParent/CreateRolePickerSheet';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -69,7 +73,7 @@ function runRawLocationTest() {
     });
 }
 
-type DiscoverMode = 'games' | 'free_agents';
+type DiscoverMode = 'games' | 'free_agents' | 'classes';
 type RouteDiscoverMode = DiscoverMode | 'need_players';
 
 type TabParamList = {
@@ -134,6 +138,10 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const [freeAgentError, setFreeAgentError] = useState<string | null>(null);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
+  const { hasClassContext, enrollments } = useCoachParent();
+  const [classActivities, setClassActivities] = useState<Activity[]>([]);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [createPickerOpen, setCreatePickerOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   useEffect(() => {
     if (routeSportFilter) {
@@ -151,7 +159,29 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const discoverSubtitle =
     discoverMode === 'free_agents'
       ? PRODUCT_COPY.playPlayersHint
-      : PRODUCT_COPY.playGamesHint;
+      : discoverMode === 'classes'
+        ? 'Browse classes near you'
+        : PRODUCT_COPY.playGamesHint;
+
+  const loadClassListings = useCallback(async () => {
+    if (!COACH_CLASSES_DISCOVER) {
+      setClassActivities([]);
+      return;
+    }
+    setClassesLoading(true);
+    try {
+      const rows = await listDiscoverClasses(effectiveSportFilter, user?.id);
+      setClassActivities(rows.map((row) => coachClassToActivity(row, user?.username)));
+    } finally {
+      setClassesLoading(false);
+    }
+  }, [effectiveSportFilter, user?.id, user?.username]);
+
+  useEffect(() => {
+    if (discoverMode === 'classes') {
+      void loadClassListings();
+    }
+  }, [discoverMode, loadClassListings]);
 
   const handleSportFilter = useCallback(
     async (sport: string) => {
@@ -370,11 +400,37 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   const openCreateGame = () => {
+    if (COACH_CLASSES_DISCOVER && userIsCoach(user)) {
+      setCreatePickerOpen(true);
+      return;
+    }
     navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
   };
 
+  const handleCreateOption = (option: 'game' | 'rally' | 'class') => {
+    setCreatePickerOpen(false);
+    if (option === 'class') {
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never, {
+        createMode: 'class',
+      } as never);
+      return;
+    }
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
+  };
+
+  const segmentOptions = useMemo(() => {
+    const base = [
+      { value: 'games' as const, label: 'Games' },
+      { value: 'free_agents' as const, label: 'Players' },
+    ];
+    if (COACH_CLASSES_DISCOVER) {
+      base.push({ value: 'classes', label: 'Classes' });
+    }
+    return base;
+  }, []);
+
   const headerRight =
-    discoverMode === 'games' ? (
+    discoverMode === 'games' || discoverMode === 'classes' ? (
       <TouchableOpacity
         style={styles.hostHeaderBtn}
         onPress={openCreateGame}
@@ -412,15 +468,15 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         />
 
         <SegmentToggle
-          options={[
-            { value: 'games', label: 'Games' },
-            { value: 'free_agents', label: 'Players' },
-          ]}
+          options={segmentOptions}
           value={discoverMode}
           onChange={(mode) => {
             setDiscoverMode(mode);
             if (mode === 'free_agents') {
               void loadFreeAgentPosts();
+            }
+            if (mode === 'classes') {
+              void loadClassListings();
             }
           }}
         />
@@ -473,6 +529,58 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.emptyText}>
                   Post your availability from Profile, or check back later.
                 </Text>
+              </View>
+            )
+          }
+        />
+      ) : discoverMode === 'classes' ? (
+        <FlatList
+          style={styles.list}
+          data={classActivities}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContent,
+            classActivities.length === 0 && styles.listContentEmpty,
+          ]}
+          ListHeaderComponent={
+            hasClassContext && enrollments[0] ? (
+              <View style={styles.nextClassBanner}>
+                <Text style={styles.nextClassTitle}>Next class</Text>
+                <Text style={styles.nextClassBody}>
+                  {enrollments[0].student_name} · {enrollments[0].class_title} · Confirm
+                </Text>
+              </View>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <GameCardShell
+              presetKey="classDiscover"
+              activity={item}
+              userLocation={discoverLocation}
+              isHost={item.user_id === user?.id}
+              onPress={() =>
+                navigation.getParent()?.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL as never, {
+                  classId: item.id,
+                } as never)
+              }
+            />
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={classesLoading}
+              onRefresh={() => void loadClassListings()}
+            />
+          }
+          ListEmptyComponent={
+            classesLoading ? (
+              <View style={styles.inlineLoading}>
+                <ActivityIndicator size="large" color={PRIMARY_COLOR} />
+                <Text style={styles.loadingText}>Loading classes…</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyTitle}>No {sportLabel} classes nearby</Text>
+                <Text style={styles.emptyText}>Check back later or try another sport.</Text>
               </View>
             )
           }
@@ -554,6 +662,13 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         onSelect={(sport) => void handleSportFilter(sport)}
         onClose={() => setSportPickerOpen(false)}
       />
+
+      <CreateRolePickerSheet
+        visible={createPickerOpen}
+        showClassOption={userIsCoach(user)}
+        onClose={() => setCreatePickerOpen(false)}
+        onSelect={handleCreateOption}
+      />
     </View>
   );
 };
@@ -576,6 +691,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.onPrimary,
+  },
+  nextClassBanner: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    padding: spacing.md,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  nextClassTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+  },
+  nextClassBody: {
+    marginTop: 4,
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
   },
   nearbyCourtsLink: {
     marginTop: 6,

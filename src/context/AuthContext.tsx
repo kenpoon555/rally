@@ -11,7 +11,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, username: string) => Promise<void>;
+  signUp: (email: string, password: string, username: string, ageCategory?: import('../types/ageCategory').AgeCategory) => Promise<void>;
   signInWithPhone: (phone: string) => Promise<void>;
   verifyPhone: (phone: string, code: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -309,7 +309,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (email: string, password: string, username: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    username: string,
+    ageCategory: import('../types/ageCategory').AgeCategory = 'adult_18_plus'
+  ) => {
     // Step 1: Create auth user
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -356,6 +361,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await createUserProfile(data.user.id, {
         username,
         email,
+        age_category: ageCategory,
       });
     } catch (profileError: any) {
       console.warn('Profile create retry path used during signup:', profileError?.message || profileError);

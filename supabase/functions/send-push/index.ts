@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { sendFcmV1 } from './fcm.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,8 +16,10 @@ type PushBody = {
     | 'free_agent_invite'
     | 'fill_in_invite'
     | 'review_prompt'
-    | 'chat_message';
+    | 'chat_message'
+    | 'crew_dormancy_nudge';
   activity_id?: string;
+  group_id?: string;
   conversation_id?: string;
   message_preview?: string;
   target_user_id?: string;
@@ -37,51 +40,14 @@ function isInQuietHours(
     : localHour >= quietStart || localHour < quietEnd;
 }
 
-async function sendFcmLegacy(
-  serverKey: string,
+async function sendPush(
+  serviceAccountJson: string,
   token: string,
   title: string,
   body: string,
   data: Record<string, string>
 ): Promise<void> {
-  const res = await fetch('https://fcm.googleapis.com/fcm/send', {
-    method: 'POST',
-    headers: {
-      Authorization: `key=${serverKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      to: token,
-      notification: { title, body, sound: 'default' },
-      data,
-      priority: 'high',
-      content_available: true,
-      apns: {
-        headers: {
-          'apns-priority': '10',
-        },
-        payload: {
-          aps: {
-            alert: { title, body },
-            sound: 'default',
-            'content-available': 1,
-          },
-        },
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          channel_id: 'rally_default',
-          sound: 'default',
-        },
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`FCM error ${res.status}: ${text}`);
-  }
+  await sendFcmV1(serviceAccountJson, token, title, body, data);
 }
 
 Deno.serve(async (req) => {
@@ -90,13 +56,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const serverKey = Deno.env.get('FIREBASE_SERVER_KEY');
+    const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT_JSON');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    if (!serverKey) {
+    if (!serviceAccountJson) {
       return new Response(
-        JSON.stringify({ ok: false, error: 'FIREBASE_SERVER_KEY not configured on project' }),
+        JSON.stringify({
+          ok: false,
+          error:
+            'FIREBASE_SERVICE_ACCOUNT_JSON not configured. Run scripts/set-firebase-service-account-secret.sh',
+        }),
         { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -230,7 +200,7 @@ Deno.serve(async (req) => {
 
         for (const tokenRow of tokens || []) {
           try {
-            await sendFcmLegacy(serverKey, tokenRow.device_token, chatTitle, chatBody, {
+            await sendPush(serviceAccountJson, tokenRow.device_token, chatTitle, chatBody, {
               type: payload.type,
               conversation_id: payload.conversation_id,
               activity_id: (convo?.activity_id as string | undefined) || '',
@@ -239,6 +209,105 @@ Deno.serve(async (req) => {
           } catch (e) {
             console.error('FCM chat_message send failed for token:', e);
           }
+        }
+      }
+
+      return new Response(JSON.stringify({ ok: true, sent }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (payload.type === 'crew_dormancy_nudge') {
+      if (!payload.group_id) {
+        return new Response(JSON.stringify({ error: 'group_id required for crew_dormancy_nudge' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: group } = await admin
+        .from('regular_groups')
+        .select('id, host_id, name')
+        .eq('id', payload.group_id)
+        .maybeSingle();
+
+      if (!group) {
+        return new Response(JSON.stringify({ error: 'Rally not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const hostId = group.host_id as string;
+      if (user.id !== hostId) {
+        return new Response(JSON.stringify({ error: 'Only the host can send dormancy nudges' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const claimCutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const { data: recentClaim } = await admin
+        .from('crew_dormancy_nudges')
+        .select('id')
+        .eq('group_id', payload.group_id)
+        .eq('host_id', hostId)
+        .gte('sent_at', claimCutoff)
+        .order('sent_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!recentClaim) {
+        return new Response(JSON.stringify({ error: 'Claim dormancy nudge before sending push' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: hostProfile } = await admin
+        .from('profiles')
+        .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+        .eq('id', hostId)
+        .maybeSingle();
+
+      if (hostProfile?.is_suspended) {
+        return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'host suspended' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (
+        isInQuietHours(
+          hostProfile?.push_quiet_hours_start as number | null | undefined,
+          hostProfile?.push_quiet_hours_end as number | null | undefined
+        )
+      ) {
+        return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'quiet hours' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const rallyName = (group.name as string | undefined) || 'Your Rally';
+      const title = payload.title || 'Schedule your next game';
+      const body =
+        payload.body ||
+        `${rallyName} has no upcoming games. Tap to open Play and schedule your next session.`;
+
+      const { data: tokens } = await admin
+        .from('user_device_tokens')
+        .select('device_token')
+        .eq('user_id', hostId);
+
+      let sent = 0;
+      for (const tokenRow of tokens || []) {
+        try {
+          await sendPush(serviceAccountJson, tokenRow.device_token, title, body, {
+            type: payload.type,
+            group_id: payload.group_id,
+          });
+          sent += 1;
+        } catch (e) {
+          console.error('FCM crew_dormancy_nudge send failed for token:', e);
         }
       }
 
@@ -388,7 +457,7 @@ Deno.serve(async (req) => {
       let sent = 0;
       for (const tokenRow of tokens || []) {
         try {
-          await sendFcmLegacy(serverKey, tokenRow.device_token, title, body, {
+          await sendPush(serviceAccountJson, tokenRow.device_token, title, body, {
             type: payload.type,
             activity_id: payload.activity_id,
           });
@@ -468,7 +537,7 @@ Deno.serve(async (req) => {
 
         for (const tokenRow of tokens || []) {
           try {
-            await sendFcmLegacy(serverKey, tokenRow.device_token, title, body, {
+            await sendPush(serviceAccountJson, tokenRow.device_token, title, body, {
               type: payload.type,
               activity_id: payload.activity_id,
             });
@@ -548,7 +617,7 @@ Deno.serve(async (req) => {
 
         for (const tokenRow of tokens || []) {
           try {
-            await sendFcmLegacy(serverKey, tokenRow.device_token, title, body, {
+            await sendPush(serviceAccountJson, tokenRow.device_token, title, body, {
               type: payload.type,
               activity_id: payload.activity_id,
             });
@@ -658,7 +727,7 @@ Deno.serve(async (req) => {
     let sent = 0;
     for (const row of tokens) {
       try {
-        await sendFcmLegacy(serverKey, row.device_token, title, body, dataPayload);
+        await sendPush(serviceAccountJson, row.device_token, title, body, dataPayload);
         sent += 1;
       } catch (e) {
         console.error('FCM send failed for token:', e);

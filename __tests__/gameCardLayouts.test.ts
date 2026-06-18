@@ -32,6 +32,11 @@ describe('gameCardLayouts', () => {
     expect(GAME_CARD_PRESETS.rallySession.sessionVariant).toBe('rally');
   });
 
+  it('defines classDiscover preset for Play Classes segment', () => {
+    expect(GAME_CARD_PRESETS.classDiscover.layout).toBe('listRow');
+    expect(GAME_CARD_PRESETS.classDiscover.joinMode).toBe('request');
+  });
+
   it('maps discover sections to preset keys', () => {
     expect(discoverPresetKey('open')).toBe('discoverOpen');
     expect(discoverPresetKey('locked')).toBe('discoverLockedWelcoming');

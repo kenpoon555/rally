@@ -40,6 +40,11 @@ import {
   listMyPendingRegularGroupInvites,
 } from '../../services/regularGroupService';
 import { RallyFriendInvite } from '../../types/rallyInvite';
+import { PARENT_FAMILY_UI, COACH_DASHBOARD } from '../../constants/coachParentFlags';
+import { useCoachParent } from '../../hooks/useCoachParent';
+import { coachTodayClasses } from '../../services/coachParentService';
+import { TodayMyClassesCard } from '../../components/coachParent/TodayMyClassesCard';
+import { TodayCoachClassesCard } from '../../components/coachParent/TodayCoachClassesCard';
 
 type TabParamList = {
   DynamicHome: undefined;
@@ -65,6 +70,11 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [inviteBusyId, setInviteBusyId] = useState<string | null>(null);
   const [rallyMemberPreviews, setRallyMemberPreviews] = useState<Record<string, RallyMemberPreview>>({});
   const dashboard = useHomeDashboard(activeGames, user?.id);
+  const { enrollments, isCoach, coachClasses } = useCoachParent();
+  const coachToday = useMemo(
+    () => (user?.id && isCoach ? coachTodayClasses(user.id) : []),
+    [user?.id, isCoach]
+  );
 
   const loadRallyInvites = useCallback(async () => {
     try {
@@ -308,6 +318,11 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
                 : undefined
             }
           />
+
+          {PARENT_FAMILY_UI ? <TodayMyClassesCard enrollments={enrollments} /> : null}
+          {COACH_DASHBOARD && isCoach ? (
+            <TodayCoachClassesCard classes={coachToday.length ? coachToday : coachClasses} />
+          ) : null}
 
           {otherActiveGames.length > 0 ? (
             <View style={styles.section}>
