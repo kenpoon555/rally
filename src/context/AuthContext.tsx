@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { Linking, Platform } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
+import { withTimeout } from '../utils/withTimeout';
 import { User } from '../types/user';
 import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
 import { processDeepLink } from '../navigation/processDeepLink';
@@ -22,6 +23,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const EMAIL_REDIRECT_TO = 'rallyapp://auth/callback';
+
+/** Max wait for Supabase session read on cold start (iPad / slow network). */
+const BOOTSTRAP_GET_SESSION_MS = 8_000;
+/** Max wait for profile load during bootstrap — then show Welcome and clear stale session. */
+const BOOTSTRAP_LOAD_USER_MS = 10_000;
+/** Hard backstop if bootstrap flow never reaches `finally`. */
+const BOOTSTRAP_LOADING_BACKSTOP_MS = 12_000;
 
 const parseAuthParamsFromUrl = (url: string): Record<string, string> => {
   // Supabase can send auth params in query (?a=b) or fragment (#a=b).
@@ -55,6 +63,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const notificationCleanupRef = useRef<(() => void) | null>(null);
   const loadUserPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
   notificationCleanupRef.current = notificationCleanup;
+
+  const clearStaleBootstrapSession = useCallback(async () => {
+    setUser(null);
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch {
+      // ignore — goal is to unblock Welcome on next paint
+    }
+  }, []);
 
   const loadUser = useCallback(async (userId: string) => {
     // Deduplicate: checkSession() and onAuthStateChange() both call loadUser; share one in-flight promise.
@@ -177,20 +194,29 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await withTimeout(supabase.auth.getSession(), BOOTSTRAP_GET_SESSION_MS, 'getSession');
+
       if (session?.user) {
-        // Wait for profile load before leaving bootstrap — avoids login flash + blank main nav on Android.
-        await loadUser(session.user.id);
+        try {
+          await withTimeout(loadUser(session.user.id), BOOTSTRAP_LOAD_USER_MS, 'loadUser');
+        } catch (loadError) {
+          console.warn(
+            'Bootstrap profile load failed; clearing stale session:',
+            loadError instanceof Error ? loadError.message : loadError
+          );
+          await clearStaleBootstrapSession();
+        }
       }
     } catch (error) {
       console.error('Error checking session:', error);
+      await clearStaleBootstrapSession();
     } finally {
       // #region agent log
       sendDebugLog('AuthContext.tsx:setLoadingFalse', 'Auth loading=false', {}, 'H1');
       // #endregion
       setLoading(false);
     }
-  }, [loadUser]);
+  }, [clearStaleBootstrapSession, loadUser]);
 
   useEffect(() => {
     const handleAuthDeepLink = async (url: string) => {
@@ -241,8 +267,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Check for existing session
     checkSession();
 
-    // Safety: ensure loading is cleared even if getSession() or loadUser() hangs (e.g. on iOS)
-    const safetyTimer = setTimeout(() => setLoading(false), 5000);
+    // Hard backstop: never leave bootstrap spinner indefinitely (App Store iPad review).
+    const safetyTimer = setTimeout(() => setLoading(false), BOOTSTRAP_LOADING_BACKSTOP_MS);
 
     Linking.getInitialURL()
       .then((initialUrl) => {
