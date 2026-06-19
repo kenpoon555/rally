@@ -24,6 +24,7 @@ North-star: **Sign out → open invite link → sign in → invite completes wit
 | **Signed out + deep link** | Auth gate + pending link stored |
 | **Post-login replay** | Pending invite processed once |
 | **Returning user** | Session restore — no stuck splash |
+| **Bootstrap timeout** | Cold start shows Welcome within ~12s even if session/profile hang; stale local session cleared |
 | **Onboarding coach marks** | Dismissible; flags persist in AsyncStorage |
 
 ## Pass/fail checklist
@@ -32,6 +33,7 @@ North-star: **Sign out → open invite link → sign in → invite completes wit
 - [ ] Pending deep link cleared after successful replay
 - [ ] Double replay does not join twice / crash
 - [ ] Sign out from Profile clears inbox realtime subscriptions safely
+- [ ] Cold launch on iPad (iPhone compatibility): Welcome or main UI within 12s — no infinite spinner
 - [ ] OAuth / magic link errors show user-facing message
 
 ## Screenshots required
