@@ -55,14 +55,18 @@ Queue definitions: [validation-queues.json](./validation-queues.json)
 | `v1.2-parent-student-core` | age gate, student profile, visibility, guardian consent |
 | `v1.3-parent-pilot` | student enrollment + coach minor roster |
 | `v1.4-coach-ops` | coach class operations (cancel/defer/reassign) |
+| `gtm2-feedback-jun-2026` | push device · create schedule · sport modes · coach/org clarity |
+| `cps-onboarding` | role unlock — become coach · parent family · age/consent · no pre-seed |
 
 ## Recommended run order (copy-paste)
 
 | When | Queue | Command |
 |------|-------|---------|
+| **User testing / Jun 2026 bugs** | `gtm2-feedback-jun-2026` | `./.cursor/hooks/validation-loop-start.sh --queue gtm2-feedback-jun-2026 --builder` |
 | GTM 1 (device) | `gtm1-launch-gate` | `./.cursor/hooks/validation-loop-start.sh --queue gtm1-launch-gate --builder` |
 | Optional | `phase2-game-card` | `... --queue phase2-game-card --builder` |
 | **GTM 2 start** | `module-analytics-events` | Validator on scorecard events before week-1 beta readout |
+| **Role unlock testing** | `cps-onboarding` | `... --queue cps-onboarding --builder` |
 | After GTM 2 | `v1.1-coach-foundation` | `... --queue v1.1-coach-foundation --builder` |
 | After P0 + lawyer | `v1.2-parent-student-core` | `... --queue v1.2-parent-student-core --builder` |
 | Pilot | `v1.3-parent-pilot` | `... --queue v1.3-parent-pilot --builder` |

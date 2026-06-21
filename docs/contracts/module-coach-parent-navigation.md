@@ -53,6 +53,7 @@ Parent + coach users see **both** Family and Coach Tools sections.
 | State | Must show |
 |-------|-----------|
 | **Section header** | **Coach Tools** — only if `coach` role / Founding Coach |
+| **Become a coach** | **Not in v1** — no self-serve apply; admin/seed sets `is_coach` — [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md) |
 | **Coach Profile** | Sport, area, edit |
 | **Payment link / note** | External link text only v1 |
 | **Class Templates** | Optional v1.1 — or defer to Create flow |
@@ -212,7 +213,9 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 - Public child profiles on Play
 - Child chat / coach–child DM
 - Photos, reviews, in-app payments
-- Academy substitute / consolidate (v1.4+ contract)
+- Academy substitute / consolidate (v1.5+)
+- Self-serve "Apply to be a coach" — see [flow-become-a-coach.md](./flow-become-a-coach.md) (v2)
+- First child without seed — [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md)
 
 ## Related
 
