@@ -3,7 +3,8 @@
 Persona UX reviews (sport × commitment) live here before they become contract changes.
 
 **Master map:** [agent-development-layers.md](../agent-development-layers.md)  
-**Personas (12):** [personas.md](./personas.md)  
+**Personas (12 pickup + 8 role):** [personas.md](./personas.md)  
+**Onboarding contracts:** [ONBOARDING-CONTRACT-INDEX.md](../contracts/ONBOARDING-CONTRACT-INDEX.md)  
 **Skills:** `.cursor/skills/product-review/` · `.cursor/skills/product-review-consolidator/`
 
 ## Folder layout

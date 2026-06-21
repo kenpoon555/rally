@@ -85,5 +85,28 @@
     "contracts": [
       "flow-coach-class-operations"
     ]
+  },
+  "gtm2-feedback-jun-2026": {
+    "description": "Jun 2026 user testing feedback — push, create UX, coach clarity",
+    "contracts": [
+      "flow-push-notifications-device",
+      "flow-create-game",
+      "module-sport-game-modes",
+      "flow-coach-onboarding-org",
+      "flow-coach-class-operations",
+      "module-coach-parent-navigation"
+    ]
+  },
+  "cps-onboarding": {
+    "description": "Role unlock journeys — no pre-seed on reviewer accounts",
+    "contracts": [
+      "flow-become-a-coach",
+      "flow-parent-family-onboarding",
+      "flow-age-gate-onboarding",
+      "flow-parent-guardian-consent",
+      "flow-coach-onboarding-org",
+      "flow-student-class-enrollment",
+      "flow-teen-account-onboarding"
+    ]
   }
 }

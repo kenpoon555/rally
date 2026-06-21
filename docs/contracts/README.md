@@ -30,6 +30,20 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 | [module-sport-icon.md](./module-sport-icon.md) | Icon surfaces |
 | [module-rally-hub.md](./module-rally-hub.md) | Chat / Play / Members tabs |
 | [module-analytics-events.md](./module-analytics-events.md) | Event names + retention SQL |
+| [module-sport-game-modes.md](./module-sport-game-modes.md) | Sport × pickup/tournament/class matrix |
+
+## Coach / parent track
+
+| Contract | Focus |
+|----------|--------|
+| [ONBOARDING-CONTRACT-INDEX.md](./ONBOARDING-CONTRACT-INDEX.md) | **All role-unlock journeys** (existing + stubs) |
+| [module-coach-parent-navigation.md](./module-coach-parent-navigation.md) | Family + Coach Tools entrances |
+| [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md) | Who is a coach; solo vs academy v2 |
+| [flow-become-a-coach.md](./flow-become-a-coach.md) | Manual approval → Coach Tools (stub) |
+| [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md) | First child without seed (stub) |
+| [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md) | 13–17 restrictions (stub) |
+| [flow-organization-coaches.md](./flow-organization-coaches.md) | Multi-coach org v2 (stub) |
+| [flow-coach-class-operations.md](./flow-coach-class-operations.md) | Defer / cancel / notify |
 
 ## Shipped flows (validate before production)
 
@@ -41,6 +55,7 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 | [flow-inbox.md](./flow-inbox.md) | Inbox filters + navigation |
 | [flow-profile.md](./flow-profile.md) | Profile + player modal |
 | [flow-auth-onboarding.md](./flow-auth-onboarding.md) | Auth, legal gate, deep links |
+| [flow-push-notifications-device.md](./flow-push-notifications-device.md) | Physical device push (FCM + token) |
 | [flow-post-game-attendance.md](./flow-post-game-attendance.md) | Host marks attendance |
 | [flow-host-nudges.md](./flow-host-nudges.md) | Roster nudge + push |
 
@@ -96,12 +111,16 @@ See bottom of previous README revision — use for any new `flow-*.md` or `modul
 - [vision.md](../vision.md)
 - [QA_BETA_CREW_CHECKLIST.md](../QA_BETA_CREW_CHECKLIST.md)
 
-## Coach / parent / student (minors — draft, no Builder until v1.2)
+## Coach / parent / student
 
-**Track:** [coach-parent-student/README.md](../coach-parent-student/README.md) — separate from adult GTM beta.
+**Track:** [coach-parent-student/README.md](../coach-parent-student/README.md) · [ONBOARDING-CONTRACT-INDEX.md](./ONBOARDING-CONTRACT-INDEX.md)
 
 | Contract | Release |
 |----------|---------|
+| [flow-become-a-coach.md](./flow-become-a-coach.md) | v1.1 stub |
+| [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md) | v1.2 stub |
+| [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md) | v1.2 stub |
+| [flow-organization-coaches.md](./flow-organization-coaches.md) | v2.0 stub |
 | [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md) | v1.2 |
 | [module-student-profile.md](./module-student-profile.md) | v1.2 |
 | [module-student-visibility.md](./module-student-visibility.md) | v1.2 |
@@ -110,6 +129,8 @@ See bottom of previous README revision — use for any new `flow-*.md` or `modul
 | [flow-coach-minor-class-roster.md](./flow-coach-minor-class-roster.md) | v1.3 pilot |
 | [flow-coach-class-operations.md](./flow-coach-class-operations.md) | v1.4 |
 
+**Validation queue:** `cps-onboarding` in [validation-queues.json](./validation-queues.json)
+
 ## Deferred (no contract until scoped)
 
-Payments, Teams, Leagues, Need Players / Free Agent boards, rich chat media, academy org v2.0.
+Payments, Teams, Leagues, Need Players / Free Agent boards, rich chat media.

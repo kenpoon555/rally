@@ -3,7 +3,7 @@
 **Layer 1.** Simulates user feedback; does **not** replace Validator.
 
 Load skill: `.cursor/skills/product-review/SKILL.md`  
-Personas: [personas.md](../../docs/product-review/personas.md) (12 personas · 10 sports)
+Personas: [personas.md](../../docs/product-review/personas.md) — **Catalog A:** 12 sport × commitment · **Catalog B:** 8 role/onboarding
 
 ## Loop
 
@@ -26,7 +26,7 @@ iOS sim + Monrovia demo. Write docs/product-review/volleyball-host/YYYY-MM-DD-re
 No code. No Validator.
 ```
 
-Repeat for other persona-ids (suggested minimum 6 — see `personas.md` batch list).
+Repeat for other persona-ids — **pickup batch** (6 sport personas) or **onboarding batch** (6 role personas) in `personas.md`.
 
 ## Step 2 — Consolidator (separate Agent chat)
 
