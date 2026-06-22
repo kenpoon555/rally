@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   TouchableOpacity,
+  InteractionManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,6 +23,7 @@ import { Activity } from '../../types/activity';
 import { ActivityLocation } from '../../types/location';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { ROUTES } from '../../constants/routes';
+import { navigationRef } from '../../navigation/navigationRef';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
 import { resolveUserDefaultSport, resolvePreferredSportForLaunch, getSportMetadata, sortSportsForPlayTab } from '../../constants/sports';
 import { updateUserProfile } from '../../services/userService';
@@ -399,23 +401,35 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   }, []);
 
+  const navigateToCreateGame = (params?: { createMode?: 'class' }) => {
+    const routeParams = (params ?? {}) as never;
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.navigate(ROUTES.ACTIVITY.CREATE as never, routeParams);
+      return;
+    }
+    if (navigationRef.isReady()) {
+      navigationRef.navigate(ROUTES.ACTIVITY.CREATE as never, routeParams);
+    }
+  };
+
   const openCreateGame = () => {
     if (COACH_CLASSES_DISCOVER && userIsCoach(user)) {
       setCreatePickerOpen(true);
       return;
     }
-    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
+    navigateToCreateGame();
   };
 
   const handleCreateOption = (option: 'game' | 'rally' | 'class') => {
     setCreatePickerOpen(false);
-    if (option === 'class') {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never, {
-        createMode: 'class',
-      } as never);
-      return;
-    }
-    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
+    InteractionManager.runAfterInteractions(() => {
+      if (option === 'class') {
+        navigateToCreateGame({ createMode: 'class' });
+        return;
+      }
+      navigateToCreateGame();
+    });
   };
 
   const segmentOptions = useMemo(() => {
