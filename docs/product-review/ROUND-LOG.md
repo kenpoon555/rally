@@ -38,9 +38,9 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | onboarding-round1 | onboarding-v1 | 1 | 6/6 | `cps-onboarding` | ✅ Complete |
 | onboarding-round2-picky | onboarding-v1 | 2 | 6/6 | `cps-onboarding` | ✅ Complete · PR [#47](https://github.com/kenpoon555/rally/pull/47) |
 | onboarding-round3-expert | onboarding-v1 | 3 | 4/4 | tier3 regression | ✅ Complete · PR [#48](https://github.com/kenpoon555/rally/pull/48) · docs-only |
-| **pickup-round1** | pickup-gtm2 | 1 | 0/6 | `gtm2-feedback-jun-2026` | 🔄 **In progress** |
+| **pickup-round1** | pickup-gtm2 | 1 | 6/6 | `gtm2-feedback-jun-2026` | 🔄 Contract PR pending |
 | pickup-round2-picky | pickup-gtm2 | 2 | 0/4 | `gtm2-feedback-jun-2026` | ⬜ After pickup-round1 |
-| **sport-meetup** | sport-meetup | — | `running-regular` | `sport-meetup-launch` | 🔄 **In progress** |
+| **sport-meetup** | sport-meetup | — | 1/1 | `sport-meetup-launch` | 🔄 Contract PR pending |
 
 ---
 
@@ -87,36 +87,13 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 ## Round — `pickup-round1` (GTM 2 · tier 1)
 
-**Status:** 🔄 In progress · **Personas (0/6):** `basketball-first-timer`, `badminton-casual`, `badminton-host`, `pickleball-first-timer`, `volleyball-host`, `multi-sport-power-host`  
-**Validation:** `gtm2-feedback-jun-2026`
-
-### Major fixes
-
-| ID | Fix | Status |
-|----|-----|--------|
-| — | *Fill after consolidator* | — |
-
----
+**Status:** 🔄 L1 complete · contract PR pending · **Personas:** 6/6  
+**Validation:** `gtm2-feedback-jun-2026` · **P0:** B1 deep links · B2 schedule spinner
 
 ## Parallel track — `sport-meetup` (Running + Workout)
 
-**Status:** 🔄 In progress · **Persona:** `running-regular` · **Validation:** `sport-meetup-launch`
-
-**Human gates (recommended defaults locked in contract):** H1 ballpark pin · H2 general fitness meetup · H3 Running first · H4 approximate pin required
-
-### Expected major work
-
-| Area | Contract |
-|------|----------|
-| Meetup create path (no court gate) | `module-sport-meetup-sports` |
-| Game modes | `module-sport-game-modes` |
-| Create flow + icons | `flow-create-game`, `module-sport-icon` |
-
-### Major fixes
-
-| ID | Fix | Status |
-|----|-----|--------|
-| — | *Fill after consolidator* | — |
+**Status:** 🔄 L1 complete (`running-regular`) · consolidator ready · **Validation:** `sport-meetup-launch`  
+**P0:** SM1 meetup create path (no court gate)
 
 ---
 
