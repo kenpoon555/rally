@@ -1,12 +1,12 @@
 # Rally loop status
 
-_Updated: 2026-06-22 01:39 UTC_
+_Updated: 2026-06-22 05:23 UTC_
 
 **Release loop:** `onboarding-v1`
 
-## 🔄 IN PROGRESS — next: 
+## 🔄 IN PROGRESS — next: spawn_src_pr
 
-Agent should run chain-next and continue.
+validation green — open src PR
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -14,20 +14,20 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `onboarding-round1` tier 1
+- queue: `onboarding-round2-picky` tier 2
 - phase: `src_pr_pending` · status: `running`
 - layer_2: `merged`
-- builder branch: `fix/onboarding-builder-b1-b6`
-- src PR: https://github.com/kenpoon555/rally/pull/45
+- personas: 6/6
+- builder branch: `fix/onboarding-picky-builder`
 
 ## Validation
 
 - queue: `cps-onboarding`
-- contract: `module-coach-parent-navigation` (8/8)
+- contract: `flow-parent-guardian-consent` (9/9)
 - phase: `done` · status: `pass`
 - chain_enabled: False
-- branch: `fix/onboarding-builder-b1-b6`
-- notes: VALIDATION_GREEN 2026-06-22 — flags-on navigation; B2/B3/B4 cross-contract proof
+- branch: `fix/onboarding-picky-builder`
+- notes: VALIDATION_GREEN_ALL tier2 2026-06-22 — 9/9 cps-onboarding on fix/onboarding-picky-builder. P0 legal gate fresh signup; B1 age_category; B2 Family+consent; H2 teen hide; B8 coach_class_listings @playerr0474532 DB; guardian legal blocker documented.
 
 ---
 

@@ -48,6 +48,11 @@ import {
 import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
 import { createActivity } from '../../services/activityService';
 import { shareGameInvite } from '../../services/inviteLinkService';
+import { createCoachClassListing } from '../../services/coachClassListingService';
+import {
+  ensureClassInvite,
+  shareClassEnrollmentInvite,
+} from '../../services/studentEnrollmentService';
 import { ONBOARDING_FLAGS, setOnboardingFlag } from '../../constants/onboardingFlags';
 import {
   getAllActivityLocations,
@@ -546,9 +551,56 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     const titleTrimmed = listingTitle.trim();
     if (titleTrimmed.length < 3) {
       Alert.alert(
-        'Add a listing title',
-        'Help players understand your game — e.g. "AM training partner" or "Indoor court split $80/hr — need 10".'
+        route.params?.createMode === 'class' ? 'Add a class title' : 'Add a listing title',
+        route.params?.createMode === 'class'
+          ? 'Help parents understand your class — e.g. "Youth Basketball Clinic".'
+          : 'Help players understand your game — e.g. "AM training partner" or "Indoor court split $80/hr — need 10".'
       );
+      return;
+    }
+
+    const locationName =
+      selectedLocation?.name ??
+      locationsWithDistance.find((loc) => loc.id === effectiveSelectedLocationId)?.name ??
+      'TBD';
+
+    if (route.params?.createMode === 'class') {
+      setSaving(true);
+      try {
+        const listing = await createCoachClassListing({
+          coachUserId: user.id,
+          title: titleTrimmed,
+          sportType: sportType as SportType,
+          locationName,
+          startTime: fixedStartTime.toISOString(),
+          durationMinutes: duration,
+          feeNote: costNote.trim() || null,
+        });
+
+        const invite = await ensureClassInvite(
+          user.id,
+          listing.id,
+          listing.title,
+          listing.sport_type
+        );
+
+        navigation.replace(ROUTES.COACH_PARENT.CLASS_DETAIL as never, {
+          classId: listing.id,
+        } as never);
+
+        try {
+          await shareClassEnrollmentInvite(invite);
+        } catch {
+          // Coach dismissed share sheet; invite remains on ClassDetail.
+        }
+      } catch (error: unknown) {
+        Alert.alert(
+          'Publish failed',
+          error instanceof Error ? error.message : 'Could not publish class.'
+        );
+      } finally {
+        setSaving(false);
+      }
       return;
     }
 
@@ -1030,7 +1082,13 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           <Text style={styles.footerHint}>Pick a court to publish</Text>
         )}
         <Button
-          title={saving ? 'Publishing…' : 'Publish game'}
+          title={
+            saving
+              ? 'Publishing…'
+              : route.params?.createMode === 'class'
+                ? 'Publish class'
+                : 'Publish game'
+          }
           onPress={() => void handleCreate()}
           loading={saving}
           disabled={saving || !effectiveSelectedLocationId}

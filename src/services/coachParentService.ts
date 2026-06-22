@@ -15,6 +15,10 @@ import {
 import { STUDENT_PROFILES, PARENT_PILOT_ENROLLMENT } from '../constants/parentStudentFlags';
 import { listStudentProfilesForParent } from './studentProfileService';
 import { listParentEnrollmentsFromDb } from './studentEnrollmentService';
+import {
+  getCoachClassListingFromDb,
+  listCoachClassListingsFromDb,
+} from './coachClassListingService';
 import { getClassSessionState, listParentClassNotifications } from './classCoachOperationsService';
 import { COACH_CLASS_OPERATIONS } from '../constants/coachOpsFlags';
 import {
@@ -218,6 +222,16 @@ export async function listStudentProfiles(parentUserId: string): Promise<Student
 }
 
 export async function listCoachClasses(coachUserId: string): Promise<CoachClassListing[]> {
+  if (COACH_DASHBOARD) {
+    try {
+      const rows = await listCoachClassListingsFromDb(coachUserId);
+      if (rows.length > 0) {
+        return rows;
+      }
+    } catch {
+      // Fall through to demo rows when DB empty or migration pending.
+    }
+  }
   return DEMO_COACH_CLASSES.filter((row) => row.coach_user_id === coachUserId);
 }
 
@@ -252,6 +266,34 @@ export async function listDiscoverClasses(sport: string, coachUserId?: string): 
 }
 
 export async function getCoachClass(classId: string): Promise<CoachClassListing | null> {
+  if (COACH_DASHBOARD) {
+    try {
+      const fromDb = await getCoachClassListingFromDb(classId);
+      if (fromDb) {
+        if (!COACH_CLASS_OPERATIONS) {
+          return fromDb;
+        }
+        try {
+          const state = await getClassSessionState(fromDb.coach_user_id, classId);
+          if (!state) {
+            return fromDb;
+          }
+          return {
+            ...fromDb,
+            session_status: state.session_status,
+            effective_start_time: state.effective_start,
+            start_time:
+              state.session_status === 'deferred' ? state.effective_start : fromDb.start_time,
+          };
+        } catch {
+          return fromDb;
+        }
+      }
+    } catch {
+      // Fall through to demo listing.
+    }
+  }
+
   const listing = DEMO_COACH_CLASSES.find((row) => row.id === classId) ?? null;
   if (!listing || !COACH_CLASS_OPERATIONS) {
     return listing;

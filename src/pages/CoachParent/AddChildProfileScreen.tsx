@@ -47,12 +47,16 @@ const AddChildProfileScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
     if (!canShowGuardianAttestation()) {
-      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT as never);
+      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT as never, {
+        returnToInvite,
+      } as never);
       return;
     }
     const consented = await hasActiveGuardianConsent(user.id);
     if (!consented) {
-      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT as never);
+      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT as never, {
+        returnToInvite,
+      } as never);
       return;
     }
 
