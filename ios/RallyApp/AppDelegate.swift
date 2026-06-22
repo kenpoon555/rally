@@ -45,7 +45,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
-    RCTLinkingManager.application(app, open: url, options: options)
+    return RCTLinkingManager.application(app, open: url, options: options)
   }
 
   func application(
@@ -53,7 +53,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     continue userActivity: NSUserActivity,
     restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
   ) -> Bool {
-    RCTLinkingManager.application(
+    return RCTLinkingManager.application(
       application,
       continue: userActivity,
       restorationHandler: restorationHandler
