@@ -87,10 +87,13 @@
     ]
   },
   "gtm2-feedback-jun-2026": {
-    "description": "Jun 2026 user testing feedback — push, create UX, coach clarity",
+    "description": "Jun 2026 user testing feedback — push, create UX, coach clarity, pickup invites",
     "contracts": [
-      "flow-push-notifications-device",
+      "flow-invite-to-rally",
       "flow-create-game",
+      "flow-play-screen",
+      "flow-rally-session",
+      "flow-push-notifications-device",
       "module-sport-game-modes",
       "flow-coach-onboarding-org",
       "flow-coach-class-operations",
