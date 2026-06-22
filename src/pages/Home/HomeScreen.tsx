@@ -49,13 +49,18 @@ import { discoverPresetKey } from '../../config/gameCardLayouts';
 import { CompactFreeAgentRow } from '../../components/discover/CompactFreeAgentRow';
 import { toUserErrorMessage } from '../../utils/errorMessages';
 import { BETA_REGION } from '../../constants/betaRegion';
-import { listNeedPlayerPosts, NEED_PLAYERS_SPORTS } from '../../services/needPlayersService';
+import { listNeedPlayerPosts } from '../../services/needPlayersService';
 import { NeedPlayerPost } from '../../types/needPlayer';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { SportType } from '../../constants/sports';
-import { FREE_AGENT_SPORTS, listFreeAgentPosts } from '../../services/freeAgentService';
+import { listFreeAgentPosts } from '../../services/freeAgentService';
 import { FreeAgentPost } from '../../types/freeAgent';
 import { COACH_CLASSES_DISCOVER } from '../../constants/coachParentFlags';
+import {
+  freeAgentEmptyCopy,
+  playDiscoverSportFilter,
+  shouldShowPlayClassesSegment,
+} from '../../config/surfaceVisibility';
 import { useCoachParent } from '../../hooks/useCoachParent';
 import { coachClassToActivity, listDiscoverClasses, userIsCoach } from '../../services/coachParentService';
 import { CreateRolePickerSheet } from '../../components/coachParent/CreateRolePickerSheet';
@@ -140,7 +145,17 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const [freeAgentError, setFreeAgentError] = useState<string | null>(null);
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
-  const { hasClassContext, enrollments } = useCoachParent();
+  const { hasClassContext, enrollments, isCoach, classesDiscoverEnabled } = useCoachParent();
+  const showPlayClassesSegment = useMemo(
+    () =>
+      shouldShowPlayClassesSegment({
+        classesDiscoverEnabled,
+        hasClassContext,
+        isCoach,
+        userId: user?.id,
+      }),
+    [classesDiscoverEnabled, hasClassContext, isCoach, user?.id]
+  );
   const [classActivities, setClassActivities] = useState<Activity[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
   const [createPickerOpen, setCreatePickerOpen] = useState(false);
@@ -207,10 +222,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     setNeedLoading(true);
     setNeedError(null);
     try {
-      const sportFilter = NEED_PLAYERS_SPORTS.includes(effectiveSportFilter as SportType)
-        ? effectiveSportFilter
-        : null;
-      const posts = await listNeedPlayerPosts(sportFilter);
+      const posts = await listNeedPlayerPosts(
+        playDiscoverSportFilter(effectiveSportFilter) as SportType
+      );
       setNeedPosts(posts);
     } catch (error: unknown) {
       setNeedError(error instanceof Error ? error.message : 'Could not load posts');
@@ -224,10 +238,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
     setFreeAgentLoading(true);
     setFreeAgentError(null);
     try {
-      const sportFilter = FREE_AGENT_SPORTS.includes(effectiveSportFilter as SportType)
-        ? effectiveSportFilter
-        : null;
-      setFreeAgentPosts(await listFreeAgentPosts(sportFilter));
+      setFreeAgentPosts(
+        await listFreeAgentPosts(playDiscoverSportFilter(effectiveSportFilter) as SportType)
+      );
     } catch (error: unknown) {
       setFreeAgentError(error instanceof Error ? error.message : 'Could not load free agents');
       setFreeAgentPosts([]);
@@ -437,11 +450,17 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
       { value: 'games' as const, label: 'Games' },
       { value: 'free_agents' as const, label: 'Players' },
     ];
-    if (COACH_CLASSES_DISCOVER) {
+    if (showPlayClassesSegment) {
       base.push({ value: 'classes', label: 'Classes' });
     }
     return base;
-  }, []);
+  }, [showPlayClassesSegment]);
+
+  useEffect(() => {
+    if (discoverMode === 'classes' && !showPlayClassesSegment) {
+      setDiscoverMode('games');
+    }
+  }, [discoverMode, showPlayClassesSegment]);
 
   const headerRight =
     discoverMode === 'games' || discoverMode === 'classes' ? (
@@ -539,9 +558,11 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>No players nearby yet</Text>
+                <Text style={styles.emptyTitle}>
+                  {freeAgentEmptyCopy(effectiveSportFilter).title}
+                </Text>
                 <Text style={styles.emptyText}>
-                  Post your availability from Profile, or check back later.
+                  {freeAgentEmptyCopy(effectiveSportFilter).body}
                 </Text>
               </View>
             )
