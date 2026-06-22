@@ -2,7 +2,7 @@
 
 **Contract id:** `module-coach-parent-navigation`  
 **Status:** **Green** — validation 2026-06-22: cross-contract sim proof (B2/B3/B4) on flags-on build  
-**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
+**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md) · tier 3: [2026-06-22-onboarding-expert-synthesis.md](../product-review/consolidated/2026-06-22-onboarding-expert-synthesis.md)  
 **UI ideas:** [parent-student-coach-ui-ideas.md](../coach-parent-student/parent-student-coach-ui-ideas.md)  
 **Safety:** [parent-student-coach-safety-design.md](../coach-parent-student/parent-student-coach-safety-design.md)  
 **Related code:** `HomeScreen.tsx`, `ProfileScreen`, `DynamicHomeScreen.tsx`, `RegularsCrewScreen.tsx`, `coachParentService.ts`, Inbox
@@ -170,7 +170,7 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 - [x] **Family section** on Profile (not separate tab)
 - [ ] Flag-on zero-child adult sees Family section with empty copy (R1 — B2) — **Pass** contract 2
 - [x] **Coach Tools section** role-gated (adult only; teen force-hide per R3)
-- [x] Parent+coach sees both sections (Marcus reference)
+- [x] Parent+coach sees both sections (Marcus reference) — **tier 3 regression:** Family + Coach Tools + Today dual blocks after PR #47
 - [x] Family Profiles list + Add Child Profile
 - [x] No Family on Play main feed
 

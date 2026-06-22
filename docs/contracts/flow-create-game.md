@@ -50,12 +50,12 @@ North-star: **Host completes form → game exists → host invite share works (L
 - [ ] **Android:** Date → time sequential picker completes without crash
 - [ ] Schedule in future — past time blocked on submit
 
-### Coach class publish (P1 — tier 2 picky)
+### Coach class publish (P1 — tier 2 picky · B8 shipped PR #47)
 
-- [ ] `createMode: 'class'` publish creates **`coach_class_listings`** row (not pickup-only `activities` path)
-- [ ] Post-publish lands on **`ClassDetail`** with **Share parent enrollment invite** (`class-enroll` link)
-- [ ] Post-publish does **not** show **Pickup game** card + host **Copy link** as primary outcome
-- [ ] Non-Marcus approved coach (`is_coach=true`) can complete without demo seed classes
+- [x] `createMode: 'class'` publish creates **`coach_class_listings`** row (not pickup-only `activities` path) — DB proof `@playerr0474532`
+- [ ] Post-publish lands on **`ClassDetail`** with **Share parent enrollment invite** (`class-enroll` link) — **tier 3:** sim screenshot required
+- [x] Post-publish does **not** show **Pickup game** card + host **Copy link** as primary outcome (code path)
+- [x] Non-Marcus approved coach (`is_coach=true`) can complete without demo seed classes — listing insert verified
 
 ### Form & create
 
@@ -85,7 +85,7 @@ North-star: **Host completes form → game exists → host invite share works (L
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-22 | `createMode: 'class'` still calls pickup `createActivity` — no class listing / parent enroll share | Builder B8 |
+| 2026-06-22 | ~~B8 pickup path~~ — **resolved** PR #47; tier 3: sim ClassDetail share screenshot for `@playerr0474532` | Validator V1 |
 | 2026-06-21 | iOS create game: schedule spinner rolls but date/time not visible | Fixer |
 | — | Not fully validated on device | Validator |
 

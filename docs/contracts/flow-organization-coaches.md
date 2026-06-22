@@ -13,10 +13,10 @@ North-star (v2): **Head coach on PTO → assigns substitute → parents see same
 
 ## v1 boundary (validate absence)
 
-- [ ] No org admin UI in production build
-- [ ] No “transfer class to another coach” button
-- [ ] Solo coach defer/cancel only — [flow-coach-class-operations.md](./flow-coach-class-operations.md)
-- [ ] Product copy does not promise academy features
+- [x] No org admin UI in production build — tier 3 expert 2026-06-22
+- [x] No “transfer class to another coach” button
+- [x] Solo coach defer/cancel only — [flow-coach-class-operations.md](./flow-coach-class-operations.md)
+- [x] Product copy does not promise academy features
 
 ## v2 required states (stub — Builder when scoped)
 
@@ -83,4 +83,4 @@ North-star (v2): **Head coach on PTO → assigns substitute → parents see same
 
 | Item | Pass | Notes |
 |------|------|-------|
-| v1 absence | | Run v1 boundary checklist only |
+| v1 absence | Pass | Tier 3 expert 2026-06-22 — boundary checklist only; v2 unbuilt |
