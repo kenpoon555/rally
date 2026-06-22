@@ -63,6 +63,7 @@ Use `rallyapp://` scheme and Monrovia seed — tier 1 in demo setup.
 - [ ] Signed-out user tapping `group-invite` gets **Sign in required** (or auth flow) — not silent failure
 - [ ] After login, pending invite replays without manual deep link again — [flow-auth-onboarding.md](./flow-auth-onboarding.md)
 - [ ] `auth/callback` deep link sets session without crash
+- [ ] Invite-driven auth shows an explicit primary submit CTA and never stalls without visible loading/error feedback
 
 ### Rally friend invite (Today card)
 - [ ] Pending invite visible on **Today** when `listMyPendingRegularGroupInvites` returns rows
@@ -117,6 +118,7 @@ Save to `docs/contracts/screenshots/flow-invite-to-rally/`:
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-22 | **Pickup P0 (tier-2 picky):** Signed-out invite/auth handoff not deterministic across first-timer + host personas (4/4 mentions) | Builder |
 | 2026-06-22 | **Pickup P0:** Deep links reach native iOS but JS handler silent no-op — blocks L1 invite personas | Builder B1 |
 | 2026-06-10 | Sim run: deep links reached native iOS but not JS on some paths — **re-verify on real device for GTM 1** | Fixer if device fails |
 | 2026-06-10 | Native UIKit focus-engine crash on automated LoginScreen text entry — human retest | — |
