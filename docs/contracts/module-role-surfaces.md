@@ -83,7 +83,7 @@ Implemented via `shouldShowPlayClassesSegment()` in `surfaceVisibility.ts`.
 - [ ] **Basketball → Players:** same rule
 - [ ] **Badminton → Players:** may show seeded free agents; all rows Badminton
 - [ ] Sport strip change updates Players list without stale cross-sport rows
-- [ ] R0 + flags on: **no** Classes segment on Play
+- [x] R0 + flags on: **no** Classes segment on Play
 - [ ] Marcus (coach): Classes segment visible when flag on
 - [ ] Parent with enrollment: Classes segment visible when flag on
 - [ ] Teen Profile: no Coach Tools, no Family (CPS on)
@@ -103,7 +103,7 @@ Implemented via `shouldShowPlayClassesSegment()` in `surfaceVisibility.ts`.
 
 ## Validator report
 
-> Run: 2026-06-22 ~13:05 PT · iOS Simulator · branch `fix/play-discover-builder` · Marcus + matrix
+> Run: 2026-06-22 ~13:35 PT · iOS Simulator · branch `dev` (PR #58) · Marcus matrix + fresh R0 `@playerr0pd1782160073`
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
@@ -111,7 +111,7 @@ Implemented via `shouldShowPlayClassesSegment()` in `surfaceVisibility.ts`.
 | 2 | Basketball → Players | ✅ Pass | Sport-scoped empty only. |
 | 3 | Badminton → Players | ✅ Pass | `@kunyu · Badminton` row only. |
 | 4 | Sport strip change | ✅ Pass | Running ↔ Badminton updates list correctly. |
-| 5 | R0 no Classes segment | N/T | `playerr0474532` login unavailable on sim; `shouldShowPlayClassesSegment` unit test ✅ |
+| 5 | R0 no Classes segment | ✅ Pass | Fresh signup `@playerr0pd1782160073` — Games \| Players only (CPS flags on). |
 | 6 | Marcus Classes visible | ✅ Pass | Games \| Players \| Classes + Alex confirm card. |
 | 7 | Parent enrollment Classes | ✅ Pass | Same as Marcus dual-role. |
 | 8 | Teen Profile gates | N/T | Not re-run this pass (onboarding tier 3 green). |
@@ -120,10 +120,8 @@ Implemented via `shouldShowPlayClassesSegment()` in `surfaceVisibility.ts`.
 
 ### Screenshots (`docs/contracts/screenshots/module-role-surfaces/`)
 
-- `01-running-players-empty.png`, `03-coach-classes-segment.png`, `04-badminton-players-rows.png`
+- `01-running-players-empty.png`, `02-r0-no-classes-segment.png`, `03-coach-classes-segment.png`, `04-badminton-players-rows.png`
 
 ## Open issues
 
-| Date | Blocker | Owner |
-|------|---------|-------|
-| 2026-06-22 | R0 Classes segment sim screenshot `02-r0-no-classes-segment.png` — needs fresh login | Validator follow-up |
+None.

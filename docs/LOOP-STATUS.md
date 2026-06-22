@@ -1,10 +1,12 @@
 # Rally loop status
 
-_Updated: 2026-06-22 19:10 UTC_
+_Updated: 2026-06-22 20:50 UTC_
+
+**Release loop:** `play-discover-jun-2026`
 
 ## ✅ LOOP COMPLETE — round finished
 
-Queue `overnight-batch-jun-2026` is done. See ROUND-LOG.md or start the next queue.
+Queue `play-discover-round1` is done. See ROUND-LOG.md or start the next queue.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -12,18 +14,20 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `overnight-batch-jun-2026` tier —
+- queue: `play-discover-round1` tier 1
 - phase: `done` · status: `complete`
-- layer_2: `local`
-- builder branch: `fix/overnight-jun-2026-batch`
-- src PR: https://github.com/kenpoon555/rally/pull/55
+- layer_2: `merged`
+- personas: 6/6
+- builder branch: `fix/play-discover-builder`
+- src PR: https://github.com/kenpoon555/rally/pull/58
 
 ## Validation
 
-- queue: `phase-validation-jun-2026` — **complete**
-- scorecard: GTM 2 events wired 2026-06-22
-- device N/T: push, mini-tourney gameplay, gtm1
-- Metro reload: poll testIDs, `crew/:groupId/members` deep link
+- queue: `role-surface-audit`
+- contract: `flow-profile` (4/4)
+- phase: `done` · status: `pass`
+- chain_enabled: False
+- notes: role-surface-audit green 2026-06-22 fix/play-discover-builder
 
 ---
 
