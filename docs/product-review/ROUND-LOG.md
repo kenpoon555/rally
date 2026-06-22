@@ -165,7 +165,7 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 **Screenshots:** `module-role-surfaces/01`–`04` including fresh R0 `@playerr0pd1782160073` (`02-r0-no-classes-segment.png`).
 
-**Optional tier 2:** `play-discover-round2-picky` (off-strip sport label, visual cohesion).
+**Optional tier 2:** `play-discover-round2-picky` (personas) **or** fast builder pass via `play-discover-matrix` — B7 strip slot 3 + B11 empty icon ([tier2 handoff](./consolidated/2026-06-22-play-discover-tier2-validation-handoff.md)).
 
 ---
 

@@ -18,6 +18,18 @@ North-star: **Open Discover → see open games with preset-driven cards → tap 
 2. Tester location enabled for distance sort (optional).
 3. Accounts: host + non-member tester.
 
+### Sport selection (required behavior)
+
+| Rule | Spec |
+|------|------|
+| **Default** | `user.preferred_sports[0]` when set and launch-enabled; else `getDefaultLaunchSportName()` (Pickleball). |
+| **Last selected** | Tapping any sport (strip or More sheet) updates `selectedSport` **and** persists `preferred_sports: [sport]` on profile. |
+| **Re-open Play** | Must restore last selected sport — not silently reset to strip default. |
+| **Off-strip visibility** | When selected sport is **not** in the fixed quick row (slots 1–2), **slot 3** shows that sport’s icon + label (same pattern as `CreateActivityScreen` `sportBarSports`). **More** is not the only selected affordance. |
+| **Strip order** | Quick row order stays stable (`sortSportsForPlayTab`); only slot 3 swaps to surface the active off-strip sport. |
+
+**Fail** if empty state / list is scoped to e.g. Racquetball but strip shows only Pickleball / Basketball / Badminton with only **More** highlighted.
+
 ## Required states
 
 | State | Surface | Must show |
@@ -59,6 +71,9 @@ Full role rules: [module-role-surfaces.md](./module-role-surfaces.md). Validator
 - [ ] **Games empty (Running):** title uses sport name — not ambiguous *"running"* (active vs Running sport)
 - [ ] **Players section:** subtitle matches data — no *"next few hours"* with multi-day-old posts (or filter recency)
 - [ ] **First-timer empty Discover:** secondary hint for invite link / paste (L1)
+- [ ] **Off-strip sport in strip:** More → Racquetball / Running / etc. — active sport appears in quick row slot 3 (icon + label selected)
+- [ ] **Sport persistence:** re-open Play tab — last selected sport still active (profile `preferred_sports`)
+- [ ] **Empty-state hero icon:** glyph centered; no misaligned square tile behind icon ([module-sport-icon.md](./module-sport-icon.md) `discoverEmptyState`)
 
 ## Play → Classes (deferred — separate contract)
 
@@ -67,6 +82,11 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 ## Screenshots required
 
 `docs/contracts/screenshots/flow-play-screen/` — discover open, locked welcoming, **players nearby**, today next up, today empty host, discover empty.
+
+| File | Capture |
+|------|---------|
+| `off-strip-sport-in-strip.png` | More → off-strip sport (e.g. Racquetball) — slot 3 shows sport icon + label selected; empty title matches |
+| `discover-empty-icon-aligned.png` | Games empty — hero sport icon centered (plain or 56px circle; no offset square block) |
 
 ## Out of scope
 
@@ -95,13 +115,19 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 | 12 | Games empty Running title | ✅ Pass | *"No Running meetups nearby"*. |
 | 13 | Players subtitle vs data | ✅ Pass | Subtitle honest; stale row acceptable per H1 option B. |
 | 14 | First-timer invite hint | ✅ Pass | Copy on Games empty state. |
+| 15 | Off-strip sport in strip | ❌ Fail | More → Racquetball: content scoped correctly but strip slots 1–3 unchanged; only More ring highlighted. |
+| 16 | Sport persistence | N/T | Depends on #15 — verify after strip fix. |
+| 17 | Empty-state hero icon | ❌ Fail | `DiscoverEmptyState` applies square `primaryLight` on plain `lg` glyph — icon looks off-center vs filter rings. |
 
 ### Screenshots
 
 - Reuse `docs/contracts/screenshots/module-role-surfaces/` for matrix captures.
+- **Pending:** `flow-play-screen/off-strip-sport-in-strip.png`, `discover-empty-icon-aligned.png`
 
 ## Open issues
 
 | Date | Blocker | Owner |
 |------|---------|-------|
 | 2026-06-22 | Running filter leak — **resolved** on builder branch | — |
+| 2026-06-22 | Off-strip sport not visible in quick strip (B7) — swap slot 3 per demo setup | Builder / Fixer |
+| 2026-06-22 | Discover empty-state icon misaligned (B11) — use plain glyph or 56px circle via preset | Builder / Fixer |
