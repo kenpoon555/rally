@@ -91,11 +91,33 @@
     "description": "Running/Workout after H gates — skips L1 unless running-regular review requested",
     "validation_queue": "sport-meetup-launch",
     "product_review_persona": "running-regular",
+    "batch_pr": true,
     "steps": [
       { "id": "H", "loop": "human", "gate": "module-sport-meetup-sports H1-H4" },
       { "id": "L2", "loop": "contract", "branch": "dev" },
       { "id": "L2b", "loop": "builder", "contract": "module-sport-meetup-sports" },
       { "id": "L3", "loop": "validation", "queue": "sport-meetup-launch", "chain_enabled": true, "auto_builder": true }
     ]
+  },
+  "overnight-batch-jun-2026": {
+    "description": "Chain sim validation on one branch; single combined PR at end (no mid-loop PRs)",
+    "batch_pr": true,
+    "builder_branch": "fix/overnight-jun-2026-batch",
+    "already_green_validation_queues": [
+      "gtm2-feedback-jun-2026",
+      "sport-meetup-launch",
+      "cps-onboarding"
+    ],
+    "validation_queues": ["baseline"],
+    "skip_human_only": [
+      "flow-push-notifications-device"
+    ],
+    "batch_pr_split_on": [
+      "conflict",
+      "needs_human",
+      "blocked_external",
+      "max_fixer_rounds"
+    ],
+    "note": "Say continue in orchestrator — agent chains baseline validation then opens ONE PR. Close stray src PRs (e.g. #54) into this branch."
   }
 }

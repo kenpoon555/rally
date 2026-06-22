@@ -56,8 +56,27 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 - Play → Classes segment (see `module-coach-parent-navigation`)
 - Parent Family UI (see `module-student-profile`)
 
+## Validator report
+
+> Run: 2026-06-22 ~01:05 PT · iOS Simulator · branch `fix/overnight-jun-2026-batch`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Discover empty state | ✅ Pass | No crash; host-a-game guidance. |
+| 2 | Sport filter updates list | ✅ Pass | Basketball filter → "No basketball games nearby". |
+| 3 | Players nearby segment | ✅ Pass | Free-agent rows with section header. |
+| 4 | Discover open / locked cards | N/T | No open activities in linked DB after prior validations. |
+| 5 | Tap → ActivityDetail | ✅ Pass | Via game invite deep link (pickup detail). |
+| 6 | Today quiet / rally CTA | ✅ Pass | Quiet day copy + YOUR RALLY carousel card. |
+| 7 | GameCardShell presets | N/T | No open-game rows to inspect presets this run. |
+| 8 | No redbox | ✅ Pass | Play tab + segments stable. |
+
+### Screenshots (`docs/contracts/screenshots/flow-play-screen/`)
+
+- `03-players-nearby.png`, `04-today-quiet-day.png`, `05-discover-empty.png`
+
 ## Open issues
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| — | Not validated yet | — |
+| — | — | — |
