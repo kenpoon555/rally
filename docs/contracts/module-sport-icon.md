@@ -81,12 +81,11 @@ All surfaces use `variant: 'plain'`. Size varies by column width.
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Discover empty hero aligned | ❌ Fail | Square `primaryLight` behind plain `lg` glyph — visual offset. |
+| 1 | Discover empty hero aligned | ✅ Pass | 56px circle wrapper, plain `lg` glyph (`discover-empty-icon-aligned.png`). |
 
 ## Open issues
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-22 | `DiscoverEmptyState` square background misaligns hero icon (B11) | Builder / Fixer |
 | — | `SportBadge` on non-rally crew cards — migrate to plain or remove | — |
 | — | `InviteFriendsToGameSheet` still uses raw `MaterialCommunityIcons` | — |

@@ -33,7 +33,9 @@ export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
   <View style={[styles.wrap, fill && styles.wrapFill]}>
     <View style={styles.card}>
       <View style={styles.iconRow}>
-        <SportIconForSurface sport={sport} surface="discoverEmptyState" style={styles.sportIcon} />
+        <View style={styles.iconRing}>
+          <SportIconForSurface sport={sport} surface="discoverEmptyState" />
+        </View>
       </View>
 
       <Text style={styles.title}>{discoverGamesEmptyTitle(sport)}</Text>
@@ -104,8 +106,12 @@ const styles = StyleSheet.create({
   iconRow: {
     alignItems: 'center',
   },
-  sportIcon: {
-    backgroundColor: colors.primaryLight,
+  iconRing: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     ...typography.headline,
