@@ -43,7 +43,7 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | sport-meetup | sport-meetup | — | 1/1 | `sport-meetup-launch` | ✅ Complete · PR [#54](https://github.com/kenpoon555/rally/pull/54) |
 | **overnight-batch-jun-2026** | overnight-batch | — | — | `baseline` (+ prior queues) | ✅ Complete · PR [#55](https://github.com/kenpoon555/rally/pull/55) |
 | **phase-validation-jun-2026** | — | — | — | `phase1a`–`ops` | ✅ Complete · PR [#56](https://github.com/kenpoon555/rally/pull/56) |
-| **play-discover-round1** | play-discover-jun-2026 | 1 | 6/6 | `role-surface-audit` | ✅ L1 + validation green on `fix/play-discover-builder` |
+| **play-discover-round1** | play-discover-jun-2026 | 1 | 6/6 | `role-surface-audit` | ✅ Complete · PR [#58](https://github.com/kenpoon555/rally/pull/58) |
 
 ---
 
@@ -148,19 +148,38 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 ---
 
+## Play discover — complete · 2026-06-22
+
+**Loop:** `play-discover-jun-2026` · **Tag:** `play-discover` · **Personas:** 6/6 · **Validation:** `role-surface-audit` 4/4 green
+
+| ID | Fix | Priority |
+|----|-----|----------|
+| B3 | R0 Classes segment hidden when no class context | P1 |
+| B4 | Sport-scoped Players RPC (no cross-sport leak) | P1 |
+| B1 | Games empty title uses sport name | P1 |
+| B2 | Players subtitle recency honesty | P1 |
+| B5 | First-timer invite hint on empty Discover | P1 |
+| B6 | Meetup empty copy (no court steps) | P2 |
+
+**PRs:** Contracts [#57](https://github.com/kenpoon555/rally/pull/57) · Src [#58](https://github.com/kenpoon555/rally/pull/58) `fix/play-discover-builder` → merged `dev`
+
+**Screenshots:** `module-role-surfaces/01`–`04` including fresh R0 `@playerr0pd1782160073` (`02-r0-no-classes-segment.png`).
+
+**Optional tier 2:** `play-discover-round2-picky` (off-strip sport label, visual cohesion).
+
+---
+
 ## Next validation queues (optional / device)
 
 See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md).
 
 **Device N/T:** `flow-push-notifications-device`, `gtm1-launch-gate`, mini-tournament two-account QA.
 
-**Next product-review loop:** `play-discover-round1` (sport×segment + role surfaces) — start with:
+**Next product-review loop (optional):** `play-discover-round2-picky` — or close `play-discover-jun-2026` and ship.
 
 ```bash
-./.cursor/hooks/product-review-loop-start.sh --queue play-discover-round1
+./.cursor/hooks/product-review-loop-start.sh --queue play-discover-round2-picky
 ```
-
-Then validate: `./.cursor/hooks/validation-loop-start.sh --queue role-surface-audit --from module-role-surfaces`
 
 Coach/parent `v1.1`–`v1.4` tracks remain when scoped separately.
 
