@@ -15,8 +15,17 @@ import {
 import { STUDENT_PROFILES, PARENT_PILOT_ENROLLMENT } from '../constants/parentStudentFlags';
 import { listStudentProfilesForParent } from './studentProfileService';
 import { listParentEnrollmentsFromDb } from './studentEnrollmentService';
+import {
+  getCoachClassListingFromDb,
+  listCoachClassListingsFromDb,
+} from './coachClassListingService';
 import { getClassSessionState, listParentClassNotifications } from './classCoachOperationsService';
 import { COACH_CLASS_OPERATIONS } from '../constants/coachOpsFlags';
+import {
+  AgeCategory,
+  isAdultAgeCategory,
+  isTeenAgeCategory,
+} from '../types/ageCategory';
 
 const MARCUS_ID = 'd1000001-0001-4001-8001-000000000001';
 const OTHER_COACH_ID = 'd1000002-0002-4002-8002-000000000002';
@@ -135,36 +144,61 @@ const DEMO_ANNOUNCEMENTS: ClassAnnouncementInboxItem[] = [
   },
 ];
 
-export function userIsCoach(user: { id?: string; is_coach?: boolean } | null | undefined): boolean {
-  if (!user?.id) {
+export type CoachParentUser = {
+  id?: string;
+  is_coach?: boolean;
+  age_category?: AgeCategory | null;
+};
+
+export function userIsCoach(user: CoachParentUser | null | undefined): boolean {
+  if (!user?.id || isTeenAgeCategory(user.age_category)) {
     return false;
   }
-  if (user.is_coach) {
-    return true;
-  }
-  return user.id === MARCUS_ID;
+  return Boolean(user.is_coach);
 }
 
 export function shouldShowFamilySection(
-  userId: string | undefined,
+  user: CoachParentUser | null | undefined,
   studentCount: number
 ): boolean {
-  if (!userId) {
+  if (!user?.id) {
+    return false;
+  }
+  if (isTeenAgeCategory(user.age_category)) {
     return false;
   }
   if (!PARENT_FAMILY_UI && !STUDENT_PROFILES) {
     return false;
   }
-  return studentCount > 0 || userId === MARCUS_ID;
+  if (PARENT_FAMILY_UI || STUDENT_PROFILES) {
+    return isAdultAgeCategory(user.age_category) || studentCount > 0;
+  }
+  return studentCount > 0;
 }
 
-export function shouldShowCoachToolsSection(
-  user: { id?: string; is_coach?: boolean } | null | undefined
-): boolean {
-  if (!COACH_DASHBOARD) {
+export function shouldShowCoachToolsSection(user: CoachParentUser | null | undefined): boolean {
+  if (!COACH_DASHBOARD || isTeenAgeCategory(user?.age_category)) {
     return false;
   }
   return userIsCoach(user);
+}
+
+/** Today MY CLASSES — adult parents with child context only (not R0 players, teens, or empty coaches). */
+export function shouldShowTodayMyClassesCard(
+  user: CoachParentUser | null | undefined,
+  studentCount: number,
+  enrollmentCount: number
+): boolean {
+  if (!PARENT_FAMILY_UI) {
+    return false;
+  }
+  if (!user?.id || isTeenAgeCategory(user.age_category)) {
+    return false;
+  }
+  if (!isAdultAgeCategory(user.age_category)) {
+    return false;
+  }
+  return studentCount > 0 || enrollmentCount > 0;
 }
 
 export async function listStudentProfiles(parentUserId: string): Promise<StudentProfile[]> {
@@ -188,6 +222,16 @@ export async function listStudentProfiles(parentUserId: string): Promise<Student
 }
 
 export async function listCoachClasses(coachUserId: string): Promise<CoachClassListing[]> {
+  if (COACH_DASHBOARD) {
+    try {
+      const rows = await listCoachClassListingsFromDb(coachUserId);
+      if (rows.length > 0) {
+        return rows;
+      }
+    } catch {
+      // Fall through to demo rows when DB empty or migration pending.
+    }
+  }
   return DEMO_COACH_CLASSES.filter((row) => row.coach_user_id === coachUserId);
 }
 
@@ -222,6 +266,34 @@ export async function listDiscoverClasses(sport: string, coachUserId?: string): 
 }
 
 export async function getCoachClass(classId: string): Promise<CoachClassListing | null> {
+  if (COACH_DASHBOARD) {
+    try {
+      const fromDb = await getCoachClassListingFromDb(classId);
+      if (fromDb) {
+        if (!COACH_CLASS_OPERATIONS) {
+          return fromDb;
+        }
+        try {
+          const state = await getClassSessionState(fromDb.coach_user_id, classId);
+          if (!state) {
+            return fromDb;
+          }
+          return {
+            ...fromDb,
+            session_status: state.session_status,
+            effective_start_time: state.effective_start,
+            start_time:
+              state.session_status === 'deferred' ? state.effective_start : fromDb.start_time,
+          };
+        } catch {
+          return fromDb;
+        }
+      }
+    } catch {
+      // Fall through to demo listing.
+    }
+  }
+
   const listing = DEMO_COACH_CLASSES.find((row) => row.id === classId) ?? null;
   if (!listing || !COACH_CLASS_OPERATIONS) {
     return listing;

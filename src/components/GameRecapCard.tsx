@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getGameRecap, shareGameRecap } from '../services/gameRecapService';
+import { trackProductEvent } from '../services/analyticsService';
 import { GameRecap } from '../types/gameRecap';
 import { formatActivityTime } from '../utils/activityHelpers';
 import { colors, radius, spacing, typography } from '../constants/theme';
@@ -13,11 +14,22 @@ export const GameRecapCard: React.FC<Props> = ({ recapId }) => {
   const [recap, setRecap] = useState<GameRecap | null>(null);
   const [loading, setLoading] = useState(true);
   const [sharing, setSharing] = useState(false);
+  const viewedTracked = useRef(false);
 
   useEffect(() => {
     setLoading(true);
     getGameRecap(recapId)
-      .then(setRecap)
+      .then((row) => {
+        setRecap(row);
+        if (row && !viewedTracked.current) {
+          viewedTracked.current = true;
+          void trackProductEvent('recap_viewed', {
+            recap_id: recapId,
+            activity_id: row.activity_id,
+            ...(row.group_id ? { group_id: row.group_id } : {}),
+          });
+        }
+      })
       .catch(() => setRecap(null))
       .finally(() => setLoading(false));
   }, [recapId]);

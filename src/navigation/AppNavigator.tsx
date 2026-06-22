@@ -164,7 +164,7 @@ const MainStack = () => (
     <Stack.Screen
       name={ROUTES.FEEDBACK.BETA}
       component={BetaFeedbackScreen}
-      options={{ title: 'Beta feedback' }}
+      options={{ title: 'Send feedback' }}
     />
     <Stack.Screen
       name={ROUTES.LANDING.SPORT}

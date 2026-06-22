@@ -15,10 +15,18 @@
 | [validation-readiness.md](./validation-readiness.md) | Per-contract: ready to validate? |
 | [ui-roadmap-compact.md](./ui-roadmap-compact.md) | Compact Profile UI · sport-filtered Classes |
 
-## Contract index (draft — no Builder until gates pass)
+## Contract index
+
+**Full onboarding map:** [ONBOARDING-CONTRACT-INDEX.md](../contracts/ONBOARDING-CONTRACT-INDEX.md)  
+**Product-review personas (roles):** [personas.md](../product-review/personas.md) catalog B  
+**Validation queue:** `cps-onboarding` in [validation-queues.json](../contracts/validation-queues.json)
 
 | Contract id | Layer | Build when |
 |-------------|-------|------------|
+| [flow-become-a-coach.md](../contracts/flow-become-a-coach.md) | Coach unlock | v1.1 — manual approval (stub) |
+| [flow-parent-family-onboarding.md](../contracts/flow-parent-family-onboarding.md) | Parent unlock | v1.2 — first child without seed (stub) |
+| [flow-teen-account-onboarding.md](../contracts/flow-teen-account-onboarding.md) | Teen restrictions | v1.2 (stub) |
+| [flow-organization-coaches.md](../contracts/flow-organization-coaches.md) | Multi-coach org | v2.0 (stub only) |
 | [flow-age-gate-onboarding.md](../contracts/flow-age-gate-onboarding.md) | Onboarding | v1.2 prototype — after P0 legal decisions |
 | [module-student-profile.md](../contracts/module-student-profile.md) | Data model | v1.2 |
 | [flow-parent-guardian-consent.md](../contracts/flow-parent-guardian-consent.md) | Legal/consent | v1.2 — **lawyer sign-off H*** |
@@ -26,6 +34,7 @@
 | [flow-student-class-enrollment.md](../contracts/flow-student-class-enrollment.md) | Enrollment | v1.3 pilot |
 | [flow-coach-minor-class-roster.md](../contracts/flow-coach-minor-class-roster.md) | Coach roster | v1.3 pilot |
 | [flow-coach-class-operations.md](../contracts/flow-coach-class-operations.md) | Cancel/defer/reassign | v1.4 Coach Pro beta |
+| [flow-coach-onboarding-org.md](../contracts/flow-coach-onboarding-org.md) | Role model v1 vs v2 | Document + validate hidden surfaces |
 | [module-coach-parent-navigation.md](../contracts/module-coach-parent-navigation.md) | **Tab map + Profile sections** | v1.1–v1.2 |
 
 ## Rule

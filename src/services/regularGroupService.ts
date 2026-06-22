@@ -6,7 +6,7 @@ import {
   RallyFriendInvite,
   RallyOutgoingInvite,
 } from '../types/rallyInvite';
-import { trackProductEvent } from './analyticsService';
+import { trackProductEvent, trackCrewJoined } from './analyticsService';
 
 export const createRegularGroupFromActivity = async (
   activityId: string,
@@ -40,6 +40,7 @@ export const joinRegularGroupViaInvite = async (inviteToken: string): Promise<st
     throw new Error('Group invite could not be redeemed');
   }
   void trackProductEvent('crew_invite_redeemed', { group_id: data, via: 'group_only' });
+  trackCrewJoined(data as string);
   return data as string;
 };
 
@@ -74,6 +75,7 @@ export const joinGroupAndNextGame = async (inviteToken: string): Promise<JoinGro
     activity_id: result.activity_id ?? null,
     via: 'group_and_next_game',
   });
+  trackCrewJoined(result.group_id);
   return {
     groupId: result.group_id,
     activityId: result.activity_id ?? null,
@@ -317,6 +319,7 @@ export const acceptRegularGroupFriendInvite = async (
     group_id: result.group_id,
     invite_id: inviteId,
   });
+  trackCrewJoined(result.group_id);
   return result;
 };
 

@@ -47,3 +47,17 @@ North-star: **Member opens Rally Members tab → leaderboard loads → window to
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | Not validated yet | — |
+
+## Validator report
+
+> Run: 2026-06-22 · `get_rally_leaderboard` RPC
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Leaderboard loads | ✅ | 11 entries all-time |
+| 2 | 90-day window | ✅ | 11 entries with `p_window_days: 90` |
+| 3 | Viewer rank highlight | N/T | Members tab deep link needs Metro reload |
+| 4 | Empty state | N/T | — |
+| 5 | Data matches attendance | ✅ | `@marcus` rank 1, 4 sessions |
+
+**Last validated:** 2026-06-22 — RPC green

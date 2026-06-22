@@ -91,6 +91,7 @@ const GameRoomChatBody: React.FC<{
   onScheduleFromPoll?: (option: { starts_at: string; label: string }) => void;
   showQuickReplies?: boolean;
   onQuickReply?: (text: string) => void;
+  onMessageLongPress?: (message: ChatMessage) => void;
 }> = ({
   isGameRoom,
   isCrewChat,
@@ -114,6 +115,7 @@ const GameRoomChatBody: React.FC<{
   onScheduleFromPoll,
   showQuickReplies = false,
   onQuickReply,
+  onMessageLongPress,
 }) => {
   const gameRoom = useOptionalGameRoom();
   const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
@@ -170,7 +172,11 @@ const GameRoomChatBody: React.FC<{
         ) : null
       }
       renderItem={({ item }) => (
-        <ChatMessageBubble message={item} isMine={item.sender_id === userId} />
+        <ChatMessageBubble
+          message={item}
+          isMine={item.sender_id === userId}
+          onLongPressOther={onMessageLongPress}
+        />
       )}
     />
 
@@ -222,6 +228,11 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [peerUsername, setPeerUsername] = useState<string | null>(null);
   const [blockedThread, setBlockedThread] = useState(false);
   const [safetyOpen, setSafetyOpen] = useState(false);
+  const [safetyTargetOverride, setSafetyTargetOverride] = useState<{
+    userId: string;
+    username: string;
+    reportDetail?: string;
+  } | null>(null);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [crewSessions, setCrewSessions] = useState<ConversationSessionCard[]>([]);
   const [focusedActivityId, setFocusedActivityId] = useState<string | undefined>(activityId);
@@ -351,6 +362,43 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       .catch(() => setBlockedThread(false));
   }, [isGameRoom, peerUserId, user?.id]);
 
+  const handleMessageLongPress = useCallback(
+    async (message: ChatMessage) => {
+      if (!user?.id || message.sender_id === user.id || message.message_type !== 'text') {
+        return;
+      }
+      const snippet = message.content.trim().slice(0, 280);
+      const reportDetail = snippet
+        ? `Flagged message: "${snippet}"`
+        : 'Flagged message in group chat.';
+      try {
+        const profile = await getUserById(message.sender_id);
+        setSafetyTargetOverride({
+          userId: message.sender_id,
+          username: profile?.username || 'Player',
+          reportDetail,
+        });
+      } catch {
+        setSafetyTargetOverride({
+          userId: message.sender_id,
+          username: 'Player',
+          reportDetail,
+        });
+      }
+      setSafetyOpen(true);
+    },
+    [user?.id]
+  );
+
+  const closeSafetySheet = useCallback(() => {
+    setSafetyOpen(false);
+    setSafetyTargetOverride(null);
+  }, []);
+
+  const safetyTargetUserId = safetyTargetOverride?.userId ?? peerUserId;
+  const safetyTargetUsername = safetyTargetOverride?.username ?? peerUsername;
+  const safetyReportDetail = safetyTargetOverride?.reportDetail;
+
   const openRallyHub = useCallback(() => {
     if (!resolvedGroupId) {
       return;
@@ -381,7 +429,13 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       headerRight: () => (
         <View style={styles.headerActions}>
           {!isGameRoom && peerUserId ? (
-            <TouchableOpacity onPress={() => setSafetyOpen(true)} style={styles.headerSafety}>
+            <TouchableOpacity
+              onPress={() => {
+                setSafetyTargetOverride(null);
+                setSafetyOpen(true);
+              }}
+              style={styles.headerSafety}
+            >
               <Text style={styles.headerSafetyText}>Safety</Text>
             </TouchableOpacity>
           ) : null}
@@ -545,6 +599,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       onScheduleFromPoll={isCrewChat ? handleScheduleFromPoll : undefined}
       showQuickReplies={isCrewChat || isGameRoom}
       onQuickReply={handleQuickReply}
+      onMessageLongPress={(message) => void handleMessageLongPress(message)}
     />
   );
 
@@ -608,15 +663,16 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         />
       ) : null}
 
-      {user?.id && peerUserId && peerUsername ? (
+      {user?.id && safetyTargetUserId && safetyTargetUsername ? (
         <SafetyActionsSheet
           visible={safetyOpen}
-          onClose={() => setSafetyOpen(false)}
+          onClose={closeSafetySheet}
           currentUserId={user.id}
-          targetUserId={peerUserId}
-          targetUsername={peerUsername}
+          targetUserId={safetyTargetUserId}
+          targetUsername={safetyTargetUsername}
           contextType="chat"
           contextId={conversationId}
+          initialReportDetail={safetyReportDetail}
         />
       ) : null}
     </KeyboardSafeView>

@@ -43,4 +43,17 @@ North-star: **Rally inactive 14d → captain gets push → tap opens Rally Play 
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| — | — | — |
+| — | Push delivery device N/T | — |
+
+## Validator report
+
+> Run: 2026-06-22 · `claim_crew_dormancy_nudge` (skip eligibility)
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Claim RPC | ✅ | `ok: true` for Julian Fisher group |
+| 2 | Dev test button | ✅ | `__DEV__` host button on crew screen |
+| 3 | `crew_dormancy_nudge_sent` | ✅ | In `ProductEventName` + service |
+| 4 | Push on device | N/T | Sim uses alert fallback |
+
+**Last validated:** 2026-06-22 — ops sim-green (push N/T)

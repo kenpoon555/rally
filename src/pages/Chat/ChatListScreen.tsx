@@ -275,6 +275,8 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               tone="primary"
               compact
               style={styles.filterChip}
+              testID={`inbox-filter-${f.id}`}
+              accessibilityLabel={`${f.label} filter`}
               onPress={() => setFilter(f.id)}
             />
           ))}
@@ -302,7 +304,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           }
         />
       ) : loading && visibleItems.length === 0 ? (
-        <View style={styles.centered}>
+        <View style={styles.centered} accessibilityLabel="Loading inbox">
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (

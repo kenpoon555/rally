@@ -8,7 +8,8 @@
 | Queue | Runnable now? | Why |
 |-------|---------------|-----|
 | `gtm1-launch-gate` | ✅ Yes (device + sim) | Code shipped; contracts green in sim |
-| `v1.1-coach-foundation` | ❌ No | Not built; flag off |
+| `cps-onboarding` | ✅ Partial | Flags on locally; consent lawyer-blocked; Family empty-state gap |
+| `v1.1-coach-foundation` | ✅ Partial | Coach UI shipped with flags — validate navigation |
 | `v1.2-parent-student-core` | ❌ No | P0 + lawyer; no schema |
 | `v1.3-parent-pilot` | ✅ Yes (after v1.2 seed) | Parent enroll + coach roster groups |
 | `v1.4-coach-ops` | ❌ No | Not built |
@@ -21,6 +22,10 @@
 
 | Contract | Spec quality | Demo setup | Screenshots list | Validator template | Sim-testable when built? |
 |--------|--------------|------------|------------------|--------------------|---------------------------|
+| `flow-become-a-coach` | ✅ Stub | Manual `is_coach` flip — no seed | ✅ | 🔲 | ✅ partial |
+| `flow-parent-family-onboarding` | ✅ Stub | Fresh parent — no parent seed | ✅ | 🔲 | ✅ partial (consent blocker) |
+| `flow-teen-account-onboarding` | ✅ Stub | Fresh signup 13–17 | ✅ | 🔲 | ✅ |
+| `flow-organization-coaches` | 🔮 v2 | Boundary checklist only | 🔲 | 🔲 | N/A v1 |
 | `module-coach-parent-navigation` | ✅ Good | 🔲 Add seed for class listings | ✅ | ✅ | ✅ |
 | `flow-age-gate-onboarding` | ✅ Good | ✅ | 🔲 | ✅ | ✅ |
 | `module-student-profile` | ✅ Good | 🔲 needs seed parent + profiles | 🔲 | 🔲 partial | ✅ |

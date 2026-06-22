@@ -4,9 +4,14 @@ import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { withTimeout } from '../utils/withTimeout';
 import { User } from '../types/user';
-import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
+import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport, ensureUserAgeCategory } from '../services/userService';
+import { parseAgeCategory } from '../types/ageCategory';
 import { processDeepLink } from '../navigation/processDeepLink';
 import { consumePendingDeepLink } from '../services/pendingDeepLinkService';
+import {
+  isRecentlyCreatedAuthUser,
+  trackSignupCompletedOnce,
+} from '../services/analyticsService';
 
 interface AuthContextType {
   user: User | null;
@@ -30,6 +35,8 @@ const BOOTSTRAP_GET_SESSION_MS = 8_000;
 const BOOTSTRAP_LOAD_USER_MS = 10_000;
 /** Hard backstop if bootstrap flow never reaches `finally`. */
 const BOOTSTRAP_LOADING_BACKSTOP_MS = 12_000;
+/** Max wait for profile load after explicit sign-in before showing actionable error. */
+const SIGN_IN_LOAD_USER_MS = 12_000;
 
 const parseAuthParamsFromUrl = (url: string): Record<string, string> => {
   // Supabase can send auth params in query (?a=b) or fragment (#a=b).
@@ -102,12 +109,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               : undefined;
           const fallbackUsername =
             (authUser.email?.split('@')[0] || authUser.phone?.replace(/\D/g, '').slice(-8) || 'user').slice(0, 30);
+          const metadataAge = parseAgeCategory(authUser.user_metadata?.age_category);
           let createdOrExisting: User | null = null;
           try {
             createdOrExisting = await createUserProfile(authUser.id, {
               username: metadataUsername || fallbackUsername,
               email: authUser.email || undefined,
               phone: authUser.phone || undefined,
+              age_category: metadataAge ?? undefined,
             });
           } catch (createProfileError: any) {
             // Signup can still be successful if DB trigger already created profile.
@@ -127,6 +136,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       userData = await ensureUserDefaultSport(userData);
+      userData = await ensureUserAgeCategory(userData);
 
       setUser(userData);
       // Do not block auth/navigation on notification setup.
@@ -289,6 +299,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
+        if (event === 'SIGNED_IN' && isRecentlyCreatedAuthUser(session.user.created_at)) {
+          void trackSignupCompletedOnce(session.user.id);
+        }
         // Fire-and-forget: do not await loadUser here. Awaiting can deadlock because
         // loadUser -> getCurrentUser -> supabase.auth.getUser() may wait for this
         // auth state handler to complete, so signIn/signUp never resolve and buttons spin forever.
@@ -331,7 +344,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     if (error) throw error;
     if (data.user) {
-      await loadUser(data.user.id);
+      try {
+        await withTimeout(loadUser(data.user.id), SIGN_IN_LOAD_USER_MS, 'signIn.loadUser');
+      } catch (loadError: any) {
+        const message = loadError instanceof Error ? loadError.message : String(loadError);
+        if (message.includes('signIn.loadUser')) {
+          throw new Error('Signed in, but setup is taking too long. Please retry in a moment.');
+        }
+        throw loadError;
+      }
     }
   };
 
@@ -349,6 +370,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         emailRedirectTo: EMAIL_REDIRECT_TO,
         data: {
           username,
+          age_category: ageCategory,
         },
       },
     });
@@ -402,6 +424,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn('Post-signup user load retry path used:', loadError?.message || loadError);
       // This is non-fatal - user is created, just can't load profile yet
     }
+
+    void trackSignupCompletedOnce(data.user.id);
   };
 
   const signInWithPhone = async (phone: string) => {

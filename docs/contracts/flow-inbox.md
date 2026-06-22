@@ -43,8 +43,26 @@ North-star: **Open Inbox → tap game row → game chat opens with GameRoom head
 - Push notification tap routing (see push contract / workflow)
 - Message composer behavior (covered in game-room / rally-session)
 
+## Validator report
+
+> Run: 2026-06-22 ~01:06 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/overnight-jun-2026-batch`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Filters switch | ✅ Pass | Friends / Games / Rallies / Classes chips — no crash. |
+| 2 | Friends empty state | ✅ Pass | Copy + empty illustration. |
+| 3 | Games empty state | ✅ Pass | Archived-game copy when no active rooms. |
+| 4 | Classes announcements | ✅ Pass | Beginner Badminton parent row visible. |
+| 5 | Rally row → hub | ✅ Pass | API: 2 groups for marcus; hub via `rallyapp://crew/…`. Inbox filter chips get `testID=inbox-filter-*` for automation. |
+| 6 | Game row → game chat | N/T | No active game rooms in inbox. |
+| 7 | Error/retry | N/T | Fetch succeeded (no error banner). |
+
+### Screenshots (`docs/contracts/screenshots/flow-inbox/`)
+
+- `01-friends-filter-empty.png`, `02-games-filter-empty.png`
+
 ## Open issues
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| — | Not validated yet | — |
+| — | — | — |

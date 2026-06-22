@@ -14,6 +14,7 @@ import { ClassEnrollmentInvite } from '../../types/coachParent';
 import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { ROUTES } from '../../constants/routes';
 import { PARENT_PILOT_ENROLLMENT } from '../../constants/parentStudentFlags';
+import { canCreateStudentProfiles } from '../../types/ageCategory';
 
 type Params = {
   ParentClassInvite: { inviteToken: string };
@@ -90,6 +91,24 @@ const ParentClassInviteScreen: React.FC<Props> = ({ navigation, route }) => {
         >
           <Text style={styles.primaryBtnText}>Log in to enroll</Text>
         </TouchableOpacity>
+      </ScrollView>
+    );
+  }
+
+  const canEnrollChild = canCreateStudentProfiles(user.age_category);
+
+  if (!canEnrollChild) {
+    return (
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.eyebrow}>Class enrollment</Text>
+        <Text style={styles.title} testID="class-invite-preview">
+          {invite.class_title}
+        </Text>
+        <Text style={styles.line}>{invite.sport_type}</Text>
+        <Text style={styles.hint} testID="class-invite-teen-block">
+          Only a parent or guardian 18+ can enroll a student in this class. Ask your parent to open
+          this invite link.
+        </Text>
       </ScrollView>
     );
   }

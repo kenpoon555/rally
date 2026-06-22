@@ -14,7 +14,7 @@ import {
 } from '../src/constants/sports';
 
 describe('launch sport config', () => {
-  it('launches 10 sports including partner-dependent niches', () => {
+  it('launches 11 sports including partner-dependent niches and running', () => {
     expect(LAUNCH_SPORT_TYPES).toEqual([
       SportType.PICKLEBALL,
       SportType.BASKETBALL,
@@ -26,6 +26,7 @@ describe('launch sport config', () => {
       SportType.RACQUETBALL,
       SportType.TABLE_TENNIS,
       SportType.ULTIMATE,
+      SportType.RUNNING,
     ]);
     expect(getDefaultLaunchSportName()).toBe(SportType.PICKLEBALL);
   });
@@ -56,9 +57,9 @@ describe('launch sport config', () => {
     expect(getSportMetadata(SportType.VOLLEYBALL)?.partnerDependent).toBeFalsy();
   });
 
-  it('does not launch running or hiking yet', () => {
-    expect(getSportMetadata(SportType.RUNNING)?.launchEnabled).toBe(false);
+  it('does not launch hiking or workout yet', () => {
     expect(getSportMetadata(SportType.HIKING)?.launchEnabled).toBe(false);
+    expect(getSportMetadata(SportType.WORKOUT)?.launchEnabled).toBe(false);
   });
 });
 
@@ -67,11 +68,12 @@ describe('resolveUserDefaultSport', () => {
     expect(resolveUserDefaultSport('Basketball')).toBe(SportType.BASKETBALL);
     expect(resolveUserDefaultSport('Tennis')).toBe(SportType.TENNIS);
     expect(resolveUserDefaultSport('Squash')).toBe(SportType.SQUASH);
+    expect(resolveUserDefaultSport('Running')).toBe(SportType.RUNNING);
   });
 
   it('falls back to pickleball when unset or not launch-enabled', () => {
     expect(resolveUserDefaultSport(null)).toBe(SportType.PICKLEBALL);
-    expect(resolveUserDefaultSport('Running')).toBe(SportType.PICKLEBALL);
+    expect(resolveUserDefaultSport('Hiking')).toBe(SportType.PICKLEBALL);
   });
 });
 

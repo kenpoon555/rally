@@ -85,5 +85,67 @@
     "contracts": [
       "flow-coach-class-operations"
     ]
+  },
+  "gtm2-feedback-jun-2026": {
+    "description": "Jun 2026 user testing feedback — push, create UX, coach clarity, pickup invites",
+    "contracts": [
+      "flow-invite-to-rally",
+      "flow-create-game",
+      "flow-play-screen",
+      "flow-rally-session",
+      "flow-push-notifications-device",
+      "module-sport-game-modes",
+      "flow-coach-onboarding-org",
+      "flow-coach-class-operations",
+      "module-coach-parent-navigation"
+    ]
+  },
+  "cps-onboarding": {
+    "description": "Role unlock journeys — tier 2 picky includes auth + coach class publish",
+    "contracts": [
+      "flow-auth-onboarding",
+      "flow-age-gate-onboarding",
+      "flow-parent-family-onboarding",
+      "flow-teen-account-onboarding",
+      "flow-become-a-coach",
+      "flow-create-game",
+      "flow-coach-onboarding-org",
+      "flow-student-class-enrollment",
+      "flow-parent-guardian-consent"
+    ]
+  },
+  "sport-meetup-launch": {
+    "description": "Running + Workout — meetup location path (non-court create)",
+    "contracts": [
+      "module-sport-meetup-sports",
+      "module-sport-game-modes",
+      "flow-create-game",
+      "module-sport-icon"
+    ]
+  },
+  "role-surface-audit": {
+    "description": "Role × surface visibility + Play sport×segment matrix (Jun 2026)",
+    "contracts": [
+      "module-role-surfaces",
+      "flow-play-screen",
+      "module-coach-parent-navigation",
+      "flow-profile"
+    ]
+  },
+  "play-discover-matrix": {
+    "description": "Fast re-check after Play filter / segment / strip UX fixes",
+    "contracts": [
+      "module-role-surfaces",
+      "flow-play-screen",
+      "module-sport-icon"
+    ]
+  },
+  "app-store-build-10": {
+    "description": "App Store Build 10 — Guideline 2.2 (no beta UI) + 1.2 (UGC moderation)",
+    "contracts": [
+      "module-production-surface",
+      "module-ugc-moderation",
+      "flow-auth-onboarding"
+    ]
   }
 }

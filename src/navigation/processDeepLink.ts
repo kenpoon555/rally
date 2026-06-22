@@ -2,12 +2,13 @@ import { Alert } from 'react-native';
 import { ROUTES } from '../constants/routes';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import { navigationRef } from './navigationRef';
-import { parseAppDeepLink } from './deepLinking';
+import { parseAppDeepLink, ParsedDeepLink } from './deepLinking';
 import { storePendingDeepLink } from '../services/pendingDeepLinkService';
 import { joinGroupAndNextGame } from '../services/regularGroupService';
 import { resolveActivityIdFromInviteToken } from '../services/activityService';
 import { ensureActivityGroupConversation } from '../services/chatService';
 import { supabase } from '../services/api/supabase';
+import { trackProductEvent } from '../services/analyticsService';
 
 const NAV_READY_POLL_MS = 50;
 const NAV_READY_TIMEOUT_MS = 8000;
@@ -34,11 +35,47 @@ async function navigateDeepLink(name: string, params?: object): Promise<boolean>
   return true;
 }
 
+async function navigateDeepLinkOrStore(
+  url: string,
+  name: string,
+  params?: object,
+  allowStorePending = true
+): Promise<boolean> {
+  const opened = await navigateDeepLink(name, params);
+  if (!opened && allowStorePending) {
+    await storePendingDeepLink(url);
+  }
+  return opened;
+}
+
+function trackInviteLinkOpened(parsed: ParsedDeepLink): void {
+  const props: Record<string, unknown> = { link_type: parsed.type };
+  if (parsed.activityId) {
+    props.activity_id = parsed.activityId;
+  }
+  if (parsed.inviteToken) {
+    props.invite_token_present = true;
+  }
+  if (parsed.groupInviteToken) {
+    props.group_invite_token_present = true;
+  }
+  void trackProductEvent('invite_link_opened', props);
+}
+
 export async function processDeepLink(url: string, options?: { allowStorePending?: boolean }): Promise<void> {
   const allowStorePending = options?.allowStorePending !== false;
 
   try {
     const parsed = parseAppDeepLink(url);
+
+    if (
+      parsed.type === 'game' ||
+      parsed.type === 'invite' ||
+      parsed.type === 'hostInvite' ||
+      parsed.type === 'groupInvite'
+    ) {
+      trackInviteLinkOpened(parsed);
+    }
 
     if (parsed.type === 'unknown') {
       Alert.alert('Invalid invite', 'This invite link is not valid or has expired.');
@@ -46,7 +83,7 @@ export async function processDeepLink(url: string, options?: { allowStorePending
     }
 
     if (parsed.type === 'sportLanding' && parsed.sportSlug) {
-      await navigateDeepLink(ROUTES.LANDING.SPORT, { sportSlug: parsed.sportSlug });
+      await navigateDeepLinkOrStore(url, ROUTES.LANDING.SPORT, { sportSlug: parsed.sportSlug }, allowStorePending);
       return;
     }
 
@@ -71,15 +108,25 @@ export async function processDeepLink(url: string, options?: { allowStorePending
     }
 
     if (parsed.type === 'game' && parsed.activityId) {
-      await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, { activityId: parsed.activityId });
+      await navigateDeepLinkOrStore(
+        url,
+        ROUTES.ACTIVITY.DETAIL,
+        { activityId: parsed.activityId },
+        allowStorePending
+      );
       return;
     }
 
     if (parsed.type === 'hostInvite' && parsed.inviteToken) {
-      await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, {
-        inviteToken: parsed.inviteToken,
-        hostInvite: true,
-      });
+      await navigateDeepLinkOrStore(
+        url,
+        ROUTES.ACTIVITY.DETAIL,
+        {
+          inviteToken: parsed.inviteToken,
+          hostInvite: true,
+        },
+        allowStorePending
+      );
       return;
     }
 
@@ -90,7 +137,15 @@ export async function processDeepLink(url: string, options?: { allowStorePending
           Alert.alert('Invite link', 'This invite is invalid or expired.');
           return;
         }
-        await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, { activityId });
+        const opened = await navigateDeepLinkOrStore(
+          url,
+          ROUTES.ACTIVITY.DETAIL,
+          { activityId },
+          allowStorePending
+        );
+        if (!opened) {
+          return;
+        }
       } catch (err: unknown) {
         Alert.alert(
           'Invite link',
@@ -108,9 +163,14 @@ export async function processDeepLink(url: string, options?: { allowStorePending
         Alert.alert('Sign in required', 'Log in as a parent or guardian to enroll a student.');
         return;
       }
-      await navigateDeepLink(ROUTES.COACH_PARENT.PARENT_CLASS_INVITE, {
-        inviteToken: parsed.classEnrollToken,
-      });
+      await navigateDeepLinkOrStore(
+        url,
+        ROUTES.COACH_PARENT.PARENT_CLASS_INVITE,
+        {
+          inviteToken: parsed.classEnrollToken,
+        },
+        allowStorePending
+      );
       return;
     }
 
@@ -135,12 +195,17 @@ export async function processDeepLink(url: string, options?: { allowStorePending
         }
 
         if (conversationId) {
-          const opened = await navigateDeepLink(ROUTES.CHAT.THREAD, {
-            conversationId,
-            activityId: activityId ?? undefined,
-            groupId,
-            title: PRODUCT_COPY.rallyChat,
-          });
+          const opened = await navigateDeepLinkOrStore(
+            url,
+            ROUTES.CHAT.THREAD,
+            {
+              conversationId,
+              activityId: activityId ?? undefined,
+              groupId,
+              title: PRODUCT_COPY.rallyChat,
+            },
+            allowStorePending
+          );
           if (opened) {
             return;
           }
@@ -149,10 +214,15 @@ export async function processDeepLink(url: string, options?: { allowStorePending
         if (activityId) {
           try {
             const gameConvoId = await ensureActivityGroupConversation(activityId);
-            const opened = await navigateDeepLink(ROUTES.CHAT.THREAD, {
-              conversationId: gameConvoId,
-              activityId,
-            });
+            const opened = await navigateDeepLinkOrStore(
+              url,
+              ROUTES.CHAT.THREAD,
+              {
+                conversationId: gameConvoId,
+                activityId,
+              },
+              allowStorePending
+            );
             if (opened) {
               return;
             }

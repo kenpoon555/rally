@@ -16,6 +16,7 @@ import { enrollStudentInClass } from '../../services/studentEnrollmentService';
 import { ClassEnrollmentInvite, StudentProfile } from '../../types/coachParent';
 import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { ROUTES } from '../../constants/routes';
+import { canCreateStudentProfiles } from '../../types/ageCategory';
 
 type Params = {
   ChildProfilePicker: {
@@ -77,6 +78,7 @@ const ChildProfilePickerScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const title = invite?.class_title ?? route.params?.classTitle;
+  const canAddChild = canCreateStudentProfiles(user?.age_category);
 
   return (
     <View style={styles.container}>
@@ -105,7 +107,7 @@ const ChildProfilePickerScreen: React.FC<Props> = ({ navigation, route }) => {
             </TouchableOpacity>
           ))
         )}
-        {invite ? (
+        {invite && canAddChild ? (
           <TouchableOpacity
             style={styles.addBtn}
             testID="child-picker-add"
@@ -117,6 +119,10 @@ const ChildProfilePickerScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             <Text style={styles.addBtnText}>+ Add child profile</Text>
           </TouchableOpacity>
+        ) : invite && !canAddChild ? (
+          <Text style={styles.teenBlock} testID="child-picker-teen-block">
+            Only a parent or guardian 18+ can add a child profile.
+          </Text>
         ) : null}
       </ScrollView>
     </View>
@@ -148,6 +154,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   addBtnText: { color: colors.primaryDark, fontWeight: '600', fontSize: 16 },
+  teenBlock: { marginTop: spacing.md, color: colors.textSecondary, lineHeight: 20 },
 });
 
 export default ChildProfilePickerScreen;

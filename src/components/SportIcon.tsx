@@ -19,6 +19,7 @@ const SPORT_ICON_NAMES: Record<SportType, IconName> = {
   [SportType.ULTIMATE]: 'disc',
   [SportType.RUNNING]: 'run',
   [SportType.HIKING]: 'hiking',
+  [SportType.WORKOUT]: 'dumbbell',
 };
 
 type Size = 'sm' | 'md' | 'lg';

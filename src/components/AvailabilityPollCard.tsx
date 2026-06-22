@@ -88,8 +88,10 @@ export const AvailabilityPollCard: React.FC<Props> = ({
   const isOpen = poll.status === 'open';
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>{poll.title}</Text>
+    <View style={styles.card} testID={`availability-poll-${poll.id}`}>
+      <Text style={styles.title} accessibilityRole="header">
+        {poll.title}
+      </Text>
       <Text style={styles.meta}>
         {isOpen ? 'Tap a time to vote' : 'Poll closed'}
         {totalVotes > 0 ? ` · ${totalVotes} vote${totalVotes === 1 ? '' : 's'}` : ''}
@@ -102,6 +104,8 @@ export const AvailabilityPollCard: React.FC<Props> = ({
         return (
           <TouchableOpacity
             key={option.id}
+            testID={`availability-poll-option-${option.id}`}
+            accessibilityLabel={`${formatSlot(option.starts_at, option.label)} vote option`}
             style={[
               styles.optionRow,
               selected && styles.optionRowSelected,
@@ -130,6 +134,7 @@ export const AvailabilityPollCard: React.FC<Props> = ({
             title={closing ? 'Closing…' : 'Close poll'}
             variant="secondary"
             size="sm"
+            testID={`availability-poll-close-${poll.id}`}
             onPress={() => handleClose(leadingOption?.id)}
             disabled={closing}
             loading={closing}

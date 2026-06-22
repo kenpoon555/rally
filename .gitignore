@@ -3,6 +3,7 @@
 
 # Contract validation chain (local session state)
 docs/contracts/.validation-session.json
+docs/product-review/.product-review-session.json
 docs/contracts/.validation-next.md
 
 # Python
@@ -71,6 +72,9 @@ ios-build.log
 # Ruby / CocoaPods
 **/Pods/
 /vendor/bundle/
+
+# Expo local state (prebuild cache, device lists, xcodebuild logs)
+.expo/
 
 # Temporary files created by Metro to check the health of the file watcher
 .metro-health-check*

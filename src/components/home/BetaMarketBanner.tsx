@@ -10,7 +10,7 @@ export const BetaMarketBanner: React.FC = () => {
 
   return (
     <View style={styles.card}>
-      <Text style={styles.badge}>{BETA_COPY.marketLabel}</Text>
+      <Text style={styles.badge}>{BETA_COPY.regionLabel}</Text>
       <Text style={styles.headline}>{BETA_COPY.headline}</Text>
       <Text style={styles.body}>{BETA_COPY.body}</Text>
       <TouchableOpacity style={styles.cta} onPress={openContact} accessibilityRole="button">
