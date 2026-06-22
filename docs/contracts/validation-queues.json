@@ -108,5 +108,14 @@
       "flow-student-class-enrollment",
       "flow-teen-account-onboarding"
     ]
+  },
+  "sport-meetup-launch": {
+    "description": "Running + Workout — meetup location path (non-court create)",
+    "contracts": [
+      "module-sport-meetup-sports",
+      "module-sport-game-modes",
+      "flow-create-game",
+      "module-sport-icon"
+    ]
   }
 }

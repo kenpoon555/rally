@@ -100,6 +100,27 @@ Agents **must** write `.validation-session.json` at the end of each phase (promp
 
 Still valid — see [VALIDATION-RUNBOOK.md](../../docs/contracts/VALIDATION-RUNBOOK.md).
 
+## Product review loop (Layer 1 → Builder → Validator)
+
+**Not** the validation hook — tracks persona queue progress separately.
+
+```bash
+chmod +x .cursor/hooks/product-review-loop-start.sh
+./.cursor/hooks/product-review-loop-start.sh --queue onboarding-round1
+```
+
+| Step | Command / action |
+|------|------------------|
+| Start queue | `product-review-loop-start.sh --queue onboarding-round1` |
+| After each persona | Update `.product-review-session.json` → `product-review-chain-next.py` |
+| Consolidator | When 6 reviews done — separate Agent chat |
+| Approve | `product-review-loop-approve.sh` |
+| Proof | `validation-loop-start.sh --queue cps-onboarding --builder` |
+
+Runbook: [PRODUCT-REVIEW-LOOP.md](../../docs/product-review/PRODUCT-REVIEW-LOOP.md) · Queues: [review-queues.json](../../docs/product-review/review-queues.json)
+
+Tier 2/3 (`onboarding-round2-picky`, `round3-expert`) = pickier personas after round 1 green.
+
 ### Legacy
 
 `contract-loop-followup.sh` — old Validator-only re-prompt via `RALLY_CONTRACT_LOOP=1` env. Prefer `validation-loop-start.sh` + state file.

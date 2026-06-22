@@ -44,10 +44,10 @@ Load persona definitions: `docs/product-review/personas.md`
    | Host-only (L4+) only | Medium |
    | Sport-specific copy/icon | Low unless ≥3 sports |
 
-5. **Write synthesis** — `docs/product-review/consolidated/YYYY-MM-DD-synthesis.md`:
+5. **Write synthesis** — `docs/product-review/consolidated/YYYY-MM-DD-{tag}-synthesis.md`:
 
    ```markdown
-   # Product review synthesis — YYYY-MM-DD
+   # Product review synthesis — YYYY-MM-DD · {tag}
 
    ## Reviews included
    | persona-id | date | file |
@@ -60,8 +60,17 @@ Load persona definitions: `docs/product-review/personas.md`
    ## Recommended contract changes
    | Priority | Contract file | Change type | Proposed diff summary |
    |----------|---------------|-------------|----------------------|
-   | P0 | flow-invite-to-rally.md | new checklist row | … |
-   | P1 | module-rally-hub.md | H gate | … |
+
+   ## Builder backlog (Layer 2 → Builder agent)
+   | Priority | Item | Contract | Likely files | Notes |
+   |----------|------|----------|--------------|-------|
+
+   ## Validation handoff (Layer 3)
+   | Order | Contract id | Why now |
+   |-------|-------------|---------|
+   | 1 | flow-… | P0 from synthesis |
+
+   **Start command:** `./.cursor/hooks/validation-loop-start.sh --queue {validation_queue} --builder`
 
    ## Out of scope (this cycle)
    - …
@@ -69,17 +78,18 @@ Load persona definitions: `docs/product-review/personas.md`
    ## Human decisions needed (H gates)
    | ID | Question | Options |
    |----|----------|---------|
-
-   ## Suggested validation order after merge
-   1. flow-…
    ```
+
+   Also write standalone handoff files (same content split for humans):
+   - `docs/product-review/consolidated/YYYY-MM-DD-{tag}-builder-backlog.md`
+   - `docs/product-review/consolidated/YYYY-MM-DD-{tag}-validation-handoff.md`
 
 6. **Draft contract updates** — for P0/P1 rows only:
    - Load `.cursor/skills/write-contract/SKILL.md`
    - Edit affected `docs/contracts/*.md` — add checklist rows, H gates, performance rows, **Estimated monthly cost**
    - Do **not** merge without human approval
 
-7. **Stop** — present synthesis path + list of contract files touched; ask human to approve before PR
+7. **Stop** — present synthesis path + list of contract files touched; **do not** ask human to approve yet — pre-approve reviewer runs next (`chain-next` → `pre_approve_reviewer`).
 
 ## Output rules
 
@@ -98,4 +108,8 @@ Load write-contract skill for cost + H gates.
 
 ## Handoff
 
-Human approves synthesis → contract PR (Layer 2) → `./.cursor/hooks/validation-loop-start.sh {contract-id}` (Layer 3)
+Pre-approve reviewer reads synthesis + proposed diffs → writes `*-pre-approve-review.md` → human gate.
+
+Human reads pre-approve review → `./.cursor/hooks/product-review-loop-approve.sh` → contract PR (Layer 2) → **Builder** reads `*-builder-backlog.md` → `./.cursor/hooks/validation-loop-start.sh --queue {name}` (Layer 3)
+
+Full cycle: [PRODUCT-REVIEW-LOOP.md](../../docs/product-review/PRODUCT-REVIEW-LOOP.md)

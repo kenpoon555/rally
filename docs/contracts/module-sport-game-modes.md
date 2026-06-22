@@ -27,6 +27,10 @@ North-star: **Basketball Rally create shows Pickup only; Badminton Rally shows P
 | **Badminton** | Pickup | Pickup + Mini tournament (if template or default) | Class/clinic |
 | **Pickleball** | Pickup | Pickup + Mini tournament | Class/clinic |
 | **Volleyball** | Pickup | Pickup + Mini tournament | Class/clinic |
+| **Running** | Pickup (meetup location) | Pickup only | Class/clinic optional |
+| **Workout** | Pickup (meetup location) | Pickup only | Prefer coach Class for bootcamp |
+
+**Meetup sports (non-court):** See [module-sport-meetup-sports.md](./module-sport-meetup-sports.md) — Running + Workout use ballpark meet area, not court picker.
 
 **Human gate H1:** Basketball mini tournament in Rally — **off for v1** (full-court pickup runs only). Revisit when bracket UX exists.
 

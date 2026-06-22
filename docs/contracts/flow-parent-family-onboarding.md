@@ -1,8 +1,9 @@
 # Flow — Parent Family onboarding (first child profile)
 
 **Contract id:** `flow-parent-family-onboarding`  
-**Status:** Stub — implementation partial; legal + empty-state gaps  
+**Status:** **Partial** — product review 2026-06-21: Family visibility + `age_category` signup regressions (P0); legal gate expected stop  
 **Track:** v1.2 parent/student · [module-coach-parent-navigation.md](./module-coach-parent-navigation.md)  
+**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Related code:** `ProfileFamilySection.tsx`, `FamilyProfilesScreen.tsx`, `AddChildProfileScreen.tsx`, `shouldShowFamilySection`, `coachParentFlags`, `parentStudentFlags`
 
 ## Purpose
@@ -31,8 +32,8 @@ North-star: **New parent → Profile Family (or class invite) → Add Child → 
 
 | State | How to reach | Must show |
 |-------|--------------|-----------|
-| **Non-parent (player)** | Regular adult, no children | **No** Family section (unless flag-only empty state — see H2) |
-| **Parent, flag on, zero children** | 18+ with `PARENT_FAMILY_UI` | Family section with empty copy + path to Add Child |
+| **Non-parent (player)** | Regular adult, no children | **No** Family section |
+| **Parent, flag on, zero children** | 18+ with `PARENT_FAMILY_UI`, zero `student_profiles` | **FAMILY** section on Profile Settings with empty copy + Add Child path (**R1 locked: Yes**) |
 | **Family list empty** | Navigate Family Profiles | Hint + **Add Child Profile** CTA |
 | **Consent gate** | Tap Add Child | Guardian consent or legal-review blocker per consent contract |
 | **Profile created** | Consent OK + display name | Family section lists child; Today may show My Classes when enrolled |
@@ -40,10 +41,17 @@ North-star: **New parent → Profile Family (or class invite) → Add Child → 
 
 ## Pass/fail checklist
 
+### Signup prerequisite (P0 — blocks Add Child)
+
+- [ ] After 18+ age-gate signup, DB `profiles.age_category = 'adult_18_plus'` without manual SQL — verify via Supabase or `supabase db query`
+- [ ] Fresh parent signup → Add Child reaches consent screen (or documented legal blocker per [flow-parent-guardian-consent.md](./flow-parent-guardian-consent.md)) — **not** “Adults only” alert with null `age_category`
+- [ ] Email-confirm deferral path: after first sign-in, `age_category` still matches age-gate selection — see [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md)
+
 ### Discovery (no pre-seed)
 
 - [ ] Fresh 18+ parent: can reach Add Child without seeded Alex/Mia rows
-- [ ] `@kunyu` or regular player: **no** Family section when zero children and not parent flag test account
+- [ ] Flag-on 18+ parent with zero children sees **FAMILY** on Profile Settings with empty copy + Add Child path — primary Profile-first onboarding (**R1 locked**)
+- [ ] `@kunyu` or regular player (R0): **no** Family section when zero children and not parent intent
 - [ ] Family section subtitle: *Manage child/student profiles for classes*
 - [ ] Add Child blocked for under-18 account with clear copy
 
@@ -54,15 +62,17 @@ North-star: **New parent → Profile Family (or class invite) → Add Child → 
 - [ ] Success returns to Family list with new row
 - [ ] Free tier: 6th active profile blocked with message
 
-### Alternate entry (class invite)
+### Alternate entry (class invite — secondary until R1 green)
 
-- [ ] Parent with zero profiles opens class enroll link → inline add child path
+- [ ] Parent with zero profiles opens class enroll link → inline add child path (secondary entry; Profile Family is primary per R1)
 - [ ] Same consent rules as Profile path
+- [ ] Inline add from invite with `returnToInvite` returns to picker after create (post-consent) — see [flow-student-class-enrollment.md](./flow-student-class-enrollment.md)
 
 ### Regression
 
 - [ ] Marcus seed path still works for Validator automation (separate run)
 - [ ] Demo fallback rows in `coachParentService` do not appear for non-Marcus fresh accounts
+- [ ] `shouldShowFamilySection` does not special-case Marcus user id — visibility from DB flags + student count only
 
 ## Performance requirements
 
@@ -82,12 +92,19 @@ North-star: **New parent → Profile Family (or class invite) → Add Child → 
 | E1 | Lawyer approval for attestation — [flow-parent-guardian-consent.md](./flow-parent-guardian-consent.md) |
 | E2 | Linked Supabase for profile rows |
 
+## Release decisions (2026-06-21 onboarding-round1)
+
+| ID | Question | Decision |
+|----|----------|----------|
+| R1 | Show Profile **Family** when parent flags on + zero children? | **A: Yes** — Profile-first onboarding (locked) |
+| R2 | Primary parent entry while Family hidden? | **A: Fix Family visibility (Builder B2)** — not invite-only |
+
 ## Human decision gates (H*)
 
 | ID | Question | Default |
 |----|----------|---------|
-| H1 | Show Family section when flag on but zero children? | **Yes** — Profile-first onboarding |
-| H2 | Hide Family until first child exists? | Alternative — invite-only onboarding |
+| H1 | Show Family section when flag on but zero children? | **Yes** — matches **R1 locked** |
+| H2 | Hide Family until first child exists? | Rejected — use R1 Profile-first |
 | H3 | Internal dev bypass for consent during pilot? | Founder-only — not production |
 
 ## Screenshots required
@@ -111,8 +128,9 @@ North-star: **New parent → Profile Family (or class invite) → Add Child → 
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-15 | `shouldShowFamilySection` may hide Family for non-Marcus zero-child parents | Engineering |
-| 2026-06-15 | Guardian attestation lawyer-blocked | Legal |
+| 2026-06-21 | **P0:** `shouldShowFamilySection` hides Family for flag-on zero-child adults (violates R1) | Engineering — B2 |
+| 2026-06-21 | **P0:** Fresh 18+ signup leaves `profiles.age_category` null → “Adults only” before consent | Engineering — B1 |
+| 2026-06-15 | Guardian attestation lawyer-blocked — tier-1 Validator stops at consent screen, not full create | Legal |
 
 ## Related
 

@@ -1,0 +1,85 @@
+{
+  "onboarding-v1": {
+    "description": "Onboarding tier 1 → proof → tier 2 picky (reference loops)",
+    "product_review_queue": "onboarding-round1",
+    "next_product_review_queue": "onboarding-round2-picky",
+    "validation_queue": "cps-onboarding",
+    "sport_queue": "sport-meetup-launch",
+    "steps": [
+      {
+        "id": "L1-personas",
+        "loop": "product-review",
+        "queue": "onboarding-round1",
+        "chain_enabled": true,
+        "assign_mode": "agent",
+        "note": "Sim Agent: self-chain personas 1→6→consolidator. Humans: assign_mode human, one persona each."
+      },
+      {
+        "id": "L1-consolidator",
+        "loop": "product-review",
+        "role": "consolidator"
+      },
+      {
+        "id": "L1-pre-approve",
+        "loop": "pre-approve-review",
+        "skill": ".cursor/skills/pre-approve-review/SKILL.md",
+        "human_gate": false,
+        "note": "Coverage + contract PR risk review before human approve"
+      },
+      {
+        "id": "L1-human",
+        "loop": "human",
+        "gate": "approve_synthesis_contract_diffs",
+        "read": "consolidated/*-pre-approve-review.md"
+      },
+      {
+        "id": "L2-contract-pr",
+        "loop": "contract",
+        "branch": "dev",
+        "source": "consolidated/*-synthesis.md"
+      },
+      {
+        "id": "L2-builder",
+        "loop": "builder",
+        "source": "consolidated/*-builder-backlog.md",
+        "note": "Optional if validation queue uses --builder for missing items"
+      },
+      {
+        "id": "L3-proof",
+        "loop": "validation",
+        "queue": "cps-onboarding",
+        "chain_enabled": true,
+        "auto_builder": true,
+        "spawn_from": "consolidated/*-validation-handoff.md"
+      },
+      {
+        "id": "L1-tier2",
+        "loop": "product-review",
+        "queue": "onboarding-round2-picky",
+        "optional": true,
+        "after": "L3-proof-green"
+      }
+    ]
+  },
+  "pickup-gtm2": {
+    "description": "Pickup product review feeding gtm2 validation",
+    "product_review_queue": "pickup-round1",
+    "validation_queue": "gtm2-feedback-jun-2026",
+    "steps": [
+      { "id": "L1", "loop": "product-review", "queue": "pickup-round1" },
+      { "id": "L1c", "loop": "product-review", "role": "consolidator", "human_gate": true },
+      { "id": "L3", "loop": "validation", "queue": "gtm2-feedback-jun-2026", "chain_enabled": true }
+    ]
+  },
+  "sport-meetup": {
+    "description": "Running/Workout after H gates — skips L1 unless running-regular review requested",
+    "validation_queue": "sport-meetup-launch",
+    "product_review_persona": "running-regular",
+    "steps": [
+      { "id": "H", "loop": "human", "gate": "module-sport-meetup-sports H1-H4" },
+      { "id": "L2", "loop": "contract", "branch": "dev" },
+      { "id": "L2b", "loop": "builder", "contract": "module-sport-meetup-sports" },
+      { "id": "L3", "loop": "validation", "queue": "sport-meetup-launch", "chain_enabled": true, "auto_builder": true }
+    ]
+  }
+}

@@ -5,17 +5,24 @@
 Load skill: `.cursor/skills/product-review/SKILL.md`  
 Personas: [personas.md](../../docs/product-review/personas.md) — **Catalog A:** 12 sport × commitment · **Catalog B:** 8 role/onboarding
 
-## Loop
+## Loop (queued)
+
+**Runbook:** [PRODUCT-REVIEW-LOOP.md](../../docs/product-review/PRODUCT-REVIEW-LOOP.md) · **Queues:** [review-queues.json](../../docs/product-review/review-queues.json)
+
+```bash
+./.cursor/hooks/product-review-loop-start.sh --queue onboarding-round1
+```
 
 ```mermaid
 flowchart LR
-  P1[Persona review 1] --> P2[Persona review 2]
-  P2 --> Pn[Persona review n]
-  Pn --> C[Consolidator agent]
-  C --> S[synthesis.md]
-  S --> H[Human approves]
-  H --> WC[write-contract / contract PR]
-  WC --> V[validation-loop-start.sh]
+  Q[Start queue] --> P1[Persona 1]
+  P1 --> Pn[Persona 6]
+  Pn --> C[Consolidator]
+  C --> BB[builder-backlog.md]
+  C --> VH[validation-handoff.md]
+  BB --> B[Builder]
+  VH --> V[validation-loop-start.sh]
+  V --> T2[Tier 2 picky queue]
 ```
 
 ## Step 1 — Persona review (one persona per Agent chat)
@@ -30,18 +37,19 @@ Repeat for other persona-ids — **pickup batch** (6 sport personas) or **onboar
 
 ## Step 2 — Consolidator (separate Agent chat)
 
-After ≥3 reviews:
+After queue minimum reviews (6 for round1 queues):
 
 ```
-Consolidate all docs/product-review/**/*-review.md per .cursor/skills/product-review-consolidator/SKILL.md.
-Write docs/product-review/consolidated/YYYY-MM-DD-synthesis.md. Propose contract diffs with cost estimates. No src/.
+Consolidate per .cursor/skills/product-review-consolidator/SKILL.md for queue onboarding-round1.
+Write synthesis + builder-backlog + validation-handoff under docs/product-review/consolidated/
 ```
 
-See [consolidate-product-reviews.md](./consolidate-product-reviews.md).
+## Step 3 — Human → Builder → Validator
 
-## Step 3 — Human → Layer 2 → Layer 3
-
-Approve synthesis → contract PR → `./.cursor/hooks/validation-loop-start.sh {contract-id}`
+```bash
+./.cursor/hooks/product-review-loop-approve.sh   # after you approve synthesis
+./.cursor/hooks/validation-loop-start.sh --queue cps-onboarding --builder
+```
 
 ## Not the same as
 

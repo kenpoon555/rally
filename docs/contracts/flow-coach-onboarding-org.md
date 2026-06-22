@@ -1,8 +1,9 @@
 # Flow — Coach role, organization & class ownership
 
 **Contract id:** `flow-coach-onboarding-org`  
-**Status:** Draft — clarifies v1 vs v2 (Jun 2026)  
-**Related code:** `profiles.is_coach`, `ProfileCoachToolsSection.tsx`, `coachParentService.ts`, `flow-coach-class-operations.md`
+**Status:** **Partial** — coach unlock green on Marcus; Today MY CLASSES visibility for R0/teen/coach-with-zero-children (P1 — B4)  
+**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
+**Related code:** `profiles.is_coach`, `ProfileCoachToolsSection.tsx`, `coachParentService.ts`, `DynamicHomeScreen.tsx`, `TodayMyClassesCard.tsx`, `flow-coach-class-operations.md`
 
 ## Purpose
 
@@ -55,8 +56,18 @@ Non-coach: `@kunyu` → **no** Coach Tools section
 - [ ] Marcus: Profile shows **Coach Tools** (Create Class, Coach Profile)
 - [ ] Marcus: Play → Create shows **Class/Clinic** option
 - [ ] Non-coach (`@kunyu`): no Coach Tools section
+- [ ] Non-coach adult: Play → **Classes** segment browse OK when flag on — **no** Class/Clinic on Create sheet
 - [ ] Class defer/cancel works — see `flow-coach-class-operations`
 - [ ] **No** UI promises "assign substitute" or "transfer to another coach"
+
+### Today MY CLASSES visibility (P1 — B4)
+
+- [ ] R0 player (`@kunyu`, zero children): Today has **no** MY CLASSES block — no parent copy (*No upcoming classes for your children*)
+- [ ] R0 player Today: **no** “Manage classes for your child →” Family deep link
+- [ ] Approved coach with zero children and no student profiles: Today has **no** parent-oriented MY CLASSES copy
+- [ ] Teen account: Today has **no** MY CLASSES — see [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md)
+- [ ] Adult parent with `studentCount > 0` or active enrollments: MY CLASSES shows appropriate parent copy
+- [ ] Coach with classes: **CLASSES I TEACH** card visible — alternate entry to coach tools per [flow-become-a-coach.md](./flow-become-a-coach.md)
 
 ### v2 (document only — fail if shipped without contract)
 
@@ -88,6 +99,7 @@ Non-coach: `@kunyu` → **no** Coach Tools section
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-21 | Today MY CLASSES renders for all flag-on users — parent copy on R0/teen/coach — B4 | Engineering |
 | 2026-06-21 | No in-app "become a coach" — v1 manual; spec in [flow-become-a-coach.md](./flow-become-a-coach.md) | Product |
 
 ## Related
