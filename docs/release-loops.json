@@ -42,21 +42,31 @@
         "id": "L2-contract-pr",
         "loop": "contract",
         "branch": "dev",
-        "source": "consolidated/*-synthesis.md"
+        "source": "consolidated/*-synthesis.md",
+        "note": "Docs-only PR — merge first; defines validation checklist"
       },
       {
-        "id": "L2-builder",
+        "id": "L2-builder-local",
         "loop": "builder",
         "source": "consolidated/*-builder-backlog.md",
-        "note": "Optional if validation queue uses --builder for missing items"
+        "src_pr": false,
+        "note": "Implement on local branch — NO src PR until L3 green"
       },
       {
-        "id": "L3-proof",
+        "id": "L3-proof-local",
         "loop": "validation",
         "queue": "cps-onboarding",
         "chain_enabled": true,
         "auto_builder": true,
-        "spawn_from": "consolidated/*-validation-handoff.md"
+        "local_branch": true,
+        "spawn_from": "consolidated/*-validation-handoff.md",
+        "first_contract": "flow-age-gate-onboarding"
+      },
+      {
+        "id": "L2-src-pr",
+        "loop": "builder",
+        "after": "L3-proof-local-green",
+        "note": "Open/merge src PR only after local validation green"
       },
       {
         "id": "L1-tier2",

@@ -116,7 +116,9 @@ chmod +x .cursor/hooks/product-review-loop-start.sh
 | Pre-approve | Auto in chain — may auto-pass to contract PR |
 | Manual approve | `product-review-loop-approve.sh` (only if auto-pass blocked) |
 | Contract merged | `product-review-loop-contract-merged.sh` |
-| Builder done | `product-review-loop-builder-done.sh` |
+| Builder local done | `product-review-loop-builder-done.sh` → **validate locally** (no src PR yet) |
+| Validation green | `product-review-loop-validation-green.sh` → then open src PR |
+| Src PR merged | `product-review-loop-src-pr-merged.sh` |
 | Proof | `validation-loop-start.sh --queue cps-onboarding --builder` |
 | Auto-pass check | `python3 .cursor/hooks/product_review_auto_pass.py` |
 

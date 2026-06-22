@@ -254,21 +254,24 @@ Do not edit src/ in this step.
 def spawn_builder_prompt(session: dict) -> str:
     tag = session.get("consolidator_tag", "onboarding")
     vq = session.get("validation_queue", "baseline")
-    return f"""**Layer 2b — Builder** (contract PR merged to dev)
+    branch = session.get("builder_branch") or f"fix/{tag}-builder"
+    return f"""**Layer 2b — Builder (local branch — NO src PR yet)**
 
-Implement P0/P1 from docs/product-review/consolidated/*-{tag}-builder-backlog.md
+Contract PR is on `dev`. Implement on a **local feature branch** only.
 
-1. Read builder backlog — B1–B6 acceptance criteria
-2. Implement in `src/` on a feature branch
-3. Smoke-test on sim (flags per validation-handoff)
-4. Open PR to `dev` (src only — separate from contract docs PR)
-5. When merged or ready for validation, run:
+1. Read docs/product-review/consolidated/*-{tag}-builder-backlog.md (B1–B6)
+2. Branch from `dev`: e.g. `{branch}`
+3. Implement in `src/` — **do not** open or merge a src PR yet
+4. Smoke-test on sim (flags per validation-handoff)
+5. When code is ready to prove, run:
    ```bash
    cd RallyApp
    ./.cursor/hooks/product-review-loop-builder-done.sh
    ```
 
-Then chain-next spawns **validation** (`--queue {vq} --builder`).
+That starts **local validation** (`validation-loop-start.sh --queue {vq}`).
+**Src PR opens only after** `./.cursor/hooks/product-review-loop-validation-green.sh`.
+
 Do not re-run product review personas.
 """
 
@@ -276,21 +279,46 @@ Do not re-run product review personas.
 def spawn_validation_prompt(session: dict) -> str:
     vq = session.get("validation_queue", "baseline")
     tag = session.get("consolidator_tag", "onboarding")
-    return f"""**Layer 3 — validation sub-loop** (queue `{session.get("queue_name")}`)
+    first = session.get("validation_first_contract") or "flow-age-gate-onboarding"
+    return f"""**Layer 3 — validation (LOCAL — current git branch)**
 
-Contract PR merged · builder done (or in progress with --builder).
+Prove the **local builder branch** against merged contracts on `dev`. No src PR merge required.
 
 1. Read docs/product-review/consolidated/*-{tag}-validation-handoff.md (contract order)
-2. Read docs/product-review/consolidated/*-{tag}-builder-backlog.md
+2. Confirm checkout is your builder branch (not necessarily merged to dev)
 3. Run:
    ```bash
    cd RallyApp
-   ./.cursor/hooks/validation-loop-start.sh --queue {vq} --builder
+   ./.cursor/hooks/validation-loop-start.sh --queue {vq} --from {first} --builder
    ```
-4. **SELF-CHAIN validation** — Validator → Fixer → Validator in THIS SAME TURN
+4. **SELF-CHAIN** Validator → Fixer → Validator in THIS SAME TURN
 
-Do not re-run product review personas for this queue.
-When validation green → optional next tier: see docs/release-loops.json `next_product_review_queue`.
+When queue green:
+```bash
+./.cursor/hooks/product-review-loop-validation-green.sh
+```
+
+Then open/mark src PR — merge only after proof is recorded.
+Do not re-run product review personas.
+"""
+
+
+def spawn_src_pr_prompt(session: dict) -> str:
+    tag = session.get("consolidator_tag", "onboarding")
+    pr = session.get("layer_2_builder_pr") or "(set after gh pr create)"
+    return f"""**Layer 2c — src PR (after validation green)**
+
+Validation passed locally. Now publish the **same branch** as a PR.
+
+1. Attach validation summary to PR body (contract pass table, screenshot paths)
+2. Mark PR ready for review (or merge if you are the gate):
+   ```bash
+   gh pr ready {pr}   # if draft
+   ```
+3. Update session: `layer_2_builder_status`: "open" · `phase`: "src_pr_open"
+4. **Human merges** src PR to `dev` after review
+
+PR: {pr}
 """
 
 
@@ -486,11 +514,53 @@ cd RallyApp
     if phase == "builder_done":
         session["phase"] = "validation_spawned"
         session["status"] = "running"
+        session["layer_2_builder_status"] = "local_ready"
         save_session(session)
         return {
             "action": "spawn_validation",
-            "reason": "builder done — Layer 3 validation",
+            "reason": "builder local ready — validate before src PR",
             "prompt": spawn_validation_prompt(session),
+        }
+
+    if phase == "validation_spawned":
+        return {
+            "action": "spawn_validation",
+            "reason": "validation sub-loop (local branch)",
+            "prompt": spawn_validation_prompt(session),
+        }
+
+    if phase == "validation_green":
+        session["phase"] = "src_pr_pending"
+        session["status"] = "running"
+        save_session(session)
+        return {
+            "action": "spawn_src_pr",
+            "reason": "validation green — open src PR",
+            "prompt": spawn_src_pr_prompt(session),
+        }
+
+    if phase in ("src_pr_pending", "src_pr_open"):
+        pr = session.get("layer_2_builder_pr") or "(create with gh pr create)"
+        return {
+            "action": "stop",
+            "reason": "src PR ready for human merge after local proof",
+            "prompt": spawn_src_pr_prompt(session),
+        }
+
+    if phase == "src_pr_merged":
+        session["phase"] = "done"
+        session["status"] = "complete"
+        save_session(session)
+        return {
+            "action": "stop",
+            "reason": "onboarding round complete — optional tier 2 product review",
+            "prompt": f"""**Round complete**
+
+Optional next tier:
+```bash
+./.cursor/hooks/product-review-loop-start.sh --queue onboarding-round2-picky --chain
+```
+""",
         }
 
     if phase == "consolidate_pending":
@@ -514,13 +584,6 @@ cd RallyApp
 
     if phase == "done":
         return {"action": "stop", "reason": "queue complete", "prompt": ""}
-
-    if phase == "validation_spawned":
-        return {
-            "action": "spawn_validation",
-            "reason": "validation sub-loop",
-            "prompt": spawn_validation_prompt(session),
-        }
 
     return {"action": "stop", "reason": f"idle phase={phase}", "prompt": ""}
 

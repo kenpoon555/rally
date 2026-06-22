@@ -156,13 +156,13 @@ python3 .cursor/hooks/product-review-chain-next.py         # continues loop
 
 **Human only when auto-pass blocked** — read `auto_pass_stop_reasons` in session or pre-approve review.
 
-**Layer sequence (fixed):** approve → **contract PR** → merge → **builder** → **validation** (approve no longer jumps to validation).
+**Layer sequence (fixed):** approve → **contract PR** → merge → **builder local branch** → **validate locally** → **src PR** → merge → ship.
 
 | Hook | When |
 |------|------|
-| `product-review-loop-approve.sh` | Manual approve (override) |
-| `product-review-loop-contract-merged.sh` | After Layer 2 PR merges to `dev` |
-| `product-review-loop-builder-done.sh` | After B1–B6 land |
+| `product-review-loop-builder-done.sh` | Builder on local branch — starts validation (**no src PR**) |
+| `product-review-loop-validation-green.sh` | After local queue green — **then** open/mark src PR |
+| `product-review-loop-src-pr-merged.sh` | After src PR merges to `dev` |
 
 ---
 
