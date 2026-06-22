@@ -117,7 +117,7 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 ## Validator report
 
 > Run: 2026-06-22 ~01:04 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/overnight-jun-2026-batch`  
-> **Seed note:** SQL/JS re-seed blocked (`SERVICE_ROLE_KEY` / FK) — no upcoming session in DB; validated empty-upcoming + history locked states.
+> **Seed note:** Re-seed before I'm-in / lock rows: `./scripts/seed-monrovia-linked.sh` (uses Supabase CLI for service_role — no `.env` key required).
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|

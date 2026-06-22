@@ -38,9 +38,10 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | onboarding-round1 | onboarding-v1 | 1 | 6/6 | `cps-onboarding` | ✅ Complete |
 | onboarding-round2-picky | onboarding-v1 | 2 | 6/6 | `cps-onboarding` | ✅ Complete · PR [#47](https://github.com/kenpoon555/rally/pull/47) |
 | onboarding-round3-expert | onboarding-v1 | 3 | 4/4 | tier3 regression | ✅ Complete · PR [#48](https://github.com/kenpoon555/rally/pull/48) · docs-only |
-| **pickup-round1** | pickup-gtm2 | 1 | 6/6 | `gtm2-feedback-jun-2026` | 🔄 Contract PR pending |
-| pickup-round2-picky | pickup-gtm2 | 2 | 0/4 | `gtm2-feedback-jun-2026` | ⬜ After pickup-round1 |
-| **sport-meetup** | sport-meetup | — | 1/1 | `sport-meetup-launch` | 🔄 Contract PR pending |
+| pickup-round1 | pickup-gtm2 | 1 | 6/6 | `gtm2-feedback-jun-2026` | ✅ Complete · validation in #53 |
+| pickup-round2-picky | pickup-gtm2 | 2 | 4/4 | `gtm2-feedback-jun-2026` | ✅ Complete · PR [#53](https://github.com/kenpoon555/rally/pull/53) |
+| sport-meetup | sport-meetup | — | 1/1 | `sport-meetup-launch` | ✅ Complete · PR [#54](https://github.com/kenpoon555/rally/pull/54) |
+| **overnight-batch-jun-2026** | overnight-batch | — | — | `baseline` (+ prior queues) | ✅ Complete · PR [#55](https://github.com/kenpoon555/rally/pull/55) |
 
 ---
 
@@ -85,15 +86,56 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 ---
 
-## Round — `pickup-round1` (GTM 2 · tier 1)
+## Pickup GTM2 — complete (tiers 1–2)
 
-**Status:** 🔄 L1 complete · contract PR pending · **Personas:** 6/6  
-**Validation:** `gtm2-feedback-jun-2026` · **P0:** B1 deep links · B2 schedule spinner
+### Tier 1 — `pickup-round1` · 2026-06-22
 
-## Parallel track — `sport-meetup` (Running + Workout)
+**Tag:** `pickup` · **Personas:** 6/6 · **Validation:** `gtm2-feedback-jun-2026` (with tier 2 picky builder)
 
-**Status:** 🔄 L1 complete (`running-regular`) · consolidator ready · **Validation:** `sport-meetup-launch`  
-**P0:** SM1 meetup create path (no court gate)
+**P0 fixes:** B1 deep links · B2 schedule spinner · invite/auth handoff · login timeout
+
+**PR:** [#53](https://github.com/kenpoon555/rally/pull/53) `fix/pickup-picky-builder` → merged `dev`
+
+### Tier 2 — `pickup-round2-picky` · 2026-06-22
+
+**Tag:** `pickup-picky` · **Personas:** 4/4 · Shipped in same PR [#53](https://github.com/kenpoon555/rally/pull/53)
+
+---
+
+## Sport meetup — complete
+
+**Track:** `sport-meetup` · **Persona:** `running-regular` · **Validation:** `sport-meetup-launch` 4/4 green
+
+**P0:** SM1 Running meetup create (no court gate) · `miniTournamentEnabled: false` for Running/Workout
+
+**PR:** [#54](https://github.com/kenpoon555/rally/pull/54) → merged `dev`
+
+---
+
+## Overnight batch — complete · 2026-06-22
+
+**Loop:** `overnight-batch-jun-2026` · **Mode:** `batch_pr` (one combined PR)
+
+**Validation queues (all green on `dev`):**
+
+| Queue | PR / note |
+|-------|-----------|
+| `gtm2-feedback-jun-2026` | #53 |
+| `sport-meetup-launch` | #54 |
+| `cps-onboarding` | prior onboarding rounds |
+| `baseline` | #55 — invite, rally-session, hub, inbox, play |
+
+**PR:** [#55](https://github.com/kenpoon555/rally/pull/55) `fix/overnight-jun-2026-batch` → merged `dev`
+
+**Skipped (human/device):** `flow-push-notifications-device`
+
+**Follow-up:** Re-seed Monrovia demo before re-running I'm-in / lock roster rows — `./scripts/seed-monrovia-linked.sh`
+
+---
+
+## Next validation queues (not started)
+
+See [validation-queues.json](../contracts/validation-queues.json): `phase1a`, `phase1b`, `phase1c`, `phase2-recap`, `phase2-game-card`, `ops`, `gtm1-launch-gate` (device), `v1.1`–`v1.4` coach/parent.
 
 ---
 

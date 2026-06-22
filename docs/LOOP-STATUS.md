@@ -1,10 +1,10 @@
 # Rally loop status
 
-_Updated: 2026-06-22 08:09 UTC_
+_Updated: 2026-06-22 18:05 UTC_
 
-## 👤 WAITING ON YOU — merge src PR
+## ✅ LOOP COMPLETE — round finished
 
-Merge PR then run the matching `product-review-loop-*-merged.sh` hook.
+Queue `overnight-batch-jun-2026` is done. See ROUND-LOG.md or start the next queue.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -13,7 +13,7 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 ## Product review
 
 - queue: `overnight-batch-jun-2026` tier —
-- phase: `src_pr_open` · status: `running`
+- phase: `done` · status: `complete`
 - layer_2: `local`
 - builder branch: `fix/overnight-jun-2026-batch`
 - src PR: https://github.com/kenpoon555/rally/pull/55
