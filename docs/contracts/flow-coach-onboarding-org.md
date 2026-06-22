@@ -68,6 +68,7 @@ Non-coach: `@kunyu` → **no** Coach Tools section
 - [x] Teen account: Today has **no** MY CLASSES — see [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md)
 - [x] Adult parent with `studentCount > 0` or active enrollments: MY CLASSES shows appropriate parent copy — Marcus seed
 - [x] Coach with classes: **CLASSES I TEACH** card visible — alternate entry to coach tools per [flow-become-a-coach.md](./flow-become-a-coach.md)
+- [ ] Non-Marcus approved coach: **Create Class** publish adds row to **CLASSES I TEACH** (not demo-only Marcus filter) — tier 2 picky B8
 
 ### v2 (document only — fail if shipped without contract)
 
@@ -99,7 +100,8 @@ Non-coach: `@kunyu` → **no** Coach Tools section
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-21 | Today MY CLASSES renders for all flag-on users — parent copy on R0/teen/coach — B4 | Engineering |
+| 2026-06-22 | Create Class publish creates pickup activity — CLASSES I TEACH empty for non-Marcus coaches | Builder B8 |
+| 2026-06-21 | Today MY CLASSES renders for all flag-on users — parent copy on R0/teen/coach — **fixed B4** | Engineering |
 | 2026-06-21 | No in-app "become a coach" — v1 manual; spec in [flow-become-a-coach.md](./flow-become-a-coach.md) | Product |
 
 ## Related

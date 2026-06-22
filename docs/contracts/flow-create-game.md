@@ -19,7 +19,7 @@ North-star: **Host completes form → game exists → host invite share works (L
 |---------|-------|-----|
 | **Public pickup** | `CreateActivityScreen` (no `regular_group_id`) | Discover / Play open games |
 | **Rally session** | `CreateRallyGameSheet` from Rally hub | Crew pickup or mini tournament |
-| **Coach class** | `CreateActivityScreen` `createMode: 'class'` | Coach class/clinic — see coach contracts |
+| **Coach class** | `CreateActivityScreen` `createMode: 'class'` | Coach class/clinic — **must** publish `coach_class_listings` + parent enroll share — **not** pickup `createActivity` |
 
 ## Demo setup
 
@@ -50,6 +50,13 @@ North-star: **Host completes form → game exists → host invite share works (L
 - [ ] **Android:** Date → time sequential picker completes without crash
 - [ ] Schedule in future — past time blocked on submit
 
+### Coach class publish (P1 — tier 2 picky)
+
+- [ ] `createMode: 'class'` publish creates **`coach_class_listings`** row (not pickup-only `activities` path)
+- [ ] Post-publish lands on **`ClassDetail`** with **Share parent enrollment invite** (`class-enroll` link)
+- [ ] Post-publish does **not** show **Pickup game** card + host **Copy link** as primary outcome
+- [ ] Non-Marcus approved coach (`is_coach=true`) can complete without demo seed classes
+
 ### Form & create
 
 - [ ] Schedule picker respects timezone / duration
@@ -78,6 +85,7 @@ North-star: **Host completes form → game exists → host invite share works (L
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-22 | `createMode: 'class'` still calls pickup `createActivity` — no class listing / parent enroll share | Builder B8 |
 | 2026-06-21 | iOS create game: schedule spinner rolls but date/time not visible | Fixer |
 | — | Not fully validated on device | Validator |
 
