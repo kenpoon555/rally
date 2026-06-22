@@ -42,7 +42,7 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | pickup-round2-picky | pickup-gtm2 | 2 | 4/4 | `gtm2-feedback-jun-2026` | ✅ Complete · PR [#53](https://github.com/kenpoon555/rally/pull/53) |
 | sport-meetup | sport-meetup | — | 1/1 | `sport-meetup-launch` | ✅ Complete · PR [#54](https://github.com/kenpoon555/rally/pull/54) |
 | **overnight-batch-jun-2026** | overnight-batch | — | — | `baseline` (+ prior queues) | ✅ Complete · PR [#55](https://github.com/kenpoon555/rally/pull/55) |
-| **phase-validation-jun-2026** | — | — | — | `phase1a`–`ops` | ✅ Complete · PR pending |
+| **phase-validation-jun-2026** | — | — | — | `phase1a`–`ops` | ✅ Complete · PR [#56](https://github.com/kenpoon555/rally/pull/56) |
 
 ---
 
