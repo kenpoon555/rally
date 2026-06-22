@@ -132,16 +132,17 @@ Optional seed `locations` / meetup_points for LA popular routes (not blocking).
 
 ### Config
 
-- [ ] `Running` and `Workout` in `SportType` + `SPORT_METADATA`
-- [ ] Both appear in Play tab when `launchEnabled: true`
+- [x] `Running` in `SportType` + `SPORT_METADATA` — SM2 on fix/sport-meetup-builder
+- [x] `Workout` in `SportType` + metadata — SM3 enum (launch deferred per H3)
+- [ ] Both appear in Play tab when `launchEnabled: true` — Running yes; Workout H3 defer
 - [ ] `sportSupportsMiniTournament(running|workout)` → false
 - [ ] `resolveUserDefaultSport('Workout')` falls back to default launch sport when off
 
 ### Create Game (meetup path)
 
-- [ ] Running create: **no** “pick a court” blocker — **meet area** step instead
-- [ ] Subtitle uses meetup copy (`getCreateGameSubtitle` loose branch)
-- [ ] Host can publish with ballpark area without selecting basketball court
+- [x] Running create: **no** “pick a court” blocker — meet area step (SM1)
+- [x] Subtitle uses meetup copy (`getCreateGameSubtitle` loose branch)
+- [x] Host can publish with ballpark area without selecting basketball court
 - [ ] Optional: suggested routes/parks list non-empty in LA seed (nice-to-have, not P0)
 - [ ] Workout create: same meetup path; roster defaults 4–16 range
 - [ ] Schedule picker works (same as [flow-create-game.md](./flow-create-game.md))
@@ -190,8 +191,8 @@ Optional seed `locations` / meetup_points for LA popular routes (not blocking).
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-22 | Create still court-gated for all sports — **SM1** meetup path | Engineering |
-| 2026-06-22 | Workout not in enum — **SM3** | Product |
+| 2026-06-22 | ~~Create court-gated~~ — **SM1** meetup path shipped on `fix/sport-meetup-builder` | Engineering |
+| 2026-06-22 | Workout enum added — **SM3**; launch after Running proof (H3) | Product |
 
 ## Related
 
