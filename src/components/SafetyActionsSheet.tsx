@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -31,6 +31,7 @@ type Props = {
   contextType?: ReportContextType;
   contextId?: string;
   showNoShow?: boolean;
+  initialReportDetail?: string;
   onBlocked?: () => void;
   onReported?: () => void;
 };
@@ -46,6 +47,7 @@ const SafetyActionsSheet: React.FC<Props> = ({
   contextType = 'profile',
   contextId,
   showNoShow = false,
+  initialReportDetail,
   onBlocked,
   onReported,
 }) => {
@@ -53,6 +55,13 @@ const SafetyActionsSheet: React.FC<Props> = ({
   const [reason, setReason] = useState<ReportReason>('harassment');
   const [detail, setDetail] = useState('');
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (visible && initialReportDetail) {
+      setDetail(initialReportDetail);
+      setMode('report');
+    }
+  }, [initialReportDetail, visible]);
 
   const reset = () => {
     setMode('menu');
@@ -77,7 +86,11 @@ const SafetyActionsSheet: React.FC<Props> = ({
           onPress: async () => {
             setBusy(true);
             try {
-              await blockUser(currentUserId, targetUserId);
+              await blockUser(currentUserId, targetUserId, {
+                contextType,
+                contextId,
+                reportDetail: detail.trim() || `Blocked ${targetUsername} via Safety.`,
+              });
               Alert.alert('Blocked', `${targetUsername} has been blocked.`);
               onBlocked?.();
               handleClose();

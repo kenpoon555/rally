@@ -12,7 +12,7 @@ import { defaultExpiresAt, isActivityListingActive } from '../utils/activityExpi
 import { normalizeActivityLocation, parseGeographyCoordinates } from '../utils/activityLocationGeo';
 import { addDiscoverLog } from '../utils/devLocationLog';
 import { CONFIG } from '../constants/config';
-import { trackProductEvent } from './analyticsService';
+import { trackProductEvent, activityAnalyticsProps } from './analyticsService';
 import { consumeRateLimit } from './rateLimitService';
 import { usersAreBlocked } from './safetyService';
 import {
@@ -1053,6 +1053,8 @@ export const finalizeGameCommitment = async (activityId: string): Promise<void> 
     throw new Error(error.message);
   }
   await notifyGameFinalized(activityId);
+  const props = await activityAnalyticsProps(activityId);
+  void trackProductEvent('roster_locked', props);
 };
 
 export const setGameReady = async (activityId: string, ready = true): Promise<void> => {
@@ -1062,6 +1064,10 @@ export const setGameReady = async (activityId: string, ready = true): Promise<vo
   });
   if (error) {
     throw new Error(error.message);
+  }
+  if (ready) {
+    const props = await activityAnalyticsProps(activityId);
+    void trackProductEvent('game_ready_set', props);
   }
 };
 
@@ -1171,7 +1177,14 @@ export const submitGameAttendance = async (
   if (error) {
     throw new Error(error.message);
   }
-  return (data as string | null) ?? null;
+  const recapId = (data as string | null) ?? null;
+  const props = await activityAnalyticsProps(activityId);
+  void trackProductEvent('attendance_submitted', {
+    ...props,
+    attended_count: attendedUserIds.length,
+    ...(recapId ? { recap_id: recapId } : {}),
+  });
+  return recapId;
 };
 
 export function formatReliabilityLabel(stats: UserAttendanceStats | null): string {
@@ -1205,6 +1218,16 @@ export const scheduleNextGameFromActivity = async (
   if (!data) {
     throw new Error('Failed to schedule next game');
   }
+  const sourceProps = await activityAnalyticsProps(sourceActivityId);
+  void trackProductEvent('crew_replayed', {
+    group_id: sourceProps.group_id,
+    activity_id: data,
+  });
+  void trackProductEvent('second_session_scheduled', {
+    ...sourceProps,
+    activity_id: data,
+    source_activity_id: sourceActivityId,
+  });
   return data as string;
 };
 
@@ -1230,8 +1253,11 @@ export const scheduleGroupNextGame = async (
   if (!data) {
     throw new Error('Failed to schedule group game');
   }
-  // Crew is replaying — the retention signal that gates the leagues launch.
   void trackProductEvent('crew_replayed', { group_id: groupId, activity_id: data });
+  void trackProductEvent('second_session_scheduled', {
+    group_id: groupId,
+    activity_id: data,
+  });
   return data as string;
 };
 

@@ -17,7 +17,13 @@ export const linking: LinkingOptions<Record<string, object | undefined>> = {
       },
       [ROUTES.MY_GAMES.TAB]: 'games',
       [ROUTES.FRIENDS.LIST]: 'friends',
-      [ROUTES.REGULAR_GROUP.CREW]: 'crew/:groupId',
+      [ROUTES.REGULAR_GROUP.CREW]: {
+        path: 'crew/:groupId/:initialTab?',
+        parse: {
+          initialTab: (value: string) =>
+            value === 'play' || value === 'members' ? value : 'chat',
+        },
+      },
       [ROUTES.ACTIVITY.DETAIL]: 'game/:activityId',
       [ROUTES.ACTIVITY.CREATE]: 'create',
       [ROUTES.LANDING.SPORT]: 'la/:sportSlug',

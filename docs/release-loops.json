@@ -1,0 +1,172 @@
+{
+  "onboarding-v1": {
+    "description": "Onboarding tier 1 → proof → tier 2 picky (reference loops)",
+    "product_review_queue": "onboarding-round1",
+    "next_product_review_queue": "onboarding-round2-picky",
+    "validation_queue": "cps-onboarding",
+    "sport_queue": "sport-meetup-launch",
+    "steps": [
+      {
+        "id": "L1-personas",
+        "loop": "product-review",
+        "queue": "onboarding-round1",
+        "chain_enabled": true,
+        "assign_mode": "agent",
+        "note": "Sim Agent: self-chain personas 1→6→consolidator. Humans: assign_mode human, one persona each."
+      },
+      {
+        "id": "L1-consolidator",
+        "loop": "product-review",
+        "role": "consolidator"
+      },
+      {
+        "id": "L1-pre-approve",
+        "loop": "pre-approve-review",
+        "skill": ".cursor/skills/pre-approve-review/SKILL.md",
+        "human_gate": false,
+        "auto_pass": true,
+        "auto_pass_when": ["approve_ready", "approve_with_notes"],
+        "stop_on": ["block", "revise_consolidator", "conflict", "creep", "timing", "vague", "h_gate_fork"],
+        "note": "Coverage + contract PR risk; auto-pass to Layer 2 when additive/no conflict"
+      },
+      {
+        "id": "L1-human",
+        "loop": "human",
+        "gate": "approve_synthesis_contract_diffs",
+        "read": "consolidated/*-pre-approve-review.md",
+        "auto_pass": true,
+        "only_when_blocked": true,
+        "note": "Human only when auto-pass blocked (conflict, H gate fork, block verdict)"
+      },
+      {
+        "id": "L2-contract-pr",
+        "loop": "contract",
+        "branch": "dev",
+        "source": "consolidated/*-synthesis.md",
+        "note": "Docs-only PR — merge first; defines validation checklist"
+      },
+      {
+        "id": "L2-builder-local",
+        "loop": "builder",
+        "source": "consolidated/*-builder-backlog.md",
+        "src_pr": false,
+        "note": "Implement on local branch — NO src PR until L3 green"
+      },
+      {
+        "id": "L3-proof-local",
+        "loop": "validation",
+        "queue": "cps-onboarding",
+        "chain_enabled": true,
+        "auto_builder": true,
+        "local_branch": true,
+        "spawn_from": "consolidated/*-validation-handoff.md",
+        "first_contract": "flow-age-gate-onboarding"
+      },
+      {
+        "id": "L2-src-pr",
+        "loop": "builder",
+        "after": "L3-proof-local-green",
+        "note": "Open/merge src PR only after local validation green"
+      },
+      {
+        "id": "L1-tier2",
+        "loop": "product-review",
+        "queue": "onboarding-round2-picky",
+        "optional": true,
+        "after": "L3-proof-green"
+      }
+    ]
+  },
+  "pickup-gtm2": {
+    "description": "Pickup product review feeding gtm2 validation",
+    "product_review_queue": "pickup-round1",
+    "validation_queue": "gtm2-feedback-jun-2026",
+    "steps": [
+      { "id": "L1", "loop": "product-review", "queue": "pickup-round1" },
+      { "id": "L1c", "loop": "product-review", "role": "consolidator", "human_gate": true },
+      { "id": "L3", "loop": "validation", "queue": "gtm2-feedback-jun-2026", "chain_enabled": true }
+    ]
+  },
+  "sport-meetup": {
+    "description": "Running/Workout after H gates — skips L1 unless running-regular review requested",
+    "validation_queue": "sport-meetup-launch",
+    "product_review_persona": "running-regular",
+    "batch_pr": true,
+    "steps": [
+      { "id": "H", "loop": "human", "gate": "module-sport-meetup-sports H1-H4" },
+      { "id": "L2", "loop": "contract", "branch": "dev" },
+      { "id": "L2b", "loop": "builder", "contract": "module-sport-meetup-sports" },
+      { "id": "L3", "loop": "validation", "queue": "sport-meetup-launch", "chain_enabled": true, "auto_builder": true }
+    ]
+  },
+  "overnight-batch-jun-2026": {
+    "description": "Chain sim validation on one branch; single combined PR at end (no mid-loop PRs)",
+    "batch_pr": true,
+    "builder_branch": "fix/overnight-jun-2026-batch",
+    "already_green_validation_queues": [
+      "gtm2-feedback-jun-2026",
+      "sport-meetup-launch",
+      "cps-onboarding"
+    ],
+    "validation_queues": ["baseline"],
+    "skip_human_only": [
+      "flow-push-notifications-device"
+    ],
+    "batch_pr_split_on": [
+      "conflict",
+      "needs_human",
+      "blocked_external",
+      "max_fixer_rounds"
+    ],
+    "note": "Say continue in orchestrator — agent chains baseline validation then opens ONE PR. Close stray src PRs (e.g. #54) into this branch."
+  },
+  "play-discover-jun-2026": {
+    "description": "Play sport×segment coherence + role surface audit (post Running filter fix)",
+    "product_review_queue": "play-discover-round1",
+    "next_product_review_queue": "play-discover-round2-picky",
+    "validation_queue": "role-surface-audit",
+    "fast_validation_queue": "play-discover-matrix",
+    "steps": [
+      {
+        "id": "L1-personas",
+        "loop": "product-review",
+        "queue": "play-discover-round1",
+        "chain_enabled": true,
+        "assign_mode": "agent",
+        "note": "6 personas — sport strip × segments + R0 clutter"
+      },
+      {
+        "id": "L1-consolidator",
+        "loop": "product-review",
+        "role": "consolidator",
+        "consolidator_tag": "play-discover"
+      },
+      {
+        "id": "L2-contract-pr",
+        "loop": "contract",
+        "branch": "dev",
+        "source": "consolidated/*-play-discover-synthesis.md"
+      },
+      {
+        "id": "L2-builder",
+        "loop": "builder",
+        "source": "consolidated/*-play-discover-builder-backlog.md",
+        "note": "surfaceVisibility.ts + HomeScreen segment gates"
+      },
+      {
+        "id": "L3-validation",
+        "loop": "validation",
+        "queue": "role-surface-audit",
+        "chain_enabled": true,
+        "first_contract": "module-role-surfaces"
+      },
+      {
+        "id": "L1-tier2",
+        "loop": "product-review",
+        "queue": "play-discover-round2-picky",
+        "optional": true,
+        "after": "L3-validation-green"
+      }
+    ]
+  }
+}

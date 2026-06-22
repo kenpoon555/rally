@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WelcomeTogetherIllustration } from '../../components/auth/WelcomeTogetherIllustration';
 import { Button } from '../../components/ui';
 import { WELCOME_SLIDES } from '../../constants/brand';
-import { BETA_COPY } from '../../constants/betaCopy';
+import { MARKET_COPY } from '../../constants/betaCopy';
 import { AGE_GATE_ONBOARDING } from '../../constants/parentStudentFlags';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -67,7 +67,7 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.title}>{slide.title}</Text>
             <Text style={styles.body}>{slide.body}</Text>
             {index === WELCOME_SLIDES.length - 1 ? (
-              <Text style={styles.beta}>{BETA_COPY.headline}</Text>
+              <Text style={styles.beta}>{MARKET_COPY.headline}</Text>
             ) : null}
           </View>
         ))}

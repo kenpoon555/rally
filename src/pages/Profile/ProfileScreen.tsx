@@ -36,8 +36,6 @@ import {
 } from '../../constants/legal';
 import { getMyRegularGroups } from '../../services/regularGroupService';
 import { RegularGroup } from '../../types/regularGroup';
-import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
-import { BetaMarketBanner } from '../../components/home/BetaMarketBanner';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { Button, KeyboardSafeView, ScreenHeader, keyboardAwareScrollProps } from '../../components/ui';
 import { ProfileTabBar, ProfileTab } from '../../components/profile/ProfileTabBar';
@@ -560,8 +558,6 @@ const ProfileScreen: React.FC = () => {
         </View>
       </View>
 
-      <BetaMarketBanner />
-
       {rateablePromptCount > 0 ? (
         <View style={styles.sectionCard}>
           <TouchableOpacity
@@ -699,7 +695,7 @@ const ProfileScreen: React.FC = () => {
         ) : (
           <ProfileSettingsRow
             label="Apply to be a captain"
-            value={showCaptainForm ? 'Editing…' : 'LA beta'}
+            value={showCaptainForm ? 'Editing…' : 'Los Angeles'}
             onPress={() => setShowCaptainForm((v) => !v)}
           />
         )}
@@ -784,7 +780,7 @@ const ProfileScreen: React.FC = () => {
                     const status = await getMyCaptainStatus();
                     setCaptainStatus(status);
                     setShowCaptainForm(false);
-                    Alert.alert(PRODUCT_COPY.captainApplicationSent, 'We review apps weekly in beta.');
+                    Alert.alert(PRODUCT_COPY.captainApplicationSent, 'We review applications weekly.');
                   } catch (error: unknown) {
                     Alert.alert(
                       'Could not submit',
@@ -1024,7 +1020,7 @@ const ProfileScreen: React.FC = () => {
           <>
             <ProfileSettingsRow
               label={PRODUCT_COPY.postAvailability}
-              value={showFreeAgentForm ? 'Editing…' : 'LA beta'}
+              value={showFreeAgentForm ? 'Editing…' : 'Los Angeles'}
               onPress={() => setShowFreeAgentForm((v) => !v)}
             />
             {showFreeAgentForm ? (
@@ -1119,7 +1115,7 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.hint}>{PRODUCT_COPY.conciergeHint}</Text>
         <ProfileSettingsRow
           label="Request a match"
-          value={showConciergeForm ? 'Editing…' : 'LA beta'}
+          value={showConciergeForm ? 'Editing…' : 'Los Angeles'}
           onPress={() => setShowConciergeForm((v) => !v)}
         />
         {showConciergeForm ? (
@@ -1394,7 +1390,7 @@ const ProfileScreen: React.FC = () => {
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Safety</Text>
         <Text style={styles.hint}>
-          Report or block from a game or DM (Safety in chat header or player profile).
+          Report or block from chat (Safety in the header) or a player profile. Long-press a group message to report.
         </Text>
         <ProfileSettingsRow
           label="Blocked users"
@@ -1429,16 +1425,11 @@ const ProfileScreen: React.FC = () => {
         ) : null}
       </View>
 
-      <View style={styles.founderCard}>
-        <Text style={styles.founderTitle}>LA beta · founding players</Text>
-        <Text style={styles.founderBody}>{FOUNDER_BENEFITS_COPY}</Text>
-      </View>
-
       <View style={styles.sectionCard}>
-        <Text style={styles.groupLabel}>Beta</Text>
+        <Text style={styles.groupLabel}>Help</Text>
         <ProfileSettingsRow
           label="Send feedback"
-          value="Founding Member notes"
+          value="Report bugs or ideas"
           onPress={() =>
             navigation.navigate(ROUTES.FEEDBACK.BETA as never, { screen: 'Profile' } as never)
           }

@@ -1,10 +1,11 @@
 # Module contract — Coach / parent navigation & entrances
 
 **Contract id:** `module-coach-parent-navigation`  
-**Status:** Implemented — UI spec v1.1 (coach) + v1.2 (parent)  
+**Status:** **Green** — validation 2026-06-22: cross-contract sim proof (B2/B3/B4) on flags-on build  
+**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md) · tier 3: [2026-06-22-onboarding-expert-synthesis.md](../product-review/consolidated/2026-06-22-onboarding-expert-synthesis.md)  
 **UI ideas:** [parent-student-coach-ui-ideas.md](../coach-parent-student/parent-student-coach-ui-ideas.md)  
 **Safety:** [parent-student-coach-safety-design.md](../coach-parent-student/parent-student-coach-safety-design.md)  
-**Related code:** `HomeScreen.tsx`, `ProfileScreen`, `DynamicHomeScreen.tsx`, `RegularsCrewScreen.tsx`, Inbox
+**Related code:** `HomeScreen.tsx`, `ProfileScreen`, `DynamicHomeScreen.tsx`, `RegularsCrewScreen.tsx`, `coachParentService.ts`, Inbox
 
 ## Purpose
 
@@ -38,21 +39,26 @@ Play = discover (Classes segment) + light next-action cards only
 
 | State | Must show |
 |-------|-----------|
-| **Section header** | **Family** — visible when `PARENT_FAMILY_UI` or user has ≥1 student profile |
+| **Section header** | **Family** — visible when `PARENT_FAMILY_UI` **and** adult parent intent, **including zero children** (R1 locked) |
 | **Family Profiles row/card** | Subtitle: *Manage child/student profiles for classes* |
 | **List push** | Per-child rows: nickname · active class summary |
 | **Add Child Profile** | Lime CTA on list screen |
 | **Parent Settings / Consent** | Links to [flow-parent-guardian-consent.md](./flow-parent-guardian-consent.md) |
 | **Privacy** | *Private — only you and enrolled coaches* |
-| **Hidden for non-parents** | No Family section until first profile or flag |
+| **Hidden for non-parents** | No Family section for R0 players, teens, or flag-off builds |
+| **Empty state (zero children)** | Section visible with empty copy + Add Child path — not hidden until first child |
 
-Parent + coach users see **both** Family and Coach Tools sections.
+Parent + coach users see **both** Family and Coach Tools sections when each role gate passes.
+
+**Reference dual-role demo:** `marcus@rally-mvrhoops.demo` (Marcus) is the seeded dual-role reference — Family + Coach Tools both visible. Validator must also test **fresh accounts** without Marcus user-id hardcode in `shouldShowFamilySection` / `userIsCoach` (B6).
 
 ## Profile — Coach Tools section (v1.1)
 
 | State | Must show |
 |-------|-----------|
-| **Section header** | **Coach Tools** — only if `coach` role / Founding Coach |
+| **Section header** | **Coach Tools** — only if adult + `coach` role / Founding Coach |
+| **Teen accounts** | **Never** — force-hide when `age_category = teen_13_17` regardless of `is_coach` (R3 locked) — [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md) |
+| **Become a coach** | **Not in v1** — no self-serve apply; admin/seed sets `is_coach` — [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md) |
 | **Coach Profile** | Sport, area, edit |
 | **Payment link / note** | External link text only v1 |
 | **Class Templates** | Optional v1.1 — or defer to Create flow |
@@ -63,11 +69,16 @@ Parent + coach users see **both** Family and Coach Tools sections.
 
 | State | Surface | Must show |
 |-------|---------|-----------|
-| **Parent My Classes** | Today block or Rally list | Per-child upcoming classes |
-| **Coach Classes I teach** | Today block or hub Play tab | Today's class, enrolled/confirmed counts |
+| **Parent My Classes** | Today block | Per-child upcoming classes — **only** adult parent with children or active enrollments |
+| **Coach Classes I teach** | Today block or hub Play tab | Today's class, enrolled/confirmed counts — adult coach only; **never** for teens |
 | **Class detail** | Rally-style screen | Tabs: Overview · Schedule · Roster · Chat |
-| **Empty parent** | Family Profiles CTA | *Manage classes for your child* → Profile Family |
+| **Empty parent (zero children)** | Profile Family CTA | *Manage classes for your child* → Profile Family — **not** MY CLASSES card with parent copy on Today |
 | **Empty coach** | Coach Tools CTA | *Create your first class* |
+| **R0 / teen / coach zero-child** | Today | **No** MY CLASSES block — see B4 rule below |
+
+**MY CLASSES visibility rule (B4):** Show when adult + (`studentCount > 0` OR explicit parent intent OR active enrollments). Hide for R0 players, teens (`teen_13_17`), and coaches with zero children. Cross-ref [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md).
+
+**Dual-role scroll density (P3):** Parent + coach users may see Family section, Coach Tools, and both Today cards — acceptable for v1; note density in Validator notes if Today feels crowded.
 
 Contracts: [flow-coach-minor-class-roster.md](./flow-coach-minor-class-roster.md) · [flow-student-class-enrollment.md](./flow-student-class-enrollment.md)
 
@@ -98,10 +109,11 @@ Preset: `classDiscover` in `gameCardLayouts.ts`.
 | Role | Create sheet options |
 |------|---------------------|
 | Normal | Casual Game · Rally Group |
-| Coach | + **Class / Clinic** |
+| Coach (adult only) | + **Class / Clinic** |
+| Teen (`teen_13_17`) | Casual Game · Rally Group only — **no** Class/Clinic even if `is_coach` set in DB |
 | Venue admin (later) | + Venue Open Play |
 
-Only show extra options when role permits.
+Only show extra options when role permits. Teen age gate on Create flow: see [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md) H2 probe.
 
 ## Class session card variant
 
@@ -156,14 +168,19 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 
 #### Profile
 - [x] **Family section** on Profile (not separate tab)
-- [x] **Coach Tools section** role-gated
-- [x] Parent+coach sees both sections
+- [ ] Flag-on zero-child adult sees Family section with empty copy (R1 — B2) — **Pass** contract 2
+- [x] **Coach Tools section** role-gated (adult only; teen force-hide per R3)
+- [x] Parent+coach sees both sections (Marcus reference) — **tier 3 regression:** Family + Coach Tools + Today dual blocks after PR #47
 - [x] Family Profiles list + Add Child Profile
 - [x] No Family on Play main feed
 
 ### Today / hub
 - [x] Parent sees My Classes when enrolled
 - [x] Coach sees Classes I teach / today card
+- [x] R0 player Today: **no** MY CLASSES block (B4) — `@valadult862552` pre-coach
+- [x] Teen Today: **no** MY CLASSES block (B4) — contract 3
+- [x] Flag-on zero-child adult: MY CLASSES hidden until parent intent or children (B4)
+- [x] Fresh account Family section visible when flag on + zero children (R1 — B2) — contract 2
 - [x] Class detail tabs: Overview · Schedule · Roster · Chat
 
 ### Play
@@ -176,7 +193,8 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 - [x] No coach–child private DM
 
 ### Create
-- [x] Class/Clinic option only for coaches
+- [x] Class/Clinic option only for adult coaches
+- [ ] Teen Create sheet: no Class/Clinic regardless of `is_coach` (R3) — **Pass** contract 3 H2 probe
 
 ### Navigation
 - [x] Invite enroll sheet → child picker
@@ -212,7 +230,9 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 - Public child profiles on Play
 - Child chat / coach–child DM
 - Photos, reviews, in-app payments
-- Academy substitute / consolidate (v1.4+ contract)
+- Academy substitute / consolidate (v1.5+)
+- Self-serve "Apply to be a coach" — see [flow-become-a-coach.md](./flow-become-a-coach.md) (v2)
+- First child without seed — [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md)
 
 ## Related
 
@@ -231,3 +251,5 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 | 4 | Today/hub class surfaces | Pass | `04-today-my-classes-parent.png`, `05-class-detail-roster.png` — MY CLASSES + coach roster |
 | 5 | Child picker enroll | Pass | `06-child-profile-picker.png` — Alex/Mia picker for Beginner Badminton |
 | 6 | No 5th tab / no public minors | Pass | 4 tabs only; inbox copy “To parents · not child DM”; `07-coach-roster.png`, `08-inbox-announcement.png` |
+| 7 | **Tier 3 dual-role regression** | Pass | `09-tier3-profile-dual-sections.png`, `10-tier3-today-dual-blocks.png` — Marcus FAMILY + COACH TOOLS + MY CLASSES + CLASSES I TEACH on `dev` post-PR #48 |
+| 8 | **Play-discover regression** (2026-06-22) | Pass | `module-role-surfaces/03-coach-classes-segment.png` — Classes segment + sport filter on `fix/play-discover-builder` |
