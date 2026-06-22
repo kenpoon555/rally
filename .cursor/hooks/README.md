@@ -111,11 +111,14 @@ chmod +x .cursor/hooks/product-review-loop-start.sh
 
 | Step | Command / action |
 |------|------------------|
-| Start queue | `product-review-loop-start.sh --queue onboarding-round1` |
+| Start queue | `product-review-loop-start.sh --queue onboarding-round1 --chain` |
 | After each persona | Update `.product-review-session.json` → `product-review-chain-next.py` |
-| Consolidator | When 6 reviews done — separate Agent chat |
-| Approve | `product-review-loop-approve.sh` |
+| Pre-approve | Auto in chain — may auto-pass to contract PR |
+| Manual approve | `product-review-loop-approve.sh` (only if auto-pass blocked) |
+| Contract merged | `product-review-loop-contract-merged.sh` |
+| Builder done | `product-review-loop-builder-done.sh` |
 | Proof | `validation-loop-start.sh --queue cps-onboarding --builder` |
+| Auto-pass check | `python3 .cursor/hooks/product_review_auto_pass.py` |
 
 Runbook: [PRODUCT-REVIEW-LOOP.md](../../docs/product-review/PRODUCT-REVIEW-LOOP.md) · Queues: [review-queues.json](../../docs/product-review/review-queues.json)
 
