@@ -97,3 +97,18 @@ SELECT * FROM analytics_crew_funnel_30d;
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | Planned funnel events not in types yet | — |
+| 2026-06-22 | GTM 2 scorecard events missing from `ProductEventName` | Builder |
+
+## Validator report
+
+> Run: 2026-06-22 · code audit + `supabase db query --linked`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | `ProductEventName` union — no raw strings in services | ✅ | grep `trackProductEvent('` — all known names |
+| 2 | Retention events wired | ✅ | `poll_*`, `crew_*`, `rotation_generated`, `recap_shared`, `crew_dormancy_nudge_sent` |
+| 3 | GTM 2 scorecard (8 required) | ✅ | Wired 2026-06-22 — see `analyticsService`, `activityService`, `processDeepLink` |
+| 4 | SQL views queryable | ✅ | `analytics_crew_lifecycle`, `analytics_crew_funnel_30d` return rows |
+| 5 | No PII in payloads | ✅ | Spot-check service calls |
+
+**Last validated:** 2026-06-22 — scorecard wired; query `analytics_crew_funnel_30d` after demo loop

@@ -13,7 +13,7 @@ import {
 import { NeedPlayerSkillLevel } from '../types/needPlayer';
 import { formatSkillLevelLabel } from './captainService';
 
-export const FREE_AGENT_SPORTS: SportType[] = ['Badminton', 'Pickleball'];
+export { FREE_AGENT_BOARD_SPORTS as FREE_AGENT_SPORTS } from '../config/surfaceVisibility';
 
 export const formatAvailabilityLabel = (preset: FreeAgentAvailabilityPreset): string => {
   switch (preset) {

@@ -1,19 +1,24 @@
-/** In-app copy for the LA closed beta — keep in sync with VISION.md / open_items.md */
-export const BETA_COPY = {
-  marketLabel: 'LA Beta',
-  headline: 'Rally Beta is focused on LA badminton, pickleball, and basketball.',
-  body: 'Want to host games, test Rally with your group, or bring Rally to your city?',
-  contactCta: 'Contact us',
+/** LA market copy — production-safe (no “beta” / tester recruitment). */
+export const MARKET_COPY = {
+  regionLabel: 'Los Angeles',
+  headline: 'Rally is available in Los Angeles for badminton, pickleball, and basketball.',
+  body: 'Host games, invite your crew, or tell us about bringing Rally to your area.',
+  contactCta: 'Contact support',
   contactEmail: 'kunyupoon495@gmail.com',
+  playEmptyFootnote: 'Try another sport using the filters above.',
+  playEmptyRegion: 'Rally is focused on LA badminton, pickleball, and basketball.',
 } as const;
 
-export const FOUNDER_BENEFITS_COPY =
-  'Active beta testers, hosts, and city partners may receive Founding Member benefits after launch.';
+/** @deprecated Use MARKET_COPY — kept for import stability during migration */
+export const BETA_COPY = MARKET_COPY;
 
-export function buildBetaContactMailto(): string {
-  const subject = encodeURIComponent('Rally beta — host / partner interest');
+export function buildSupportContactMailto(): string {
+  const subject = encodeURIComponent('Rally — support');
   const body = encodeURIComponent(
-    'Hi Rally team,\n\nI am interested in:\n- [ ] Hosting games in LA\n- [ ] Testing with my crew\n- [ ] Bringing Rally to my city\n\n'
+    'Hi Rally team,\n\nI need help with:\n\n'
   );
-  return `mailto:${BETA_COPY.contactEmail}?subject=${subject}&body=${body}`;
+  return `mailto:${MARKET_COPY.contactEmail}?subject=${subject}&body=${body}`;
 }
+
+/** @deprecated */
+export const buildBetaContactMailto = buildSupportContactMailto;

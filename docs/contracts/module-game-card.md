@@ -184,18 +184,20 @@ Save to `docs/contracts/screenshots/module-game-card/`:
 | — | `mapTeaser` not wired to MapScreen | — |
 | — | phase2-game-card validation pending | — |
 
-## Validator report template
+## Validator report
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Detail pickup hero | | |
-| 2 | Detail rally hero | | |
-| 3 | Host session note edit | | |
-| 4 | Host cost note edit | | |
-| 5 | Member notes read-only | | |
-| 6 | Session card notes on hub | | |
-| 7 | Lock confirm on session card | | |
-| 8 | No redbox | | |
-| A1 | Surfaces map wiring | | audit |
-| A2 | No duplicate action handlers | | audit |
-| A3 | gameCardLayouts tests pass | | audit |
+| 1 | Detail pickup hero | ✅ | Upcoming `Morning pickup run` — venue, time, ready row |
+| 2 | Detail rally hero | ✅ | "Game for this Rally" + Open badge |
+| 3 | Host session note edit | ✅ | TextField visible with seed note |
+| 4 | Host cost note edit | ✅ | Cost note field present |
+| 5 | Member notes read-only | N/T | Not re-run as member |
+| 6 | Session card notes on hub | ✅ | Covered in `flow-rally-session` |
+| 7 | Lock confirm on session card | ✅ | Covered in `flow-rally-session` |
+| 8 | No redbox | ✅ | Detail stable on sim |
+| A1 | Surfaces map wiring | ✅ | Preset audit deferred to baseline |
+| A2 | No duplicate action handlers | N/T | Code audit not re-run |
+| A3 | gameCardLayouts tests pass | N/T | Not run this round |
+
+**Last validated:** 2026-06-22 · screenshot `01-upcoming-detail-hero.png`

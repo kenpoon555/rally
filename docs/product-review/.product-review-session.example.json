@@ -1,0 +1,37 @@
+{
+  "queue_name": "onboarding-round1",
+  "tier": 1,
+  "personas": [
+    "player-no-coach-tools",
+    "coach-approved-manual",
+    "parent-first-child",
+    "parent-via-class-invite",
+    "coach-parent-dual",
+    "teen-restricted-account"
+  ],
+  "persona_index": 2,
+  "reviews_completed": [
+    "player-no-coach-tools",
+    "coach-approved-manual"
+  ],
+  "min_reviews_before_consolidate": 6,
+  "consolidator_tag": "onboarding",
+  "validation_queue": "cps-onboarding",
+  "phase": "persona_pending",
+  "status": "running",
+  "current_persona_id": "parent-first-child",
+  "synthesis_path": null,
+  "chain_enabled": true,
+  "pre_approve_review_enabled": true,
+  "auto_pass_enabled": true,
+  "pre_approve_verdict": null,
+  "pre_approve_review_path": null,
+  "auto_passed": false,
+  "auto_pass_reason": null,
+  "human_decisions": null,
+  "layer_2_status": null,
+  "layer_2_pr": null,
+  "layer_2_builder_status": null,
+  "contract_pr_branch": "docs/onboarding-contracts-product-review",
+  "updated_at": "2026-06-21T12:00:00+00:00"
+}

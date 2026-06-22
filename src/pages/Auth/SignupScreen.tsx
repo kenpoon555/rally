@@ -3,7 +3,8 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { toAuthErrorMessage } from '../../utils/errorMessages';
-import { TERMS_SUMMARY } from '../../constants/legal';
+import { SIGNUP_LEGAL_LABEL } from '../../constants/legal';
+import { AuthTermsNotice } from '../../components/auth/AuthTermsNotice';
 import { AuthScreenLayout } from '../../components/AuthScreenLayout';
 import { Button, TextField } from '../../components/ui';
 import { colors, radius, spacing } from '../../constants/theme';
@@ -78,8 +79,10 @@ const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
         <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
           {agreedToTerms ? <Text style={styles.checkmark}>✓</Text> : null}
         </View>
-        <Text style={styles.termsText}>{TERMS_SUMMARY}</Text>
+        <Text style={styles.termsText}>{SIGNUP_LEGAL_LABEL}</Text>
       </TouchableOpacity>
+
+      <AuthTermsNotice variant="signup" />
 
       <Button
         title="Create account"

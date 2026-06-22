@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChatMessage } from '../../types/chat';
 import { GameRecapCard } from '../GameRecapCard';
 import { colors, radius, spacing, typography } from '../../constants/theme';
@@ -7,9 +7,10 @@ import { colors, radius, spacing, typography } from '../../constants/theme';
 type Props = {
   message: ChatMessage;
   isMine: boolean;
+  onLongPressOther?: (message: ChatMessage) => void;
 };
 
-export const ChatMessageBubble: React.FC<Props> = ({ message, isMine }) => {
+export const ChatMessageBubble: React.FC<Props> = ({ message, isMine, onLongPressOther }) => {
   if (message.message_type === 'recap' && message.recap_id) {
     return <GameRecapCard recapId={message.recap_id} />;
   }
@@ -23,7 +24,15 @@ export const ChatMessageBubble: React.FC<Props> = ({ message, isMine }) => {
   }
 
   return (
-    <View style={[styles.row, isMine ? styles.rowMine : styles.rowOther]}>
+    <Pressable
+      onLongPress={
+        !isMine && message.message_type === 'text' && onLongPressOther
+          ? () => onLongPressOther(message)
+          : undefined
+      }
+      delayLongPress={400}
+      style={[styles.row, isMine ? styles.rowMine : styles.rowOther]}
+    >
       <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleOther]}>
         <Text style={[styles.messageText, isMine && styles.messageTextMine]}>
           {message.content}
@@ -35,7 +44,7 @@ export const ChatMessageBubble: React.FC<Props> = ({ message, isMine }) => {
           })}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 };
 

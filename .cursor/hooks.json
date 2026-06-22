@@ -3,7 +3,13 @@
   "hooks": {
     "stop": [
       {
-        "command": ".cursor/hooks/contract-validation-chain.py",
+        "command": ".cursor/hooks/rally-loop-continue.py",
+        "loop_limit": 40
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": ".cursor/hooks/rally-loop-continue.py",
         "loop_limit": 40
       }
     ]

@@ -32,7 +32,15 @@ export type ProductEventName =
   | 'captain_feedback_submitted'
   | 'rally_friend_invite_sent'
   | 'rally_friend_invite_accepted'
-  | 'crew_dormancy_nudge_sent';
+  | 'crew_dormancy_nudge_sent'
+  | 'invite_link_opened'
+  | 'signup_completed'
+  | 'crew_joined'
+  | 'game_ready_set'
+  | 'roster_locked'
+  | 'attendance_submitted'
+  | 'recap_viewed'
+  | 'second_session_scheduled';
 
 export interface RateLimitResult {
   allowed: boolean;

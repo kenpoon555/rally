@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -28,12 +29,14 @@ const TosAcceptanceGate: React.FC<Props> = ({
 }) => {
   const [busy, setBusy] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleAccept = async () => {
     if (needsTos && !agreed) {
       return;
     }
     setBusy(true);
+    setErrorMessage(null);
     try {
       if (needsTos) {
         await acceptLegalTerms(userId);
@@ -42,6 +45,13 @@ const TosAcceptanceGate: React.FC<Props> = ({
         await acknowledgeLocationPrivacy(userId);
       }
       onAccepted();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Could not save your acceptance. Check your connection and try again.';
+      setErrorMessage(message);
+      Alert.alert('Could not continue', message);
     } finally {
       setBusy(false);
     }
@@ -51,7 +61,9 @@ const TosAcceptanceGate: React.FC<Props> = ({
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
         <Text style={styles.title}>Before you play</Text>
-        <Text style={styles.subtitle}>Review terms, waiver, and how we use location.</Text>
+        <Text style={styles.subtitle}>
+          Review terms, community standards, waiver, and how we use location.
+        </Text>
         <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
           {FULL_LEGAL_SECTIONS.map((section) => (
             <View key={section.title} style={styles.section}>
@@ -63,8 +75,15 @@ const TosAcceptanceGate: React.FC<Props> = ({
         {needsTos ? (
           <TouchableOpacity style={styles.checkRow} onPress={() => setAgreed((v) => !v)}>
             <Text style={styles.checkbox}>{agreed ? '☑' : '☐'}</Text>
-            <Text style={styles.checkLabel}>I agree to the terms and activity waiver</Text>
+            <Text style={styles.checkLabel}>
+              I agree to the terms, community standards, and activity waiver
+            </Text>
           </TouchableOpacity>
+        ) : null}
+        {errorMessage ? (
+          <Text style={styles.error} testID="legal-gate-error">
+            {errorMessage}
+          </Text>
         ) : null}
         <TouchableOpacity
           style={[styles.button, (busy || (needsTos && !agreed)) && styles.buttonDisabled]}
@@ -99,6 +118,7 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.5 },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  error: { color: colors.error, marginBottom: 12, lineHeight: 20 },
 });
 
 export default TosAcceptanceGate;

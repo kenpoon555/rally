@@ -3,7 +3,7 @@ name: product-review
 description: >-
   Persona-based UX review of Rally on iOS simulator — navigate, screenshot,
   and produce feedback for contract updates. Use with docs/product-review/personas.md
-  (12 personas, 10+ sports × commitment levels). Not the Validator pass/fail loop.
+  (12 pickup personas + 8 role/onboarding personas). Not the Validator pass/fail loop.
   Run product-review-consolidator after multiple reviews.
 ---
 
@@ -21,21 +21,28 @@ Do **not** wire product review to the validation hook. Human approves consolidat
 
 ## Personas
 
-**Full catalog:** [docs/product-review/personas.md](../../docs/product-review/personas.md) — **12 personas**, **10 sports**, **5 commitment levels**.
+**Full catalog:** [docs/product-review/personas.md](../../docs/product-review/personas.md)
+
+- **Catalog A** — 12 personas · sport × commitment (pickup / Rally)
+- **Catalog B** — 8 personas · coach / parent / teen / org onboarding
+
+| persona-id | Role | Contract |
+|------------|------|----------|
+| `player-no-coach-tools` | Regular player | flow-coach-onboarding-org |
+| `coach-approved-manual` | Coach unlock | flow-become-a-coach |
+| `parent-first-child` | Parent unlock | flow-parent-family-onboarding |
+| `parent-via-class-invite` | Parent via link | flow-student-class-enrollment |
+| `coach-parent-dual` | Dual role | module-coach-parent-navigation |
+| `teen-restricted-account` | Teen 13–17 | flow-teen-account-onboarding |
+| `academy-head-coach` | Org v2 gaps | flow-organization-coaches |
+
+Pickup examples:
 
 | persona-id | Sport | Level |
 |------------|-------|-------|
 | `basketball-first-timer` | Basketball | L1 |
 | `badminton-casual` | Badminton | L2 |
 | `badminton-host` | Badminton | L4 |
-| `soccer-regular` | Soccer | L3 |
-| `tennis-casual` | Tennis | L2 |
-| `volleyball-host` | Volleyball | L4 |
-| `pickleball-first-timer` | Pickleball | L1 |
-| `running-regular` | Running | L3 |
-| `golf-social-host` | Golf | L4 |
-| `table-tennis-regular` | Table tennis | L3 |
-| `softball-casual` | Softball | L2 |
 | `multi-sport-power-host` | Multi | L5 |
 
 Pick **one persona-id per Agent session.**

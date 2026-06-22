@@ -112,18 +112,25 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| | | |
+| 2026-06-22 | Tier-2 picky host/member reviews blocked upstream by signed-out auth handoff reliability; re-run once `flow-invite-to-rally` P0 clears | Builder/Validator |
 
-## Validator report template
+## Validator report
+
+> Run: 2026-06-22 ~11:30 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `dev`  
+> Re-seed: `./scripts/seed-monrovia-linked.sh` before validation.
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Hub tabs load | | |
-| 2 | Session card member I'm in | | |
-| 3 | Ready persists refresh | | |
-| 4 | Host lock roster | | |
-| 5 | Locked visible | | |
-| 6 | Today card UI | | |
-| 7 | Game detail who's going | | |
-| 8 | Android keyboard (if tested) | | |
-| 9 | No redbox | | |
+| 1 | Hub tabs load | ✅ Pass | Chat / Play / Members on Julian Fisher Park Regulars. |
+| 2 | Session card member I'm in | ✅ Pass | Upcoming `Morning pickup run` on Play after re-seed; 8/8 ready. |
+| 3 | Ready persists refresh | ✅ Pass | Ready counts match DB after refresh. |
+| 4 | Host lock roster | ✅ Pass | `finalize_game_commitment` RPC + detail shows `activity-detail-roster-locked`. |
+| 5 | Locked visible | ✅ Pass | Play HISTORY + detail finalized state. |
+| 6 | Today card UI | ✅ Pass | Next Up shows Julian Fisher 9:00 AM. |
+| 7 | Game detail who's going | ✅ Pass | WHO'S GOING row in hero (8 players). |
+| 8 | Android keyboard | N/T | iOS sim only. |
+| 9 | No redbox | ✅ Pass | Hub + detail stable. |
+
+### Screenshots (`docs/contracts/screenshots/flow-rally-session/`)
+
+- `01-rally-hub-play-host.png`, `04-host-lock-roster.png`, `05-roster-locked-after-lock.png`, `06-today-next-up.png`, `07-game-detail` via invite/detail path

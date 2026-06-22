@@ -17,6 +17,7 @@ import {
   listStudentProfiles,
   shouldShowCoachToolsSection,
   shouldShowFamilySection,
+  shouldShowTodayMyClassesCard,
   userIsCoach,
 } from '../services/coachParentService';
 
@@ -54,8 +55,9 @@ export function useCoachParent() {
   }, [reload]);
 
   const isCoach = userIsCoach(user);
-  const showFamily = shouldShowFamilySection(user?.id, students.length);
+  const showFamily = shouldShowFamilySection(user, students.length);
   const showCoachTools = shouldShowCoachToolsSection(user);
+  const showTodayMyClasses = shouldShowTodayMyClassesCard(user, students.length, enrollments.length);
   const hasClassContext = enrollments.length > 0 || coachClasses.length > 0;
 
   return {
@@ -67,6 +69,7 @@ export function useCoachParent() {
     isCoach,
     showFamily,
     showCoachTools,
+    showTodayMyClasses,
     hasClassContext,
     classesDiscoverEnabled: COACH_CLASSES_DISCOVER,
   };

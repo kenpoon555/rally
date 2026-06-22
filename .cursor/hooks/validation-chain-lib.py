@@ -75,6 +75,66 @@ def is_sim_automation_only(failed_rows: list[str]) -> bool:
     return bool(blob) and any(k in blob for k in keys)
 
 
+def _prep_blob(failed_rows: list[str], notes: str = "") -> str:
+    return f"{notes} {' '.join(failed_rows)}".lower()
+
+
+def is_true_human_partial(failed_rows: list[str], notes: str = "") -> bool:
+    """Partial result that requires a human/product gate — not sim prep."""
+    blob = _prep_blob(failed_rows, notes)
+    if not blob.strip():
+        return True
+    human_keys = (
+        "needs_human",
+        "h gate",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "legal gate",
+        "admin reject",
+        "not built",
+        "v2 only",
+        "undecided",
+        "merge pr",
+        "testflight",
+        "app store",
+    )
+    return any(k in blob for k in human_keys)
+
+
+def is_agent_sim_prep_only(failed_rows: list[str], notes: str = "") -> bool:
+    """Sim/DB prep the agent can run — sign out, fresh signup, re-seed, SQL checks."""
+    blob = _prep_blob(failed_rows, notes)
+    if not blob.strip():
+        return False
+    if is_true_human_partial(failed_rows, notes):
+        return False
+    agent_keys = (
+        "sign out",
+        "signed out",
+        "fresh signup",
+        "logged in",
+        "re-seed",
+        "seed ",
+        "idb ",
+        "sim ",
+        "simulator",
+        "deferred signup",
+        "teen signup",
+        "parent signup",
+        "supabase",
+        "db query",
+        "age_category",
+        "sql ",
+        "screenshot",
+        "metro",
+        "xcrun simctl",
+        "openurl",
+    )
+    return any(k in blob for k in agent_keys)
+
+
 def queue_fields_snippet(session: dict) -> str:
     queue = session.get("queue")
     if not queue:
@@ -126,10 +186,13 @@ Steps:
 
 Write RallyApp/docs/contracts/.validation-session.json:
 - phase: "validator_done"
-- status: pass|fail|needs_builder|needs_human|blocked_external
+- status: pass|fail|partial|needs_builder|needs_human|blocked_external
 - failed_rows: [] if pass
 - fixer_round: {rnd}
 - chain_enabled: true{queue_fields_snippet(session)}
+
+Use **partial** only for product/legal gates a human must decide — NOT for wrong sim login state.
+For sign-out / fresh signup / re-seed / SQL proof gaps, use **partial** with descriptive failed_rows; chain will auto-run sim prep (no human pause).
 {SELF_CHAIN}
 """
 
@@ -178,6 +241,47 @@ Read RallyApp/{path} and linked contracts. Implement missing behavior. Then writ
 """
 
 
+def sim_prep_prompt(session: dict) -> str:
+    cid = session["contract_id"]
+    path = session.get("contract_path") or f"docs/contracts/{cid}.md"
+    rows = normalize_failed_rows(session)
+    rows_text = "\n".join(f"- {r}" for r in rows) if rows else "- (see session notes)"
+    notes = session.get("notes") or ""
+    return f"""You are the Sim-prep agent for Rally contract validation.
+
+**Do not stop or ask the human** for steps you can run on simulator/CLI.
+
+Read:
+- RallyApp/{path}
+- RallyApp/docs/store-review-test-accounts.md
+- RallyApp/docs/contracts/MANUAL-RUN-loop-a.md (sign-out / deep-link patterns)
+
+Session notes: {notes or "(none)"}
+
+Rows needing sim/DB prep:
+{rows_text}
+
+Steps (run what applies — never ask human to sign out for you):
+1. **Re-seed** if prior validation left bad state:
+   ```bash
+   supabase db query --linked -f supabase/scripts/seed_monrovia_basketball_rally_demo.sql
+   node scripts/seed-monrovia-basketball-rally-demo.mjs
+   ```
+2. **Sign out** on iOS sim if logged in: You tab → Sign out (mobile automation MCP or idb/ui tap)
+3. **Fresh signup / login** paths required by failed_rows (18+, teen, deferred email confirm, etc.)
+4. **SQL verify** `age_category` / profile rows via `supabase db query --linked` when checklist needs DB proof
+5. Screenshots if needed under docs/contracts/screenshots/{cid}/
+
+When prep is done, write RallyApp/docs/contracts/.validation-session.json:
+- phase: "sim_prep_done"
+- status: "complete"
+- chain_enabled: true
+- preserve queue_name, queue, queue_index, contract_id, failed_rows (unchanged)
+{queue_fields_snippet(session)}
+{SELF_CHAIN}
+"""
+
+
 def advance_queue(session: dict) -> str | None:
     queue = session.get("queue") or []
     idx = int(session.get("queue_index", 0))
@@ -197,15 +301,32 @@ def advance_queue(session: dict) -> str | None:
 
 
 def compute_next(session: dict) -> dict:
-    """Return {action, reason, prompt, update_session} — action in stop|fixer|validator|builder."""
+    """Return {action, reason, prompt, update_session} — action in stop|fixer|validator|builder|sim_prep."""
+    phase = session.get("phase", "")
+    status = session.get("status", "")
+    failed_rows = normalize_failed_rows(session)
+    notes = session.get("notes") or ""
+
+    if not session.get("chain_enabled"):
+        if phase == "blocked" and status == "partial" and is_agent_sim_prep_only(failed_rows, notes):
+            session["chain_enabled"] = True
+            if session.get("sim_prep_used"):
+                session["phase"] = "validator_pending"
+                session["retry_sim_automation"] = True
+            else:
+                session["phase"] = "sim_prep_pending"
+            save_session(session)
+        else:
+            return {"action": "stop", "reason": "chain_disabled", "prompt": ""}
+
     if not session.get("chain_enabled"):
         return {"action": "stop", "reason": "chain_disabled", "prompt": ""}
 
     phase = session.get("phase", "")
     status = session.get("status", "")
+
     max_rounds = int(session.get("max_fixer_rounds", 3))
     fixer_round = int(session.get("fixer_round", 0))
-    failed_rows = normalize_failed_rows(session)
 
     if phase == "validator_done" and status == "pass":
         queue = session.get("queue") or []
@@ -257,6 +378,22 @@ def compute_next(session: dict) -> dict:
         session["chain_enabled"] = False
         save_session(session)
         return {"action": "stop", "reason": "CHAIN_PAUSED needs_builder", "prompt": ""}
+
+    if phase == "sim_prep_done":
+        session["phase"] = "validator_pending"
+        save_session(session)
+        return {
+            "action": "validator",
+            "reason": "sim_prep_done → re-validate",
+            "prompt": validator_prompt(session),
+        }
+
+    if phase == "sim_prep_pending":
+        return {
+            "action": "sim_prep",
+            "reason": "sim prep in progress",
+            "prompt": sim_prep_prompt(session),
+        }
 
     if phase == "fixer_done":
         session["phase"] = "validator_pending"
@@ -313,6 +450,34 @@ def compute_next(session: dict) -> dict:
             "prompt": fixer_prompt(session),
         }
 
+    if phase == "validator_done" and status == "partial":
+        if is_agent_sim_prep_only(failed_rows, notes):
+            if not session.get("sim_prep_used"):
+                session["sim_prep_used"] = True
+                session["phase"] = "sim_prep_pending"
+                save_session(session)
+                return {
+                    "action": "sim_prep",
+                    "reason": "partial → agent sim prep (sign out / signup / re-seed / SQL)",
+                    "prompt": sim_prep_prompt(session),
+                }
+            session["phase"] = "validator_pending"
+            session["retry_sim_automation"] = True
+            save_session(session)
+            return {
+                "action": "validator",
+                "reason": "partial after sim prep — re-validate",
+                "prompt": validator_prompt(session),
+            }
+        session["phase"] = "blocked"
+        session["chain_enabled"] = False
+        save_session(session)
+        return {
+            "action": "stop",
+            "reason": "CHAIN_PAUSED partial — human/product gate (not sim prep)",
+            "prompt": "",
+        }
+
     if phase in ("started", "validator_pending"):
         if phase == "started":
             session["phase"] = "validator_pending"
@@ -345,3 +510,9 @@ def write_next_md(session: dict | None, nxt: dict) -> None:
             ]
         )
     NEXT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        from loop_status_lib import write_status
+
+        write_status(nxt.get("action", ""), nxt.get("reason", ""))
+    except ImportError:
+        pass

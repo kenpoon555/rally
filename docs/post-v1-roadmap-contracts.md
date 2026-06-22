@@ -50,7 +50,7 @@
 | Ops | Today empty state | 0 | Partial | [flow-play-screen.md](./contracts/flow-play-screen.md) | P2 if groups confused |
 | Ops | Crew dormancy push | Ops | **Not built** | [flow-crew-dormancy-nudge.md](./contracts/flow-crew-dormancy-nudge.md) | GTM 3 — after replay data |
 | — | Founding Organizer / Coach | GTM 3 | **Not built** | Contract when scoped | Manual billing first — [launch-roadmap-jun-2026.md](./launch-roadmap-jun-2026.md) |
-| **CPS** | Parent / student / coach safety track | v1.2–v2.0 | **Design only** | [coach-parent-student/README.md](./coach-parent-student/README.md) | **Separate from GTM 1–2** — see release track |
+| **CPS** | Parent / student / coach safety track | v1.2–v2.0 | **Design + partial build** | [coach-parent-student/README.md](./coach-parent-student/README.md) · [ONBOARDING-CONTRACT-INDEX.md](./contracts/ONBOARDING-CONTRACT-INDEX.md) | **Separate from GTM 1–2** — see release track |
 | — | Payments / leagues | 5+ | **Deferred** | Contract when scoped | — |
 
 ## Suggested validation order (promote draft → active)
@@ -79,10 +79,15 @@ Prompts: [validate-contract.md](../.cursor/workflows/validate-contract.md)
 - Coach academy org model — v2.0  
 - Rich chat (image / audio / calls)  
 
-### Coach / parent / student track (draft contracts — no Builder yet)
+### Coach / parent / student track
 
 | Contract | Release |
 |----------|---------|
+| [ONBOARDING-CONTRACT-INDEX.md](./contracts/ONBOARDING-CONTRACT-INDEX.md) | Map |
+| [flow-become-a-coach.md](./contracts/flow-become-a-coach.md) | v1.1 stub |
+| [flow-parent-family-onboarding.md](./contracts/flow-parent-family-onboarding.md) | v1.2 stub |
+| [flow-teen-account-onboarding.md](./contracts/flow-teen-account-onboarding.md) | v1.2 stub |
+| [flow-organization-coaches.md](./contracts/flow-organization-coaches.md) | v2.0 stub |
 | [flow-age-gate-onboarding.md](./contracts/flow-age-gate-onboarding.md) | v1.2 |
 | [module-student-profile.md](./contracts/module-student-profile.md) | v1.2 |
 | [module-student-visibility.md](./contracts/module-student-visibility.md) | v1.2 |

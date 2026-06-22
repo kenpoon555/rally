@@ -21,17 +21,18 @@ supabase db query --linked -f supabase/scripts/seed_coach_ops_validation.sql
 
 Login: `marcus@rally-mvrhoops.demo` → **Beginner Badminton** → **Manage session**
 
-## Operations matrix (v1.4)
+## Operations matrix (v1.4 vs v2)
 
-| Operation | Solo coach | In app |
-|-----------|------------|--------|
+| Operation | Solo coach (v1.4) | Academy / multi-coach (v2+) |
+|-----------|-------------------|----------------------------|
 | Cancel session | Yes | Yes |
 | Defer to next week | Yes | Yes |
-| Notify parents | Yes | Yes (enrolled guardians only) |
-| Duplicate session | — | Out of scope |
-| Assign substitute coach | — | v1.5+ |
-| Consolidate two classes | — | v1.5+ |
-| Reassign enrolled students | — | v1.5+ |
+| Notify parents | Yes | Yes |
+| Assign substitute coach | **No** | v1.5+ / org v2.0 |
+| Reassign class to another coach | **No** | org v2.0 |
+| Consolidate two classes | **No** | v1.5+ |
+
+See [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md) for role + org model.
 
 ## Example flows
 
