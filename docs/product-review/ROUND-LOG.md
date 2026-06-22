@@ -135,7 +135,9 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 ## Next validation queues (not started)
 
-See [validation-queues.json](../contracts/validation-queues.json): `phase1a`, `phase1b`, `phase1c`, `phase2-recap`, `phase2-game-card`, `ops`, `gtm1-launch-gate` (device), `v1.1`–`v1.4` coach/parent.
+See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md) and [validation-queues.json](../contracts/validation-queues.json).
+
+**Start:** `./.cursor/hooks/validation-loop-start.sh --queue phase1a --from flow-post-game-attendance --builder`
 
 ---
 

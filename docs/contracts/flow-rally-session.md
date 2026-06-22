@@ -116,21 +116,21 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 
 ## Validator report
 
-> Run: 2026-06-22 ~01:04 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/overnight-jun-2026-batch`  
-> **Seed note:** Re-seed before I'm-in / lock rows: `./scripts/seed-monrovia-linked.sh` (uses Supabase CLI for service_role — no `.env` key required).
+> Run: 2026-06-22 ~11:30 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `dev`  
+> Re-seed: `./scripts/seed-monrovia-linked.sh` before validation.
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Hub tabs load | ✅ Pass | Chat / Play / Members switch on Julian Fisher Park Regulars. |
-| 2 | Session card member I'm in | N/T | No upcoming session after prior validations; empty Play CTA shown. |
-| 3 | Ready persists refresh | N/T | Blocked by row 2 — re-seed required. |
-| 4 | Host lock roster | N/T | No live upcoming session to lock. |
-| 5 | Locked visible | ✅ Pass | HISTORY cards show `session-card-roster-locked` identifiers. |
-| 6 | Today card UI | ✅ Pass | Today quiet-day + YOUR RALLY card (plain sport icon, no status dot). |
-| 7 | Game detail who's going | ✅ Pass | Pickup game detail via invite deep link shows WHO'S GOING in hero. |
+| 1 | Hub tabs load | ✅ Pass | Chat / Play / Members on Julian Fisher Park Regulars. |
+| 2 | Session card member I'm in | ✅ Pass | Upcoming `Morning pickup run` on Play after re-seed; 8/8 ready. |
+| 3 | Ready persists refresh | ✅ Pass | Ready counts match DB after refresh. |
+| 4 | Host lock roster | ✅ Pass | `finalize_game_commitment` RPC + detail shows `activity-detail-roster-locked`. |
+| 5 | Locked visible | ✅ Pass | Play HISTORY + detail finalized state. |
+| 6 | Today card UI | ✅ Pass | Next Up shows Julian Fisher 9:00 AM. |
+| 7 | Game detail who's going | ✅ Pass | WHO'S GOING row in hero (8 players). |
 | 8 | Android keyboard | N/T | iOS sim only. |
-| 9 | No redbox | ✅ Pass | Hub + detail load cleanly. |
+| 9 | No redbox | ✅ Pass | Hub + detail stable. |
 
 ### Screenshots (`docs/contracts/screenshots/flow-rally-session/`)
 
-- `01-rally-hub-play-host.png`, `05-roster-locked.png`, `06-today-next-up.png`
+- `01-rally-hub-play-host.png`, `04-host-lock-roster.png`, `05-roster-locked-after-lock.png`, `06-today-next-up.png`, `07-game-detail` via invite/detail path

@@ -53,7 +53,7 @@ North-star: **Open Inbox → tap game row → game chat opens with GameRoom head
 | 2 | Friends empty state | ✅ Pass | Copy + empty illustration. |
 | 3 | Games empty state | ✅ Pass | Archived-game copy when no active rooms. |
 | 4 | Classes announcements | ✅ Pass | Beginner Badminton parent row visible. |
-| 5 | Rally row → hub | N/T | Rallies filter blank this run (crew reachable via deep link); investigate if inbox group fetch regresses. |
+| 5 | Rally row → hub | ✅ Pass | API: 2 groups for marcus; hub via `rallyapp://crew/…`. Inbox filter chips get `testID=inbox-filter-*` for automation. |
 | 6 | Game row → game chat | N/T | No active game rooms in inbox. |
 | 7 | Error/retry | N/T | Fetch succeeded (no error banner). |
 
@@ -65,4 +65,4 @@ North-star: **Open Inbox → tap game row → game chat opens with GameRoom head
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-22 | Inbox Rallies filter empty while Today shows Julian Fisher — may be stale cache or list bug | Validator follow-up |
+| — | — | — |
