@@ -113,10 +113,17 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedSport, setSelectedSport] = useState(() => resolveUserDefaultSport(preferredSport));
   const effectiveSportFilter = selectedSport;
   const orderedPlaySports = useMemo(() => sortSportsForPlayTab(sports), [sports]);
-  const stripSports = useMemo(
-    () => orderedPlaySports.slice(0, PLAY_STRIP_SPORT_COUNT),
-    [orderedPlaySports]
-  );
+  const stripSports = useMemo(() => {
+    const primary = orderedPlaySports.slice(0, PLAY_STRIP_SPORT_COUNT);
+    if (primary.some((sport) => sport.name === selectedSport)) {
+      return primary;
+    }
+    const selected = orderedPlaySports.find((sport) => sport.name === selectedSport);
+    if (!selected) {
+      return primary;
+    }
+    return [...primary.slice(0, PLAY_STRIP_SPORT_COUNT - 1), selected];
+  }, [orderedPlaySports, selectedSport]);
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
   const moreSportSelected = useMemo(
     () => !stripSports.some((sport) => sport.name === selectedSport),

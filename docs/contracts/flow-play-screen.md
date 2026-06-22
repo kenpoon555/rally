@@ -115,19 +115,17 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 | 12 | Games empty Running title | ✅ Pass | *"No Running meetups nearby"*. |
 | 13 | Players subtitle vs data | ✅ Pass | Subtitle honest; stale row acceptable per H1 option B. |
 | 14 | First-timer invite hint | ✅ Pass | Copy on Games empty state. |
-| 15 | Off-strip sport in strip | ❌ Fail | More → Racquetball: content scoped correctly but strip slots 1–3 unchanged; only More ring highlighted. |
-| 16 | Sport persistence | N/T | Depends on #15 — verify after strip fix. |
-| 17 | Empty-state hero icon | ❌ Fail | `DiscoverEmptyState` applies square `primaryLight` on plain `lg` glyph — icon looks off-center vs filter rings. |
+| 15 | Off-strip sport in strip | ✅ Pass | Racquetball in slot 3 (`off-strip-sport-in-strip.png`); preferred_sports restored on launch. |
+| 16 | Sport persistence | ✅ Pass | R0 `@playerr0pd1782160073` re-opened with Racquetball active. |
+| 17 | Empty-state hero icon | ✅ Pass | Plain glyph in 56px circle — no square tile (`discover-empty-icon-aligned.png`). |
 
 ### Screenshots
 
 - Reuse `docs/contracts/screenshots/module-role-surfaces/` for matrix captures.
-- **Pending:** `flow-play-screen/off-strip-sport-in-strip.png`, `discover-empty-icon-aligned.png`
+- `flow-play-screen/off-strip-sport-in-strip.png`, `discover-empty-icon-aligned.png`
 
 ## Open issues
 
 | Date | Blocker | Owner |
 |------|---------|-------|
 | 2026-06-22 | Running filter leak — **resolved** on builder branch | — |
-| 2026-06-22 | Off-strip sport not visible in quick strip (B7) — swap slot 3 per demo setup | Builder / Fixer |
-| 2026-06-22 | Discover empty-state icon misaligned (B11) — use plain glyph or 56px circle via preset | Builder / Fixer |
