@@ -124,6 +124,20 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 - Reuse `docs/contracts/screenshots/module-role-surfaces/` for matrix captures.
 - **Pending:** `flow-play-screen/off-strip-sport-in-strip.png`, `discover-empty-icon-aligned.png`
 
+## Product review — tier 2 picky (2026-06-22)
+
+**Queue:** `play-discover-round2-picky` · 4/4 personas · tag `play-discover-picky`
+
+| Theme | Verdict |
+|-------|---------|
+| B7 off-strip slot 3 | **Pass** — matrix auditor + minimalist |
+| B11 empty hero icon | **Pass** |
+| R0 Games \| Players only | **Pass** — `@playerr0pd1782160073` |
+| Sport × segment matrix | **Pass** — no cross-sport leak |
+| Invite north-star | **Carry P0** — `flow-invite-to-rally` (not Play regression) |
+
+**Optional follow-ups (P2/P3):** Players empty capitalize sport name; invite hint prominence; free-agent recency.
+
 ## Open issues
 
 | Date | Blocker | Owner |
