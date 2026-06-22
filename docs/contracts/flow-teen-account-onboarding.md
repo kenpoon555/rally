@@ -1,7 +1,7 @@
 # Flow — Teen account onboarding (13–17)
 
 **Contract id:** `flow-teen-account-onboarding`  
-**Status:** **Partial** — product review 2026-06-21: H2 coach-surface leak (P0); Today MY CLASSES on teen (P1)  
+**Status:** **Green** — validation 2026-06-22 (B3/B4): teen + erroneous `is_coach=true` force-hides coach surfaces  
 **Track:** v1.2 · [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md)  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Related code:** `AgeGateScreen.tsx`, `SignupScreen.tsx`, `canCreateStudentProfiles`, `coachParentService`, `DynamicHomeScreen.tsx`, `TodayMyClassesCard.tsx`
@@ -42,23 +42,23 @@ North-star: **Teen selects 13–17 → completes signup → no Family / Coach To
 
 ### Signup + profile
 
-- [ ] 13–17 path completes signup
-- [ ] Under 13 path still blocked — see [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md)
+- [x] 13–17 path completes signup
+- [x] Under 13 path still blocked — see [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md)
 - [ ] Teen cannot open Add Child Profile successfully — adult-only alert
-- [ ] Age category stored on profile as `teen_13_17` — DB assertion per age-gate contract
-- [ ] Teen Profile Settings: **no** Family section; **no** Coach Tools section
+- [x] Age category stored on profile as `teen_13_17` — DB assertion per age-gate contract
+- [x] Teen Profile Settings: **no** Family section; **no** Coach Tools section
 
 ### H2 probe — erroneous coach flag (P0 — R3 locked)
 
-- [ ] Teen (`teen_13_17`) never sees Coach Tools regardless of `profiles.is_coach`
-- [ ] Teen (`teen_13_17`) never sees **CLASSES I TEACH** on Today regardless of `is_coach`
-- [ ] H2 probe: DB `is_coach = true` on teen account → force-quit → relaunch → **zero** Coach Tools + **zero** CLASSES I TEACH
+- [x] Teen (`teen_13_17`) never sees Coach Tools regardless of `profiles.is_coach`
+- [x] Teen (`teen_13_17`) never sees **CLASSES I TEACH** on Today regardless of `is_coach`
+- [x] H2 probe: DB `is_coach = true` on teen account → force-quit → relaunch → **zero** Coach Tools + **zero** CLASSES I TEACH
 - [ ] Teen cannot access Create Class / Class-Clinic create option — see [module-coach-parent-navigation.md](./module-coach-parent-navigation.md)
 
 ### Today / navigation (P1)
 
-- [ ] Teen Today has **no** MY CLASSES card — no parent copy (*No upcoming classes for your children*)
-- [ ] Teen Today has **no** “Manage classes for your child →” Family deep link
+- [x] Teen Today has **no** MY CLASSES card — no parent copy (*No upcoming classes for your children*)
+- [x] Teen Today has **no** “Manage classes for your child →” Family deep link
 - [ ] R0 player Today also has no MY CLASSES — cross-ref [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md)
 
 ### Policy
@@ -126,3 +126,7 @@ North-star: **Teen selects 13–17 → completes signup → no Family / Coach To
 
 | Item | Pass | Notes |
 |------|------|-------|
+| Teen Profile — no Family/Coach | Pass | `@teenr5676` Settings: VALIDATOR → PAYMENTS only (`02-profile-no-family-coach.png`) |
+| H2 — `is_coach=true` force-hide | Pass | DB `is_coach=true`, `teen_13_17` — still no coach UI (`05-h2-probe-no-coach-after-flag.png`) |
+| Today — no MY CLASSES | Pass | No parent block or Family deep link (`04-today-no-my-classes.png`) |
+| Age category DB | Pass | `teen_13_17` on `teen.r5.1782085676@rally-mvrhoops.demo` |

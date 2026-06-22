@@ -1,7 +1,7 @@
 # Flow — Coach role, organization & class ownership
 
 **Contract id:** `flow-coach-onboarding-org`  
-**Status:** **Partial** — coach unlock green on Marcus; Today MY CLASSES visibility for R0/teen/coach-with-zero-children (P1 — B4)  
+**Status:** **Green** — validation 2026-06-22: Marcus dual-role + `@valadult862552` R0/coach Today gating (B4)  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Related code:** `profiles.is_coach`, `ProfileCoachToolsSection.tsx`, `coachParentService.ts`, `DynamicHomeScreen.tsx`, `TodayMyClassesCard.tsx`, `flow-coach-class-operations.md`
 
@@ -53,21 +53,21 @@ Non-coach: `@kunyu` → **no** Coach Tools section
 
 ### v1 (validate now)
 
-- [ ] Marcus: Profile shows **Coach Tools** (Create Class, Coach Profile)
-- [ ] Marcus: Play → Create shows **Class/Clinic** option
-- [ ] Non-coach (`@kunyu`): no Coach Tools section
-- [ ] Non-coach adult: Play → **Classes** segment browse OK when flag on — **no** Class/Clinic on Create sheet
+- [x] Marcus: Profile shows **Coach Tools** (Create Class, Coach Profile)
+- [x] Marcus: Play → Create shows **Class/Clinic** option
+- [x] Non-coach (`@valadult862552` pre-approval): no Coach Tools section — `@kunyu` password unavailable; DB `is_coach=false`
+- [x] Non-coach adult: Play → **Classes** segment browse OK when flag on — **no** Class/Clinic on Create sheet
 - [ ] Class defer/cancel works — see `flow-coach-class-operations`
-- [ ] **No** UI promises "assign substitute" or "transfer to another coach"
+- [x] **No** UI promises "assign substitute" or "transfer to another coach"
 
 ### Today MY CLASSES visibility (P1 — B4)
 
-- [ ] R0 player (`@kunyu`, zero children): Today has **no** MY CLASSES block — no parent copy (*No upcoming classes for your children*)
-- [ ] R0 player Today: **no** “Manage classes for your child →” Family deep link
-- [ ] Approved coach with zero children and no student profiles: Today has **no** parent-oriented MY CLASSES copy
-- [ ] Teen account: Today has **no** MY CLASSES — see [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md)
-- [ ] Adult parent with `studentCount > 0` or active enrollments: MY CLASSES shows appropriate parent copy
-- [ ] Coach with classes: **CLASSES I TEACH** card visible — alternate entry to coach tools per [flow-become-a-coach.md](./flow-become-a-coach.md)
+- [x] R0 player (`@valadult862552` pre-coach, zero children): Today has **no** MY CLASSES block
+- [x] R0 player Today: **no** “Manage classes for your child →” Family deep link
+- [x] Approved coach with zero children and no student profiles: Today has **no** parent-oriented MY CLASSES copy — `@valadult862552` post-approval shows CLASSES I TEACH only
+- [x] Teen account: Today has **no** MY CLASSES — see [flow-teen-account-onboarding.md](./flow-teen-account-onboarding.md)
+- [x] Adult parent with `studentCount > 0` or active enrollments: MY CLASSES shows appropriate parent copy — Marcus seed
+- [x] Coach with classes: **CLASSES I TEACH** card visible — alternate entry to coach tools per [flow-become-a-coach.md](./flow-become-a-coach.md)
 
 ### v2 (document only — fail if shipped without contract)
 

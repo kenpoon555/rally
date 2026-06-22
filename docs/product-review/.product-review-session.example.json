@@ -23,7 +23,15 @@
   "synthesis_path": null,
   "chain_enabled": true,
   "pre_approve_review_enabled": true,
+  "auto_pass_enabled": true,
   "pre_approve_verdict": null,
   "pre_approve_review_path": null,
+  "auto_passed": false,
+  "auto_pass_reason": null,
+  "human_decisions": null,
+  "layer_2_status": null,
+  "layer_2_pr": null,
+  "layer_2_builder_status": null,
+  "contract_pr_branch": "docs/onboarding-contracts-product-review",
   "updated_at": "2026-06-21T12:00:00+00:00"
 }

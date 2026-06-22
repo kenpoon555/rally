@@ -9,17 +9,31 @@ import { canCreateStudentProfiles } from '../../types/ageCategory';
 import { createStudentProfile } from '../../services/studentProfileService';
 import { hasActiveGuardianConsent } from '../../services/guardianConsentService';
 import { canShowGuardianAttestation } from '../../constants/guardianConsent';
+import { ClassEnrollmentInvite } from '../../types/coachParent';
 
 type Params = {
-  AddChildProfile: undefined;
+  AddChildProfile: {
+    returnToInvite?: ClassEnrollmentInvite;
+  };
 };
 
 type Props = NativeStackScreenProps<Params, 'AddChildProfile'>;
 
-const AddChildProfileScreen: React.FC<Props> = ({ navigation }) => {
+const AddChildProfileScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
+  const returnToInvite = route.params?.returnToInvite;
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const resumeAfterCreate = () => {
+    if (returnToInvite) {
+      navigation.replace(ROUTES.COACH_PARENT.CHILD_PICKER as never, {
+        invite: returnToInvite,
+      } as never);
+      return;
+    }
+    navigation.goBack();
+  };
 
   const handleCreate = async () => {
     if (!user?.id) {
@@ -45,7 +59,7 @@ const AddChildProfileScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     try {
       await createStudentProfile(user.id, displayName, user.age_category);
-      navigation.goBack();
+      resumeAfterCreate();
     } catch (error: unknown) {
       Alert.alert(
         'Could not create profile',

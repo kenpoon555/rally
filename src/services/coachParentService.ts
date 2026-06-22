@@ -17,6 +17,11 @@ import { listStudentProfilesForParent } from './studentProfileService';
 import { listParentEnrollmentsFromDb } from './studentEnrollmentService';
 import { getClassSessionState, listParentClassNotifications } from './classCoachOperationsService';
 import { COACH_CLASS_OPERATIONS } from '../constants/coachOpsFlags';
+import {
+  AgeCategory,
+  isAdultAgeCategory,
+  isTeenAgeCategory,
+} from '../types/ageCategory';
 
 const MARCUS_ID = 'd1000001-0001-4001-8001-000000000001';
 const OTHER_COACH_ID = 'd1000002-0002-4002-8002-000000000002';
@@ -135,36 +140,61 @@ const DEMO_ANNOUNCEMENTS: ClassAnnouncementInboxItem[] = [
   },
 ];
 
-export function userIsCoach(user: { id?: string; is_coach?: boolean } | null | undefined): boolean {
-  if (!user?.id) {
+export type CoachParentUser = {
+  id?: string;
+  is_coach?: boolean;
+  age_category?: AgeCategory | null;
+};
+
+export function userIsCoach(user: CoachParentUser | null | undefined): boolean {
+  if (!user?.id || isTeenAgeCategory(user.age_category)) {
     return false;
   }
-  if (user.is_coach) {
-    return true;
-  }
-  return user.id === MARCUS_ID;
+  return Boolean(user.is_coach);
 }
 
 export function shouldShowFamilySection(
-  userId: string | undefined,
+  user: CoachParentUser | null | undefined,
   studentCount: number
 ): boolean {
-  if (!userId) {
+  if (!user?.id) {
+    return false;
+  }
+  if (isTeenAgeCategory(user.age_category)) {
     return false;
   }
   if (!PARENT_FAMILY_UI && !STUDENT_PROFILES) {
     return false;
   }
-  return studentCount > 0 || userId === MARCUS_ID;
+  if (PARENT_FAMILY_UI || STUDENT_PROFILES) {
+    return isAdultAgeCategory(user.age_category) || studentCount > 0;
+  }
+  return studentCount > 0;
 }
 
-export function shouldShowCoachToolsSection(
-  user: { id?: string; is_coach?: boolean } | null | undefined
-): boolean {
-  if (!COACH_DASHBOARD) {
+export function shouldShowCoachToolsSection(user: CoachParentUser | null | undefined): boolean {
+  if (!COACH_DASHBOARD || isTeenAgeCategory(user?.age_category)) {
     return false;
   }
   return userIsCoach(user);
+}
+
+/** Today MY CLASSES — adult parents with child context only (not R0 players, teens, or empty coaches). */
+export function shouldShowTodayMyClassesCard(
+  user: CoachParentUser | null | undefined,
+  studentCount: number,
+  enrollmentCount: number
+): boolean {
+  if (!PARENT_FAMILY_UI) {
+    return false;
+  }
+  if (!user?.id || isTeenAgeCategory(user.age_category)) {
+    return false;
+  }
+  if (!isAdultAgeCategory(user.age_category)) {
+    return false;
+  }
+  return studentCount > 0 || enrollmentCount > 0;
 }
 
 export async function listStudentProfiles(parentUserId: string): Promise<StudentProfile[]> {

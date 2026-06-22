@@ -100,8 +100,15 @@ session = {
     "status": "running",
     "synthesis_path": None,
     "pre_approve_review_enabled": chain,
+    "auto_pass_enabled": chain,
     "pre_approve_verdict": None,
     "pre_approve_review_path": None,
+    "auto_passed": False,
+    "layer_2_status": None,
+    "layer_2_pr": None,
+    "contract_pr_branch": f"docs/{q.get('consolidator_tag', name)}-contracts-product-review",
+    "builder_branch": f"fix/{q.get('consolidator_tag', name)}-builder",
+    "validation_first_contract": "flow-age-gate-onboarding",
 }
 Path("${SESSION_FILE}").write_text(json.dumps(session, indent=2) + "\\n")
 print(f'PERSONA_ID="{from_id}"')

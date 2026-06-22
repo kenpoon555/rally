@@ -58,6 +58,8 @@ flowchart TB
 
 Master config: **`docs/release-loops.json`** — which queues chain together for `onboarding-v1`, `pickup-gtm2`, `sport-meetup`.
 
+**Round-by-round fixes & status:** [ROUND-LOG.md](./ROUND-LOG.md)
+
 ---
 
 ## One Agent turn (automated sim run)
@@ -76,13 +78,17 @@ Run product-review-loop-start.sh --queue onboarding-round1 --chain and self-chai
 After you approve:
 
 ```bash
-./.cursor/hooks/product-review-loop-approve.sh
+./.cursor/hooks/product-review-loop-approve.sh   # only if auto-pass blocked
+# chain-next → spawn_contract_pr → merge PR → product-review-loop-contract-merged.sh
+# → builder → product-review-loop-builder-done.sh → validation
 ```
 
 Agent (same or new chat):
 
 ```
-Run product-review-loop-approve.sh then self-chain spawn_validation — run validation-loop-start.sh --queue cps-onboarding --builder and complete Validator/Fixer this turn.
+Run product-review-loop-start.sh --queue onboarding-round1 --chain and self-chain through pre-approve.
+If auto-pass eligible, continue to spawn_contract_pr in the same turn.
+After contract PR merges, run product-review-loop-contract-merged.sh then builder B1–B6.
 ```
 
 ---

@@ -66,6 +66,8 @@ Quiet (session file only — Agent already knows what to do):
 | Validator **fail** | Auto **Fixer** → **Validator** (max 3 rounds) |
 | **needs_builder** (no `--builder`) | Pauses for you |
 | **needs_human** | **Pauses** — undecided product gate in contract; update contract, restart chain |
+| **partial (sim prep)** | **Continues** — agent signs out / fresh signup / re-seed / SQL (no human pause) |
+| **partial (product gate)** | **Pauses** — legal/H gate / not built; human decides |
 | **blocked_external** | **Pauses** — Supabase/seed/device down; Fixer won't help |
 | `./validation-loop-stop.sh` | You stop it |
 
@@ -111,13 +113,28 @@ chmod +x .cursor/hooks/product-review-loop-start.sh
 
 | Step | Command / action |
 |------|------------------|
-| Start queue | `product-review-loop-start.sh --queue onboarding-round1` |
+| Start queue | `product-review-loop-start.sh --queue onboarding-round1 --chain` |
 | After each persona | Update `.product-review-session.json` → `product-review-chain-next.py` |
-| Consolidator | When 6 reviews done — separate Agent chat |
-| Approve | `product-review-loop-approve.sh` |
+| Pre-approve | Auto in chain — may auto-pass to contract PR |
+| Manual approve | `product-review-loop-approve.sh` (only if auto-pass blocked) |
+| Contract merged | `product-review-loop-contract-merged.sh` |
+| Builder local done | `product-review-loop-builder-done.sh` → **validate locally** (no src PR yet) |
+| Validation green | `product-review-loop-validation-green.sh` → then open src PR |
+| Src PR merged | `product-review-loop-src-pr-merged.sh` |
 | Proof | `validation-loop-start.sh --queue cps-onboarding --builder` |
+| Auto-pass check | `python3 .cursor/hooks/product_review_auto_pass.py` |
 
 Runbook: [PRODUCT-REVIEW-LOOP.md](../../docs/product-review/PRODUCT-REVIEW-LOOP.md) · Queues: [review-queues.json](../../docs/product-review/review-queues.json)
+
+**Auto-continue (recommended):** `hooks.json` uses `rally-loop-continue.py` on **stop** + **subagentStop** (`loop_limit: 40`). Enable in Cursor Settings → Hooks. Use one Agent chat for the validation queue.
+
+**Loop completion signal (orchestrator chat):**
+
+```bash
+./.cursor/hooks/rally-loop-status.sh   # also writes docs/LOOP-STATUS.md
+```
+
+Headline is **PHASE COMPLETE**, **PAUSED**, **WAITING ON YOU**, or **IN PROGRESS**. Say **continue** when status is PAUSED/COMPLETE and you want the next step.
 
 Tier 2/3 (`onboarding-round2-picky`, `round3-expert`) = pickier personas after round 1 green.
 

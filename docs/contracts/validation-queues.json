@@ -100,13 +100,14 @@
   "cps-onboarding": {
     "description": "Role unlock journeys — no pre-seed on reviewer accounts",
     "contracts": [
-      "flow-become-a-coach",
-      "flow-parent-family-onboarding",
       "flow-age-gate-onboarding",
-      "flow-parent-guardian-consent",
-      "flow-coach-onboarding-org",
+      "flow-parent-family-onboarding",
+      "flow-teen-account-onboarding",
       "flow-student-class-enrollment",
-      "flow-teen-account-onboarding"
+      "flow-parent-guardian-consent",
+      "flow-become-a-coach",
+      "flow-coach-onboarding-org",
+      "module-coach-parent-navigation"
     ]
   },
   "sport-meetup-launch": {

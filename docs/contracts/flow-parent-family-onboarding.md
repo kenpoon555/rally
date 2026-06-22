@@ -1,7 +1,7 @@
 # Flow — Parent Family onboarding (first child profile)
 
 **Contract id:** `flow-parent-family-onboarding`  
-**Status:** **Partial** — product review 2026-06-21: Family visibility + `age_category` signup regressions (P0); legal gate expected stop  
+**Status:** **Tier-1 green 2026-06-22** — Family visible (B2), Add Child → legal consent blocker (expected)  
 **Track:** v1.2 parent/student · [module-coach-parent-navigation.md](./module-coach-parent-navigation.md)  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Related code:** `ProfileFamilySection.tsx`, `FamilyProfilesScreen.tsx`, `AddChildProfileScreen.tsx`, `shouldShowFamilySection`, `coachParentFlags`, `parentStudentFlags`
@@ -142,3 +142,7 @@ North-star: **New parent → Profile Family (or class invite) → Add Child → 
 
 | Item | Pass | Notes |
 |------|------|-------|
+| 18+ age_category prerequisite | Pass | Contract 1 green; adult `val-age-adult-1782089862552@…` |
+| Family section zero-child (R1) | Pass | Sim: FAMILY + *Manage child/student profiles for classes* |
+| Add Child → consent/blocker | Pass | Guardian Consent · *Legal review in progress* (tier-1 OK) |
+| Full child create E2E | N/A | Blocked by lawyer gate per consent contract |

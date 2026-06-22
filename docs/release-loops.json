@@ -24,33 +24,49 @@
         "loop": "pre-approve-review",
         "skill": ".cursor/skills/pre-approve-review/SKILL.md",
         "human_gate": false,
-        "note": "Coverage + contract PR risk review before human approve"
+        "auto_pass": true,
+        "auto_pass_when": ["approve_ready", "approve_with_notes"],
+        "stop_on": ["block", "revise_consolidator", "conflict", "creep", "timing", "vague", "h_gate_fork"],
+        "note": "Coverage + contract PR risk; auto-pass to Layer 2 when additive/no conflict"
       },
       {
         "id": "L1-human",
         "loop": "human",
         "gate": "approve_synthesis_contract_diffs",
-        "read": "consolidated/*-pre-approve-review.md"
+        "read": "consolidated/*-pre-approve-review.md",
+        "auto_pass": true,
+        "only_when_blocked": true,
+        "note": "Human only when auto-pass blocked (conflict, H gate fork, block verdict)"
       },
       {
         "id": "L2-contract-pr",
         "loop": "contract",
         "branch": "dev",
-        "source": "consolidated/*-synthesis.md"
+        "source": "consolidated/*-synthesis.md",
+        "note": "Docs-only PR — merge first; defines validation checklist"
       },
       {
-        "id": "L2-builder",
+        "id": "L2-builder-local",
         "loop": "builder",
         "source": "consolidated/*-builder-backlog.md",
-        "note": "Optional if validation queue uses --builder for missing items"
+        "src_pr": false,
+        "note": "Implement on local branch — NO src PR until L3 green"
       },
       {
-        "id": "L3-proof",
+        "id": "L3-proof-local",
         "loop": "validation",
         "queue": "cps-onboarding",
         "chain_enabled": true,
         "auto_builder": true,
-        "spawn_from": "consolidated/*-validation-handoff.md"
+        "local_branch": true,
+        "spawn_from": "consolidated/*-validation-handoff.md",
+        "first_contract": "flow-age-gate-onboarding"
+      },
+      {
+        "id": "L2-src-pr",
+        "loop": "builder",
+        "after": "L3-proof-local-green",
+        "note": "Open/merge src PR only after local validation green"
       },
       {
         "id": "L1-tier2",
