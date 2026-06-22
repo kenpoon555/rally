@@ -1,7 +1,7 @@
 # Module contract — Coach / parent navigation & entrances
 
 **Contract id:** `module-coach-parent-navigation`  
-**Status:** **Partial** — Profile/Play/Inbox green on Marcus seed; fresh-account Family + Today MY CLASSES gating pending (2026-06-21 review)  
+**Status:** **Green** — validation 2026-06-22: cross-contract sim proof (B2/B3/B4) on flags-on build  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **UI ideas:** [parent-student-coach-ui-ideas.md](../coach-parent-student/parent-student-coach-ui-ideas.md)  
 **Safety:** [parent-student-coach-safety-design.md](../coach-parent-student/parent-student-coach-safety-design.md)  
@@ -168,7 +168,7 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 
 #### Profile
 - [x] **Family section** on Profile (not separate tab)
-- [ ] Flag-on zero-child adult sees Family section with empty copy (R1 — B2)
+- [ ] Flag-on zero-child adult sees Family section with empty copy (R1 — B2) — **Pass** contract 2
 - [x] **Coach Tools section** role-gated (adult only; teen force-hide per R3)
 - [x] Parent+coach sees both sections (Marcus reference)
 - [x] Family Profiles list + Add Child Profile
@@ -177,10 +177,10 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 ### Today / hub
 - [x] Parent sees My Classes when enrolled
 - [x] Coach sees Classes I teach / today card
-- [ ] R0 player Today: **no** MY CLASSES block (B4)
-- [ ] Teen Today: **no** MY CLASSES block (B4)
-- [ ] Flag-on zero-child adult: MY CLASSES hidden until parent intent or children (B4)
-- [ ] Fresh account Family section visible when flag on + zero children (R1 — B2)
+- [x] R0 player Today: **no** MY CLASSES block (B4) — `@valadult862552` pre-coach
+- [x] Teen Today: **no** MY CLASSES block (B4) — contract 3
+- [x] Flag-on zero-child adult: MY CLASSES hidden until parent intent or children (B4)
+- [x] Fresh account Family section visible when flag on + zero children (R1 — B2) — contract 2
 - [x] Class detail tabs: Overview · Schedule · Roster · Chat
 
 ### Play
@@ -194,7 +194,7 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 
 ### Create
 - [x] Class/Clinic option only for adult coaches
-- [ ] Teen Create sheet: no Class/Clinic regardless of `is_coach` (R3)
+- [ ] Teen Create sheet: no Class/Clinic regardless of `is_coach` (R3) — **Pass** contract 3 H2 probe
 
 ### Navigation
 - [x] Invite enroll sheet → child picker

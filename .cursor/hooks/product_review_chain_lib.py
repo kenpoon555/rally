@@ -617,3 +617,9 @@ def write_next_md(session: dict | None, nxt: dict) -> None:
             ]
         )
     NEXT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        from loop_status_lib import write_status
+
+        write_status(nxt.get("action", ""), nxt.get("reason", ""))
+    except ImportError:
+        pass

@@ -8,6 +8,45 @@ This is the **persona review loop** — separate from `validation-loop-start.sh`
 
 ---
 
+## Automation (less “say continue”)
+
+Three layers — use together:
+
+| Layer | What | You do |
+|-------|------|--------|
+| **1. Stop hook** | `.cursor/hooks/rally-loop-continue.py` on agent **stop** (loop_limit 40) | Enable in **Cursor → Settings → Hooks**. Run validation in **one Agent chat** — hook auto-sends the next Validator/Fixer prompt when a turn ends. |
+| **2. Self-chain** | Agent runs `validation-chain-next.py` in the **same turn** | Best throughput; hook is backup when the agent stops early. |
+| **3. Status file** | `docs/LOOP-STATUS.md` | **QUEUED** = idle, needs continue or hook. **ACTIVE** = agent working. **PHASE COMPLETE** = done. |
+
+**Orchestrator chat vs worker chat:** Hooks only fire in the chat where the agent ran. For hands-off validation, use a **dedicated validation Agent tab** (not this orchestrator thread).
+
+**Optional:** Cursor **Automations** (scheduled) can poll `LOOP-STATUS.md` and nudge an agent — set up via Automations UI if you want between-session polling.
+
+---
+
+Sub-agents and long validation runs do not always post back to this chat. Use **one status file**:
+
+```bash
+cd RallyApp
+./.cursor/hooks/rally-loop-status.sh
+```
+
+Or open [LOOP-STATUS.md](../LOOP-STATUS.md) (refreshed whenever chain-next runs).
+
+| Headline | Meaning |
+|----------|---------|
+| **PHASE COMPLETE** | That step is done — run the command in the detail line or say **continue** |
+| **IN PROGRESS** | Agent self-chaining (Validator, Fixer, **sim prep**) — wait; sim sign-out/signup is agent-run |
+| **PAUSED** | True human gate only (approve, merge PR, product/H gate) |
+| **WAITING ON YOU** | Approve pre-review or merge a PR |
+| **LOOP COMPLETE** | Round finished — start next tier or close |
+
+**Any loop/round:** status reads active product-review + validation sessions and matches [release-loops.json](../release-loops.json) (`onboarding-v1`, `pickup-gtm2`, `sport-meetup`, or validation-only queues like `baseline`).
+
+**Orchestrator rule:** At the end of every loop-related turn, run `rally-loop-status.sh` and paste the `## …` headline block into chat so the human knows whether to wait or continue.
+
+---
+
 ## The full loop (one cycle)
 
 ```mermaid

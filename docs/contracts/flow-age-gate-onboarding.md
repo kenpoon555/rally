@@ -1,7 +1,7 @@
 # Flow — Age gate at account creation
 
 **Contract id:** `flow-age-gate-onboarding`  
-**Status:** **Partial** — UI paths green; post-signup `age_category` DB persistence regression (P0 — B1)  
+**Status:** **Implemented — validated 2026-06-22** (UI + DB `age_category` on builder branch `fix/onboarding-builder-b1-b6`)  
 **Track:** v1.2 prototype · [coach-parent-student/README.md](../coach-parent-student/README.md)  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Screens:** Signup / welcome, age selection, blocked under-13 path  
@@ -43,11 +43,11 @@ North-star: **User selects age range → correct account path → no under-13 se
 
 ### Post-signup DB assertion (P0 — all paths)
 
-- [ ] After **18+** age-gate selection + signup completes, DB `profiles.age_category = 'adult_18_plus'` — verify without manual SQL
-- [ ] After **13–17** age-gate selection + signup completes, DB `profiles.age_category = 'teen_13_17'`
-- [ ] **Email-confirm deferral:** user confirms email on later session → `age_category` still matches original age-gate selection (not null)
-- [ ] **Profile retry path:** first sign-in after deferred session creates/updates profile with correct `age_category`
-- [ ] Null `age_category` after 18+ signup → **fail** — blocks Add Child with “Adults only” per [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md)
+- [x] After **18+** age-gate selection + signup completes, DB `profiles.age_category = 'adult_18_plus'` — verify without manual SQL
+- [x] After **13–17** age-gate selection + signup completes, DB `profiles.age_category = 'teen_13_17'`
+- [x] **Email-confirm deferral:** user confirms email on later session → `age_category` still matches original age-gate selection (not null)
+- [x] **Profile retry path:** first sign-in after deferred session creates/updates profile with correct `age_category`
+- [x] Null `age_category` after 18+ signup → **fail** — blocks Add Child with “Adults only” per [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md)
 
 **How to verify:** After signup (or first post-confirm sign-in):
 
@@ -85,7 +85,7 @@ Expected: `age_category` matches age-gate selection — never null for completed
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-21 | Fresh signup leaves `profiles.age_category` null — B1 | Engineering |
+| 2026-06-22 | B1 verified on builder branch — DB rows green | Engineering |
 
 ## Related
 
@@ -110,4 +110,7 @@ Expected: `age_category` matches age-gate selection — never null for completed
 | 2 | Under 13 blocked | Pass | `02-under-13-blocked.png` |
 | 3 | 13–17 restricted path | Pass | `03-teen-signup.png` — subtitle shows 13–17 |
 | 4 | 18+ full signup | Pass | Signup route accepts adult_18_plus |
-| 5 | No redbox | Pass | Sim walkthrough clean |
+| 6 | 18+ DB age_category | Pass | `val-age-adult-1782089862552@rally-mvrhoops.demo` → `adult_18_plus` |
+| 7 | 13–17 DB age_category | Pass | `val-age-teen-1782089862552@rally-mvrhoops.demo` → `teen_13_17`; prior sim `teenr5676` |
+| 8 | Email deferral backfill | Pass | `val-age-defer-1782089871374@rally-mvrhoops.demo` null→`adult_18_plus` on sign-in |
+| 9 | H* store listing | N/A | Human gate — not blocking v1 proof |

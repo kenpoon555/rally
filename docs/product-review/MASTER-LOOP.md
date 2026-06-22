@@ -58,6 +58,8 @@ flowchart TB
 
 Master config: **`docs/release-loops.json`** — which queues chain together for `onboarding-v1`, `pickup-gtm2`, `sport-meetup`.
 
+**Round-by-round fixes & status:** [ROUND-LOG.md](./ROUND-LOG.md)
+
 ---
 
 ## One Agent turn (automated sim run)

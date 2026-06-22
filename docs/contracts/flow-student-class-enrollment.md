@@ -1,7 +1,7 @@
 # Flow — Student class enrollment
 
 **Contract id:** `flow-student-class-enrollment`  
-**Status:** **Partial** — Marcus seed path validated 2026-06-17; fresh-parent path blocked (`age_category`, `returnToInvite`) until Builder B1/B5  
+**Status:** **Green** — validation 2026-06-22: Marcus enroll path + fresh-parent inline add (legal consent blocker, not Adults only)  
 **Screens:** Coach class invite, parent enrollment picker, confirmation  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Depends on:** `module-student-profile`, `flow-parent-guardian-consent`, `flow-parent-family-onboarding`, `flow-age-gate-onboarding`, `module-student-visibility`
@@ -71,9 +71,9 @@ supabase db query --linked -f supabase/scripts/seed_parent_student_validation.sq
 
 ### Prerequisites (fresh parent — P0)
 
-- [ ] Parent `age_category` is `adult_18_plus` before inline add from invite — not null after 18+ signup
-- [ ] Fresh parent signup → Add Child from invite reaches consent screen (or legal blocker) — not “Adults only” alert
-- [ ] Profile Family section visible for flag-on zero-child parent before invite-only detour — [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md) R1
+- [x] Parent `age_category` is `adult_18_plus` before inline add from invite — not null after 18+ signup
+- [x] Fresh parent signup → Add Child from invite reaches consent screen (or legal blocker) — not “Adults only” alert
+- [x] Profile Family section visible for flag-on zero-child parent before invite-only detour — [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md) R1
 
 ### Marcus seed path (validated 2026-06-17)
 
@@ -88,13 +88,13 @@ supabase db query --linked -f supabase/scripts/seed_parent_student_validation.sq
 
 ### Fresh parent path (partial — validate after B1/B5)
 
-- [ ] Inline add from enroll link with `returnToInvite` param → after create (post-consent) → returns to picker/confirm with invite context
+- [ ] Inline add from enroll link with `returnToInvite` param → after create (post-consent) → returns to picker/confirm with invite context — **lawyer gate** blocks post-consent create; B5 code path present
 - [ ] Class invite preview shows coach display name (currently class + sport only — P2 clarity)
-- [ ] Same consent rules as Profile path — lawyer gate is expected tier-1 stop, not regression
+- [x] Same consent rules as Profile path — lawyer gate is expected tier-1 stop, not regression
 
 ### Stability
 
-- [ ] No redbox on invite open, picker, or inline add paths
+- [x] No redbox on invite open, picker, or inline add paths
 
 ## Performance requirements
 
@@ -156,3 +156,9 @@ supabase db query --linked -f supabase/scripts/seed_parent_student_validation.sq
 
 | Item | Pass | Notes |
 |------|------|-------|
+| Marcus path — picker + enroll | Pass | `marcus@…` → Alex → Youth Basketball Clinic confirmation |
+| Fresh parent inline add | Pass | `val-age-adult-…` → Add Child → legal-review blocker (not Adults only) |
+| Invalid invite token | Pass | `00000000-…-0099` → clear error |
+| Duplicate enroll | Pass | Re-select Alex → idempotent confirmation |
+| returnToInvite post-consent | N/A | Lawyer gate — cannot complete create in tier-1 |
+| Coach display name on preview | Fail (P2) | Shows class + sport only |

@@ -57,7 +57,7 @@ or I am authorized to manage this student profile.
 - [x] When `lawyer_copy_approved` is `false`, app shows **legal-review blocker** — not draft attestation copy
 - [x] Cannot create student profile without approved consent flow
 - [ ] User cannot bypass blocker via deep link, flag, or API-only path
-- [ ] Tier-1 Validator: parent flow **pass** when consent screen or legal blocker reached — not when child row exists in DB
+- [ ] Tier-1 Validator: parent flow **pass** when consent screen or legal blocker reached — not when child row exists in DB — **Pass 2026-06-22** via fresh adult inline add
 
 ### Attestation (when lawyer approves)
 - [x] Cannot create student profile without attestation

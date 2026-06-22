@@ -1,7 +1,7 @@
 # Flow — Become a coach (role unlock)
 
 **Contract id:** `flow-become-a-coach`  
-**Status:** **Partial** — before/after unlock green on reference accounts; Marcus hardcode masks fresh-account testing (B6)  
+**Status:** **Green** — validation 2026-06-22: `@valadult862552` non-Marcus before/after `is_coach` + relaunch  
 **Track:** v1.1 coach foundation · [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md)  
 **Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
 **Related code:** `profiles.is_coach`, `ProfileCoachToolsSection.tsx`, `coachParentService.userIsCoach`, `CreateActivityScreen` (class mode), `DynamicHomeScreen.tsx`
@@ -75,15 +75,15 @@ MY CLASSES parent card on Today: hidden for R0/teen — see flow-coach-onboardin
 
 ### v1 — validate now
 
-- [ ] Non-coach adult: Profile has **no** Coach Tools section
-- [ ] Non-coach adult: `userIsCoach` false — no coach-only Create Class entry
-- [ ] After DB `is_coach = true`: Coach Tools section appears after **force-quit + relaunch** (v1 — no live refresh)
-- [ ] Approved coach: Create Class navigates to class create flow
-- [ ] Approved coach: Today shows **CLASSES I TEACH** card — alternate entry alongside Profile Coach Tools
-- [ ] R0 non-coach Today: **no** parent-oriented MY CLASSES copy — cross-ref [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md)
-- [ ] No UI text promises “assign substitute coach” or academy features (v2)
-- [ ] Marcus demo works via DB flags + seed — **not** hardcoded user id in `userIsCoach` / `shouldShowFamilySection` (B6)
-- [ ] Validator uses **non-Marcus** email for before/after unlock test
+- [x] Non-coach adult: Profile has **no** Coach Tools section
+- [x] Non-coach adult: `userIsCoach` false — no coach-only Create Class entry
+- [x] After DB `is_coach = true`: Coach Tools section appears after **force-quit + relaunch** (v1 — no live refresh)
+- [x] Approved coach: Create Class navigates to class create flow
+- [x] Approved coach: Today shows **CLASSES I TEACH** card — alternate entry alongside Profile Coach Tools
+- [x] R0 non-coach Today: **no** parent-oriented MY CLASSES copy — cross-ref [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md)
+- [x] No UI text promises “assign substitute coach” or academy features (v2)
+- [x] Marcus demo works via DB flags + seed — **not** hardcoded user id in `userIsCoach` / `shouldShowFamilySection` (B6)
+- [x] Validator uses **non-Marcus** email for before/after unlock test
 
 ### v2 — stub only (fail if shipped without this contract updated)
 
@@ -156,4 +156,6 @@ v2 apply queue: +$0–1 edge/admin tooling when built.
 
 | Item | Pass | Notes |
 |------|------|-------|
-| | | |
+| Before unlock | Pass | `@valadult862552` — no Coach Tools; Create sheet game-only (`01-profile-no-coach-tools.png`) |
+| After `is_coach=true` + relaunch | Pass | Coach Tools + CLASSES I TEACH + Class/Clinic (`02`, `03`) |
+| B6 no Marcus hardcode | Pass | `userIsCoach` uses `is_coach` only |
