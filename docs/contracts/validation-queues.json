@@ -98,16 +98,17 @@
     ]
   },
   "cps-onboarding": {
-    "description": "Role unlock journeys — no pre-seed on reviewer accounts",
+    "description": "Role unlock journeys — tier 2 picky includes auth + coach class publish",
     "contracts": [
+      "flow-auth-onboarding",
       "flow-age-gate-onboarding",
       "flow-parent-family-onboarding",
       "flow-teen-account-onboarding",
-      "flow-student-class-enrollment",
-      "flow-parent-guardian-consent",
       "flow-become-a-coach",
+      "flow-create-game",
       "flow-coach-onboarding-org",
-      "module-coach-parent-navigation"
+      "flow-student-class-enrollment",
+      "flow-parent-guardian-consent"
     ]
   },
   "sport-meetup-launch": {
