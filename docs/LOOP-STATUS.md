@@ -2,9 +2,9 @@
 
 _Updated: 2026-06-22 08:09 UTC_
 
-## 📦 BATCH READY — open ONE combined PR
+## 👤 WAITING ON YOU — merge src PR
 
-Branch `fix/overnight-jun-2026-batch` — all validation queues green. Agent runs `spawn_batch_pr` (no mid-loop PRs).
+Merge PR then run the matching `product-review-loop-*-merged.sh` hook.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -13,9 +13,10 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 ## Product review
 
 - queue: `overnight-batch-jun-2026` tier —
-- phase: `batch_pr_ready` · status: `running`
+- phase: `src_pr_open` · status: `running`
 - layer_2: `local`
 - builder branch: `fix/overnight-jun-2026-batch`
+- src PR: https://github.com/kenpoon555/rally/pull/55
 
 ## Validation
 
