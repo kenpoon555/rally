@@ -4,7 +4,7 @@
 **Folder:** `docs/product-review/{persona-id}/YYYY-MM-DD-review.md`  
 **Onboarding contracts:** [ONBOARDING-CONTRACT-INDEX.md](../contracts/ONBOARDING-CONTRACT-INDEX.md)
 
-Pick **one persona per Agent session**. Run consolidator after several reviews (see `product-review-consolidator` skill).
+Pick **one persona per Agent session** (or one human reviewer). Run consolidator after the queue's minimum reviews (see [review-queues.json](./review-queues.json) · [PRODUCT-REVIEW-LOOP.md](./PRODUCT-REVIEW-LOOP.md)).
 
 ## Commitment levels (pickup / Rally)
 
@@ -157,3 +157,28 @@ Fresh 18+ account — no parent seed. EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE=tru
 6. `teen-restricted-account`
 
 Add `academy-head-coach` when planning v2 org work. Run **separate consolidator pass** or tag synthesis sections `pickup` vs `onboarding`.
+
+---
+
+## Review tiers (queues)
+
+Used by [review-queues.json](./review-queues.json) and [PRODUCT-REVIEW-LOOP.md](./PRODUCT-REVIEW-LOOP.md).
+
+| Tier | Queue suffix | Reviewer mindset |
+|------|--------------|------------------|
+| **1 — Discovery** | `round1` | Note friction P1–P3; blocked journeys OK if documented |
+| **2 — Picky** | `round2-picky` | Complete full journey; no silent failures; stricter P0 bar |
+| **3 — Expert** | `round3-expert` | Edge cases, regressions vs prior tier, org/academy gaps |
+
+Start tier 2 only after tier 1 consolidator + Builder/Validator pass on P0 items.
+
+---
+
+## Start a review queue (terminal)
+
+```bash
+cd RallyApp
+./.cursor/hooks/product-review-loop-start.sh --queue onboarding-round1
+```
+
+Assign **one persona per person** from the queue — see PRODUCT-REVIEW-LOOP.md for the full cycle → consolidator → Builder backlog → validation queue.

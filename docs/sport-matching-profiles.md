@@ -29,7 +29,7 @@ User-facing label: **game** (internal: `activities`).
 | Table Tennis | `fastFixed` | 4 | 3 | yes |
 | Ultimate Frisbee | `groupDiscuss` | 14 | 13 | yes |
 
-**Not launch-enabled (yet):** Running, Hiking — same shell, enable when meetup wedge is tested.
+**Not launch-enabled (yet):** Running, Hiking, Workout — enable via [module-sport-meetup-sports.md](../contracts/module-sport-meetup-sports.md) when meetup create path ships (ballpark area, not court-gated).
 
 ### Source of truth
 

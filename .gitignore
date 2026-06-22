@@ -3,6 +3,7 @@
 
 # Contract validation chain (local session state)
 docs/contracts/.validation-session.json
+docs/product-review/.product-review-session.json
 docs/contracts/.validation-next.md
 
 # Python

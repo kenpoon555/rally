@@ -2,7 +2,20 @@
 
 **Contract id:** `flow-parent-guardian-consent`  
 **Status:** Implemented (infrastructure) — **attestation copy blocked until lawyer approval**  
-**Track:** v1.2
+**Track:** v1.2  
+**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)
+
+## Tier-1 validation scope (2026-06-21)
+
+**Green for parent onboarding contracts means:** parent reaches consent screen or documented legal-review blocker — **not** full child profile create or class enrollment E2E.
+
+| Stop | Expected? | TestFlight / reviewer note |
+|------|-----------|----------------------------|
+| Legal-review blocker at Add Child | **Yes** — `lawyer_copy_approved = false` | Not a regression — explicit “Legal review in progress” copy is correct |
+| Full attestation + child create | **No** until H1 lawyer clears | Do not file false regression if enroll stops at consent |
+| Guardian consent lawyer gate | Hard stop | Document in App Review notes alongside demo login — [store-review-test-accounts.md](../store-review-test-accounts.md) |
+
+Cross-ref: [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md) · [flow-student-class-enrollment.md](./flow-student-class-enrollment.md)
 
 ## Lawyer copy approval
 
@@ -44,6 +57,7 @@ or I am authorized to manage this student profile.
 - [x] When `lawyer_copy_approved` is `false`, app shows **legal-review blocker** — not draft attestation copy
 - [x] Cannot create student profile without approved consent flow
 - [ ] User cannot bypass blocker via deep link, flag, or API-only path
+- [ ] Tier-1 Validator: parent flow **pass** when consent screen or legal blocker reached — not when child row exists in DB
 
 ### Attestation (when lawyer approves)
 - [x] Cannot create student profile without attestation
@@ -110,4 +124,5 @@ See [parent-student-coach-safety-design.md](../coach-parent-student/parent-stude
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-21 | Lawyer gate is **expected tier-1 stop** — not builder work; mention in TestFlight notes | Legal / Founder |
 | 2026-06-15 | Lawyer review not started | Founder |

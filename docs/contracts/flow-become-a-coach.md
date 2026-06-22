@@ -1,9 +1,10 @@
 # Flow — Become a coach (role unlock)
 
 **Contract id:** `flow-become-a-coach`  
-**Status:** Stub — v1 manual approval only; v2 self-serve TBD  
+**Status:** **Partial** — before/after unlock green on reference accounts; Marcus hardcode masks fresh-account testing (B6)  
 **Track:** v1.1 coach foundation · [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md)  
-**Related code:** `profiles.is_coach`, `ProfileCoachToolsSection.tsx`, `coachParentService.userIsCoach`, `CreateActivityScreen` (class mode)
+**Product review:** [2026-06-21-onboarding-synthesis.md](../product-review/consolidated/2026-06-21-onboarding-synthesis.md)  
+**Related code:** `profiles.is_coach`, `ProfileCoachToolsSection.tsx`, `coachParentService.userIsCoach`, `CreateActivityScreen` (class mode), `DynamicHomeScreen.tsx`
 
 ## Purpose
 
@@ -37,13 +38,37 @@ where email = '<reviewer@email.com>';
 
 4. Reviewer force-quits app → reopens → Profile shows **Coach Tools**.
 
+### TestFlight / App Review script (v1 manual approval)
+
+Copy into App Store Connect **Notes for reviewer** or internal QA runbook:
+
+```text
+Coach unlock (manual v1 — no in-app apply):
+
+1. Sign up fresh 18+ adult OR use reviewer account with is_coach = false.
+2. Profile → confirm NO Coach Tools section.
+3. Play → Create → confirm NO Class/Clinic option.
+4. Today → confirm NO CLASSES I TEACH card (unless already enrolled as parent).
+5. Founder approves via linked DB:
+     update public.profiles set is_coach = true where email = '<reviewer@email.com>';
+6. Force-quit app → relaunch (v1 requires relaunch — no live profile refresh).
+7. Profile → Coach Tools visible (Create Class, Coach Profile).
+8. Play → Create → Class/Clinic option present.
+9. Today → CLASSES I TEACH card visible as alternate coach entry.
+10. Screenshot: 01-profile-no-coach-tools → 02-after-approval-coach-tools → 03-create-class-entry.
+
+Use non-Marcus email to avoid demo hardcode masking visibility bugs.
+Teen accounts must NEVER see steps 7–9 even if is_coach=true — see flow-teen-account-onboarding H2 probe.
+MY CLASSES parent card on Today: hidden for R0/teen — see flow-coach-onboarding-org.
+```
+
 ## Required states
 
 | State | How to reach | Must show |
 |-------|--------------|-----------|
 | **Non-coach** | Login as regular adult | No Coach Tools; Play create has no Class/Clinic (unless separate flag) |
 | **Pending approval (v2 only)** | Submit apply form | “We’ll review within X days” — **not built v1** |
-| **Approved coach** | After `is_coach = true` + app refresh | Coach Tools section; Create Class; coach role on Play create |
+| **Approved coach** | After `is_coach = true` + app relaunch (v1) | Coach Tools section; Create Class; coach role on Play create; **CLASSES I TEACH** on Today as alternate entry |
 | **Rejected (v2 only)** | Admin rejects | Clear message; no partial coach UI — **not built v1** |
 
 ## Pass/fail checklist
@@ -52,10 +77,13 @@ where email = '<reviewer@email.com>';
 
 - [ ] Non-coach adult: Profile has **no** Coach Tools section
 - [ ] Non-coach adult: `userIsCoach` false — no coach-only Create Class entry
-- [ ] After DB `is_coach = true`: Coach Tools section appears without reinstall
+- [ ] After DB `is_coach = true`: Coach Tools section appears after **force-quit + relaunch** (v1 — no live refresh)
 - [ ] Approved coach: Create Class navigates to class create flow
+- [ ] Approved coach: Today shows **CLASSES I TEACH** card — alternate entry alongside Profile Coach Tools
+- [ ] R0 non-coach Today: **no** parent-oriented MY CLASSES copy — cross-ref [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md)
 - [ ] No UI text promises “assign substitute coach” or academy features (v2)
-- [ ] Marcus demo hardcode does not mask test on other accounts (reviewer uses non-Marcus email)
+- [ ] Marcus demo works via DB flags + seed — **not** hardcoded user id in `userIsCoach` / `shouldShowFamilySection` (B6)
+- [ ] Validator uses **non-Marcus** email for before/after unlock test
 
 ### v2 — stub only (fail if shipped without this contract updated)
 
@@ -114,8 +142,9 @@ v2 apply queue: +$0–1 edge/admin tooling when built.
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-21 | Marcus id hardcoded in `userIsCoach` / `shouldShowFamilySection` — masks fresh-account tests — B6 | Engineering |
 | 2026-06-15 | No in-app apply — v1 manual only | Product |
-| 2026-06-15 | Marcus id hardcoded in `userIsCoach` — Validator must use non-Marcus reviewer | Engineering |
+| 2026-06-15 | Coach approval requires full app relaunch — v1 acceptable; document in TestFlight notes (B7) | Product |
 
 ## Related
 

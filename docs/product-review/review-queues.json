@@ -1,0 +1,106 @@
+{
+  "onboarding-round1": {
+    "description": "Tier 1 — 6 role/onboarding personas → consolidator → cps-onboarding proof",
+    "tier": 1,
+    "personas": [
+      "player-no-coach-tools",
+      "coach-approved-manual",
+      "parent-first-child",
+      "parent-via-class-invite",
+      "coach-parent-dual",
+      "teen-restricted-account"
+    ],
+    "min_reviews_before_consolidate": 6,
+    "consolidator_tag": "onboarding",
+    "validation_queue": "cps-onboarding",
+    "contract_focus": [
+      "flow-become-a-coach",
+      "flow-parent-family-onboarding",
+      "flow-coach-onboarding-org",
+      "flow-student-class-enrollment",
+      "flow-teen-account-onboarding",
+      "module-coach-parent-navigation"
+    ]
+  },
+  "pickup-round1": {
+    "description": "Tier 1 — 6 pickup/Rally personas → consolidator → gtm2 or baseline validation",
+    "tier": 1,
+    "personas": [
+      "basketball-first-timer",
+      "badminton-casual",
+      "badminton-host",
+      "pickleball-first-timer",
+      "volleyball-host",
+      "multi-sport-power-host"
+    ],
+    "min_reviews_before_consolidate": 6,
+    "consolidator_tag": "pickup",
+    "validation_queue": "gtm2-feedback-jun-2026",
+    "contract_focus": [
+      "flow-invite-to-rally",
+      "flow-rally-session",
+      "flow-create-game",
+      "flow-play-screen"
+    ]
+  },
+  "onboarding-round2-picky": {
+    "description": "Tier 2 — same roles, stricter rubric; must complete journeys without founder help",
+    "tier": 2,
+    "personas": [
+      "player-no-coach-tools",
+      "coach-approved-manual",
+      "parent-first-child",
+      "parent-via-class-invite",
+      "coach-first-class",
+      "teen-restricted-account"
+    ],
+    "min_reviews_before_consolidate": 6,
+    "consolidator_tag": "onboarding-picky",
+    "validation_queue": "cps-onboarding",
+    "requires_prior_queue": "onboarding-round1",
+    "contract_focus": [
+      "flow-become-a-coach",
+      "flow-parent-family-onboarding",
+      "flow-parent-guardian-consent",
+      "flow-student-class-enrollment"
+    ]
+  },
+  "pickup-round2-picky": {
+    "description": "Tier 2 — hosts/first-timers; zero tolerance for silent failures",
+    "tier": 2,
+    "personas": [
+      "basketball-first-timer",
+      "badminton-host",
+      "volleyball-host",
+      "multi-sport-power-host"
+    ],
+    "min_reviews_before_consolidate": 4,
+    "consolidator_tag": "pickup-picky",
+    "validation_queue": "gtm2-feedback-jun-2026",
+    "requires_prior_queue": "pickup-round1",
+    "contract_focus": [
+      "flow-invite-to-rally",
+      "flow-create-game",
+      "flow-rally-session"
+    ]
+  },
+  "onboarding-round3-expert": {
+    "description": "Tier 3 — dual role + org gaps + edge cases (small batch, high bar)",
+    "tier": 3,
+    "personas": [
+      "coach-parent-dual",
+      "academy-head-coach",
+      "coach-first-class",
+      "parent-via-class-invite"
+    ],
+    "min_reviews_before_consolidate": 4,
+    "consolidator_tag": "onboarding-expert",
+    "validation_queue": "cps-onboarding",
+    "requires_prior_queue": "onboarding-round2-picky",
+    "contract_focus": [
+      "flow-organization-coaches",
+      "flow-coach-class-operations",
+      "module-coach-parent-navigation"
+    ]
+  }
+}
