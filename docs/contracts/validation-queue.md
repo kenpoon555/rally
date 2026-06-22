@@ -59,7 +59,7 @@ Queue definitions: [validation-queues.json](./validation-queues.json)
 | `cps-onboarding` | role unlock — become coach · parent family · age/consent · no pre-seed |
 | `sport-meetup-launch` | Running + Workout meetup create |
 | `role-surface-audit` | role × surface matrix · Play sport×segment · profile gates |
-| `play-discover-matrix` | fast re-check — `module-role-surfaces` + `flow-play-screen` only |
+| `play-discover-matrix` | fast re-check — `module-role-surfaces` + `flow-play-screen` + `module-sport-icon` (B7/B11) |
 
 ## Recommended run order (copy-paste)
 

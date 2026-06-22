@@ -133,10 +133,11 @@
     ]
   },
   "play-discover-matrix": {
-    "description": "Fast re-check after Play filter / segment fixes — matrix only",
+    "description": "Fast re-check after Play filter / segment / strip UX fixes",
     "contracts": [
       "module-role-surfaces",
-      "flow-play-screen"
+      "flow-play-screen",
+      "module-sport-icon"
     ]
   }
 }

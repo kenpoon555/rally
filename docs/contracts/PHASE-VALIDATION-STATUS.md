@@ -31,8 +31,8 @@
 
 | Queue | Status | Notes |
 |-------|--------|-------|
-| `role-surface-audit` | ✅ | 2026-06-22 on `fix/play-discover-builder` — matrix + empty copy |
-| `play-discover-matrix` | ✅ | Subset covered in role-surface-audit |
+| `role-surface-audit` | ✅ | 2026-06-22 PR #58 — matrix + R0 screenshot |
+| `play-discover-matrix` | ⚠️ **Open** | B7 off-strip strip visibility + B11 empty icon — contract fail rows 2026-06-22 |
 
 ## Device / human only
 
