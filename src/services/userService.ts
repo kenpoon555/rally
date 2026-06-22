@@ -1,6 +1,7 @@
 import { supabase } from './api/supabase';
 import { User } from '../types/user';
 import { getDefaultLaunchSportName, resolveUserDefaultSport } from '../constants/sports';
+import { parseAgeCategory } from '../types/ageCategory';
 import { TOS_VERSION } from '../constants/legal';
 
 /**
@@ -61,7 +62,17 @@ export const createUserProfile = async (
     }
 
     if (existing) {
-      // Profile already exists (e.g. created by trigger); return it so loadUser can use it.
+      if (profileData.age_category && !existing.age_category) {
+        const { data: patched, error: patchError } = await supabase
+          .from('profiles')
+          .update({ age_category: profileData.age_category })
+          .eq('id', userId)
+          .select()
+          .single();
+        if (!patchError && patched) {
+          return patched as User;
+        }
+      }
       return existing as User;
     }
 
@@ -182,6 +193,21 @@ export const updateUserProfile = async (
 
   return data as User;
 };
+
+/** Backfill age_category from auth metadata when profile row is missing it. */
+export async function ensureUserAgeCategory(user: User): Promise<User> {
+  if (user.age_category) {
+    return user;
+  }
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  const parsed = parseAgeCategory(authUser?.user_metadata?.age_category);
+  if (!parsed) {
+    return user;
+  }
+  return updateUserProfile(user.id, { age_category: parsed });
+}
 
 /** Persist a default sport when profile has none (legacy accounts). */
 export async function ensureUserDefaultSport(user: User): Promise<User> {

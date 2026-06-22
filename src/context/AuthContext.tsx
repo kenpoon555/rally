@@ -4,7 +4,8 @@ import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { withTimeout } from '../utils/withTimeout';
 import { User } from '../types/user';
-import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport } from '../services/userService';
+import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport, ensureUserAgeCategory } from '../services/userService';
+import { parseAgeCategory } from '../types/ageCategory';
 import { processDeepLink } from '../navigation/processDeepLink';
 import { consumePendingDeepLink } from '../services/pendingDeepLinkService';
 
@@ -102,12 +103,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               : undefined;
           const fallbackUsername =
             (authUser.email?.split('@')[0] || authUser.phone?.replace(/\D/g, '').slice(-8) || 'user').slice(0, 30);
+          const metadataAge = parseAgeCategory(authUser.user_metadata?.age_category);
           let createdOrExisting: User | null = null;
           try {
             createdOrExisting = await createUserProfile(authUser.id, {
               username: metadataUsername || fallbackUsername,
               email: authUser.email || undefined,
               phone: authUser.phone || undefined,
+              age_category: metadataAge ?? undefined,
             });
           } catch (createProfileError: any) {
             // Signup can still be successful if DB trigger already created profile.
@@ -127,6 +130,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       userData = await ensureUserDefaultSport(userData);
+      userData = await ensureUserAgeCategory(userData);
 
       setUser(userData);
       // Do not block auth/navigation on notification setup.
@@ -349,6 +353,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         emailRedirectTo: EMAIL_REDIRECT_TO,
         data: {
           username,
+          age_category: ageCategory,
         },
       },
     });
