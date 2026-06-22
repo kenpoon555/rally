@@ -42,6 +42,7 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | pickup-round2-picky | pickup-gtm2 | 2 | 4/4 | `gtm2-feedback-jun-2026` | ✅ Complete · PR [#53](https://github.com/kenpoon555/rally/pull/53) |
 | sport-meetup | sport-meetup | — | 1/1 | `sport-meetup-launch` | ✅ Complete · PR [#54](https://github.com/kenpoon555/rally/pull/54) |
 | **overnight-batch-jun-2026** | overnight-batch | — | — | `baseline` (+ prior queues) | ✅ Complete · PR [#55](https://github.com/kenpoon555/rally/pull/55) |
+| **phase-validation-jun-2026** | — | — | — | `phase1a`–`ops` | ✅ Complete · PR [#56](https://github.com/kenpoon555/rally/pull/56) |
 
 ---
 
@@ -133,11 +134,26 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 ---
 
-## Next validation queues (not started)
+## Phase validation — complete · 2026-06-22
 
-See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md) and [validation-queues.json](../contracts/validation-queues.json).
+**Not a product-review round** — sim validation of shipped retention features + GTM 2 analytics scorecard.
 
-**Start:** `./.cursor/hooks/validation-loop-start.sh --queue phase1a --from flow-post-game-attendance --builder`
+| Queue | Status |
+|-------|--------|
+| `phase1a`–`ops` | Documented on `dev` (sim + RPC; device N/T noted) |
+| `module-analytics-events` | GTM 2 scorecard events wired |
+
+**Also on branch:** poll chat scroll fix, crew `/members` deep link, validation screenshots.
+
+---
+
+## Next validation queues (optional / device)
+
+See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md).
+
+**Device N/T:** `flow-push-notifications-device`, `gtm1-launch-gate`, mini-tournament two-account QA.
+
+**Next product-review loop:** coach/parent (`v1.1`–`v1.4` in `validation-queues.json`) when ready — not started.
 
 ---
 

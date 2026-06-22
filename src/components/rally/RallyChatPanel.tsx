@@ -113,6 +113,12 @@ export const RallyChatPanel: React.FC<Props> = ({
   }, [conversationId]);
 
   useEffect(() => {
+    if (crewPolls.length > 0) {
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+    }
+  }, [crewPolls.length]);
+
+  useEffect(() => {
     if (conversationId) {
       void loadMessages();
       void reloadCrewPolls();
@@ -295,7 +301,12 @@ export const RallyChatPanel: React.FC<Props> = ({
 
       <ChatQuickReplies onSelect={handleQuickReply} disabled={sending} />
       <View style={[styles.composer, { paddingBottom: composerPaddingBottom }]}>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => setPollSheetOpen(true)}>
+        <TouchableOpacity
+          style={styles.iconBtn}
+          testID="rally-chat-create-poll"
+          accessibilityLabel="Create availability poll"
+          onPress={() => setPollSheetOpen(true)}
+        >
           <Ionicons name="bar-chart-outline" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
         <TextInput

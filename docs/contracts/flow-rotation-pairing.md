@@ -53,3 +53,16 @@ North-star: **Host on locked session → generate rotation → members see round
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | Not validated yet | — |
+
+## Validator report
+
+> Run: 2026-06-22 · pickleball seed `f2000001-…000006` · `generate_session_rotation`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Generate on locked roster | ✅ | RPC returned rotation id `96db2075-…` |
+| 2 | State after refresh | ✅ | `get_session_rotation_state` returns courts + players |
+| 3 | `rotation_generated` event | ✅ | Fired in `sessionRotationService.ts` |
+| 4 | UI panel on sim | N/T | Pickleball crew `…000102` — detail rotation panel not screenshot |
+
+**Last validated:** 2026-06-22 — backend + RPC green

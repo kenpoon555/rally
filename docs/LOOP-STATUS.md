@@ -1,6 +1,6 @@
 # Rally loop status
 
-_Updated: 2026-06-22 18:24 UTC_
+_Updated: 2026-06-22 19:10 UTC_
 
 ## ✅ LOOP COMPLETE — round finished
 
@@ -20,11 +20,10 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Validation
 
-- queue: `baseline`
-- contract: `flow-play-screen` (5/5)
-- phase: `done` · status: `pass`
-- chain_enabled: False
-- notes: ['baseline 5/5 sim pass — N/T rows documented in contract validator reports', 're-seed blocked: SERVICE_ROLE_KEY missing; SQL FK on profiles']
+- queue: `phase-validation-jun-2026` — **complete**
+- scorecard: GTM 2 events wired 2026-06-22
+- device N/T: push, mini-tourney gameplay, gtm1
+- Metro reload: poll testIDs, `crew/:groupId/members` deep link
 
 ---
 

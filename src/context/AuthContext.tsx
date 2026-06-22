@@ -8,6 +8,10 @@ import { getCurrentUser, getUserById, createUserProfile, ensureUserDefaultSport,
 import { parseAgeCategory } from '../types/ageCategory';
 import { processDeepLink } from '../navigation/processDeepLink';
 import { consumePendingDeepLink } from '../services/pendingDeepLinkService';
+import {
+  isRecentlyCreatedAuthUser,
+  trackSignupCompletedOnce,
+} from '../services/analyticsService';
 
 interface AuthContextType {
   user: User | null;
@@ -295,6 +299,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
+        if (event === 'SIGNED_IN' && isRecentlyCreatedAuthUser(session.user.created_at)) {
+          void trackSignupCompletedOnce(session.user.id);
+        }
         // Fire-and-forget: do not await loadUser here. Awaiting can deadlock because
         // loadUser -> getCurrentUser -> supabase.auth.getUser() may wait for this
         // auth state handler to complete, so signIn/signUp never resolve and buttons spin forever.
@@ -417,6 +424,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.warn('Post-signup user load retry path used:', loadError?.message || loadError);
       // This is non-fatal - user is created, just can't load profile yet
     }
+
+    void trackSignupCompletedOnce(data.user.id);
   };
 
   const signInWithPhone = async (phone: string) => {
