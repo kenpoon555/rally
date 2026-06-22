@@ -38,6 +38,7 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 |----------|--------|
 | [ONBOARDING-CONTRACT-INDEX.md](./ONBOARDING-CONTRACT-INDEX.md) | **All role-unlock journeys** (existing + stubs) |
 | [module-coach-parent-navigation.md](./module-coach-parent-navigation.md) | Family + Coach Tools entrances |
+| [module-role-surfaces.md](./module-role-surfaces.md) | Role × tab surface matrix · Play sport×segment |
 | [flow-coach-onboarding-org.md](./flow-coach-onboarding-org.md) | Who is a coach; solo vs academy v2 |
 | [flow-become-a-coach.md](./flow-become-a-coach.md) | Manual approval → Coach Tools (stub) |
 | [flow-parent-family-onboarding.md](./flow-parent-family-onboarding.md) | First child without seed (stub) |

@@ -25,7 +25,14 @@
 
 ## Builder backlog
 
-_None — GTM 2 scorecard events wired 2026-06-22._
+- **Play discover fix (2026-06-22):** `surfaceVisibility.ts` — sport-scoped Players list + role-gated Classes segment. Re-validate `role-surface-audit` queue.
+
+## Pending validation
+
+| Queue | Status | Notes |
+|-------|--------|-------|
+| `role-surface-audit` | ⏳ | New contract `module-role-surfaces` + updated `flow-play-screen` matrix |
+| `play-discover-matrix` | ⏳ | Fast path after Running filter fix |
 
 ## Device / human only
 
@@ -38,6 +45,8 @@ _None — GTM 2 scorecard events wired 2026-06-22._
 
 ## Code changes this pass (need Metro reload)
 
+- `src/config/surfaceVisibility.ts` — Play sport filter + Classes segment gates + empty copy
+- `HomeScreen.tsx` — always scope Players RPC to strip sport; role-gated Classes pill
 - `AvailabilityPollCard` — testIDs + accessibility
 - `RallyChatPanel` — scroll to poll header on load
 - `deepLinking.ts` — `rallyapp://crew/:groupId/:initialTab?` (e.g. `/members`)

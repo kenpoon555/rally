@@ -119,5 +119,54 @@
       "max_fixer_rounds"
     ],
     "note": "Say continue in orchestrator — agent chains baseline validation then opens ONE PR. Close stray src PRs (e.g. #54) into this branch."
+  },
+  "play-discover-jun-2026": {
+    "description": "Play sport×segment coherence + role surface audit (post Running filter fix)",
+    "product_review_queue": "play-discover-round1",
+    "next_product_review_queue": "play-discover-round2-picky",
+    "validation_queue": "role-surface-audit",
+    "fast_validation_queue": "play-discover-matrix",
+    "steps": [
+      {
+        "id": "L1-personas",
+        "loop": "product-review",
+        "queue": "play-discover-round1",
+        "chain_enabled": true,
+        "assign_mode": "agent",
+        "note": "6 personas — sport strip × segments + R0 clutter"
+      },
+      {
+        "id": "L1-consolidator",
+        "loop": "product-review",
+        "role": "consolidator",
+        "consolidator_tag": "play-discover"
+      },
+      {
+        "id": "L2-contract-pr",
+        "loop": "contract",
+        "branch": "dev",
+        "source": "consolidated/*-play-discover-synthesis.md"
+      },
+      {
+        "id": "L2-builder",
+        "loop": "builder",
+        "source": "consolidated/*-play-discover-builder-backlog.md",
+        "note": "surfaceVisibility.ts + HomeScreen segment gates"
+      },
+      {
+        "id": "L3-validation",
+        "loop": "validation",
+        "queue": "role-surface-audit",
+        "chain_enabled": true,
+        "first_contract": "module-role-surfaces"
+      },
+      {
+        "id": "L1-tier2",
+        "loop": "product-review",
+        "queue": "play-discover-round2-picky",
+        "optional": true,
+        "after": "L3-validation-green"
+      }
+    ]
   }
 }

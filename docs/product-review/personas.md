@@ -49,6 +49,28 @@ Pick **one persona per Agent session** (or one human reviewer). Run consolidator
 
 ---
 
+## Persona catalog C — Play discover / surface coherence (3)
+
+**Focus:** Sport strip × Games \| Players \| Classes; role clutter; cross-sport leaks.  
+**Contracts:** [module-role-surfaces.md](../contracts/module-role-surfaces.md) · [flow-play-screen.md](../contracts/flow-play-screen.md)
+
+| persona-id | Sport / role | Level | One-line goal |
+|------------|--------------|-------|---------------|
+| `play-discover-minimalist` | Basketball (default strip) | R0 · L2 | Only see Games + Players — no Classes tab, no coach noise |
+| `play-sport-matrix-auditor` | Multi-sport strip | L3 · meta | Walk strip sports × segments; log every wrong-sport row or hidden tab mistake |
+| `meetup-play-browser` | Running | L3 | Running strip → Games/Players never show court-sport rows |
+
+### Account hints (catalog C)
+
+| persona-id | Suggested login | Setup |
+|------------|-----------------|-------|
+| `play-discover-minimalist` | `@kunyu` | CPS flags on — confirm **no** Classes segment |
+| `play-sport-matrix-auditor` | `@kunyu` + switch sports on strip | Screenshot each sport × Players |
+| `meetup-play-browser` | `@kunyu` | Select **Running** on Play strip |
+| `coach-parent-dual` | `marcus@rally-mvrhoops.demo` | Classes segment **should** appear when flag on |
+
+---
+
 ## Persona catalog B — onboarding / roles (8)
 
 **Flags:** `EXPO_PUBLIC_ENABLE_COACH_FOUNDATION` · `EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE` — restart Metro after change.
@@ -115,6 +137,14 @@ For **role personas**, note legal blockers (guardian consent) as friction — do
 | `teen-restricted-account` | Signup age gate → Profile restrictions |
 | `academy-head-coach` | Walk app — log every promised-but-missing org feature |
 
+### Play discover (catalog C)
+
+| persona-id | Primary paths |
+|------------|---------------|
+| `play-discover-minimalist` | Play strip → Games / Players only — Profile has no coach blocks |
+| `play-sport-matrix-auditor` | Each strip sport → all visible segments → note cross-sport rows |
+| `meetup-play-browser` | Running → Players empty or Running-only; Games meetup cards |
+
 ---
 
 ## One-line Agent prompts
@@ -157,6 +187,19 @@ Fresh 18+ account — no parent seed. EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE=tru
 6. `teen-restricted-account`
 
 Add `academy-head-coach` when planning v2 org work. Run **separate consolidator pass** or tag synthesis sections `pickup` vs `onboarding`.
+
+### Play discover sprint (minimum 6 before consolidator)
+
+1. `play-discover-minimalist`
+2. `running-regular`
+3. `badminton-casual`
+4. `basketball-first-timer`
+5. `player-no-coach-tools`
+6. `coach-parent-dual`
+
+```bash
+./.cursor/hooks/product-review-loop-start.sh --queue play-discover-round1
+```
 
 ---
 
