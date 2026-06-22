@@ -9,7 +9,7 @@ import {
 import { trackProductEvent } from './analyticsService';
 import { BETA_REGION } from '../constants/betaRegion';
 
-export const NEED_PLAYERS_SPORTS: SportType[] = ['Badminton', 'Pickleball'];
+export { NEED_PLAYERS_BOARD_SPORTS as NEED_PLAYERS_SPORTS } from '../config/surfaceVisibility';
 
 export const listNeedPlayerPosts = async (
   sport?: SportType | string | null

@@ -42,8 +42,20 @@ North-star: **Profile loads → stats/scorecard visible → edit saves → persi
 - Friend list management (`FriendsScreen`)
 - Admin metrics dashboard
 
+## Validator report
+
+> Run: 2026-06-22 ~13:06 PT · iOS Simulator · branch `fix/play-discover-builder` · `@marcus`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Cold load | ✅ Pass | Profile Me tab loads. |
+| 2 | Photo upload | N/T | Not exercised. |
+| 3 | Scorecard | ✅ Pass | Games/Going/Attendance visible. |
+| 4 | Sign out | N/T | Not exercised this pass. |
+| 5 | Beta feedback | N/T | Flag-dependent. |
+
 ## Open issues
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| — | Not validated yet | — |
+| — | — | — |

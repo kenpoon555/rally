@@ -31,8 +31,8 @@
 
 | Queue | Status | Notes |
 |-------|--------|-------|
-| `role-surface-audit` | ⏳ | New contract `module-role-surfaces` + updated `flow-play-screen` matrix |
-| `play-discover-matrix` | ⏳ | Fast path after Running filter fix |
+| `role-surface-audit` | ✅ | 2026-06-22 on `fix/play-discover-builder` — matrix + empty copy |
+| `play-discover-matrix` | ✅ | Subset covered in role-surface-audit |
 
 ## Device / human only
 

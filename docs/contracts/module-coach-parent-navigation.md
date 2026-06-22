@@ -252,3 +252,4 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 | 5 | Child picker enroll | Pass | `06-child-profile-picker.png` — Alex/Mia picker for Beginner Badminton |
 | 6 | No 5th tab / no public minors | Pass | 4 tabs only; inbox copy “To parents · not child DM”; `07-coach-roster.png`, `08-inbox-announcement.png` |
 | 7 | **Tier 3 dual-role regression** | Pass | `09-tier3-profile-dual-sections.png`, `10-tier3-today-dual-blocks.png` — Marcus FAMILY + COACH TOOLS + MY CLASSES + CLASSES I TEACH on `dev` post-PR #48 |
+| 8 | **Play-discover regression** (2026-06-22) | Pass | `module-role-surfaces/03-coach-classes-segment.png` — Classes segment + sport filter on `fix/play-discover-builder` |

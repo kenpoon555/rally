@@ -69,7 +69,7 @@ export const PRODUCT_COPY = {
   playLockedWelcomingSection: 'Locked · still welcoming',
   playLockedWelcomingHint: 'Roster locked — spots still open',
   playPlayersNearbySection: 'Players nearby',
-  playPlayersNearbyHint: 'Free to play in the next few hours',
+  playPlayersNearbyHint: 'Players posting when they can play',
   playRecruitingTitle: 'Recruiting now',
   playRecruitingHint: 'Request a spot — host accepts, then tap I\'m in the game room.',
   playPlayersHint: 'Players posting when they can play — hosts invite them to fill open spots.',
@@ -161,13 +161,16 @@ export const PRODUCT_COPY = {
 
   /** Home / discover */
   homeExplorerSubtitle: 'Open games nearby. Recruiting posts are hosts actively looking for players.',
-  discoverEmptyTitle: (sport: string) => `No ${sport.toLowerCase()} games nearby`,
+  /** @deprecated Use discoverGamesEmptyTitle from surfaceVisibility — keeps sport casing + meetup wording. */
+  discoverEmptyTitle: (sport: string) => `No ${sport} games nearby`,
   discoverEmptyBody:
     'LA beta is strongest for badminton, pickleball, and basketball. Host a game to get on the board — then invite friends from your Rally.',
   discoverEmptyStepHost: 'Host a game',
   discoverEmptyStepInvite: 'After you host, open your Rally to invite friends to that game.',
   discoverEmptyOpenRally: 'Open your Rally',
   discoverEmptyTrySport: 'Try a beta sport using the filters above.',
+  discoverEmptyInviteHint:
+    'Got an invite from a friend? Open their Rally or game link from Messages or email.',
   homeRegularSubtitle: 'Next up, your Rallies, and active game rooms.',
   /** Today tab — one-line status under the title */
   todaySubtitleNeedsConfirm: (count: number) =>
