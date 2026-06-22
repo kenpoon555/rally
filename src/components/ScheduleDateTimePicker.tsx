@@ -165,14 +165,19 @@ export const ScheduleDateTimePicker: React.FC<Props> = ({
   return (
     <View style={styles.block}>
       {title ? <Text style={styles.title}>{title}</Text> : null}
-      <DateTimePicker
-        value={value}
-        mode="datetime"
-        minimumDate={new Date()}
-        display="spinner"
-        minuteInterval={minuteInterval}
-        onChange={handleIosChange}
-      />
+      <Text style={styles.valueText}>{formatted}</Text>
+      <View style={styles.iosSpinnerWrap}>
+        <DateTimePicker
+          value={value}
+          mode="datetime"
+          minimumDate={new Date()}
+          display="spinner"
+          minuteInterval={minuteInterval}
+          onChange={handleIosChange}
+          textColor={colors.text}
+          themeVariant="light"
+        />
+      </View>
     </View>
   );
 };
@@ -186,8 +191,14 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   valueText: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    ...typography.bodyMedium,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  iosSpinnerWrap: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
   pickBtn: {
     alignSelf: 'flex-start',

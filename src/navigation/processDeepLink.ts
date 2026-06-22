@@ -34,6 +34,19 @@ async function navigateDeepLink(name: string, params?: object): Promise<boolean>
   return true;
 }
 
+async function navigateDeepLinkOrStore(
+  url: string,
+  name: string,
+  params?: object,
+  allowStorePending = true
+): Promise<boolean> {
+  const opened = await navigateDeepLink(name, params);
+  if (!opened && allowStorePending) {
+    await storePendingDeepLink(url);
+  }
+  return opened;
+}
+
 export async function processDeepLink(url: string, options?: { allowStorePending?: boolean }): Promise<void> {
   const allowStorePending = options?.allowStorePending !== false;
 
@@ -46,7 +59,7 @@ export async function processDeepLink(url: string, options?: { allowStorePending
     }
 
     if (parsed.type === 'sportLanding' && parsed.sportSlug) {
-      await navigateDeepLink(ROUTES.LANDING.SPORT, { sportSlug: parsed.sportSlug });
+      await navigateDeepLinkOrStore(url, ROUTES.LANDING.SPORT, { sportSlug: parsed.sportSlug }, allowStorePending);
       return;
     }
 
@@ -71,15 +84,25 @@ export async function processDeepLink(url: string, options?: { allowStorePending
     }
 
     if (parsed.type === 'game' && parsed.activityId) {
-      await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, { activityId: parsed.activityId });
+      await navigateDeepLinkOrStore(
+        url,
+        ROUTES.ACTIVITY.DETAIL,
+        { activityId: parsed.activityId },
+        allowStorePending
+      );
       return;
     }
 
     if (parsed.type === 'hostInvite' && parsed.inviteToken) {
-      await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, {
-        inviteToken: parsed.inviteToken,
-        hostInvite: true,
-      });
+      await navigateDeepLinkOrStore(
+        url,
+        ROUTES.ACTIVITY.DETAIL,
+        {
+          inviteToken: parsed.inviteToken,
+          hostInvite: true,
+        },
+        allowStorePending
+      );
       return;
     }
 
@@ -90,7 +113,15 @@ export async function processDeepLink(url: string, options?: { allowStorePending
           Alert.alert('Invite link', 'This invite is invalid or expired.');
           return;
         }
-        await navigateDeepLink(ROUTES.ACTIVITY.DETAIL, { activityId });
+        const opened = await navigateDeepLinkOrStore(
+          url,
+          ROUTES.ACTIVITY.DETAIL,
+          { activityId },
+          allowStorePending
+        );
+        if (!opened) {
+          return;
+        }
       } catch (err: unknown) {
         Alert.alert(
           'Invite link',
@@ -108,9 +139,14 @@ export async function processDeepLink(url: string, options?: { allowStorePending
         Alert.alert('Sign in required', 'Log in as a parent or guardian to enroll a student.');
         return;
       }
-      await navigateDeepLink(ROUTES.COACH_PARENT.PARENT_CLASS_INVITE, {
-        inviteToken: parsed.classEnrollToken,
-      });
+      await navigateDeepLinkOrStore(
+        url,
+        ROUTES.COACH_PARENT.PARENT_CLASS_INVITE,
+        {
+          inviteToken: parsed.classEnrollToken,
+        },
+        allowStorePending
+      );
       return;
     }
 
@@ -135,12 +171,17 @@ export async function processDeepLink(url: string, options?: { allowStorePending
         }
 
         if (conversationId) {
-          const opened = await navigateDeepLink(ROUTES.CHAT.THREAD, {
-            conversationId,
-            activityId: activityId ?? undefined,
-            groupId,
-            title: PRODUCT_COPY.rallyChat,
-          });
+          const opened = await navigateDeepLinkOrStore(
+            url,
+            ROUTES.CHAT.THREAD,
+            {
+              conversationId,
+              activityId: activityId ?? undefined,
+              groupId,
+              title: PRODUCT_COPY.rallyChat,
+            },
+            allowStorePending
+          );
           if (opened) {
             return;
           }
@@ -149,10 +190,15 @@ export async function processDeepLink(url: string, options?: { allowStorePending
         if (activityId) {
           try {
             const gameConvoId = await ensureActivityGroupConversation(activityId);
-            const opened = await navigateDeepLink(ROUTES.CHAT.THREAD, {
-              conversationId: gameConvoId,
-              activityId,
-            });
+            const opened = await navigateDeepLinkOrStore(
+              url,
+              ROUTES.CHAT.THREAD,
+              {
+                conversationId: gameConvoId,
+                activityId,
+              },
+              allowStorePending
+            );
             if (opened) {
               return;
             }
