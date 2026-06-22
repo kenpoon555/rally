@@ -180,6 +180,20 @@ def _headline(pr: dict | None, val: dict | None, nxt_action: str, nxt_reason: st
             f"Run validation-loop-start.sh or say **continue** in orchestrator chat.",
         )
 
+    if pr and pr.get("batch_pr") and pr.get("phase") == "batch_pr_ready":
+        return (
+            "📦 BATCH READY — open ONE combined PR",
+            f"Branch `{pr.get('builder_branch')}` — all validation queues green. Agent runs `spawn_batch_pr` (no mid-loop PRs).",
+        )
+
+    if pr and pr.get("batch_pr") and pr.get("phase") == "validation_spawned":
+        done = pr.get("batch_validation_completed") or []
+        pending = [q for q in (pr.get("batch_validation_queues") or []) if q not in done]
+        return (
+            "🌙 BATCH MODE — chaining validation (no PR until end)",
+            f"Queues done: {done or 'none'} · next: {pending[0] if pending else 'batch PR'}. Say **continue**.",
+        )
+
     if pr and pr.get("phase") in ("contract_pr_open", "src_pr_open"):
         which = "contract" if pr.get("phase") == "contract_pr_open" else "src"
         return (

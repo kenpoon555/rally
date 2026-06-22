@@ -124,35 +124,25 @@ Save to `docs/contracts/screenshots/flow-invite-to-rally/`:
 | 2026-06-10 | Native UIKit focus-engine crash on automated LoginScreen text entry — human retest | — |
 | 2026-06-16 | Contract updated: GTM 1 device rows in scope; reconcile validator report vs device retest | Founder |
 
-## Validator report template
+## Validator report
 
-> **Historical sim run** 2026-06-10 — see below. Re-run sim + **device** sections after fixes; do not treat as current green without device pass.
-
-> Run: 2026-06-10 ~19:45–20:02 PT · iOS Simulator tier 1 · iPhone 17 Pro (iOS 26.4)
+> Run: 2026-06-22 ~01:00 PT · iOS Simulator · iPhone 16 (`06244EDD-…`) · branch `fix/overnight-jun-2026-batch`
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Signed-out group invite | ⚠️ Partial | Auth/welcome gate is shown (no crash), but firing `group-invite` while signed out is a **silent no-op** — no "Sign in required" alert. Deep link reaches native but not JS. |
-| 2 | Auth return | N/T | Not exercised. No email magic-link path on sim; demo host `marcus@rally-mvrhoops.demo` login rejected ("Invalid email or password" — likely seeded with custom `RALLY_DEMO_PASSWORD`). App does correctly show welcome (no splash hang) when no session. |
-| 3 | Today invite accept | N/T | `@kunyu` is already a member of all 6 seeded token groups, so `listMyPendingRegularGroupInvites` returns no rows → no `RallyInviteCard` to accept. Not seedable without host-side invite. |
-| 4 | Group URL join | ❌ Fail | Valid `group-invite` (Julian, `a1000001-…301`) opened while logged in → **no navigation to Rally chat and no confirmation alert**. Stayed on Today. Native log confirms `UIOpenURLAction` delivered to app; JS handler produced no effect. |
-| 5 | Game invite landing | ❌ Fail | `invite/400a8e6b-…` opened warm, backgrounded, and cold → **never lands on `ActivityDetail`**, stays on Today. No redbox/blank, just no routing. |
-| 6 | No redbox | ✅ Pass | No React redbox or "Rendered more hooks" on any path; app renders/navigates fine. (One *native* UIKit focus-engine crash — `_UIFocusGroupMap` / `UIFocusSystem updateFocusIfNeeded`, EXC_BREAKPOINT — reproduced only during automated text entry on LoginScreen; likely sim/automation focus artifact, see Open issues.) |
+| 1 | Signed-out group invite | ✅ Pass | `group-invite/a1000001-…301` → **Sign in required** alert (no crash). |
+| 2 | Auth return / pending invite replay | N/T | Email login works (`marcus@…`); pending-invite-after-auth not re-tested this run. |
+| 3 | Today invite accept | N/T | Marcus already member of seeded groups — no pending `RallyInviteCard`. |
+| 4 | Group URL join (logged in) | ✅ Pass | Valid token → Rally chat (Julian Fisher Park Regulars thread). |
+| 5 | Game invite landing | ✅ Pass | `invite/345074a2-…` → `ActivityDetail` (Pickup run · full court). |
+| 6 | Invalid token | ✅ Pass | `group-invite/00000000-…` → alert "Group invite link is invalid or expired". |
+| 7 | No redbox / no infinite spinner | ✅ Pass | All paths interactive; no redbox. |
+| 8 | GTM 1 device rows | N/T | Sim-only run — device HTTPS/install rows deferred. |
 
-### Invalid token (contract required-state row 7)
+### Screenshots (`docs/contracts/screenshots/flow-invite-to-rally/`)
 
-| Item | Pass | Notes |
-|------|------|-------|
-| Invalid/expired token shows error, not redbox | ⚠️ Partial | `group-invite/00000000-…0000` → **no error alert** (silent no-op), but also no redbox/crash. Same root cause as rows 1/4/5 (URL not reaching JS handler). |
-
-### Root cause hint (for Fixer)
-
-Deep-link URLs **are** delivered to the native iOS scene — `xcrun simctl spawn booted log stream` shows `CoreSimulatorBridge: Opening URL (rallyapp://group-invite/…)` and `RallyApp … Received action(s) in scene-update: UIOpenURLAction`. But the `Linking` url-event in `AuthContext.handleAuthDeepLink` (`src/context/AuthContext.tsx`) never produces navigation or `Alert`. Suspects: (a) UIScene `scene:openURLContexts:` not bridged to `RCTLinkingManager` for warm/background opens; (b) cold start `Linking.getInitialURL()` resolving before `navigationRef.isReady()` so `navigate` is silently skipped (handler has no ready-retry). This single defect explains rows 1, 4, 5, and the invalid-token row.
-
-### Screenshots saved (`docs/contracts/screenshots/flow-invite-to-rally/`)
-
-- `01-signed-out-group-invite.png` — auth/welcome gate (signed out)
-- `04-group-invite-url-success.png` — state after logged-in group-invite (still Today — no success screen)
-- `05-game-invite-detail.png` — state after game invite (still Today — no detail screen)
-- `06-invalid-token-noop.png` — state after invalid token (still Today — no alert)
-- *Skipped:* `02-today-rally-invite-card.png`, `03-after-accept-rally-hub.png` — no pending invite seedable for `@kunyu` (see row 3).
+- `01-signed-out-group-invite.png`
+- `04-group-invite-url-success.png`
+- `05-game-invite-detail.png`
+- `06-invalid-token-alert.png`
+- *Skipped:* `02-today-rally-invite-card.png`, `03-after-accept-rally-hub.png` (no pending invite seed for host account)

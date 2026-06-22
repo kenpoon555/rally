@@ -114,16 +114,23 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 |------|---------|-------|
 | 2026-06-22 | Tier-2 picky host/member reviews blocked upstream by signed-out auth handoff reliability; re-run once `flow-invite-to-rally` P0 clears | Builder/Validator |
 
-## Validator report template
+## Validator report
+
+> Run: 2026-06-22 ~01:04 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/overnight-jun-2026-batch`  
+> **Seed note:** SQL/JS re-seed blocked (`SERVICE_ROLE_KEY` / FK) — no upcoming session in DB; validated empty-upcoming + history locked states.
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Hub tabs load | | |
-| 2 | Session card member I'm in | | |
-| 3 | Ready persists refresh | | |
-| 4 | Host lock roster | | |
-| 5 | Locked visible | | |
-| 6 | Today card UI | | |
-| 7 | Game detail who's going | | |
-| 8 | Android keyboard (if tested) | | |
-| 9 | No redbox | | |
+| 1 | Hub tabs load | ✅ Pass | Chat / Play / Members switch on Julian Fisher Park Regulars. |
+| 2 | Session card member I'm in | N/T | No upcoming session after prior validations; empty Play CTA shown. |
+| 3 | Ready persists refresh | N/T | Blocked by row 2 — re-seed required. |
+| 4 | Host lock roster | N/T | No live upcoming session to lock. |
+| 5 | Locked visible | ✅ Pass | HISTORY cards show `session-card-roster-locked` identifiers. |
+| 6 | Today card UI | ✅ Pass | Today quiet-day + YOUR RALLY card (plain sport icon, no status dot). |
+| 7 | Game detail who's going | ✅ Pass | Pickup game detail via invite deep link shows WHO'S GOING in hero. |
+| 8 | Android keyboard | N/T | iOS sim only. |
+| 9 | No redbox | ✅ Pass | Hub + detail load cleanly. |
+
+### Screenshots (`docs/contracts/screenshots/flow-rally-session/`)
+
+- `01-rally-hub-play-host.png`, `05-roster-locked.png`, `06-today-next-up.png`

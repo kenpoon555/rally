@@ -24,10 +24,10 @@ After you write `.product-review-session.json`, **do not stop** between steps un
 1. Run: `python3 .cursor/hooks/product-review-chain-next.py`
 2. Read `docs/product-review/.product-review-next.md`
 3. Continue in THIS SAME TURN for: **persona** → **consolidator** → **pre_approve_reviewer**
-4. **Auto-pass** (when eligible): pre-approve → approve → **spawn_contract_pr** — no human copy-paste
-5. **Stop human only** when auto-pass blocked, `revise_consolidator`, `block`, or contract PR needs merge
-6. After contract PR merges: `./.cursor/hooks/product-review-loop-contract-merged.sh` → **spawn_builder**
-7. After builder B1–B6: `./.cursor/hooks/product-review-loop-builder-done.sh` → **spawn_validation**
+4. **Auto-pass** (when eligible): pre-approve → approve → next layer (see batch_pr mode below)
+5. **batch_pr mode** (`batch_pr: true`): skip contract PR and per-queue src PR — commit contracts + src on **one builder branch**, chain validation queues, open **one PR** only at `batch_pr_ready` (or early if `batch_pr_split_reason` set)
+6. **Classic mode** (no batch_pr): auto-pass → contract PR → human merge → builder → validation → src PR
+7. **Stop human only** when auto-pass blocked, `revise_consolidator`, `block`, `batch_pr_split_reason`, or true `needs_human`
 
 Never say "start a new chat" when chain_enabled is true (except human-assign mode).
 """
@@ -56,6 +56,37 @@ def save_session(session: dict) -> None:
     session["updated_at"] = datetime.now(timezone.utc).isoformat()
     SESSION_PATH.parent.mkdir(parents=True, exist_ok=True)
     SESSION_PATH.write_text(json.dumps(session, indent=2) + "\n", encoding="utf-8")
+
+
+def batch_pr_mode(session: dict) -> bool:
+    return bool(session.get("batch_pr"))
+
+
+def batch_validation_remaining(session: dict) -> list[str]:
+    queues = session.get("batch_validation_queues")
+    done = set(session.get("batch_validation_completed") or [])
+    if queues is not None:
+        return [q for q in queues if q not in done]
+    vq = session.get("validation_queue")
+    if not vq or vq in done:
+        return []
+    return [vq]
+
+
+def advance_batch_validation(session: dict) -> str | None:
+    """Mark current validation_queue complete; return next queue name or None."""
+    vq = session.get("validation_queue")
+    if vq:
+        completed = list(session.get("batch_validation_completed") or [])
+        if vq not in completed:
+            completed.append(vq)
+        session["batch_validation_completed"] = completed
+    remaining = batch_validation_remaining(session)
+    if not remaining:
+        return None
+    nxt = remaining[0]
+    session["validation_queue"] = nxt
+    return nxt
 
 
 def tier_rubric(tier: int) -> str:
@@ -91,6 +122,16 @@ def _try_auto_pass(session: dict) -> dict | None:
     from product_review_auto_pass import mark_approved
 
     mark_approved(session, auto_passed=True, evaluation=result)
+    if batch_pr_mode(session):
+        session["phase"] = "builder_pending"
+        session["layer_2_status"] = "local"
+        session["status"] = "running"
+        save_session(session)
+        return {
+            "action": "spawn_builder",
+            "reason": f"auto-pass ({result.get('verdict')}) — batch_pr: builder on local branch (no contract PR)",
+            "prompt": spawn_builder_prompt(session),
+        }
     session["phase"] = "contract_pr_pending"
     save_session(session)
     return {
@@ -255,22 +296,34 @@ def spawn_builder_prompt(session: dict) -> str:
     tag = session.get("consolidator_tag", "onboarding")
     vq = session.get("validation_queue", "baseline")
     branch = session.get("builder_branch") or f"fix/{tag}-builder"
-    return f"""**Layer 2b — Builder (local branch — NO src PR yet)**
+    batch = batch_pr_mode(session)
+    contract_note = (
+        f"""**batch_pr:** Commit `docs/contracts/` updates on **`{branch}`** with src — no separate contract PR.
+Human merge of contract docs to `dev` is **not** required before validation."""
+        if batch
+        else "Contract PR is on `dev`. Implement on a **local feature branch** only."
+    )
+    pr_note = (
+        "**One combined PR** opens only after all batch validation queues are green (`batch_pr_ready`)."
+        if batch
+        else "**Src PR opens only after** `./.cursor/hooks/product-review-loop-validation-green.sh`."
+    )
+    return f"""**Layer 2b — Builder (local branch)**
 
-Contract PR is on `dev`. Implement on a **local feature branch** only.
+{contract_note}
 
-1. Read docs/product-review/consolidated/*-{tag}-builder-backlog.md (B1–B6)
-2. Branch from `dev`: e.g. `{branch}`
-3. Implement in `src/` — **do not** open or merge a src PR yet
-4. Smoke-test on sim (flags per validation-handoff)
-5. When code is ready to prove, run:
+1. Read docs/product-review/consolidated/*-{tag}-builder-backlog.md
+2. Branch: `{branch}` (from `dev` if new)
+3. Implement in `src/` (+ contract docs if batch_pr)
+4. Smoke-test on sim
+5. When ready:
    ```bash
    cd RallyApp
    ./.cursor/hooks/product-review-loop-builder-done.sh
    ```
 
 That starts **local validation** (`validation-loop-start.sh --queue {vq}`).
-**Src PR opens only after** `./.cursor/hooks/product-review-loop-validation-green.sh`.
+{pr_note}
 
 Do not re-run product review personas.
 """
@@ -300,6 +353,38 @@ When queue green:
 
 Then open/mark src PR — merge only after proof is recorded.
 Do not re-run product review personas.
+"""
+
+
+def spawn_batch_pr_prompt(session: dict) -> str:
+    tag = session.get("consolidator_tag", session.get("queue_name", "batch"))
+    branch = session.get("builder_branch") or f"fix/{tag}-batch"
+    completed = session.get("batch_validation_completed") or []
+    queues = session.get("batch_validation_queues") or [session.get("validation_queue")]
+    split = session.get("batch_pr_split_reason")
+    split_note = f"\n**Early split reason:** {split}\n" if split else ""
+    return f"""**Batch PR — single publish (docs + src + proof)**
+
+All chained validation queues are green on branch `{branch}`.{split_note}
+
+1. Ensure branch has: contract doc edits (if any), `src/` fixes, validation screenshots under `docs/contracts/screenshots/`
+2. Commit anything uncommitted; push:
+   ```bash
+   cd RallyApp
+   git push -u origin {branch}
+   ```
+3. Open **one** PR to `dev` (docs + src together):
+   ```bash
+   gh pr create --base dev --head {branch} --title "fix({tag}): batch ship — contracts + src + validation proof" --body "..."
+   gh pr ready
+   ```
+4. Update session:
+   - `layer_2_builder_pr`: PR URL
+   - `layer_2_builder_status`: "open"
+   - `phase`: "src_pr_open"
+5. **Stop for human merge** — run `product-review-loop-src-pr-merged.sh` after merge.
+
+Do **not** open separate contract PRs mid-loop unless `batch_pr_split_reason` is set.
 """
 
 
@@ -468,6 +553,16 @@ def compute_next(session: dict) -> dict:
         }
 
     if phase in ("approved", "contract_pr_pending"):
+        if batch_pr_mode(session):
+            session["phase"] = "builder_pending"
+            session["layer_2_status"] = "local"
+            session["status"] = "running"
+            save_session(session)
+            return {
+                "action": "spawn_builder",
+                "reason": "approved — batch_pr: builder local (skip contract PR)",
+                "prompt": spawn_builder_prompt(session),
+            }
         session["phase"] = "contract_pr_pending"
         session["status"] = "running"
         save_session(session)
@@ -530,6 +625,25 @@ cd RallyApp
         }
 
     if phase == "validation_green":
+        if batch_pr_mode(session):
+            nxt_vq = advance_batch_validation(session)
+            if nxt_vq:
+                session["phase"] = "validation_spawned"
+                session["status"] = "running"
+                save_session(session)
+                return {
+                    "action": "spawn_validation",
+                    "reason": f"batch_pr: validation green — next queue `{nxt_vq}`",
+                    "prompt": spawn_validation_prompt(session),
+                }
+            session["phase"] = "batch_pr_ready"
+            session["status"] = "running"
+            save_session(session)
+            return {
+                "action": "spawn_batch_pr",
+                "reason": "batch_pr: all validation queues green — open ONE combined PR",
+                "prompt": spawn_batch_pr_prompt(session),
+            }
         session["phase"] = "src_pr_pending"
         session["status"] = "running"
         save_session(session)
@@ -539,12 +653,12 @@ cd RallyApp
             "prompt": spawn_src_pr_prompt(session),
         }
 
-    if phase in ("src_pr_pending", "src_pr_open"):
-        pr = session.get("layer_2_builder_pr") or "(create with gh pr create)"
+    if phase in ("src_pr_pending", "src_pr_open", "batch_pr_ready"):
+        prompt_fn = spawn_batch_pr_prompt if phase == "batch_pr_ready" else spawn_src_pr_prompt
         return {
-            "action": "stop",
-            "reason": "src PR ready for human merge after local proof",
-            "prompt": spawn_src_pr_prompt(session),
+            "action": "spawn_batch_pr" if phase == "batch_pr_ready" else "stop",
+            "reason": "batch combined PR ready" if phase == "batch_pr_ready" else "src PR ready for human merge after local proof",
+            "prompt": prompt_fn(session),
         }
 
     if phase == "src_pr_merged":

@@ -1,12 +1,10 @@
 # Rally loop status
 
-_Updated: 2026-06-22 07:39 UTC_
+_Updated: 2026-06-22 08:09 UTC_
 
-**Release loop:** `sport-meetup`
+## 📦 BATCH READY — open ONE combined PR
 
-## 💤 IDLE — no active self-chain
-
-Say **continue** in orchestrator chat or run `./.cursor/hooks/rally-loop-status.sh`.
+Branch `fix/overnight-jun-2026-batch` — all validation queues green. Agent runs `spawn_batch_pr` (no mid-loop PRs).
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -14,20 +12,18 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `sport-meetup` tier 1
-- phase: `src_pr_pending` · status: `running`
-- layer_2: `merged`
-- personas: 1/1
-- builder branch: `fix/sport-meetup-builder`
-- src PR: https://github.com/kenpoon555/rally/pull/51
+- queue: `overnight-batch-jun-2026` tier —
+- phase: `batch_pr_ready` · status: `running`
+- layer_2: `local`
+- builder branch: `fix/overnight-jun-2026-batch`
 
 ## Validation
 
-- queue: `sport-meetup-launch`
-- contract: `module-sport-icon` (4/4)
+- queue: `baseline`
+- contract: `flow-play-screen` (5/5)
 - phase: `done` · status: `pass`
 - chain_enabled: False
-- notes: ['Running icon visible in All sports picker and create sport row (sim).', 'Workout icon in picker N/T — launchEnabled false per H3.']
+- notes: ['baseline 5/5 sim pass — N/T rows documented in contract validator reports', 're-seed blocked: SERVICE_ROLE_KEY missing; SQL FK on profiles']
 
 ---
 
