@@ -74,12 +74,35 @@ List anything the human should read before clicking approve:
 
 ### 4. Verdict
 
-| Verdict | Meaning | Session status |
-|---------|---------|----------------|
-| **approve_ready** | Human can approve; minor notes OK | `awaiting_human` |
-| **approve_with_notes** | Approve if human accepts listed notes | `awaiting_human` |
-| **revise_consolidator** | Send back — missing themes or bad contract diffs | `needs_revision` |
-| **block** | Do not approve — legal/GTM/conflict | `blocked` |
+| Verdict | Meaning | Session status | Auto-pass |
+|---------|---------|----------------|-----------|
+| **approve_ready** | Human can approve; minor notes OK | `awaiting_human` | **Yes** if no conflict/creep/timing/H fork |
+| **approve_with_notes** | Approve if human accepts listed notes | `awaiting_human` | **Yes** if notes are informational only |
+| **revise_consolidator** | Send back — missing themes or bad contract diffs | `needs_revision` | No |
+| **block** | Do not approve — legal/GTM/conflict | `blocked` | No |
+
+**Auto-pass (Layer 1.5 → Layer 2):** After you write the review, run `python3 .cursor/hooks/product-review-chain-next.py`. If eligible, chain-next **skips human gate** and continues to `spawn_contract_pr` in the same turn.
+
+Evaluate without applying:
+
+```bash
+cd RallyApp
+python3 .cursor/hooks/product_review_auto_pass.py
+```
+
+**Auto-pass blocks when:**
+
+| Stop reason | Example |
+|-------------|---------|
+| `conflict` | Contract diff contradicts green Validator row |
+| `creep` | Feature not in any persona review |
+| `timing` | Launch-week scope during GTM 2 |
+| `vague` | Checklist row not observable |
+| `block` / `revise_consolidator` | Verdict |
+| `h_gate_fork` | Non-default H gate choice required (in **Concerns** section) |
+| Material **Gap** in coverage table | P0 theme dropped (P3 deferrals OK) |
+
+Use Risk labels in Contract PR risk table: **Low**, **Not written yet**, **legal OK**, **conflict**, **creep**, **timing**, **vague**, **block**. Summary rows with Recommendation `None — …` do not block.
 
 ### 5. Write output
 
@@ -145,4 +168,9 @@ Read consolidator outputs + source persona reviews. Write *-pre-approve-review.m
 
 ## Handoff
 
-Human reads `*-pre-approve-review.md` → `./.cursor/hooks/product-review-loop-approve.sh` if verdict approve_ready / approve_with_notes.
+When auto-pass eligible, chain-next continues to **spawn_contract_pr** — no human copy-paste.
+
+When auto-pass blocked, human reads `*-pre-approve-review.md` → `./.cursor/hooks/product-review-loop-approve.sh` → **spawn_contract_pr** (not validation).
+
+After contract PR merges: `./.cursor/hooks/product-review-loop-contract-merged.sh` → Builder.  
+After builder: `./.cursor/hooks/product-review-loop-builder-done.sh` → validation.

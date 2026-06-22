@@ -17,8 +17,10 @@ flowchart TD
   P2 --> P6[Persona 6 review]
   P6 --> C[Consolidator]
   C --> R[Pre-approve reviewer]
-  R --> H[Human approve]
-  H --> L2[Contract PR to dev]
+  R --> AP{Auto-pass?}
+  AP -->|eligible| L2[Contract PR to dev]
+  AP -->|blocked| H[Human approve]
+  H --> L2
   L2 --> B[Builder fixes]
   B --> V[validation-loop-start.sh]
   V --> N{More tiers?}
@@ -32,9 +34,12 @@ flowchart TD
 | **2. Persona reviews** | 6 people OR 6 Agent chats | `docs/product-review/{persona-id}/*-review.md` |
 | **3. Consolidator** | 1 Agent chat | `consolidated/*-synthesis.md` + builder-backlog + validation-handoff |
 | **3b. Pre-approve review** | 1 Agent chat (Layer 1.5) | `consolidated/*-pre-approve-review.md` — coverage + contract PR risk |
-| **4. Human approve** | You | `./product-review-loop-approve.sh` (reads pre-approve verdict first) |
+| **4. Human approve** | You **only if auto-pass blocked** | `./product-review-loop-approve.sh` |
+| **4b. Auto-pass** | chain-next (automatic) | Skips step 4 when additive + no conflict |
 | **5. Contract PR** | Agent / you | `docs/contracts/*.md` updates → merge `dev` |
+| **5b. Contract merged** | You (after GitHub merge) | `./product-review-loop-contract-merged.sh` |
 | **6. Builder** | Agent | `src/` fixes for P0/P1 backlog items |
+| **6b. Builder done** | Agent / you | `./product-review-loop-builder-done.sh` |
 | **7. Validator loop** | Agent | `./validation-loop-start.sh --queue …` |
 | **8. Next tier** | You | `onboarding-round2-picky` when round 1 green |
 
@@ -134,13 +139,46 @@ Read consolidator outputs + source persona reviews. Write *-pre-approve-review.m
 
 ---
 
-## Step 4–7 — Approve → build → prove
+## Auto-pass (skip human gate when safe)
 
-Read `*-pre-approve-review.md` first, then:
+When `--chain` is on, pre-approve → chain-next **auto-approves** and spawns **contract PR** if:
+
+- Verdict is `approve_ready` or `approve_with_notes`
+- No **conflict**, **creep**, **timing**, **vague**, or **block** in Contract PR risk table
+- Coverage table has no material gaps (P3 deferrals OK)
+- H gates use documented defaults (R1/R3 = A) or `human_decisions` already in session
 
 ```bash
-# After pre-approve verdict is approve_ready / approve_with_notes:
+cd RallyApp
+python3 .cursor/hooks/product_review_auto_pass.py          # check
+python3 .cursor/hooks/product-review-chain-next.py         # continues loop
+```
+
+**Human only when auto-pass blocked** — read `auto_pass_stop_reasons` in session or pre-approve review.
+
+**Layer sequence (fixed):** approve → **contract PR** → merge → **builder** → **validation** (approve no longer jumps to validation).
+
+| Hook | When |
+|------|------|
+| `product-review-loop-approve.sh` | Manual approve (override) |
+| `product-review-loop-contract-merged.sh` | After Layer 2 PR merges to `dev` |
+| `product-review-loop-builder-done.sh` | After B1–B6 land |
+
+---
+
+## Step 4–7 — Approve → contract PR → build → prove
+
+Auto-pass (when eligible) skips manual approve. Otherwise read `*-pre-approve-review.md` first:
+
+```bash
+# Manual approve only when auto-pass blocked:
 ./.cursor/hooks/product-review-loop-approve.sh
+
+# After contract PR merges to dev:
+./.cursor/hooks/product-review-loop-contract-merged.sh
+
+# After builder B1–B6:
+./.cursor/hooks/product-review-loop-builder-done.sh
 
 # Layer 3 (from handoff doc):
 ./.cursor/hooks/validation-loop-start.sh --queue cps-onboarding --builder

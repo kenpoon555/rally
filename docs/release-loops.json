@@ -24,13 +24,19 @@
         "loop": "pre-approve-review",
         "skill": ".cursor/skills/pre-approve-review/SKILL.md",
         "human_gate": false,
-        "note": "Coverage + contract PR risk review before human approve"
+        "auto_pass": true,
+        "auto_pass_when": ["approve_ready", "approve_with_notes"],
+        "stop_on": ["block", "revise_consolidator", "conflict", "creep", "timing", "vague", "h_gate_fork"],
+        "note": "Coverage + contract PR risk; auto-pass to Layer 2 when additive/no conflict"
       },
       {
         "id": "L1-human",
         "loop": "human",
         "gate": "approve_synthesis_contract_diffs",
-        "read": "consolidated/*-pre-approve-review.md"
+        "read": "consolidated/*-pre-approve-review.md",
+        "auto_pass": true,
+        "only_when_blocked": true,
+        "note": "Human only when auto-pass blocked (conflict, H gate fork, block verdict)"
       },
       {
         "id": "L2-contract-pr",

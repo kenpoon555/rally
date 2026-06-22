@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Product review queue state machine — persona → consolidator → validation handoff."""
+"""Product review queue state machine — persona → consolidator → contract PR → builder → validation."""
 
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,13 +19,15 @@ PRE_APPROVE_SKILL = ".cursor/skills/pre-approve-review/SKILL.md"
 SELF_CHAIN = """
 ## SELF-CHAIN (when chain_enabled is true)
 
-After you write `.product-review-session.json`, **do not stop** between steps until human gate.
+After you write `.product-review-session.json`, **do not stop** between steps until a gate fires.
 
 1. Run: `python3 .cursor/hooks/product-review-chain-next.py`
 2. Read `docs/product-review/.product-review-next.md`
 3. Continue in THIS SAME TURN for: **persona** → **consolidator** → **pre_approve_reviewer**
-4. **Stop only** when action is `stop` (awaiting_human after pre-approve review, blocked, or needs_revision)
-5. After human approves (`product-review-loop-approve.sh`) → **spawn_validation** → validation sub-loop
+4. **Auto-pass** (when eligible): pre-approve → approve → **spawn_contract_pr** — no human copy-paste
+5. **Stop human only** when auto-pass blocked, `revise_consolidator`, `block`, or contract PR needs merge
+6. After contract PR merges: `./.cursor/hooks/product-review-loop-contract-merged.sh` → **spawn_builder**
+7. After builder B1–B6: `./.cursor/hooks/product-review-loop-builder-done.sh` → **spawn_validation**
 
 Never say "start a new chat" when chain_enabled is true (except human-assign mode).
 """
@@ -67,6 +70,34 @@ def tier_rubric(tier: int) -> str:
     return """
 **Tier 1 (discovery):** Note all friction P1–P3; journey may be partially blocked (legal gates OK to document).
 """
+
+
+def _auto_pass_evaluate(session: dict) -> dict:
+    from product_review_auto_pass import evaluate
+
+    return evaluate(session)
+
+
+def _try_auto_pass(session: dict) -> dict | None:
+    """Return next action dict if auto-pass applies; else None."""
+    if not session.get("auto_pass_enabled", True):
+        return None
+    result = _auto_pass_evaluate(session)
+    if not result.get("eligible"):
+        session["auto_pass_blocked"] = True
+        session["auto_pass_stop_reasons"] = result.get("stop_reasons") or []
+        save_session(session)
+        return None
+    from product_review_auto_pass import mark_approved
+
+    mark_approved(session, auto_passed=True, evaluation=result)
+    session["phase"] = "contract_pr_pending"
+    save_session(session)
+    return {
+        "action": "spawn_contract_pr",
+        "reason": f"auto-pass ({result.get('verdict')}) — contract PR next",
+        "prompt": spawn_contract_pr_prompt(session),
+    }
 
 
 def persona_prompt(session: dict) -> str:
@@ -127,13 +158,13 @@ Steps:
 4. Write docs/product-review/consolidated/YYYY-MM-DD-{tag}-validation-handoff.md
    - Ordered contract list for Layer 3
    - Command: ./.cursor/hooks/validation-loop-start.sh --queue {vq} --builder
-5. Propose contract diffs in docs/contracts/ (human approves after pre-approve review)
+5. Apply contract diffs to docs/contracts/ (commit on branch when done)
 
 Update session:
 - phase: "consolidate_done"
 - status: "consolidated"
 - synthesis_path: path to synthesis file
-- preserve chain_enabled, pre_approve_review_enabled
+- preserve chain_enabled, pre_approve_review_enabled, auto_pass_enabled
 
 Then run: python3 .cursor/hooks/product-review-chain-next.py
 {self_chain_snippet(session)}
@@ -165,6 +196,8 @@ Check:
 Write: docs/product-review/consolidated/YYYY-MM-DD-{tag}-pre-approve-review.md
 Verdict: approve_ready | approve_with_notes | revise_consolidator | block
 
+In Contract PR risk table use Risk labels: **Low**, **Not written yet**, **legal OK**, **conflict**, **creep**, **timing**, **vague**, **block**
+
 Update session:
 - phase: "review_done"
 - status: "awaiting_human" (if approve_ready/approve_with_notes) OR "needs_revision" / "blocked"
@@ -172,6 +205,7 @@ Update session:
 - pre_approve_review_path: path to review file
 
 Run: python3 .cursor/hooks/product-review-chain-next.py
+If auto-pass eligible, chain-next continues to **spawn_contract_pr** in THIS SAME TURN — do not stop for human.
 {self_chain_snippet(session)}
 
 Do NOT edit src/. Do NOT run Validator.
@@ -186,44 +220,99 @@ def _needs_pre_approve(session: dict) -> bool:
     return session.get("status") in ("consolidated", "awaiting_human", "running")
 
 
+def spawn_contract_pr_prompt(session: dict) -> str:
+    tag = session.get("consolidator_tag", "onboarding")
+    qname = session.get("queue_name", "")
+    branch = session.get("contract_pr_branch") or f"docs/{tag}-contracts-product-review"
+    auto = "yes" if session.get("auto_passed") else "no (human approved)"
+    return f"""**Layer 2 — contract PR** (queue `{qname}`, auto-pass: {auto})
+
+Human gate cleared. **Do not jump to validation yet.**
+
+1. Verify docs/contracts/ edits match synthesis + pre-approve review
+2. Commit on branch `{branch}` if uncommitted changes remain
+3. Push and open/update PR to `dev`:
+   ```bash
+   cd RallyApp
+   git push -u origin HEAD
+   gh pr create --base dev --head $(git branch --show-current) --title "docs: {tag} Layer 2 contracts" || gh pr view --web
+   ```
+4. Update session:
+   - `layer_2_pr`: PR URL
+   - `layer_2_status`: "open"
+   - `phase`: "contract_pr_open"
+5. **Stop** — human merges PR, then run:
+   ```bash
+   ./.cursor/hooks/product-review-loop-contract-merged.sh
+   ```
+
+Consolidator pack: docs/product-review/consolidated/*-{tag}-*.md
+Do not edit src/ in this step.
+"""
+
+
+def spawn_builder_prompt(session: dict) -> str:
+    tag = session.get("consolidator_tag", "onboarding")
+    vq = session.get("validation_queue", "baseline")
+    return f"""**Layer 2b — Builder** (contract PR merged to dev)
+
+Implement P0/P1 from docs/product-review/consolidated/*-{tag}-builder-backlog.md
+
+1. Read builder backlog — B1–B6 acceptance criteria
+2. Implement in `src/` on a feature branch
+3. Smoke-test on sim (flags per validation-handoff)
+4. Open PR to `dev` (src only — separate from contract docs PR)
+5. When merged or ready for validation, run:
+   ```bash
+   cd RallyApp
+   ./.cursor/hooks/product-review-loop-builder-done.sh
+   ```
+
+Then chain-next spawns **validation** (`--queue {vq} --builder`).
+Do not re-run product review personas.
+"""
+
+
 def spawn_validation_prompt(session: dict) -> str:
     vq = session.get("validation_queue", "baseline")
     tag = session.get("consolidator_tag", "onboarding")
-    return f"""**Sub-loop spawn — Layer 3 validation** (approved handoff from product review)
+    return f"""**Layer 3 — validation sub-loop** (queue `{session.get("queue_name")}`)
 
-Human approved queue `{session.get("queue_name")}`. Start the **validation sub-loop** now.
+Contract PR merged · builder done (or in progress with --builder).
 
-1. Read docs/product-review/consolidated/*-{tag}-builder-backlog.md (Builder items)
-2. Read docs/product-review/consolidated/*-{tag}-validation-handoff.md (contract order)
-3. Apply contract PR diffs if not merged yet (docs only unless user asked for src/)
-4. Run:
+1. Read docs/product-review/consolidated/*-{tag}-validation-handoff.md (contract order)
+2. Read docs/product-review/consolidated/*-{tag}-builder-backlog.md
+3. Run:
    ```bash
    cd RallyApp
    ./.cursor/hooks/validation-loop-start.sh --queue {vq} --builder
    ```
-5. **SELF-CHAIN validation** — complete Validator → Fixer → Validator in THIS SAME TURN per validation-chain-next.py (same pattern as gtm2 loop)
+4. **SELF-CHAIN validation** — Validator → Fixer → Validator in THIS SAME TURN
 
 Do not re-run product review personas for this queue.
-When validation queue green → optional next tier: see docs/release-loops.json `next_product_review_queue`.
+When validation green → optional next tier: see docs/release-loops.json `next_product_review_queue`.
 """
 
 
 def human_gate_prompt(session: dict) -> str:
     path = session.get("pre_approve_review_path", "docs/product-review/consolidated/*-pre-approve-review.md")
     verdict = session.get("pre_approve_verdict", "unknown")
-    return f"""**Human gate — ready for your approval**
+    stops = session.get("auto_pass_stop_reasons") or []
+    stop_block = ""
+    if stops:
+        stop_block = "\n**Auto-pass blocked:**\n" + "\n".join(f"- {s}" for s in stops) + "\n"
+    return f"""**Human gate — approval required**
 
 Pre-approve verdict: **{verdict}**
 Read: {path}
-Also: synthesis, builder-backlog, validation-handoff in docs/product-review/consolidated/
-
+{stop_block}
 When satisfied:
 ```bash
 cd RallyApp
 ./.cursor/hooks/product-review-loop-approve.sh
 ```
 
-Then spawn validation sub-loop (or ask Agent to run approve + validation self-chain).
+Then chain-next → **spawn_contract_pr** (not validation).
 
 If pre-approve said **revise_consolidator** — re-run consolidator, do not approve yet.
 If **block** — resolve blockers in contract or roadmap first.
@@ -232,23 +321,15 @@ If **block** — resolve blockers in contract or roadmap first.
 
 def validation_handoff_prompt(session: dict) -> str:
     vq = session.get("validation_queue", "baseline")
-    return f"""Product review queue **{session.get("queue_name")}** is approved.
+    return spawn_validation_prompt(session)
 
-**Layer 3 — start proof loop:**
-```bash
-cd RallyApp
-./.cursor/hooks/validation-loop-start.sh --queue {vq} --builder
-```
 
-In Agent chat:
-```
-Run ./.cursor/hooks/validation-loop-start.sh --queue {vq} --builder and complete Validator this turn.
-```
-
-Builder items: see docs/product-review/consolidated/*-builder-backlog.md from consolidator.
-
-**Next product-review round (optional):** after validation green, start tier {int(session.get("tier", 1)) + 1} queue if defined in review-queues.json.
-"""
+def mark_manual_approved(session: dict) -> None:
+    session["phase"] = "approved"
+    session["status"] = "approved"
+    session["auto_passed"] = False
+    session["layer_2_status"] = "pending"
+    save_session(session)
 
 
 def compute_next(session: dict) -> dict:
@@ -263,7 +344,6 @@ def compute_next(session: dict) -> dict:
         if cur and cur not in completed:
             completed.append(cur)
             session["reviews_completed"] = completed
-        # Advance to next persona not yet reviewed
         remaining = [p for p in personas if p not in completed]
         if remaining and len(completed) < len(personas):
             nxt = remaining[0]
@@ -315,6 +395,9 @@ def compute_next(session: dict) -> dict:
     if phase == "consolidate_done" and not session.get("pre_approve_review_enabled", True):
         session["status"] = "awaiting_human"
         save_session(session)
+        auto = _try_auto_pass(session)
+        if auto:
+            return auto
         return {
             "action": "stop",
             "reason": "awaiting_human (pre-approve disabled)",
@@ -331,9 +414,12 @@ def compute_next(session: dict) -> dict:
     if phase == "review_done":
         status = session.get("status", "")
         if status == "awaiting_human":
+            auto = _try_auto_pass(session)
+            if auto:
+                return auto
             return {
                 "action": "stop",
-                "reason": "awaiting_human — read pre-approve review then approve",
+                "reason": "awaiting_human — auto-pass blocked, human approval required",
                 "prompt": human_gate_prompt(session),
             }
         if status in ("needs_revision", "blocked"):
@@ -344,19 +430,66 @@ def compute_next(session: dict) -> dict:
             }
 
     if phase == "consolidate_done" and session.get("status") == "awaiting_human":
+        auto = _try_auto_pass(session)
+        if auto:
+            return auto
         return {
             "action": "stop",
-            "reason": "awaiting_human — approve synthesis before validation",
+            "reason": "awaiting_human — approve synthesis before Layer 2",
             "prompt": human_gate_prompt(session),
         }
 
-    if phase == "approved" or (phase == "consolidate_done" and session.get("status") == "approved"):
+    if phase in ("approved", "contract_pr_pending"):
+        session["phase"] = "contract_pr_pending"
+        session["status"] = "running"
+        save_session(session)
+        return {
+            "action": "spawn_contract_pr",
+            "reason": "approved — Layer 2 contract PR",
+            "prompt": spawn_contract_pr_prompt(session),
+        }
+
+    if phase == "contract_pr_open":
+        pr = session.get("layer_2_pr") or "(PR URL in session)"
+        return {
+            "action": "stop",
+            "reason": "contract PR open — merge then run product-review-loop-contract-merged.sh",
+            "prompt": f"""**Waiting on Layer 2 contract PR merge**
+
+PR: {pr}
+
+After merge to `dev`:
+```bash
+cd RallyApp
+./.cursor/hooks/product-review-loop-contract-merged.sh
+```
+""",
+        }
+
+    if phase == "contract_merged":
+        session["phase"] = "builder_pending"
+        session["status"] = "running"
+        save_session(session)
+        return {
+            "action": "spawn_builder",
+            "reason": "contract PR merged — Builder B1–B6",
+            "prompt": spawn_builder_prompt(session),
+        }
+
+    if phase == "builder_pending":
+        return {
+            "action": "spawn_builder",
+            "reason": "builder backlog ready",
+            "prompt": spawn_builder_prompt(session),
+        }
+
+    if phase == "builder_done":
         session["phase"] = "validation_spawned"
         session["status"] = "running"
         save_session(session)
         return {
             "action": "spawn_validation",
-            "reason": "human approved — spawn validation sub-loop",
+            "reason": "builder done — Layer 3 validation",
             "prompt": spawn_validation_prompt(session),
         }
 
@@ -383,7 +516,11 @@ def compute_next(session: dict) -> dict:
         return {"action": "stop", "reason": "queue complete", "prompt": ""}
 
     if phase == "validation_spawned":
-        return {"action": "stop", "reason": "validation sub-loop should be running", "prompt": spawn_validation_prompt(session)}
+        return {
+            "action": "spawn_validation",
+            "reason": "validation sub-loop",
+            "prompt": spawn_validation_prompt(session),
+        }
 
     return {"action": "stop", "reason": f"idle phase={phase}", "prompt": ""}
 
@@ -396,6 +533,13 @@ def write_next_md(session: dict | None, nxt: dict) -> None:
         f"**Reason:** {nxt.get('reason', '')}",
         "",
     ]
+    if session:
+        if session.get("auto_passed"):
+            lines.append(f"**Auto-pass:** yes — {session.get('auto_pass_reason', '')}")
+            lines.append("")
+        elif session.get("auto_pass_blocked"):
+            lines.append("**Auto-pass:** blocked — human gate")
+            lines.append("")
     if nxt.get("prompt"):
         lines.extend(["## Agent / human: next step", "", nxt["prompt"]])
     if session:
@@ -404,7 +548,8 @@ def write_next_md(session: dict | None, nxt: dict) -> None:
                 "",
                 "## Session",
                 f"- queue: `{session.get('queue_name')}` tier {session.get('tier')}",
-                f"- persona: `{session.get('current_persona_id')}`",
+                f"- phase: `{session.get('phase')}` · status: `{session.get('status')}`",
+                f"- layer_2: `{session.get('layer_2_status', 'n/a')}`",
                 f"- completed: {len(session.get('reviews_completed') or [])}/{session.get('min_reviews_before_consolidate')}",
             ]
         )
