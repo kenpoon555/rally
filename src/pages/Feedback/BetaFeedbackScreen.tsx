@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { FOUNDER_BENEFITS_COPY } from '../../constants/betaCopy';
 import { submitProductFeedback } from '../../services/feedbackService';
 import { Button, KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
 import { colors, spacing, typography } from '../../constants/theme';
@@ -45,10 +44,6 @@ const BetaFeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
       >
         <Text style={styles.title}>{PRODUCT_COPY.feedbackTitle}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.feedbackHint}</Text>
-        <View style={styles.founderBox}>
-          <Text style={styles.founderTitle}>Founding Member benefits</Text>
-          <Text style={styles.founderBody}>{FOUNDER_BENEFITS_COPY}</Text>
-        </View>
         <TextInput
           style={styles.input}
           value={body}
@@ -85,24 +80,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 22,
     marginBottom: spacing.md,
-  },
-  founderBox: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  founderTitle: {
-    ...typography.bodyMedium,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  founderBody: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    lineHeight: 18,
   },
   input: {
     minHeight: 160,

@@ -120,7 +120,7 @@ export const PRODUCT_COPY = {
   findPlayers: 'Find players',
   findPlayersHint: 'Invite free agents and active seekers to fill open spots.',
   concierge: 'Need help finding a game?',
-  conciergeHint: 'Tell us your sport and schedule — we will match you manually in beta.',
+  conciergeHint: 'Tell us your sport and schedule — we will match you manually in Los Angeles.',
   conciergeSent: 'Request received',
   captainFeedback: 'Captain feedback',
   captainFeedbackHint: 'Friction on host tools, rotation, or onboarding — we ship from this backlog.',
@@ -146,9 +146,9 @@ export const PRODUCT_COPY = {
   hostExitDoneTransfer: (username: string) => `Host passed to @${username}.`,
   hostExitDoneCancel: 'Game cancelled — no other players were on the roster.',
   nextHostBadge: 'Next host',
-  feedbackTitle: 'Beta feedback',
+  feedbackTitle: 'Send feedback',
   feedbackHint:
-    'Short notes help us fix bugs and shape Rally. When we launch v1, we plan to grant Founding Member access to at least two especially helpful beta contributors (extended Plus, host perks, or badges — not every note qualifies).',
+    'Share bugs, confusing moments, or ideas. We read every message.',
   feedbackPlaceholder: 'What worked? What confused you? What should we build next?',
   feedbackThanks: 'Thanks — we read every note.',
   feedbackSubmit: 'Send feedback',
@@ -164,11 +164,11 @@ export const PRODUCT_COPY = {
   /** @deprecated Use discoverGamesEmptyTitle from surfaceVisibility — keeps sport casing + meetup wording. */
   discoverEmptyTitle: (sport: string) => `No ${sport} games nearby`,
   discoverEmptyBody:
-    'LA beta is strongest for badminton, pickleball, and basketball. Host a game to get on the board — then invite friends from your Rally.',
+    'Host a game to get on the board — then invite friends from your Rally.',
   discoverEmptyStepHost: 'Host a game',
   discoverEmptyStepInvite: 'After you host, open your Rally to invite friends to that game.',
   discoverEmptyOpenRally: 'Open your Rally',
-  discoverEmptyTrySport: 'Try a beta sport using the filters above.',
+  discoverEmptyTrySport: 'Try another sport using the filters above.',
   discoverEmptyInviteHint:
     'Got an invite from a friend? Open their Rally or game link from Messages or email.',
   homeRegularSubtitle: 'Next up, your Rallies, and active game rooms.',

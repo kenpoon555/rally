@@ -5,6 +5,7 @@ import { ROUTES } from '../../constants/routes';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { toAuthErrorMessage } from '../../utils/errorMessages';
 import { AuthScreenLayout } from '../../components/AuthScreenLayout';
+import { AuthTermsNotice } from '../../components/auth/AuthTermsNotice';
 import { Button, TextField } from '../../components/ui';
 import { colors, spacing } from '../../constants/theme';
 
@@ -125,6 +126,8 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         fullWidth
         disabled={busy}
       />
+
+      <AuthTermsNotice variant="login" />
 
       <TouchableOpacity
         onPress={() => navigation.navigate(ROUTES.AUTH.SIGNUP)}

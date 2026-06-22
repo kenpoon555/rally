@@ -139,5 +139,13 @@
       "flow-play-screen",
       "module-sport-icon"
     ]
+  },
+  "app-store-build-10": {
+    "description": "App Store Build 10 — Guideline 2.2 (no beta UI) + 1.2 (UGC moderation)",
+    "contracts": [
+      "module-production-surface",
+      "module-ugc-moderation",
+      "flow-auth-onboarding"
+    ]
   }
 }
