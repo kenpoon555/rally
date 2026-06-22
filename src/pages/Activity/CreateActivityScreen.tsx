@@ -38,6 +38,7 @@ import {
   resolvePreferredSportForLaunch,
   sortSportsForPlayTab,
   SportType,
+  usesMeetupLocationPath,
 } from '../../constants/sports';
 import {
   Button,
@@ -155,6 +156,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const hasPrefillTitle = Boolean(route.params?.prefillTitle?.trim());
 
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
+  const [meetAreaText, setMeetAreaText] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
   const [addCourtSheetVisible, setAddCourtSheetVisible] = useState(false);
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
@@ -461,6 +463,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         ? sportLocations[0]?.id ?? null
         : null;
   const selectedLocation = locationsWithDistance.find((l) => l.id === effectiveSelectedLocationId) || null;
+  const usesMeetupLocation = usesMeetupLocationPath(sportType);
 
   const mapRegion = useMemo(() => {
     if (location) {
@@ -544,8 +547,16 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       Alert.alert('Not signed in', 'Please sign in and try again.');
       return;
     }
-    if (!effectiveSelectedLocationId) {
+    if (!usesMeetupLocation && !effectiveSelectedLocationId) {
       Alert.alert('No court selected', 'Pick a court on the map or list first.');
+      return;
+    }
+    const meetAreaTrimmed = meetAreaText.trim();
+    if (usesMeetupLocation && meetAreaTrimmed.length < 3) {
+      Alert.alert(
+        'Add meet area',
+        'Enter a park, neighborhood, or area name. Pin the exact spot in game chat.'
+      );
       return;
     }
     const titleTrimmed = listingTitle.trim();
@@ -559,10 +570,11 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    const locationName =
-      selectedLocation?.name ??
-      locationsWithDistance.find((loc) => loc.id === effectiveSelectedLocationId)?.name ??
-      'TBD';
+    const locationName = usesMeetupLocation
+      ? meetAreaTrimmed
+      : selectedLocation?.name ??
+        locationsWithDistance.find((loc) => loc.id === effectiveSelectedLocationId)?.name ??
+        'TBD';
 
     if (route.params?.createMode === 'class') {
       setSaving(true);
@@ -610,7 +622,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       const created = await createActivity({
         user_id: user.id,
-        location_id: effectiveSelectedLocationId,
+        location_id: usesMeetupLocation ? null : effectiveSelectedLocationId,
         sport_type: sportType as SportType,
         start_time: fixedStartTime.toISOString(),
         duration,
@@ -622,7 +634,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         match_status: 'open',
         urgency_level: needPlayersTonight ? 'tonight' : 'normal',
         cost_note: costNote.trim() || null,
-        session_note: sessionNote.trim() || null,
+        session_note: usesMeetupLocation
+          ? `Meet area: ${meetAreaTrimmed}${sessionNote.trim() ? ` — ${sessionNote.trim()}` : ''}`
+          : sessionNote.trim() || null,
         listing_title: titleTrimmed,
         play_intent: 'pickup',
         is_intro_session: isIntroSession && visibility === 'nearby',
@@ -844,6 +858,22 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <Text style={styles.sectionLabel}>Where</Text>
+        {usesMeetupLocation ? (
+          <View style={styles.fieldCard}>
+            <TextInput
+              style={styles.input}
+              value={meetAreaText}
+              onChangeText={setMeetAreaText}
+              placeholder="e.g. Griffith Park area, Rose Bowl loop"
+              placeholderTextColor={colors.textTertiary}
+              maxLength={120}
+            />
+            <Text style={styles.fieldHint}>
+              Ballpark meet area only — pin the exact spot in game chat after you publish.
+            </Text>
+          </View>
+        ) : (
+          <>
         {courtStatusMessage ? <Text style={styles.statusText}>{courtStatusMessage}</Text> : null}
 
         <View style={styles.mapWrap}>
@@ -941,13 +971,19 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text style={styles.devLink}>Dev: browse all courts</Text>
           </TouchableOpacity>
         ) : null}
+          </>
+        )}
 
         <Text style={styles.sectionLabel}>Details (optional)</Text>
         <TextInput
           style={[styles.input, styles.multilineInput]}
           value={sessionNote}
           onChangeText={setSessionNote}
-          placeholder="Court #, skill level, split cost, etc."
+          placeholder={
+            usesMeetupLocation
+              ? 'Pace, distance, or format hint'
+              : 'Court #, skill level, split cost, etc.'
+          }
           placeholderTextColor={colors.textTertiary}
           maxLength={200}
           multiline
@@ -1071,7 +1107,18 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       </ScrollView>
 
       <View style={styles.footer}>
-        {selectedLocation ? (
+        {usesMeetupLocation ? (
+          meetAreaText.trim().length >= 3 ? (
+            <View style={styles.footerCourt}>
+              <Ionicons name="map-outline" size={16} color={colors.textSecondary} />
+              <Text style={styles.footerCourtText} numberOfLines={1}>
+                {meetAreaText.trim()}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.footerHint}>Add meet area to publish</Text>
+          )
+        ) : selectedLocation ? (
           <View style={styles.footerCourt}>
             <Ionicons name="location-outline" size={16} color={colors.textSecondary} />
             <Text style={styles.footerCourtText} numberOfLines={1}>
