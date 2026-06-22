@@ -1,12 +1,12 @@
 # Rally loop status
 
-_Updated: 2026-06-22 07:27 UTC_
+_Updated: 2026-06-22 07:39 UTC_
 
-**Release loop:** `pickup-gtm2`
+**Release loop:** `sport-meetup`
 
-## 🔄 IN PROGRESS — next: 
+## 💤 IDLE — no active self-chain
 
-Agent should run chain-next and continue.
+Say **continue** in orchestrator chat or run `./.cursor/hooks/rally-loop-status.sh`.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -14,19 +14,20 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `pickup-round2-picky` tier 2
+- queue: `sport-meetup` tier 1
 - phase: `src_pr_pending` · status: `running`
 - layer_2: `merged`
-- personas: 4/4
-- builder branch: `fix/ name)-builder`
+- personas: 1/1
+- builder branch: `fix/sport-meetup-builder`
+- src PR: https://github.com/kenpoon555/rally/pull/51
 
 ## Validation
 
-- queue: `gtm2-feedback-jun-2026`
-- contract: `module-coach-parent-navigation` (9/9)
+- queue: `sport-meetup-launch`
+- contract: `module-sport-icon` (4/4)
 - phase: `done` · status: `pass`
 - chain_enabled: False
-- notes: ['Play → Classes segment available behind COACH_CLASSES_DISCOVER; Games/Players segments regression-free.', 'CPS navigation smoke pass on sim with coach flags as seeded for Marcus.']
+- notes: ['Running icon visible in All sports picker and create sport row (sim).', 'Workout icon in picker N/T — launchEnabled false per H3.']
 
 ---
 
