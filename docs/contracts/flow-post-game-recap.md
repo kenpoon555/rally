@@ -79,3 +79,16 @@ North-star: **After attendance submitted → recap card appears → host/member 
 | Date | Blocker | Owner |
 |------|---------|-------|
 | 2026-06-16 | Split P0/P1 per advisory review — validate P0 on device for gtm1 | — |
+
+## Validator report
+
+> Run: 2026-06-22 · after `submit_game_attendance` on `f2000001-…000004`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Recap card on game detail | ✅ | GAME RECAP block with attendance + streak |
+| 2 | Recap from rally chat | ✅ | Recap card in crew chat thread |
+| 3 | `recap_viewed` event | ✅ | `GameRecapCard` on load |
+| 4 | Share sheet (P1) | N/T | Device only |
+
+**Last validated:** 2026-06-22 — P0 partial

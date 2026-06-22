@@ -2,12 +2,13 @@ import { Alert } from 'react-native';
 import { ROUTES } from '../constants/routes';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import { navigationRef } from './navigationRef';
-import { parseAppDeepLink } from './deepLinking';
+import { parseAppDeepLink, ParsedDeepLink } from './deepLinking';
 import { storePendingDeepLink } from '../services/pendingDeepLinkService';
 import { joinGroupAndNextGame } from '../services/regularGroupService';
 import { resolveActivityIdFromInviteToken } from '../services/activityService';
 import { ensureActivityGroupConversation } from '../services/chatService';
 import { supabase } from '../services/api/supabase';
+import { trackProductEvent } from '../services/analyticsService';
 
 const NAV_READY_POLL_MS = 50;
 const NAV_READY_TIMEOUT_MS = 8000;
@@ -47,11 +48,34 @@ async function navigateDeepLinkOrStore(
   return opened;
 }
 
+function trackInviteLinkOpened(parsed: ParsedDeepLink): void {
+  const props: Record<string, unknown> = { link_type: parsed.type };
+  if (parsed.activityId) {
+    props.activity_id = parsed.activityId;
+  }
+  if (parsed.inviteToken) {
+    props.invite_token_present = true;
+  }
+  if (parsed.groupInviteToken) {
+    props.group_invite_token_present = true;
+  }
+  void trackProductEvent('invite_link_opened', props);
+}
+
 export async function processDeepLink(url: string, options?: { allowStorePending?: boolean }): Promise<void> {
   const allowStorePending = options?.allowStorePending !== false;
 
   try {
     const parsed = parseAppDeepLink(url);
+
+    if (
+      parsed.type === 'game' ||
+      parsed.type === 'invite' ||
+      parsed.type === 'hostInvite' ||
+      parsed.type === 'groupInvite'
+    ) {
+      trackInviteLinkOpened(parsed);
+    }
 
     if (parsed.type === 'unknown') {
       Alert.alert('Invalid invite', 'This invite link is not valid or has expired.');

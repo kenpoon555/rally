@@ -50,3 +50,18 @@ North-star: **Host taps Nudge → eligible members get in-app alert and/or push 
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | Push requires physical device | — |
+
+## Validator report
+
+> Run: 2026-06-22 · `marcus@rally-mvrhoops.demo` · upcoming `Morning pickup run`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Host can nudge pre-lock | ✅ | `nudge_session_roster` returned `1` (riley not ready) |
+| 2 | Nudge disabled post-lock | ✅ | Covered in `flow-rally-session` lock row |
+| 3 | Non-host cannot nudge | N/T | RPC auth assumed; not UI-tested |
+| 4 | Rate limit / cooldown | N/T | Not exercised |
+| 5 | Push delivery | N/T | Device only |
+| 6 | Chat system message | ✅ | Rally chat shows nudge copy after RPC |
+
+**Last validated:** 2026-06-22

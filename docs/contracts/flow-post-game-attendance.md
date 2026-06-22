@@ -76,3 +76,26 @@ North-star: **Host opens past session → marks attendance → reliability updat
 | Date | Blocker | Owner |
 |------|---------|-------|
 | 2026-06-16 | Checklist expanded per advisory review | — |
+| 2026-06-22 | Attendance CTA below fold on detail (tab bar) — scroll to reach button | Fixer |
+
+## Validator report
+
+> Run: 2026-06-22 · iOS Simulator · `marcus@rally-mvrhoops.demo` · `dev`  
+> Setup: cleared `game_attendance` + `game_recaps` on `f2000001-…000004` (Saturday morning run)
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | CTA host + locked + past | ✅ | Hero hint + eligible past finalized session |
+| 2 | CTA hidden upcoming | ✅ | Upcoming `f2000001-…000005` has no CTA (spot-check) |
+| 3 | Attendance form toggles | N/T | CTA not tapped in sim (below tab bar); RPC path used |
+| 4 | Partial submit | ✅ | `submit_game_attendance` with 5/9 roster IDs |
+| 5 | Success + recap | ✅ | Recap `d3067b7b-…` + recap card on detail after refresh |
+| 6 | Non-host blocked | N/T | Not re-run this round |
+| 7 | Reliability refresh | N/T | Spot-check `@kunyu` deferred |
+| 8 | `attendance_submitted` event | ✅ | `submitGameAttendance` |
+
+**Last validated:** 2026-06-22 (sim + RPC)
+
+### Screenshots
+
+- `04-success-confirmation.png` — recap card after partial submit

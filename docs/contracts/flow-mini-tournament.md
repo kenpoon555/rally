@@ -56,3 +56,15 @@ North-star: **Host starts mini tournament → members join → host starts → s
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | Not validated on device | — |
+
+## Validator report
+
+> Run: 2026-06-22 · `create_regular_group_tournament`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Create tournament | ✅ | RPC `f0d765ba-137a-460c-84d6-3c586d24202a` |
+| 2 | Member join / start / scores | N/T | Two-account device QA |
+| 3 | Navigate without crash | N/T | — |
+
+**Last validated:** 2026-06-22 — create green

@@ -52,3 +52,18 @@ North-star: **Host creates poll in Rally chat → members vote → host closes p
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | UI entry point may vary by screen — document in Validator notes | — |
+
+## Validator report
+
+> Run: 2026-06-22 · `marcus@rally-mvrhoops.demo` · Julian Fisher chat
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Host create poll | N/T | Composer poll icon; create sheet not re-run (seed has polls) |
+| 2 | Member vote persists | ✅ | `vote_availability_poll` → `my_vote_option_id` set |
+| 3 | Vote counts visible | ✅ | Options show vote counts after vote |
+| 4 | Host close poll | ✅ | `close_availability_poll` → status `closed` |
+| 5 | Analytics events | ✅ | `poll_created` / `poll_voted` in service |
+| 6 | Interactive poll card in chat | ⚠️ | Cards in list header; added scroll-to-top + testIDs (Metro reload) |
+
+**Last validated:** 2026-06-22 — sim-green via RPC; poll card UX fix in `RallyChatPanel` + `AvailabilityPollCard`
