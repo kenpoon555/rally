@@ -60,6 +60,7 @@ Queue definitions: [validation-queues.json](./validation-queues.json)
 | `sport-meetup-launch` | Running + Workout meetup create |
 | `role-surface-audit` | role × surface matrix · Play sport×segment · profile gates |
 | `play-discover-matrix` | fast re-check — `module-role-surfaces` + `flow-play-screen` + `module-sport-icon` (B7/B11) |
+| `app-store-build-10` | **App Store Build 10** — `module-production-surface` + `module-ugc-moderation` + `flow-auth-onboarding` |
 
 ## Recommended run order (copy-paste)
 

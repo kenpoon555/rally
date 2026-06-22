@@ -1,9 +1,10 @@
 # Flow — Auth & onboarding
 
 **Contract id:** `flow-auth-onboarding`  
-**Status:** **Partial** — tier 2 picky P0: fresh signup legal gate silent failure (2026-06-22)  
+**Status:** **Partial** — Build 10: legal gate error UX + pre-auth terms cross-ref (`module-ugc-moderation`)  
 **Screens:** `WelcomeScreen`, `LoginScreen`, `SignupScreen`, `TosAcceptanceGate`, `AuthContext`  
-**Related code:** `src/context/AuthContext.tsx`, `src/services/pendingDeepLinkService.ts`, coach marks / onboarding flags
+**Related code:** `src/context/AuthContext.tsx`, `src/services/pendingDeepLinkService.ts`, coach marks / onboarding flags  
+**App Store:** Terms before register/login — see [module-ugc-moderation.md](./module-ugc-moderation.md)
 
 ## Purpose
 
@@ -33,8 +34,9 @@ North-star: **Sign out → open invite link → sign in → invite completes wit
 ### Legal gate (P0 — tier 2 picky)
 
 - [ ] Fresh signup → **Before you play**: checking box + **Continue** navigates to main app (Today or permissions)
-- [ ] Profile legal acceptance write failure shows **user-facing error + retry** — not silent no-op
+- [ ] Profile legal acceptance write failure shows **user-facing error + retry** — not silent no-op (`testID="legal-gate-error"` visible on failure)
 - [ ] Metro/network failure on `acceptLegalTerms` does not trap user on legal modal indefinitely
+- [ ] **App Store 1.2:** Signup + Login show terms/community standards **before** credentials submit — [module-ugc-moderation.md](./module-ugc-moderation.md)
 
 ### Auth mechanics
 
@@ -62,3 +64,20 @@ North-star: **Sign out → open invite link → sign in → invite completes wit
 ## Related
 
 - [flow-invite-to-rally.md](./flow-invite-to-rally.md) — end-to-end invite loop
+
+## Validator report
+
+> Run: 2026-06-22 · queue `app-store-build-10` · sim iPhone 16
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Fresh signup → legal gate → Continue → main app | ⏳ | Legal gate UI verified; full fresh signup not completed on sim |
+| 2 | Legal gate error + retry on failure | ✅ | `TosAcceptanceGate` shows `testID="legal-gate-error"` + Alert |
+| 3 | Network failure does not trap user | ✅ | Error text + retry; button re-enabled after catch |
+| 4 | Signup/Login terms before credentials (1.2) | ✅ | Cross-ref `module-ugc-moderation` screenshots |
+| 5 | Welcome loads after sign-out | ✅ | Carousel + Get Started / I have an account |
+| 6 | Age gate → signup path | ✅ | 18+ selection reaches signup form |
+| 7 | Auth callback / deep link replay | ⏳ | Out of scope this queue — existing contract |
+| 8 | Cold launch ≤12s | ✅ | Welcome within 2s on sim relaunch |
+
+Screenshots: `docs/contracts/screenshots/flow-auth-onboarding/`

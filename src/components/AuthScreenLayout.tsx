@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '../constants/theme';
 import { APP_NAME, APP_TAGLINE } from '../constants/brand';
-import { BETA_COPY } from '../constants/betaCopy';
+import { MARKET_COPY } from '../constants/betaCopy';
 import { RallyMark } from './RallyMark';
 import { colors as themeColors, spacing as themeSpacing, typography as themeTypography } from '../constants/theme';
 import { KeyboardSafeView, keyboardAwareScrollProps } from './ui/KeyboardSafeView';
@@ -28,7 +28,7 @@ export function AuthScreenLayout({ title, subtitle, children }: Props) {
           <RallyMark size="lg" style={styles.logoMark} />
           <Text style={styles.brandName}>{APP_NAME}</Text>
           <Text style={styles.tagline}>{APP_TAGLINE}</Text>
-          <Text style={styles.betaLine}>{BETA_COPY.headline}</Text>
+          <Text style={styles.betaLine}>{MARKET_COPY.headline}</Text>
           <View style={styles.sportRow}>
             <Text style={styles.sportChip}>Badminton</Text>
             <Text style={styles.sportChip}>Pickleball</Text>

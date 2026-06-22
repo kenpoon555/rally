@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
-import { BETA_COPY, FOUNDER_BENEFITS_COPY } from '../constants/betaCopy';
+import { MARKET_COPY } from '../constants/betaCopy';
 import { BETA_REGION } from '../constants/betaRegion';
 import { SportType } from '../constants/sports';
 import {
@@ -50,7 +50,7 @@ export const OnboardingModal: React.FC<Props> = ({ visible, userId, onComplete }
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
         <Text style={styles.title}>What do you want to play?</Text>
-        <Text style={styles.subtitle}>{BETA_COPY.headline}</Text>
+        <Text style={styles.subtitle}>{MARKET_COPY.headline}</Text>
         <View style={styles.chipRow}>
           {BETA_SPORTS.map((name) => (
             <Chip
@@ -98,7 +98,6 @@ export const OnboardingModal: React.FC<Props> = ({ visible, userId, onComplete }
         <Text style={styles.location}>
           General area: {BETA_REGION.name} (court picker uses approximate location when you host)
         </Text>
-        <Text style={styles.founder}>{FOUNDER_BENEFITS_COPY}</Text>
         <Button title={busy ? 'Saving…' : 'Continue'} onPress={() => void handleContinue()} disabled={busy} />
       </View>
     </Modal>

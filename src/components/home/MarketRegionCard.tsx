@@ -1,20 +1,21 @@
 import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BETA_COPY, buildBetaContactMailto } from '../../constants/betaCopy';
+import { MARKET_COPY, buildSupportContactMailto } from '../../constants/betaCopy';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 
-export const BetaMarketBanner: React.FC = () => {
+/** Optional LA region card — neutral production copy (no beta badge). */
+export const MarketRegionCard: React.FC = () => {
   const openContact = () => {
-    void Linking.openURL(buildBetaContactMailto());
+    void Linking.openURL(buildSupportContactMailto());
   };
 
   return (
     <View style={styles.card}>
-      <Text style={styles.badge}>{BETA_COPY.regionLabel}</Text>
-      <Text style={styles.headline}>{BETA_COPY.headline}</Text>
-      <Text style={styles.body}>{BETA_COPY.body}</Text>
+      <Text style={styles.badge}>{MARKET_COPY.regionLabel}</Text>
+      <Text style={styles.headline}>{MARKET_COPY.headline}</Text>
+      <Text style={styles.body}>{MARKET_COPY.body}</Text>
       <TouchableOpacity style={styles.cta} onPress={openContact} accessibilityRole="button">
-        <Text style={styles.ctaText}>{BETA_COPY.contactCta}</Text>
+        <Text style={styles.ctaText}>{MARKET_COPY.contactCta}</Text>
       </TouchableOpacity>
     </View>
   );

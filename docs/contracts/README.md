@@ -56,6 +56,8 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 | [flow-inbox.md](./flow-inbox.md) | Inbox filters + navigation |
 | [flow-profile.md](./flow-profile.md) | Profile + player modal |
 | [flow-auth-onboarding.md](./flow-auth-onboarding.md) | Auth, legal gate, deep links |
+| [module-production-surface.md](./module-production-surface.md) | **App Store** — no beta-testing UI in production |
+| [module-ugc-moderation.md](./module-ugc-moderation.md) | **App Store** — terms, report, block (Guideline 1.2) |
 | [flow-push-notifications-device.md](./flow-push-notifications-device.md) | Physical device push (FCM + token) |
 | [flow-post-game-attendance.md](./flow-post-game-attendance.md) | Host marks attendance |
 | [flow-host-nudges.md](./flow-host-nudges.md) | Roster nudge + push |

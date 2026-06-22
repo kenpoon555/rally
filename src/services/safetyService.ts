@@ -36,7 +36,17 @@ export async function usersAreBlocked(userA: string, userB: string): Promise<boo
   return Boolean(data);
 }
 
-export async function blockUser(blockerId: string, blockedId: string): Promise<void> {
+export type BlockUserOptions = {
+  contextType?: ReportContextType;
+  contextId?: string;
+  reportDetail?: string;
+};
+
+export async function blockUser(
+  blockerId: string,
+  blockedId: string,
+  options?: BlockUserOptions
+): Promise<void> {
   if (blockerId === blockedId) {
     throw new Error('You cannot block yourself.');
   }
@@ -49,6 +59,15 @@ export async function blockUser(blockerId: string, blockedId: string): Promise<v
   if (error) {
     throw new Error(`Failed to block user: ${error.message}`);
   }
+
+  await submitUserReport({
+    reporter_id: blockerId,
+    reported_id: blockedId,
+    reason: 'harassment',
+    detail: options?.reportDetail?.trim() || 'User blocked via Safety.',
+    context_type: options?.contextType ?? 'profile',
+    context_id: options?.contextId ?? null,
+  });
 }
 
 export async function unblockUser(blockerId: string, blockedId: string): Promise<void> {

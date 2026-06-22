@@ -5,7 +5,7 @@ import { Button } from '../ui';
 import { SportIconForSurface } from '../SportIconForSurface';
 import { RegularGroup } from '../../types/regularGroup';
 import { PRODUCT_COPY } from '../../constants/productCopy';
-import { BETA_COPY } from '../../constants/betaCopy';
+import { MARKET_COPY } from '../../constants/betaCopy';
 import {
   discoverEmptyHostStepHint,
   discoverGamesEmptyTitle,
@@ -80,7 +80,7 @@ export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
       ) : null}
 
       <Text style={styles.footnote}>{PRODUCT_COPY.discoverEmptyTrySport}</Text>
-      <Text style={styles.betaLine}>{BETA_COPY.headline}</Text>
+      <Text style={styles.regionLine}>{MARKET_COPY.playEmptyRegion}</Text>
     </View>
   </View>
 );
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     lineHeight: 18,
   },
-  betaLine: {
+  regionLine: {
     ...typography.caption,
     textAlign: 'center',
     color: colors.textTertiary,
