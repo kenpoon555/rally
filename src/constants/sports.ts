@@ -21,6 +21,7 @@ export enum SportType {
   ULTIMATE = 'Ultimate Frisbee',
   RUNNING = 'Running',
   HIKING = 'Hiking',
+  WORKOUT = 'Workout',
 }
 
 /** Product matching archetypes; not all are exposed in UI at once. */
@@ -183,10 +184,10 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     id: 'running',
     name: SportType.RUNNING,
     matchingProfile: 'fastFixed',
-    launchEnabled: false,
+    launchEnabled: true,
     minPlayers: 1,
-    defaultTotalPlayers: 2,
-    locationStrictness: 'moderate',
+    defaultTotalPlayers: 6,
+    locationStrictness: 'loose',
     timeStrictness: 'moderate',
     defaultSchedulingMode: 'fixed',
     shortLabel: 'Running',
@@ -203,6 +204,18 @@ export const SPORT_METADATA: Record<SportType, SportMetadata> = {
     timeStrictness: 'moderate',
     defaultSchedulingMode: 'flex',
     shortLabel: 'Hiking',
+  },
+  [SportType.WORKOUT]: {
+    id: 'workout',
+    name: SportType.WORKOUT,
+    matchingProfile: 'groupDiscuss',
+    launchEnabled: false,
+    minPlayers: 2,
+    defaultTotalPlayers: 8,
+    locationStrictness: 'loose',
+    timeStrictness: 'moderate',
+    defaultSchedulingMode: 'fixed',
+    shortLabel: 'Workout',
   },
 };
 
@@ -226,6 +239,7 @@ export const PLAY_TAB_SPORT_ORDER: SportType[] = [
   SportType.ULTIMATE,
   SportType.RUNNING,
   SportType.HIKING,
+  SportType.WORKOUT,
 ];
 
 /** Stable Play tab order — selection does not move chips (ring + label show active sport). */
@@ -314,6 +328,11 @@ export function getCourtSearchRadiiForSport(_sportName: string): number[] {
   return [CONFIG.COURT_SEARCH_NEARBY_RADIUS_M, CONFIG.COURT_SEARCH_WIDE_RADIUS_M];
 }
 
+/** Meetup sports (running, workout) publish with a ballpark area — not a court row. */
+export function usesMeetupLocationPath(sportName: string): boolean {
+  return getSportMetadata(sportName)?.locationStrictness === 'loose';
+}
+
 export function getCreateGameSubtitle(sportName: string): string {
   const meta = getSportMetadata(sportName);
   const label = sportName.toLowerCase();
@@ -340,6 +359,7 @@ export const DEFAULT_LISTING_TITLES: Partial<Record<SportType, string>> = {
   [SportType.ULTIMATE]: 'Pickup scrimmage · all welcome',
   [SportType.RUNNING]: 'Group run · easy pace',
   [SportType.HIKING]: 'Trail meetup · all paces',
+  [SportType.WORKOUT]: 'Outdoor HIIT · all levels',
 };
 
 export function getDefaultListingTitle(sportName: string, templateHint?: string | null): string {
