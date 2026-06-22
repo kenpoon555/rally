@@ -1,7 +1,7 @@
 # Module — Meetup sports (Running · Workout)
 
 **Contract id:** `module-sport-meetup-sports`  
-**Status:** Stub — product decision required before Builder  
+**Status:** Stub — **Builder ready** (H gates locked 2026-06-22)  
 **Related code:** `src/constants/sports.ts`, `CreateActivityScreen.tsx`, `useSportsCatalog.ts`, `SportIcon.tsx`, `sport_templates`, `locations` seeds  
 **Parent:** [module-sport-game-modes.md](./module-sport-game-modes.md) · [sport-matching-profiles.md](../sport-matching-profiles.md)
 
@@ -190,8 +190,8 @@ Optional seed `locations` / meetup_points for LA popular routes (not blocking).
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-22 | Create still court-gated for all sports | Engineering |
-| 2026-06-22 | Workout not in enum | Product |
+| 2026-06-22 | Create still court-gated for all sports — **SM1** meetup path | Engineering |
+| 2026-06-22 | Workout not in enum — **SM3** | Product |
 
 ## Related
 

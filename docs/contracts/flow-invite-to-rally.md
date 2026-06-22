@@ -117,6 +117,7 @@ Save to `docs/contracts/screenshots/flow-invite-to-rally/`:
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-22 | **Pickup P0:** Deep links reach native iOS but JS handler silent no-op — blocks L1 invite personas | Builder B1 |
 | 2026-06-10 | Sim run: deep links reached native iOS but not JS on some paths — **re-verify on real device for GTM 1** | Fixer if device fails |
 | 2026-06-10 | Native UIKit focus-engine crash on automated LoginScreen text entry — human retest | — |
 | 2026-06-16 | Contract updated: GTM 1 device rows in scope; reconcile validator report vs device retest | Founder |
