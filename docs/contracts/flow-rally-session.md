@@ -112,7 +112,7 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| | | |
+| 2026-06-22 | Tier-2 picky host/member reviews blocked upstream by signed-out auth handoff reliability; re-run once `flow-invite-to-rally` P0 clears | Builder/Validator |
 
 ## Validator report template
 

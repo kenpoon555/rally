@@ -59,6 +59,7 @@ North-star: **Host completes form → game exists → host invite share works (L
 
 ### Form & create
 
+- [ ] Auth handoff from signed-out invite/login is reliable; host can reach create surface without dead-end
 - [ ] Schedule picker respects timezone / duration
 - [ ] Court search returns seeded locations
 - [ ] Roster min/max saved correctly
@@ -85,6 +86,7 @@ North-star: **Host completes form → game exists → host invite share works (L
 
 | Date | Blocker | Owner |
 |------|---------|-------|
+| 2026-06-22 | Tier-2 picky host personas could not reach create flows reliably due shared auth handoff blocker; re-run after invite/auth fix | Builder/Validator |
 | 2026-06-22 | ~~B8 pickup path~~ — **resolved** PR #47; tier 3: sim ClassDetail share screenshot for `@playerr0474532` | Validator V1 |
 | 2026-06-21 | iOS create game: schedule spinner rolls but date/time not visible | Fixer |
 | — | Not fully validated on device | Validator |
