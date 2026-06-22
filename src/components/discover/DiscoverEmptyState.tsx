@@ -24,7 +24,7 @@ export interface DiscoverEmptyStateProps {
 
 export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
   sport,
-  sportLabel,
+  sportLabel: _sportLabel,
   regularGroup,
   onHostGame,
   onOpenRally,

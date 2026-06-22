@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { submitProductFeedback } from '../../services/feedbackService';
