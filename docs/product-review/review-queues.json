@@ -102,5 +102,62 @@
       "flow-coach-class-operations",
       "module-coach-parent-navigation"
     ]
+  },
+  "play-discover-round1": {
+    "description": "Tier 1 — Play sport strip × segments + role clutter (6 personas)",
+    "tier": 1,
+    "personas": [
+      "play-discover-minimalist",
+      "running-regular",
+      "badminton-casual",
+      "basketball-first-timer",
+      "player-no-coach-tools",
+      "coach-parent-dual"
+    ],
+    "min_reviews_before_consolidate": 6,
+    "consolidator_tag": "play-discover",
+    "validation_queue": "role-surface-audit",
+    "contract_focus": [
+      "module-role-surfaces",
+      "flow-play-screen",
+      "module-coach-parent-navigation",
+      "flow-profile"
+    ]
+  },
+  "play-discover-round2-picky": {
+    "description": "Tier 2 — full sport×segment matrix; zero cross-sport / wrong-tab tolerance",
+    "tier": 2,
+    "personas": [
+      "play-sport-matrix-auditor",
+      "play-discover-minimalist",
+      "teen-restricted-account",
+      "pickleball-first-timer"
+    ],
+    "min_reviews_before_consolidate": 4,
+    "consolidator_tag": "play-discover-picky",
+    "validation_queue": "role-surface-audit",
+    "requires_prior_queue": "play-discover-round1",
+    "contract_focus": [
+      "module-role-surfaces",
+      "flow-play-screen"
+    ]
+  },
+  "play-discover-round3-expert": {
+    "description": "Tier 3 — dual role + meetup sports + flag on/off regression",
+    "tier": 3,
+    "personas": [
+      "coach-parent-dual",
+      "play-sport-matrix-auditor",
+      "meetup-play-browser"
+    ],
+    "min_reviews_before_consolidate": 3,
+    "consolidator_tag": "play-discover-expert",
+    "validation_queue": "role-surface-audit",
+    "requires_prior_queue": "play-discover-round2-picky",
+    "contract_focus": [
+      "module-role-surfaces",
+      "module-coach-parent-navigation",
+      "module-sport-meetup-sports"
+    ]
   }
 }

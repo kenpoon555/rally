@@ -122,5 +122,21 @@
       "flow-create-game",
       "module-sport-icon"
     ]
+  },
+  "role-surface-audit": {
+    "description": "Role × surface visibility + Play sport×segment matrix (Jun 2026)",
+    "contracts": [
+      "module-role-surfaces",
+      "flow-play-screen",
+      "module-coach-parent-navigation",
+      "flow-profile"
+    ]
+  },
+  "play-discover-matrix": {
+    "description": "Fast re-check after Play filter / segment fixes — matrix only",
+    "contracts": [
+      "module-role-surfaces",
+      "flow-play-screen"
+    ]
   }
 }

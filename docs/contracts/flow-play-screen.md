@@ -3,7 +3,8 @@
 **Contract id:** `flow-play-screen`  
 **Status:** Draft — sprint prep  
 **Screens:** `HomeScreen` (Discover), `DynamicHomeScreen` (Today), map teaser cards  
-**Related code:** `src/pages/Home/HomeScreen.tsx`, `src/components/game/GameCardShell.tsx`, `src/config/gameCardLayouts.ts`
+**Related code:** `src/pages/Home/HomeScreen.tsx`, `src/components/game/GameCardShell.tsx`, `src/config/gameCardLayouts.ts`, `src/config/surfaceVisibility.ts`  
+**Surface matrix:** [module-role-surfaces.md](./module-role-surfaces.md)
 
 ## Purpose
 
@@ -30,6 +31,18 @@ North-star: **Open Discover → see open games with preset-driven cards → tap 
 | **Today empty (new host)** | User with zero Rallies / no Next Up | CTA: Create a Rally + Find a game — no dead screen |
 | **Sport filter** | Deep link or param | Filtered list updates (Games; Classes when shipped) |
 
+## Sport strip × segment matrix (required)
+
+Full role rules: [module-role-surfaces.md](./module-role-surfaces.md). Validator must spot-check **at least 3 sports** (Basketball, Running, Badminton).
+
+| Strip sport | Games | Players | Classes (if segment visible) |
+|-------------|-------|---------|------------------------------|
+| Basketball | Basketball activities only | Basketball rows or sport-specific empty | Basketball classes |
+| Running | Running only | **Must not show Badminton/Pickleball** | Running classes |
+| Badminton | Badminton only | Badminton free agents OK | Badminton classes |
+
+**Fail** if Players segment shows rows for a sport other than the strip selection.
+
 ## Pass/fail checklist
 
 - [ ] All list rows use `GameCardShell` + preset (no ad-hoc layout flags)
@@ -40,6 +53,12 @@ North-star: **Open Discover → see open games with preset-driven cards → tap 
 - [ ] **Today empty:** new user / no Rallies sees Create Rally + Discover CTAs (no blank screen)
 - [ ] Play → **Players** segment loads free-agent list (regression when Classes added)
 - [ ] When Classes ships: selected sport filter applies to Classes same as Games (see navigation contract)
+- [ ] **Sport × Players:** Running strip → no Badminton/Pickleball rows ([module-role-surfaces.md](./module-role-surfaces.md))
+- [ ] **Sport × Players:** strip change refreshes list without cross-sport leak
+- [ ] **Classes segment:** hidden for R0 when flag on but no class context
+- [ ] **Games empty (Running):** title uses sport name — not ambiguous *"running"* (active vs Running sport)
+- [ ] **Players section:** subtitle matches data — no *"next few hours"* with multi-day-old posts (or filter recency)
+- [ ] **First-timer empty Discover:** secondary hint for invite link / paste (L1)
 
 ## Play → Classes (deferred — separate contract)
 
@@ -79,4 +98,4 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| — | — | — |
+| 2026-06-22 | Running strip showed Badminton/Pickleball on Players — fixed via `surfaceVisibility.ts`; re-validate matrix | Validator |

@@ -43,6 +43,7 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | sport-meetup | sport-meetup | — | 1/1 | `sport-meetup-launch` | ✅ Complete · PR [#54](https://github.com/kenpoon555/rally/pull/54) |
 | **overnight-batch-jun-2026** | overnight-batch | — | — | `baseline` (+ prior queues) | ✅ Complete · PR [#55](https://github.com/kenpoon555/rally/pull/55) |
 | **phase-validation-jun-2026** | — | — | — | `phase1a`–`ops` | ✅ Complete · PR [#56](https://github.com/kenpoon555/rally/pull/56) |
+| **play-discover-round1** | play-discover-jun-2026 | 1 | 6/6 | `role-surface-audit` | ✅ L1 complete — consolidator + pre-approve `approve_with_notes` |
 
 ---
 
@@ -153,7 +154,15 @@ See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md).
 
 **Device N/T:** `flow-push-notifications-device`, `gtm1-launch-gate`, mini-tournament two-account QA.
 
-**Next product-review loop:** coach/parent (`v1.1`–`v1.4` in `validation-queues.json`) when ready — not started.
+**Next product-review loop:** `play-discover-round1` (sport×segment + role surfaces) — start with:
+
+```bash
+./.cursor/hooks/product-review-loop-start.sh --queue play-discover-round1
+```
+
+Then validate: `./.cursor/hooks/validation-loop-start.sh --queue role-surface-audit --from module-role-surfaces`
+
+Coach/parent `v1.1`–`v1.4` tracks remain when scoped separately.
 
 ---
 
