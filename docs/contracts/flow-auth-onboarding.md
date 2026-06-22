@@ -1,8 +1,8 @@
 # Flow — Auth & onboarding
 
 **Contract id:** `flow-auth-onboarding`  
-**Status:** Draft — sprint prep  
-**Screens:** `WelcomeScreen`, `LoginScreen`, `SignupScreen`, `AuthContext`  
+**Status:** **Partial** — tier 2 picky P0: fresh signup legal gate silent failure (2026-06-22)  
+**Screens:** `WelcomeScreen`, `LoginScreen`, `SignupScreen`, `TosAcceptanceGate`, `AuthContext`  
 **Related code:** `src/context/AuthContext.tsx`, `src/services/pendingDeepLinkService.ts`, coach marks / onboarding flags
 
 ## Purpose
@@ -26,8 +26,17 @@ North-star: **Sign out → open invite link → sign in → invite completes wit
 | **Returning user** | Session restore — no stuck splash |
 | **Bootstrap timeout** | Cold start shows Welcome within ~12s even if session/profile hang; stale local session cleared |
 | **Onboarding coach marks** | Dismissible; flags persist in AsyncStorage |
+| **Legal gate (Before you play)** | Checkbox + Continue persists legal acceptance to profile — navigates to main app on success |
 
 ## Pass/fail checklist
+
+### Legal gate (P0 — tier 2 picky)
+
+- [ ] Fresh signup → **Before you play**: checking box + **Continue** navigates to main app (Today or permissions)
+- [ ] Profile legal acceptance write failure shows **user-facing error + retry** — not silent no-op
+- [ ] Metro/network failure on `acceptLegalTerms` does not trap user on legal modal indefinitely
+
+### Auth mechanics
 
 - [ ] `auth/callback` deep link sets session
 - [ ] Pending deep link cleared after successful replay
@@ -48,7 +57,7 @@ North-star: **Sign out → open invite link → sign in → invite completes wit
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| — | Not validated yet | — |
+| 2026-06-22 | Fresh signup legal gate silent failure — `Network request failed` on profile update; Continue no-op | Builder B7 |
 
 ## Related
 

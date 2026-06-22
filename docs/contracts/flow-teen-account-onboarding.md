@@ -45,6 +45,7 @@ North-star: **Teen selects 13–17 → completes signup → no Family / Coach To
 - [x] 13–17 path completes signup
 - [x] Under 13 path still blocked — see [flow-age-gate-onboarding.md](./flow-age-gate-onboarding.md)
 - [ ] Teen cannot open Add Child Profile successfully — adult-only alert
+- [ ] Teen class-enroll picker: **+ Add child profile** hidden or blocked before form (tier 2 P2 UX) — policy holds via alert today
 - [x] Age category stored on profile as `teen_13_17` — DB assertion per age-gate contract
 - [x] Teen Profile Settings: **no** Family section; **no** Coach Tools section
 
