@@ -31,6 +31,8 @@ const BOOTSTRAP_GET_SESSION_MS = 8_000;
 const BOOTSTRAP_LOAD_USER_MS = 10_000;
 /** Hard backstop if bootstrap flow never reaches `finally`. */
 const BOOTSTRAP_LOADING_BACKSTOP_MS = 12_000;
+/** Max wait for profile load after explicit sign-in before showing actionable error. */
+const SIGN_IN_LOAD_USER_MS = 12_000;
 
 const parseAuthParamsFromUrl = (url: string): Record<string, string> => {
   // Supabase can send auth params in query (?a=b) or fragment (#a=b).
@@ -335,7 +337,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
     if (error) throw error;
     if (data.user) {
-      await loadUser(data.user.id);
+      try {
+        await withTimeout(loadUser(data.user.id), SIGN_IN_LOAD_USER_MS, 'signIn.loadUser');
+      } catch (loadError: any) {
+        const message = loadError instanceof Error ? loadError.message : String(loadError);
+        if (message.includes('signIn.loadUser')) {
+          throw new Error('Signed in, but setup is taking too long. Please retry in a moment.');
+        }
+        throw loadError;
+      }
     }
   };
 

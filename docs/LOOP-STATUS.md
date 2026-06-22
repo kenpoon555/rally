@@ -1,10 +1,12 @@
 # Rally loop status
 
-_Updated: 2026-06-22 05:51 UTC_
+_Updated: 2026-06-22 07:27 UTC_
 
-## ✅ LOOP COMPLETE — round finished
+**Release loop:** `pickup-gtm2`
 
-Queue `onboarding-round3-expert` is done. See ROUND-LOG.md or start the next queue.
+## 🔄 IN PROGRESS — next: 
+
+Agent should run chain-next and continue.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -12,20 +14,19 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `onboarding-round3-expert` tier 3
-- phase: `done` · status: `complete`
+- queue: `pickup-round2-picky` tier 2
+- phase: `src_pr_pending` · status: `running`
 - layer_2: `merged`
 - personas: 4/4
-- builder branch: `fix/onboarding-expert-builder`
+- builder branch: `fix/ name)-builder`
 
 ## Validation
 
-- queue: `tier3-onboarding-expert-regression`
-- contract: `flow-parent-guardian-consent` (6/6)
+- queue: `gtm2-feedback-jun-2026`
+- contract: `module-coach-parent-navigation` (9/9)
 - phase: `done` · status: `pass`
 - chain_enabled: False
-- branch: `dev`
-- notes: VALIDATION_GREEN tier3-expert 2026-06-22 — 6/6 regression on dev (docs-only round, no src PR). V2 Marcus dual-role sim proof; V3 org boundary grep pass; B8 DB proof playerr0474532 listing class-val-1782105765196; flow-create-game ClassDetail sim screenshot carry P2 from tier2; guardian lawyer gate documented stop.
+- notes: ['Play → Classes segment available behind COACH_CLASSES_DISCOVER; Games/Players segments regression-free.', 'CPS navigation smoke pass on sim with coach flags as seeded for Marcus.']
 
 ---
 
