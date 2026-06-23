@@ -3,7 +3,7 @@
 **Contract id:** `flow-play-screen`  
 **Status:** Draft — sprint prep  
 **Screens:** `HomeScreen` (Discover), `DynamicHomeScreen` (Today), map teaser cards  
-**Related code:** `src/pages/Home/HomeScreen.tsx`, `src/components/game/GameCardShell.tsx`, `src/config/gameCardLayouts.ts`, `src/config/surfaceVisibility.ts`  
+**Related code:** `src/pages/Home/HomeScreen.tsx`, `src/utils/buildPlayStripSports.ts`, `src/components/game/GameCardShell.tsx`, `src/config/gameCardLayouts.ts`, `src/config/surfaceVisibility.ts`  
 **Surface matrix:** [module-role-surfaces.md](./module-role-surfaces.md)
 
 ## Purpose
@@ -22,13 +22,22 @@ North-star: **Open Discover → see open games with preset-driven cards → tap 
 
 | Rule | Spec |
 |------|------|
-| **Default** | `user.preferred_sports[0]` when set and launch-enabled; else `getDefaultLaunchSportName()` (Pickleball). |
-| **Last selected** | Tapping any sport (strip or More sheet) updates `selectedSport` **and** persists `preferred_sports: [sport]` on profile. |
-| **Re-open Play** | Must restore last selected sport — not silently reset to strip default. |
-| **Off-strip visibility** | When selected sport is **not** in the fixed quick row (slots 1–2), **slot 3** shows that sport’s icon + label (same pattern as `CreateActivityScreen` `sportBarSports`). **More** is not the only selected affordance. |
-| **Strip order** | Quick row order stays stable (`sortSportsForPlayTab`); only slot 3 swaps to surface the active off-strip sport. |
+| **Default filter** | `user.preferred_sports[0]` when set and launch-enabled; else `getDefaultLaunchSportName()` (Pickleball). |
+| **MRU on pick** | Tapping any sport (strip or More sheet) updates `selectedSport` **and** persists `preferred_sports` as MRU array (max 5): `[picked, …prior]` deduped. |
+| **Re-open Play** | Must restore last selected sport **and** strip chip order from MRU + attendance — not silently reset to global catalog head. |
+| **Strip source** | `buildPlayStripSports`: **selected** → `preferred_sports` MRU → `orderSportsAttended` → catalog fallback (`sortSportsForPlayTab`). Not fixed `PLAY_TAB_SPORT_ORDER` head for returning users. |
+| **On More pick** | Promote sport to front of strip; prior MRU sports remain visible (up to max visible). |
+| **Visible count** | Up to **5** sport chips on strip (horizontal scroll); **More** only when launch catalog exceeds visible chips. |
+| **Shared helper** | Same strip builder for `HomeScreen` and `CreateActivityScreen`. |
+| **B7 minimum (superseded)** | Tier 2 allowed slot-3 swap only — tier 3 requires full MRU strip above. |
 
 **Fail** if empty state / list is scoped to e.g. Racquetball but strip shows only Pickleball / Basketball / Badminton with only **More** highlighted.
+
+**Fail (tier 3 UX)** if user with `preferred_sports: [Badminton]` and Badminton attendance still sees Pickleball + Basketball in slots 1–2 unless they have actually played those sports.
+
+**Fail (tier 3 UX)** if 3+ sports picked from More in one session do not all remain visible on strip (max 5) without reopening More.
+
+**Product review:** [play-discover-ux synthesis](../product-review/consolidated/2026-06-22-play-discover-ux-synthesis.md) · H1=A (5 catalog sports for new users) · H2=A (defer More-sheet Recent).
 
 ## Required states
 
@@ -73,6 +82,9 @@ Full role rules: [module-role-surfaces.md](./module-role-surfaces.md). Validator
 - [ ] **First-timer empty Discover:** secondary hint for invite link / paste (L1)
 - [ ] **Off-strip sport in strip:** More → Racquetball / Running / etc. — active sport appears in quick row slot 3 (icon + label selected)
 - [ ] **Sport persistence:** re-open Play tab — last selected sport still active (profile `preferred_sports`)
+- [ ] **Personalized strip:** 3+ sports picked from More in one session — all remain visible on strip (max 5) without reopening More
+- [ ] **MRU persistence:** kill app → Play strip order matches last session MRU (`preferred_sports` array)
+- [ ] **Attended sports:** `@kunyu`-style account — strip reflects played sports, not forced global PB/BB head when attendance differs
 - [ ] **Empty-state hero icon:** glyph centered; no misaligned square tile behind icon ([module-sport-icon.md](./module-sport-icon.md) `discoverEmptyState`)
 
 ## Play → Classes (deferred — separate contract)
@@ -87,6 +99,7 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 |------|---------|
 | `off-strip-sport-in-strip.png` | More → off-strip sport (e.g. Racquetball) — slot 3 shows sport icon + label selected; empty title matches |
 | `discover-empty-icon-aligned.png` | Games empty — hero sport icon centered (plain or 56px circle; no offset square block) |
+| `personalized-strip-after-mru.png` | After 3+ More picks — MRU sports visible on strip (e.g. Soccer first for `@kunyu`); up to 5 chips |
 
 ## Out of scope
 
@@ -137,6 +150,20 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 | Invite north-star | **Carry P0** — `flow-invite-to-rally` (not Play regression) |
 
 **Optional follow-ups (P2/P3):** Players empty capitalize sport name; invite hint prominence; free-agent recency.
+
+
+## Product review — tier 3 UX personalization (2026-06-22)
+
+**Queue:** `play-discover-round3-ux` · 4/4 personas · tag `play-discover-ux`
+
+| Theme | Pre-builder verdict | Contract |
+|-------|---------------------|----------|
+| Strip feels like "my sports" | **Fail** | B16 — MRU + attendance strip |
+| More → pick promotes + retains | **Fail** | B17 — up to 5 visible chips |
+| MRU persistence | **Fail** | B18 — `preferred_sports` array |
+| Segment matrix regression | **Pass** | tier 2 carry |
+
+**Builder:** `fix/play-discover-ux-strip` · validation queue `play-discover-matrix`.
 
 ## Open issues
 
