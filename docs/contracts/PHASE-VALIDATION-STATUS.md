@@ -1,6 +1,6 @@
 # Phase validation backlog — status
 
-**Updated:** 2026-06-22  
+**Updated:** 2026-06-23  
 **Re-seed:** `./scripts/seed-monrovia-linked.sh`  
 **Queues:** [validation-queues.json](./validation-queues.json)
 
@@ -32,7 +32,7 @@
 | Queue | Status | Notes |
 |-------|--------|-------|
 | `role-surface-audit` | ✅ | 2026-06-22 PR #58 — matrix + R0 screenshot |
-| `play-discover-matrix` | ✅ | B7/B11 green 2026-06-22 `fix/play-discover-tier2-ux` |
+| `play-discover-matrix` | ✅ | Tier 2 B7/B11 · tier 3 B16–B18 — `fix/play-discover-ux-strip` PR #68 (2026-06-23) |
 
 ## Device / human only
 
@@ -42,6 +42,7 @@
 | `gtm1-launch-gate` | HTTPS universal links |
 | Mini-tournament gameplay | Second account |
 | Poll create sheet | Optional re-proof after Metro reload |
+| `app-store-build-10` | UGC report/block rows ⏳ — sim partial; device recording for rows 5–7, 9, 11–12, 14 |
 
 ## Code changes this pass (need Metro reload)
 

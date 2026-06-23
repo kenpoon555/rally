@@ -71,6 +71,23 @@ Pick **one persona per Agent session** (or one human reviewer). Run consolidator
 
 ---
 
+## Persona catalog D — Play discover / UX personalization (1)
+
+**Focus:** Repeat-player strip — MRU, attendance, profile vs Play mismatch. **Not** matrix QA (see `play-sport-matrix-auditor`).  
+**Contracts:** [flow-play-screen.md](../contracts/flow-play-screen.md)
+
+| persona-id | Sport / role | Level | One-line goal |
+|------------|--------------|-------|---------------|
+| `play-ux-personalization-auditor` | Multi-sport | L3 · meta | After More picks + relaunch — does the strip **learn** my sports or stay a fixed catalog row? |
+
+### Account hints (catalog D)
+
+| persona-id | Suggested login | Setup |
+|------------|-----------------|-------|
+| `play-ux-personalization-auditor` | `@kunyu` | Multi More picks (Running, Racquetball, Soccer); kill app → MRU persists |
+
+---
+
 ## Persona catalog B — onboarding / roles (8)
 
 **Flags:** `EXPO_PUBLIC_ENABLE_COACH_FOUNDATION` · `EXPO_PUBLIC_ENABLE_PARENT_STUDENT_CORE` — restart Metro after change.

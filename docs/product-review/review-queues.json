@@ -142,6 +142,24 @@
       "flow-play-screen"
     ]
   },
+  "play-discover-round3-ux": {
+    "description": "Tier 3 — Play strip personalization (MRU, attendance, strip growth)",
+    "tier": 3,
+    "personas": [
+      "play-ux-personalization-auditor",
+      "multi-sport-power-host",
+      "badminton-casual",
+      "play-discover-minimalist"
+    ],
+    "min_reviews_before_consolidate": 4,
+    "consolidator_tag": "play-discover-ux",
+    "validation_queue": "play-discover-matrix",
+    "requires_prior_queue": "play-discover-round2-picky",
+    "contract_focus": [
+      "flow-play-screen",
+      "module-sport-icon"
+    ]
+  },
   "play-discover-round3-expert": {
     "description": "Tier 3 — dual role + meetup sports + flag on/off regression",
     "tier": 3,
