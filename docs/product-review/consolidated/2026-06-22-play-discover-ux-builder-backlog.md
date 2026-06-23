@@ -17,14 +17,14 @@
 
 | ID | Priority | Item | Contract | Likely files | Notes |
 |----|----------|------|----------|--------------|-------|
-| B19 | P2 | SportPickerSheet **Recent** section above All sports | `flow-play-screen` | `SportPickerSheet.tsx` | Power-host + casual persona |
-| B20 | P2 | Shared strip builder for Play + Create Game | `flow-play-screen` | `CreateActivityScreen.tsx`, shared util | Parity with `sportBarSports` |
+| B19 | P2 | SportPickerSheet **Recent** section above All sports | `flow-play-screen` | `SportPickerSheet.tsx` | **Shipped** polish PR |
+| B20 | P2 | Shared strip builder for Play + Create Game | `flow-play-screen` | `CreateActivityScreen.tsx`, shared util | **Shipped** PR #68 |
 
 ## Carry from tier 2 (optional — same release or defer)
 
 | ID | Priority | Item | Contract | Notes |
 |----|----------|------|----------|-------|
-| B12 | P3 | Capitalize sport in Players empty title | `flow-play-screen` | *No running players* |
+| B12 | P3 | Capitalize sport in Players empty title | `flow-play-screen` | **Shipped** polish PR |
 | B13 | P2 | Promote invite hint on empty Discover | `flow-play-screen` | Pickleball first-timer |
 | B14 | P2 | Free-agent recency filter or subtitle | `flow-play-screen` | badminton-casual P1 |
 | B15 | P2 | Host card title sanity for basketball seed | `flow-play-screen` | *Morning pickup run* |

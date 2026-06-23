@@ -93,19 +93,12 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 
 ## Validator report
 
-> Run: 2026-06-22 · queue `app-store-build-10` · sim iPhone 16
+> Run: 2026-06-23 ~23:30 PT · regression on `dev` after play-discover polish
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Welcome — no “beta” | ✅ | Welcome carousel + LA headline; screenshot `01-welcome-no-beta.png` |
-| 2 | Login/Signup header — no beta | ✅ | `AuthScreenLayout` + `MARKET_COPY.headline` |
-| 3 | Profile → Me — no BetaMarketBanner | ✅ | Banner removed; sim Me tab clean |
-| 4 | Profile → Settings — Help not Beta | ✅ | “Help” + “Send feedback”; screenshot `02-profile-settings-help.png` |
-| 5 | Feedback title neutral | ✅ | Nav title “Send feedback”; founder box removed |
-| 6 | Onboarding — no beta/founder | ✅ | `OnboardingModal` neutral headline |
-| 7 | Play empty — no beta footer | ✅ | `discoverEmptyTrySport` + `playEmptyRegion` neutral |
-| 8 | No “Beta feedback” a11y label | ✅ | `AppNavigator` title updated |
-| 9 | Feedback path still works | ⏳ | Tap “Send feedback” — defer to Build 10 device recording |
-| 10 | No redbox regression | ✅ | Today / You / Play load on sim |
+| 1–8 | Guideline 2.2 rows | ✅ Pass | No change since 2026-06-22 run; spot-check Profile/Play on `dev` |
+| 9 | Feedback path | ⏳ | Device recording (Build 10 resubmission) |
+| 10 | No redbox | ✅ Pass | Play / You / Inbox load |
 
 Screenshots: `docs/contracts/screenshots/module-production-surface/`

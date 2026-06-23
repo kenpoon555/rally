@@ -168,7 +168,9 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 | MRU persistence | **Fail** | B18 — `preferred_sports` array |
 | Segment matrix regression | **Pass** | tier 2 carry |
 
-**Builder:** `fix/play-discover-ux-strip` · validation queue `play-discover-matrix`.
+**Builder:** `fix/play-discover-ux-strip` · validation queue `play-discover-matrix` · **merged** PR #68.
+
+**Post-ship (2026-06-23):** [post-ship check](./2026-06-23-play-discover-ux-post-ship-check.md) — tier 3 personalization **Pass** on `dev`. B19 Recent + B12 title case in polish PR.
 
 ## Open issues
 
