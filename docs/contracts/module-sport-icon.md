@@ -77,11 +77,13 @@ All surfaces use `variant: 'plain'`. Size varies by column width.
 
 ## Validator report
 
-> Run: 2026-06-22 ~14:00 PT · iOS Simulator · `dev` · Racquetball via More
+> Run: 2026-06-22 ~18:35 PT · iOS Simulator · branch `fix/play-discover-ux-strip` · queue `play-discover-matrix`
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Discover empty hero aligned | ✅ Pass | 56px circle wrapper, plain `lg` glyph (`discover-empty-icon-aligned.png`). |
+| 1 | Discover empty hero aligned | ✅ Pass | Running empty — plain `lg` glyph, no square tile (`flow-play-screen/discover-empty-icon-aligned.png`). |
+| 2 | Preset unit tests | ✅ Pass | `__tests__/sportIconPresets.test.ts` 5/5. |
+| 3 | Strip filter icons | ✅ Pass | Plain md glyphs on MRU strip (no yellow ring). |
 
 ## Open issues
 
