@@ -110,32 +110,37 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 
 ## Validator report
 
-> Run: 2026-06-22 ~13:05 PT · iOS Simulator · branch `fix/play-discover-builder`
+> Run: 2026-06-22 ~18:35 PT · iOS Simulator · branch `fix/play-discover-ux-strip` · `@kunyu` · queue `play-discover-matrix`
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
 | 1 | Discover empty state | ✅ Pass | Running meetups title + invite hint on Games empty. |
-| 2 | Sport filter updates list | ✅ Pass | Basketball / Running / Badminton scoped. |
-| 3 | Players nearby segment | ✅ Pass | Section header + updated subtitle (no "next few hours"). |
+| 2 | Sport filter updates list | ✅ Pass | Basketball / Running / Badminton / Racquetball scoped. |
+| 3 | Players nearby segment | ✅ Pass | Section header + updated subtitle. |
 | 4 | Discover open / locked cards | N/T | No open activities in DB. |
 | 5 | Tap → ActivityDetail | N/T | Not re-run. |
 | 6 | Today quiet / rally CTA | N/T | Covered in prior baseline. |
 | 7 | GameCardShell presets | N/T | No open-game rows. |
-| 8 | No redbox | ✅ Pass | Play stable. |
-| 9 | Sport × Players Running | ✅ Pass | No cross-sport leak. |
-| 10 | Strip change refresh | ✅ Pass | |
-| 11 | Classes hidden R0 | N/T | See `module-role-surfaces` — no R0 login. |
+| 8 | No redbox | ✅ Pass | Play stable through MRU picks + kill/relaunch. |
+| 9 | Sport × Players Running | ✅ Pass | Running strip → *"No running players posting yet"* — no Badminton/Pickleball rows. |
+| 10 | Strip change refresh | ✅ Pass | List + empty title follow strip selection. |
+| 11 | Classes hidden R0 | N/T | See `module-role-surfaces` — skipped (`--from flow-play-screen`). |
 | 12 | Games empty Running title | ✅ Pass | *"No Running meetups nearby"*. |
-| 13 | Players subtitle vs data | ✅ Pass | Subtitle honest; stale row acceptable per H1 option B. |
+| 13 | Players subtitle vs data | ✅ Pass | Subtitle honest on Players segment. |
 | 14 | First-timer invite hint | ✅ Pass | Copy on Games empty state. |
-| 15 | Off-strip sport in strip | ✅ Pass | Racquetball in slot 3 (`off-strip-sport-in-strip.png`); preferred_sports restored on launch. |
-| 16 | Sport persistence | ✅ Pass | R0 `@playerr0pd1782160073` re-opened with Racquetball active. |
-| 17 | Empty-state hero icon | ✅ Pass | Plain glyph in 56px circle — no square tile (`discover-empty-icon-aligned.png`). |
+| 15 | Off-strip sport in strip | ✅ Pass | Superseded by tier 3 — MRU picks (Running, Racquetball, Table Tennis) all on strip. |
+| 16 | Sport persistence | ✅ Pass | Kill app → Play restores Running selected + MRU strip order. |
+| 17 | Empty-state hero icon | ✅ Pass | Running plain glyph centered (`discover-empty-icon-aligned.png`). |
+| 18 | **Personalized strip (B16)** | ✅ Pass | Up to 5 chips: Running · Badminton · Racquetball · Volleyball · Table Tennis + More. |
+| 19 | **More pick promotes (B17)** | ✅ Pass | More → Running → Racquetball — 3+ sports visible without reopening More (scroll strip). |
+| 20 | **MRU persistence (B18)** | ✅ Pass | `preferred_sports` MRU survives terminate + relaunch. |
+| 21 | **Attended sports (`@kunyu`)** | ✅ Pass | Badminton first when selected; strip not forced PB/BB catalog head. |
 
 ### Screenshots
 
-- Reuse `docs/contracts/screenshots/module-role-surfaces/` for matrix captures.
-- `flow-play-screen/off-strip-sport-in-strip.png`, `discover-empty-icon-aligned.png`
+- `flow-play-screen/personalized-strip-after-mru.png` — 5 MRU chips after multi More picks
+- `flow-play-screen/discover-empty-icon-aligned.png` — Running empty hero (regression)
+- Reuse `docs/contracts/screenshots/module-role-surfaces/` for prior matrix captures
 
 ## Product review — tier 2 picky (2026-06-22)
 
