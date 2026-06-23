@@ -715,6 +715,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         visible={sportPickerOpen}
         sports={orderedPlaySports}
         selectedSport={selectedSport}
+        recentSportNames={user?.preferred_sports ?? []}
         onSelect={(sport) => void handleSportFilter(sport)}
         onClose={() => setSportPickerOpen(false)}
       />

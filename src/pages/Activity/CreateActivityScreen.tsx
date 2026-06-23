@@ -1184,6 +1184,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         visible={sportPickerOpen}
         sports={sports}
         selectedSport={sportType}
+        recentSportNames={user?.preferred_sports ?? []}
         onSelect={handleSportChange}
         onClose={() => setSportPickerOpen(false)}
       />

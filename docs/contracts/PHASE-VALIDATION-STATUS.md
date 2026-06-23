@@ -42,7 +42,7 @@
 | `gtm1-launch-gate` | HTTPS universal links |
 | Mini-tournament gameplay | Second account |
 | Poll create sheet | Optional re-proof after Metro reload |
-| `app-store-build-10` | UGC report/block rows ⏳ — sim partial; device recording for rows 5–7, 9, 11–12, 14 |
+| `app-store-build-10` | ⚠️ Partial | production-surface ✅ · auth ✅ · UGC ⏳ device rows 6,7,9,11,12,14 · DM Safety ✅ 2026-06-23 |
 
 ## Code changes this pass (need Metro reload)
 

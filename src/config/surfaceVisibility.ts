@@ -72,8 +72,9 @@ export function freeAgentEmptyCopy(sport: string): { title: string; body: string
       body: 'Post your availability from Profile, or check back later.',
     };
   }
+  const sportLabel = getSportMetadata(sport)?.shortLabel ?? sport;
   return {
-    title: `No ${sport.toLowerCase()} players posting yet`,
+    title: `No ${sportLabel} players posting yet`,
     body: 'Try another sport in the strip, or host a game and invite friends.',
   };
 }
