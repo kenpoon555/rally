@@ -55,6 +55,7 @@ import {
   formatRallyMemberSince,
   orderSportsAttended,
 } from '../../utils/profileScorecardHelpers';
+import { bumpPreferredSportsMru } from '../../utils/buildPlayStripSports';
 import { setProfilePayment, formatPaymentLabel } from '../../services/paymentService';
 import { PreferredPayment } from '../../types/user';
 import { getMyCaptainStatus, submitCaptainApplication } from '../../services/captainService';
@@ -419,16 +420,22 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleDefaultSport = async (sport: string) => {
-    if (!user?.id || user.preferred_sports?.[0] === sport) {
-      setShowSportPicker(false);
+    setShowSportPicker(false);
+    if (!user?.id) {
+      return;
+    }
+    const nextMru = bumpPreferredSportsMru(user.preferred_sports, sport);
+    const unchanged =
+      nextMru.length === (user.preferred_sports?.length ?? 0) &&
+      nextMru.every((value, index) => value === user.preferred_sports?.[index]);
+    if (unchanged) {
       return;
     }
     try {
       await updateUserProfile(user.id, {
-        preferred_sports: [sport] as typeof user.preferred_sports,
+        preferred_sports: nextMru as typeof user.preferred_sports,
       });
       await refreshUser();
-      setShowSportPicker(false);
     } catch (error: unknown) {
       Alert.alert('Update failed', error instanceof Error ? error.message : 'Could not update sport.');
     }

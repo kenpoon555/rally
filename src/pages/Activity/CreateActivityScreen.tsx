@@ -16,6 +16,7 @@ import { ScheduleDateTimePicker, snapDateToMinuteInterval } from '../../componen
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { useMyGames } from '../../hooks/useActivities';
 import { useLocation } from '../../hooks/useLocation';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
 import { ROUTES } from '../../constants/routes';
@@ -48,6 +49,7 @@ import {
 } from '../../components/ui';
 import { SportPickerSheet } from '../../components/discover/SportPickerSheet';
 import { createActivity } from '../../services/activityService';
+import { updateUserProfile } from '../../services/userService';
 import { shareGameInvite } from '../../services/inviteLinkService';
 import { createCoachClassListing } from '../../services/coachClassListingService';
 import {
@@ -69,6 +71,8 @@ import { getSportIconName } from '../../components/SportIcon';
 import { AddCourtSheet } from '../../components/AddCourtSheet';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { getMyRegularGroups } from '../../services/regularGroupService';
+import { buildPlayStripSports, bumpPreferredSportsMru } from '../../utils/buildPlayStripSports';
+import { orderSportsAttended } from '../../utils/profileScorecardHelpers';
 import { RegularGroup } from '../../types/regularGroup';
 import { SHOW_LOCATION_DEBUG } from '../../constants/devFlags';
 import {
@@ -94,7 +98,6 @@ type Props = NativeStackScreenProps<MainStackParamList, 'CreateActivity'>;
 type LocationWithDistance = ActivityLocation & { distanceMeters: number | null };
 
 const CREATE_GAME_MINUTE_INTERVAL = 30;
-const CREATE_GAME_SPORT_BAR_COUNT = 3;
 
 function defaultPublicGameStartTime(): Date {
   const next = new Date();
@@ -103,7 +106,7 @@ function defaultPublicGameStartTime(): Date {
 }
 
 const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   useEffect(() => {
     if (!user?.id) {
@@ -130,6 +133,7 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     };
   }, []);
   const { sports } = useSportsCatalog();
+  const { games: myGames } = useMyGames(user?.id ?? '');
   const launchSportName = sports[0]?.name ?? getDefaultLaunchSportName();
 
   const [locations, setLocations] = useState<ActivityLocation[]>([]);
@@ -231,20 +235,29 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const rosterExpectationCopy = formatRosterExpectation(rosterMin, rosterMax);
 
   const orderedSports = useMemo(() => sortSportsForPlayTab(sports), [sports]);
+  const attendedSports = useMemo(
+    () =>
+      orderSportsAttended(
+        [...myGames.active, ...myGames.past],
+        user?.preferred_sports ?? []
+      ),
+    [myGames.active, myGames.past, user?.preferred_sports]
+  );
 
-  const sportBarSports = useMemo(() => {
-    const primary = orderedSports.slice(0, CREATE_GAME_SPORT_BAR_COUNT);
-    if (primary.some((sport) => sport.name === sportType)) {
-      return primary;
-    }
-    const selected = orderedSports.find((sport) => sport.name === sportType);
-    if (!selected) {
-      return primary;
-    }
-    return [...primary.slice(0, CREATE_GAME_SPORT_BAR_COUNT - 1), selected];
-  }, [sportType, orderedSports]);
+  const { stripSports: sportBarSports, showMore: showSportPickerOverflow } = useMemo(
+    () =>
+      buildPlayStripSports({
+        catalogSports: orderedSports,
+        selectedSport: sportType,
+        preferredSports: user?.preferred_sports ?? [],
+        attendedSports,
+      }),
+    [orderedSports, sportType, user?.preferred_sports, attendedSports]
+  );
 
-  const extraSportCount = Math.max(0, orderedSports.length - CREATE_GAME_SPORT_BAR_COUNT);
+  const extraSportCount = showSportPickerOverflow
+    ? Math.max(0, orderedSports.length - sportBarSports.length)
+    : 0;
 
   const adjustRosterMin = (delta: number) => {
     setRosterMin((prev) => {
@@ -271,6 +284,23 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     const defaults = getSportRosterDefaults(nextSport);
     setRosterMin(defaults.defaultMin);
     setRosterMax(defaults.defaultMax);
+    if (!user?.id) {
+      return;
+    }
+    const nextMru = bumpPreferredSportsMru(user.preferred_sports, nextSport);
+    const unchanged =
+      nextMru.length === (user.preferred_sports?.length ?? 0) &&
+      nextMru.every((value, index) => value === user.preferred_sports?.[index]);
+    if (unchanged) {
+      return;
+    }
+    void updateUserProfile(user.id, {
+      preferred_sports: nextMru as typeof user.preferred_sports,
+    })
+      .then(() => refreshUser())
+      .catch(() => {
+        // Local sport selection still applies.
+      });
   };
 
   useEffect(() => {
