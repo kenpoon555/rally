@@ -5,6 +5,7 @@ import {
   isMeetupDiscoverSport,
   playDiscoverSportFilter,
   shouldShowPlayClassesSegment,
+  shouldShowInboxClassesFilter,
   sportSupportsFreeAgentBoard,
 } from '../src/config/surfaceVisibility';
 
@@ -74,5 +75,25 @@ describe('surfaceVisibility', () => {
         hasClassContext: true,
       })
     ).toBe(false);
+  });
+
+  it('shouldShowInboxClassesFilter gates on role not flag alone', () => {
+    const flagOn = { classInboxEnabled: true, userId: 'u1' };
+
+    expect(
+      shouldShowInboxClassesFilter({
+        ...flagOn,
+        isCoach: false,
+        hasClassContext: false,
+      })
+    ).toBe(false);
+
+    expect(
+      shouldShowInboxClassesFilter({
+        ...flagOn,
+        isCoach: true,
+        hasClassContext: false,
+      })
+    ).toBe(true);
   });
 });

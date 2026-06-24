@@ -100,9 +100,27 @@ Preset: `classDiscover` in `gameCardLayouts.ts`.
 
 | State | Must show |
 |-------|-----------|
-| **Parent** | Coach/class announcement threads |
+| **Parent** | Coach/class announcement threads in Inbox → **Classes** filter |
 | **Coach** | Parent replies, can't-make-it, enrollment |
 | **No child DM** | Coach → parent/guardian only — [module-student-visibility.md](./module-student-visibility.md) |
+| **Row detail** | Tap announcement → readable full message + sent time — [flow-inbox.md](./flow-inbox.md) |
+
+### Coach broadcast (tier 4 product review)
+
+**Human gate H1 (locked R1=A):** MVP = **session defer/cancel + Notify parents** toggle only (`ClassOperationsSheet`). Freeform class-note composer is **backlog** (persona `coach-announcement-sender` P0 deferred).
+
+| State | Must show (MVP) |
+|-------|-----------------|
+| **Manage session** | Defer / Cancel with **Notify parents** switch (default on) |
+| **Parent receive** | Notification row in Inbox → Classes (`class_parent_notifications`) |
+| **Class detail Chat tab** | Placeholder until composer ships — must not imply working DM |
+
+| State | Backlog (post-H1 B) |
+|-------|---------------------|
+| **Compose note** | Coach Tools or Class detail → freeform message → parent Inbox Classes |
+| **Chat tab** | Read-only history + compose for coach |
+
+**Product review:** [2026-06-24-cross-surface-tier4-synthesis.md](../product-review/consolidated/2026-06-24-cross-surface-tier4-synthesis.md)
 
 ## Create flow — role-based options
 
@@ -253,3 +271,4 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 | 6 | No 5th tab / no public minors | Pass | 4 tabs only; inbox copy “To parents · not child DM”; `07-coach-roster.png`, `08-inbox-announcement.png` |
 | 7 | **Tier 3 dual-role regression** | Pass | `09-tier3-profile-dual-sections.png`, `10-tier3-today-dual-blocks.png` — Marcus FAMILY + COACH TOOLS + MY CLASSES + CLASSES I TEACH on `dev` post-PR #48 |
 | 8 | **Play-discover regression** (2026-06-22) | Pass | `module-role-surfaces/03-coach-classes-segment.png` — Classes segment + sport filter on `fix/play-discover-builder` |
+| 9 | **Tier 4 regression** (2026-06-24) | Pass | Inbox Classes chip+badge+detail; Today MY CLASSES + CLASSES I TEACH on `fix/cross-surface-tier4-builder` |

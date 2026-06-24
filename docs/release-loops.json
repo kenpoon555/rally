@@ -168,5 +168,85 @@
         "after": "L3-validation-green"
       }
     ]
+  },
+  "cross-surface-tier4-jun-2026": {
+    "description": "Tier 4 — 8 cross-surface behavioral personas → contracts → builder",
+    "product_review_queue": "cross-surface-tier4-round1",
+    "next_product_review_queue": "visual-tier5-round1",
+    "validation_queue": "cross-surface-tier4",
+    "steps": [
+      {
+        "id": "L4-personas",
+        "loop": "product-review",
+        "queue": "cross-surface-tier4-round1",
+        "chain_enabled": true,
+        "assign_mode": "agent",
+        "note": "8 personas — inbox, reviews, attendance, classes, trust, weird paths"
+      },
+      {
+        "id": "L4-consolidator",
+        "loop": "product-review",
+        "role": "consolidator",
+        "consolidator_tag": "cross-surface-tier4"
+      },
+      {
+        "id": "L4-pre-approve",
+        "loop": "pre-approve-review",
+        "human_gate": false,
+        "auto_pass": true
+      },
+      {
+        "id": "L2-contract-pr",
+        "loop": "contract",
+        "branch": "dev",
+        "source": "consolidated/*-cross-surface-tier4-synthesis.md"
+      },
+      {
+        "id": "L2-builder",
+        "loop": "builder",
+        "source": "consolidated/*-cross-surface-tier4-builder-backlog.md"
+      },
+      {
+        "id": "L3-validation",
+        "loop": "validation",
+        "queue": "cross-surface-tier4",
+        "chain_enabled": true
+      }
+    ]
+  },
+  "visual-tier5-jun-2026": {
+    "description": "Tier 5 — 8 design personas; docs + visual contract (parallel OK)",
+    "product_review_queue": "visual-tier5-round1",
+    "validation_queue": "visual-tier5",
+    "requires_prior_loop": "cross-surface-tier4-jun-2026",
+    "steps": [
+      {
+        "id": "L5-personas",
+        "loop": "product-review",
+        "queue": "visual-tier5-round1",
+        "chain_enabled": true,
+        "note": "8 design personas — screenshot every major screen"
+      },
+      {
+        "id": "L5-consolidator",
+        "loop": "product-review",
+        "role": "consolidator",
+        "consolidator_tag": "visual-tier5"
+      },
+      {
+        "id": "L2-contract-pr",
+        "loop": "contract",
+        "branch": "dev",
+        "source": "consolidated/*-visual-tier5-synthesis.md",
+        "note": "module-visual-design-system + per-screen polish backlog"
+      },
+      {
+        "id": "L3-validation",
+        "loop": "validation",
+        "queue": "visual-tier5",
+        "chain_enabled": false,
+        "note": "Designer sign-off + screenshot diff optional"
+      }
+    ]
   }
 }

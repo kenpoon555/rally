@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1';
+import { getAndroidInstallUrl, getIosInstallUrl } from '../_shared/installUrls.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,11 +9,8 @@ const corsHeaders = {
 const APP_SCHEME = 'rallyapp';
 const PENDING_KEY = 'rally_pending_invite_v1';
 
-const DEFAULT_IOS_INSTALL =
-  Deno.env.get('IOS_INSTALL_URL') || 'https://testflight.apple.com/join/gBcW7gA2';
-const DEFAULT_ANDROID_INSTALL =
-  Deno.env.get('ANDROID_INSTALL_URL') ||
-  'https://play.google.com/store/apps/details?id=app.rally.sports';
+const IOS_INSTALL = getIosInstallUrl();
+const ANDROID_INSTALL = getAndroidInstallUrl();
 
 function escapeHtml(value: string): string {
   return value
@@ -108,8 +106,8 @@ Deno.serve(async (req) => {
     ${payload.found && payload.location_name ? `<p class="meta">${escapeHtml(payload.location_name)}</p>` : ''}
     <div class="actions">
       <a class="btn primary" id="open-app" href="${escapeHtml(deepLink)}">Open in Rally</a>
-      <a class="btn secondary" id="get-ios" href="${escapeHtml(DEFAULT_IOS_INSTALL)}">Get Rally on iPhone</a>
-      <a class="btn secondary" id="get-android" href="${escapeHtml(DEFAULT_ANDROID_INSTALL)}">Get Rally on Android</a>
+      <a class="btn secondary" id="get-ios" href="${escapeHtml(IOS_INSTALL)}">Get Rally on iPhone</a>
+      <a class="btn secondary" id="get-android" href="${escapeHtml(ANDROID_INSTALL)}">Get Rally on Android</a>
     </div>
     <p class="hint" id="install-hint">No app yet? Install Rally, then tap <strong>Open in Rally</strong> again on this page.</p>
   </div>

@@ -142,6 +142,24 @@
       "flow-play-screen"
     ]
   },
+  "play-discover-round3-ux": {
+    "description": "Tier 3 — Play strip personalization (MRU, attendance, strip growth)",
+    "tier": 3,
+    "personas": [
+      "play-ux-personalization-auditor",
+      "multi-sport-power-host",
+      "badminton-casual",
+      "play-discover-minimalist"
+    ],
+    "min_reviews_before_consolidate": 4,
+    "consolidator_tag": "play-discover-ux",
+    "validation_queue": "play-discover-matrix",
+    "requires_prior_queue": "play-discover-round2-picky",
+    "contract_focus": [
+      "flow-play-screen",
+      "module-sport-icon"
+    ]
+  },
   "play-discover-round3-expert": {
     "description": "Tier 3 — dual role + meetup sports + flag on/off regression",
     "tier": 3,
@@ -158,6 +176,52 @@
       "module-role-surfaces",
       "module-coach-parent-navigation",
       "module-sport-meetup-sports"
+    ]
+  },
+  "cross-surface-tier4-round1": {
+    "description": "Tier 4 — 8 behavioral personas across Inbox, chat, reviews, classes, trust (min 8)",
+    "tier": 4,
+    "personas": [
+      "inbox-heavy-chatter",
+      "post-game-reviewer",
+      "attendance-rater",
+      "block-report-skeptic",
+      "class-parent-inbox",
+      "coach-announcement-sender",
+      "notification-hunter",
+      "weird-edge-tapper"
+    ],
+    "min_reviews_before_consolidate": 8,
+    "consolidator_tag": "cross-surface-tier4",
+    "validation_queue": "cross-surface-tier4",
+    "requires_prior_queue": "play-discover-round3-ux",
+    "contract_focus": [
+      "flow-play-screen",
+      "flow-profile",
+      "module-coach-parent-navigation",
+      "module-ugc-moderation",
+      "module-production-surface"
+    ]
+  },
+  "visual-tier5-round1": {
+    "description": "Tier 5 — 8 design personas; hierarchy, spacing, empty states (min 8)",
+    "tier": 5,
+    "personas": [
+      "visual-welcome-carousel",
+      "visual-auth-forms",
+      "visual-inbox-rows",
+      "visual-play-strip",
+      "visual-game-card",
+      "visual-chat-bubbles",
+      "visual-profile-sections",
+      "visual-empty-states"
+    ],
+    "min_reviews_before_consolidate": 8,
+    "consolidator_tag": "visual-tier5",
+    "validation_queue": "visual-tier5",
+    "requires_prior_queue": "cross-surface-tier4-round1",
+    "contract_focus": [
+      "module-visual-design-system"
     ]
   }
 }

@@ -12,6 +12,8 @@ Background push reaches the recipient on **physical** iOS and Android store/prev
 
 North-star: **Friend sends chat while recipient app is backgrounded → banner appears → tap opens correct screen.**
 
+**Tier 4 product review (sim):** Validate **in-app** unread signals only — Inbox row badges, filter chip badges, Inbox tab badge ([flow-inbox.md](./flow-inbox.md)). Push delivery remains **device-only** in this contract; defer to validation queue after in-app badges ship.
+
 ## Preconditions (Validator must verify before fail)
 
 | Check | How |
@@ -78,6 +80,8 @@ where user_id = '<recipient_uuid>';
 |------|---------|-------|
 | 2026-06-21 | Device still not receiving chat push after build 9 — validate token + FCM v1 end-to-end | — |
 | 2026-06-21 | Validator blocked: Jade iPhone unavailable; sim cannot run APNs/FCM checklist — resume with `./.cursor/hooks/validation-loop-start.sh --queue gtm2-feedback-jun-2026 --from flow-push-notifications-device` on physical hardware | Validator |
+
+**Tier 4 (2026-06-24):** Sim cannot exercise push delivery — out of scope per contract. Sign-out token warning implemented on builder branch (`AuthContext`); device push E2E deferred to hardware queue.
 
 ## Out of scope
 

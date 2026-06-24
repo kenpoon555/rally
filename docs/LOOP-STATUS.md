@@ -1,12 +1,12 @@
 # Rally loop status
 
-_Updated: 2026-06-22 22:59 UTC_
+_Updated: 2026-06-24 06:29 UTC_
 
-**Release loop:** `play-discover-jun-2026`
+**Release loop:** `cross-surface-tier4-jun-2026`
 
-## ✅ LOOP COMPLETE — round finished
+## 💤 IDLE — no active self-chain
 
-Queue `play-discover-round2-picky` is done. See ROUND-LOG.md or start the next queue.
+Say **continue** in orchestrator chat or run `./.cursor/hooks/rally-loop-status.sh`.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -14,23 +14,19 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `play-discover-round2-picky` tier 2
-- phase: `done` · status: `complete`
+- queue: `cross-surface-tier4-round1` tier 4
+- phase: `src_pr_pending` · status: `running`
 - layer_2: `merged`
-- personas: 4/4
-- builder branch: `fix/play-discover-picky-builder`
+- personas: 8/8
+- builder branch: `fix/cross-surface-tier4-builder`
 
 ## Validation
 
-- queue: `app-store-build-10`
-- contract: `flow-auth-onboarding` (3/3)
-- phase: `done` · status: `partial`
-- chain_enabled: True
-- notes: Queue complete 2026-06-22. Sim pass on terms/copy/safety UI. Human: EAS Build 10 device recording per module-ugc-moderation script.
-- failed_rows:
-  - module-ugc-moderation: DM Safety report/block flow — sim login automation failed; verify on physical device with marcus@ demo
-  - module-ugc-moderation: Block + inbox/Discover hide — needs device recording after block
-  - module-production-surface: Send feedback tap-through — defer to Build 10 recording
+- queue: `cross-surface-tier4`
+- contract: `flow-push-notifications-device` (8/8)
+- phase: `done` · status: `pass`
+- chain_enabled: False
+- notes: Queue complete; push device E2E out of scope on sim
 
 ---
 

@@ -80,7 +80,9 @@ export const DiscoverEmptyState: React.FC<DiscoverEmptyStateProps> = ({
       ) : null}
 
       <Text style={styles.footnote}>{PRODUCT_COPY.discoverEmptyTrySport}</Text>
-      <Text style={styles.regionLine}>{MARKET_COPY.playEmptyRegion}</Text>
+      {MARKET_COPY.playEmptyRegion ? (
+        <Text style={styles.regionLine}>{MARKET_COPY.playEmptyRegion}</Text>
+      ) : null}
     </View>
   </View>
 );
