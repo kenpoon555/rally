@@ -151,11 +151,14 @@
   "cross-surface-tier4": {
     "description": "Tier 4 validation — inbox, reviews, classes visibility, UGC paths",
     "contracts": [
-      "flow-play-screen",
+      "flow-inbox",
+      "flow-post-game-review",
       "flow-profile",
       "module-coach-parent-navigation",
       "module-ugc-moderation",
-      "module-production-surface"
+      "module-production-surface",
+      "flow-post-game-attendance",
+      "flow-push-notifications-device"
     ]
   },
   "visual-tier5": {

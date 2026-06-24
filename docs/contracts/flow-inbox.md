@@ -1,9 +1,10 @@
 # Flow — Inbox (Chats tab)
 
 **Contract id:** `flow-inbox`  
-**Status:** Draft — sprint prep  
+**Status:** Draft — sprint prep · tier 4 product review 2026-06-24  
 **Screens:** `ChatListScreen`  
-**Related code:** `src/pages/Chat/ChatListScreen.tsx`, `src/hooks/useChatInbox.ts`
+**Related code:** `src/pages/Chat/ChatListScreen.tsx`, `src/hooks/useChatInbox.ts`, `surfaceVisibility.ts`  
+**Product review:** [2026-06-24-cross-surface-tier4-synthesis.md](../product-review/consolidated/2026-06-24-cross-surface-tier4-synthesis.md)
 
 ## Purpose
 
@@ -20,19 +21,38 @@ North-star: **Open Inbox → tap game row → game chat opens with GameRoom head
 
 | Filter | Must show |
 |--------|-----------|
-| **All** | Mixed rows sorted by recency |
-| **Friends** | DM threads only |
+| **Friends** | DM threads only (default filter) |
 | **Games** | Game / activity threads |
-| **Groups** | Rally crew rows |
+| **Rallies** | Rally crew rows |
+| **Classes** | Class announcement rows — **only** when `shouldShowInboxClassesFilter` (coach or parent w/ enrollments; not R0) |
 | **Empty filter** | Empty copy — no crash |
 
 ## Pass/fail checklist
 
+### Filters + navigation
 - [ ] Filters switch without losing scroll crash
 - [ ] Game row opens game chat (`ChatThread` + game room chrome)
 - [ ] Rally row opens `RegularsCrew` or group chat per product rules
-- [ ] Unread / last message preview updates on realtime event
+- [ ] **DM back stack** label reads **Inbox** (not `MainTabs`) — P2 tier 4
 - [ ] Error state when inbox fetch fails (retry affordance)
+
+### Unread + realtime (P1 tier 4)
+- [ ] Unread / last message preview updates on realtime event
+- [ ] **Row badge** when thread `unread > 0`
+- [ ] **Filter chip badge** aggregate when filter has unread threads
+- [ ] **Inbox tab badge** on main tab bar when any inbox unread > 0
+
+### Performance
+- [ ] **DM open latency** ≤ 1s from row tap to first message visible (prefetch or skeleton — not blank spinner > 2s)
+
+### Classes filter (role-gated)
+- [ ] R0 `@kunyu` — **no** Classes chip when no enrollments / not coach
+- [ ] `marcus@…` or enrolled parent — Classes chip visible when flags on
+- [ ] Classes empty copy: *No class announcements yet. Coaches message parents here — not children.*
+- [ ] Announcement row shows class title, preview, *To parents · not child DM*
+- [ ] **Row tap opens announcement detail** (read-only sheet or thread) — P1 tier 4
+- [ ] Classes chip **unread badge** when new parent notifications > 0 — P2
+- [ ] Announcement row shows **sent timestamp** — P2
 
 ## Screenshots required
 

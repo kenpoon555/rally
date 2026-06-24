@@ -55,6 +55,7 @@ North-star: **Signup/login terms → flag content → block user → blocked use
 - [ ] Blocked user **hidden from chat inbox** / cannot open new DM
 - [ ] Open DM with blocked user shows read-only / blocked state (no send)
 - [ ] **Profile → Settings → Safety → Blocked users** lists blocked account
+- [ ] **E2E (tier 4):** Block `@VCB` (or test user) → Inbox Friends row **removed** on return without relaunch — `block-report-skeptic`
 
 ### Admin / developer notification
 
