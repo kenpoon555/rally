@@ -319,8 +319,14 @@ export async function getClassRoster(classId: string): Promise<ClassRosterStuden
   return DEMO_ROSTER[classId] ?? [];
 }
 
-export async function listClassAnnouncements(parentUserId?: string): Promise<ClassAnnouncementInboxItem[]> {
-  if (!CLASS_INBOX_ANNOUNCE) {
+export async function listClassAnnouncements(
+  parentUserId?: string,
+  options?: { isCoach?: boolean; hasClassContext?: boolean }
+): Promise<ClassAnnouncementInboxItem[]> {
+  if (!CLASS_INBOX_ANNOUNCE || !parentUserId) {
+    return [];
+  }
+  if (!options?.isCoach && !options?.hasClassContext) {
     return [];
   }
   if (COACH_CLASS_OPERATIONS && parentUserId) {

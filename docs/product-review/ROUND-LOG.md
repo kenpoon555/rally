@@ -210,6 +210,8 @@ See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md).
 | Queue | When |
 |-------|------|
 | `play-discover-round3-expert` | Coach/parent + meetup regression (separate from UX tier 3) |
+| **`cross-surface-tier4-round1`** | **Next** — 8 personas, full-app behavioral bar ([TIER-MODEL.md](./TIER-MODEL.md)) |
+| **`visual-tier5-round1`** | After tier 4 — 8 design personas, artistic bar |
 | Post-ship UX re-audit | Re-run tier 3 personas on merged `dev` for PASS verdicts (cosmetic) |
 
 Coach/parent `v1.1`–`v1.4` tracks remain when scoped separately.

@@ -76,6 +76,7 @@ import { useCoachParent } from '../../hooks/useCoachParent';
 import { ProfileFamilySection } from '../../components/coachParent/ProfileFamilySection';
 import { ProfileCoachToolsSection } from '../../components/coachParent/ProfileCoachToolsSection';
 import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
+import { BETA_OPS_SURFACES_ENABLED } from '../../constants/betaFlags';
 import {
   listMyPendingFillInvites,
   respondFillInvite,
@@ -680,6 +681,7 @@ const ProfileScreen: React.FC = () => {
         </View>
       ) : null}
 
+      {BETA_OPS_SURFACES_ENABLED ? (
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.captainProgram}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.captainProgramHint}</Text>
@@ -803,6 +805,7 @@ const ProfileScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
+      ) : null}
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.freeAgents}</Text>
@@ -1117,6 +1120,7 @@ const ProfileScreen: React.FC = () => {
         )}
       </View>
 
+      {BETA_OPS_SURFACES_ENABLED ? (
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.concierge}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.conciergeHint}</Text>
@@ -1187,8 +1191,10 @@ const ProfileScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
+      ) : null}
 
-      {(captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
+      {BETA_OPS_SURFACES_ENABLED &&
+      (captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
         <View style={styles.sectionCard}>
           <Text style={styles.groupLabel}>{PRODUCT_COPY.captainFeedback}</Text>
           <Text style={styles.hint}>{PRODUCT_COPY.captainFeedbackHint}</Text>

@@ -10,11 +10,9 @@
 
 | Stage | Who installs | Build profile | Store listing |
 |-------|----------------|---------------|---------------|
-| **Now — closed beta** | You + invited testers | `preview` (internal) | **No** public store page |
-| **Pre–v1.0 — wider beta** | TestFlight + Play **internal** | `production` + submit | TestFlight / internal track only |
-| **v1.0 public launch** | Anyone | `production` + submit | **App Store** + **Play Store** public |
+| **v1.0 App Store submit** | Apple / Google reviewers | `production` + submit | **App Store** + **Play Store** |
 
-You are in **stage 1–2**. Public floodgate (stage 3) waits on designer sign-off + replay metric ([PRE_V1_BUSINESS_AND_BUILD_PRIORITIES.md](./PRE_V1_BUSINESS_AND_BUILD_PRIORITIES.md)).
+You are submitting **v1.0** to the public App Store. Use production reviewer notes in [store-review-test-accounts.md](./store-review-test-accounts.md) — **no** “closed beta” language in ASC notes.
 
 ---
 
@@ -104,7 +102,7 @@ Or download `.ipa` from expo.dev and upload with **Transporter** (Mac App Store)
 5. Submit for **App Review** (plan 24–48h+; sports/social may get questions on UGC moderation — point to report/admin flow).
 6. Release manually or automatic after approval.
 
-**Review tips for Rally:** Explain closed beta → LA-only, user-generated games/chats, block/report + admin suspend ([Admin screen](../src/pages/Admin/AdminScreen.tsx)).
+**Review tips for Rally:** Use the production paste in [store-review-test-accounts.md](./store-review-test-accounts.md). Mention LA pickup sports, user-generated chat, report/block flow, in-app delete account, and foreground-only location. Do **not** describe the app as a beta or TestFlight product in App Review Information notes.
 
 ---
 

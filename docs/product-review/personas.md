@@ -118,6 +118,61 @@ Pick **one persona per Agent session** (or one human reviewer). Run consolidator
 
 ---
 
+## Persona catalog E — cross-surface picky (tier 4 · 8)
+
+**Focus:** Behavioral depth across tabs — not one hotspot. High bar: weird paths, empty states, wrong-surface leaks.  
+**Bar:** [TIER-MODEL.md](./TIER-MODEL.md) tier 4 rubric · **min 8 reviews before consolidator**  
+**When:** After App Store v1.0 ship or parallel docs-only backlog.
+
+| persona-id | Behavior | Level | One-line goal | Primary paths |
+|------------|----------|-------|---------------|---------------|
+| `inbox-heavy-chatter` | 20+ DMs/week | L3 | Friends filter default; open thread &lt;2 taps; unread clear | Inbox → Friends/Games/Rallies |
+| `post-game-reviewer` | Rates every game | L3 | Post-game prompt → stars → submit → no duplicate nag | Game end → review modal |
+| `attendance-rater` | Host marks showed/no-show | L4 | Roster attendance UI fast; trust line updates | Game room → roster → rate |
+| `block-report-skeptic` | Safety-first | L2 | Report + block ≤3 taps; blocked user gone from inbox | DM → Safety → report/block |
+| `class-parent-inbox` | Parent w/ enrollments | R3 | Classes tab **only** when enrolled; announcements readable | Inbox Classes → thread |
+| `coach-announcement-sender` | Coach broadcasts | R2 | Send class note → parents see in Inbox Classes | Coach tools → announce |
+| `notification-hunter` | Expects every ping | L2 | Push/in-app badge matches new message; quiet hours respected | Chat → background → return |
+| `weird-edge-tapper` | Chaos tester | meta | Random back, filter swap, kill app — no dead ends | All tabs |
+
+### Account hints (catalog E)
+
+| persona-id | Suggested login | Setup |
+|------------|-----------------|-------|
+| `inbox-heavy-chatter` | `@kunyu` | Existing friend threads |
+| `post-game-reviewer` | `@kunyu` or marcus | Completed game in past window |
+| `attendance-rater` | `marcus@…` demo host | Hosted game with roster |
+| `block-report-skeptic` | `@kunyu` | DM with @VCB or test user |
+| `class-parent-inbox` | Parent w/ child enrollment | CPS flags on + enrollment seed |
+| `coach-announcement-sender` | `marcus@…` if coach | `is_coach` + class listing |
+| `notification-hunter` | Fresh device login | Notifications allowed |
+| `weird-edge-tapper` | Any | No seed requirements |
+
+---
+
+## Persona catalog F — visual / design (tier 5 · 8)
+
+**Focus:** Artistic bar — hierarchy, spacing, typography, empty states, brand cohesion. **No** new features.  
+**Bar:** [TIER-MODEL.md](./TIER-MODEL.md) tier 5 rubric · designer sign-off  
+**When:** After tier 4 P0 surface alignment OR parallel with designer review.
+
+| persona-id | Lens | One-line goal | Screens |
+|------------|------|---------------|---------|
+| `visual-welcome-carousel` | First impression | Welcome slides: hierarchy, illustration, CTA weight | Welcome |
+| `visual-auth-forms` | Forms | Login/signup card rhythm, field labels, terms footer | Auth |
+| `visual-inbox-rows` | Lists | Row density, avatars, subtitle truncation, filter chips | Inbox |
+| `visual-play-strip` | Navigation | Sport chips, segment control, empty card | Play |
+| `visual-game-card` | Cards | Game cards scannable at glance; map preview balance | Play / Today |
+| `visual-chat-bubbles` | Chat | Bubble contrast, timestamps, safety affordance | Chat |
+| `visual-profile-sections` | Settings | Section cards, labels, destructive actions | Profile |
+| `visual-empty-states` | Zero data | Every major empty: icon, copy, single CTA | Play, Inbox, Friends |
+
+### Account hints (catalog F)
+
+Use `@kunyu` or marcus; capture **light mode** screenshots at 390×844 unless testing iPad. Tag FAILs with frame name + element (e.g. `inbox-filter-chip-padding`).
+
+---
+
 ## Sim note
 
 Monrovia demo seed is **basketball**. For non-basketball personas:
@@ -222,15 +277,17 @@ Add `academy-head-coach` when planning v2 org work. Run **separate consolidator 
 
 ## Review tiers (queues)
 
-Used by [review-queues.json](./review-queues.json) and [PRODUCT-REVIEW-LOOP.md](./PRODUCT-REVIEW-LOOP.md).
+Used by [review-queues.json](./review-queues.json) and [PRODUCT-REVIEW-LOOP.md](./PRODUCT-REVIEW-LOOP.md). Full ladder: [TIER-MODEL.md](./TIER-MODEL.md).
 
-| Tier | Queue suffix | Reviewer mindset |
-|------|--------------|------------------|
-| **1 — Discovery** | `round1` | Note friction P1–P3; blocked journeys OK if documented |
-| **2 — Picky** | `round2-picky` | Complete full journey; no silent failures; stricter P0 bar |
-| **3 — Expert** | `round3-expert` | Edge cases, regressions vs prior tier, org/academy gaps |
+| Tier | Queue suffix | Personas (min) | Reviewer mindset |
+|------|--------------|----------------|------------------|
+| **1 — Discovery** | `round1` | 6 | Note friction P1–P3; blocked journeys OK if documented |
+| **2 — Picky** | `round2-picky` | 4–6 | Complete full journey; no silent failures; stricter P0 bar |
+| **3 — Expert** | `round3-*` | 4 | **One** deep area (strip MRU, coach org gaps) — not full app |
+| **4 — Cross-surface** | `tier4-round1` | **8** | Every major component; weird users; behavioral depth |
+| **5 — Visual** | `tier5-round1` | **8** | Design / beauty / hierarchy — designer bar |
 
-Start tier 2 only after tier 1 consolidator + Builder/Validator pass on P0 items.
+Start tier 2 only after tier 1 consolidator + Builder/Validator pass on P0 items. Tier 4 chains after feature loops close or runs parallel (docs-only).
 
 ---
 

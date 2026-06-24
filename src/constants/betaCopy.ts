@@ -1,12 +1,12 @@
-/** LA market copy — production-safe (no “beta” / tester recruitment). */
+/** LA market copy — production-safe (no beta / tester recruitment / closed-market wedge). */
 export const MARKET_COPY = {
   regionLabel: 'Los Angeles',
-  headline: 'Rally is available in Los Angeles for badminton, pickleball, and basketball.',
-  body: 'Host games, invite your crew, or tell us about bringing Rally to your area.',
+  headline: 'Pickup sports and recurring crews near you.',
+  body: 'Host games, invite your crew, and find players when you can play.',
   contactCta: 'Contact support',
   contactEmail: 'kunyupoon495@gmail.com',
   playEmptyFootnote: 'Try another sport using the filters above.',
-  playEmptyRegion: 'Rally is focused on LA badminton, pickleball, and basketball.',
+  playEmptyRegion: '',
 } as const;
 
 /** @deprecated Use MARKET_COPY — kept for import stability during migration */
