@@ -13,6 +13,10 @@ import {
   trackSignupCompletedOnce,
 } from '../services/analyticsService';
 
+export type SignOutResult = {
+  warning?: string;
+};
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -20,7 +24,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, username: string, ageCategory?: import('../types/ageCategory').AgeCategory) => Promise<void>;
   signInWithPhone: (phone: string) => Promise<void>;
   verifyPhone: (phone: string, code: string) => Promise<void>;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<SignOutResult>;
   resetPassword: (email: string) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -466,7 +470,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signOut = async () => {
+  const signOut = async (): Promise<SignOutResult> => {
+    let warning: string | undefined;
     if (notificationCleanup) {
       notificationCleanup();
       setNotificationCleanup(null);
@@ -480,13 +485,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           await unregisterDeviceToken(user.id, token);
         }
       } catch {
-        // ignore
+        warning = 'Push notifications may still reach this device until you sign in elsewhere.';
       }
     }
 
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     setUser(null);
+    return { warning };
   };
 
   const refreshUser = useCallback(async () => {

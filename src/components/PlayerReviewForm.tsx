@@ -33,6 +33,7 @@ type Props = {
   onChangeComment: (text: string) => void;
   submitting?: boolean;
   onSubmit: () => void;
+  hideSubmit?: boolean;
 };
 
 function StarRow({
@@ -93,6 +94,7 @@ export function PlayerReviewForm({
   onChangeComment,
   submitting = false,
   onSubmit,
+  hideSubmit = false,
 }: Props) {
   const scores: Record<ScoreField, { value: number; onChange: (v: number) => void }> = {
     friendliness: { value: friendliness, onChange: onChangeFriendliness },
@@ -141,14 +143,40 @@ export function PlayerReviewForm({
         numberOfLines={3}
       />
 
-      <Button
-        title={submitting ? 'Submitting…' : 'Submit rating'}
-        onPress={onSubmit}
-        loading={submitting}
-        disabled={submitting || !selectedPlayerId}
-        fullWidth
-      />
+      {hideSubmit ? null : (
+        <Button
+          title={submitting ? 'Submitting…' : 'Submit rating'}
+          onPress={onSubmit}
+          loading={submitting}
+          disabled={submitting || !selectedPlayerId}
+          fullWidth
+          accessibilityRole="button"
+          accessibilityLabel="Submit rating"
+        />
+      )}
     </View>
+  );
+}
+
+export function PlayerReviewSubmitButton({
+  submitting = false,
+  disabled,
+  onSubmit,
+}: {
+  submitting?: boolean;
+  disabled?: boolean;
+  onSubmit: () => void;
+}) {
+  return (
+    <Button
+      title={submitting ? 'Submitting…' : 'Submit rating'}
+      onPress={onSubmit}
+      loading={submitting}
+      disabled={disabled || submitting}
+      fullWidth
+      accessibilityRole="button"
+      accessibilityLabel="Submit rating"
+    />
   );
 }
 

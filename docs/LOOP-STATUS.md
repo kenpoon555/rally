@@ -1,10 +1,12 @@
 # Rally loop status
 
-_Updated: 2026-06-24 05:26 UTC_
+_Updated: 2026-06-24 06:29 UTC_
 
-## ✅ LOOP COMPLETE — round finished
+**Release loop:** `cross-surface-tier4-jun-2026`
 
-Queue `play-discover-round3-ux` is done. See ROUND-LOG.md or start the next queue.
+## 💤 IDLE — no active self-chain
+
+Say **continue** in orchestrator chat or run `./.cursor/hooks/rally-loop-status.sh`.
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -12,20 +14,19 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `play-discover-round3-ux` tier 3
-- phase: `done` · status: `complete`
+- queue: `cross-surface-tier4-round1` tier 4
+- phase: `src_pr_pending` · status: `running`
 - layer_2: `merged`
-- personas: 4/4
-- builder branch: `fix/play-discover-ux-strip`
-- src PR: https://github.com/kenpoon555/rally/pull/68
+- personas: 8/8
+- builder branch: `fix/cross-surface-tier4-builder`
 
 ## Validation
 
-- queue: `app-store-build-10`
-- contract: `flow-auth-onboarding` (3/3)
+- queue: `cross-surface-tier4`
+- contract: `flow-push-notifications-device` (8/8)
 - phase: `done` · status: `pass`
 - chain_enabled: False
-- notes: Legal gate + welcome regression on dev; fresh signup row 1 still device-optional.
+- notes: Queue complete; push device E2E out of scope on sim
 
 ---
 

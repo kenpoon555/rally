@@ -45,6 +45,12 @@ import { useCoachParent } from '../../hooks/useCoachParent';
 import { coachTodayClasses } from '../../services/coachParentService';
 import { TodayMyClassesCard } from '../../components/coachParent/TodayMyClassesCard';
 import { TodayCoachClassesCard } from '../../components/coachParent/TodayCoachClassesCard';
+import { TodayPlayerReviewCard } from '../../components/home/TodayPlayerReviewCard';
+import {
+  getPendingReviewPrompts,
+  PendingReviewPrompt,
+} from '../../services/reviewService';
+import { subscribeReviewPromptsInvalidation } from '../../utils/reviewPromptsBus';
 
 type TabParamList = {
   DynamicHome: undefined;
@@ -69,6 +75,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [rallyInvites, setRallyInvites] = useState<RallyFriendInvite[]>([]);
   const [inviteBusyId, setInviteBusyId] = useState<string | null>(null);
   const [rallyMemberPreviews, setRallyMemberPreviews] = useState<Record<string, RallyMemberPreview>>({});
+  const [reviewPrompts, setReviewPrompts] = useState<PendingReviewPrompt[]>([]);
   const dashboard = useHomeDashboard(activeGames, user?.id);
   const { enrollments, isCoach, coachClasses, showTodayMyClasses } = useCoachParent();
   const coachToday = useMemo(
@@ -111,11 +118,37 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
     setRallyMemberPreviews(Object.fromEntries(entries));
   }, [regularGroups]);
 
+  const loadReviewPrompts = useCallback(async () => {
+    if (!user?.id) {
+      setReviewPrompts([]);
+      return;
+    }
+    try {
+      setReviewPrompts(await getPendingReviewPrompts(user.id));
+    } catch {
+      setReviewPrompts([]);
+    }
+  }, [user?.id]);
+
   useFocusEffect(
     useCallback(() => {
       refetch(false);
       void loadRallyInvites();
-    }, [refetch, loadRallyInvites])
+      void loadReviewPrompts();
+    }, [refetch, loadRallyInvites, loadReviewPrompts])
+  );
+
+  useEffect(() => {
+    return subscribeReviewPromptsInvalidation(() => {
+      void loadReviewPrompts();
+    });
+  }, [loadReviewPrompts]);
+
+  const openReviewActivity = useCallback(
+    (activityId: string) => {
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
+    },
+    [navigation]
   );
 
   useEffect(() => {
@@ -318,6 +351,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
                 : undefined
             }
           />
+
+          <TodayPlayerReviewCard prompts={reviewPrompts} onPress={openReviewActivity} />
 
           {showTodayMyClasses ? <TodayMyClassesCard enrollments={enrollments} /> : null}
           {COACH_DASHBOARD && isCoach ? (

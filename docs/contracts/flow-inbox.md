@@ -65,21 +65,27 @@ North-star: **Open Inbox → tap game row → game chat opens with GameRoom head
 
 ## Validator report
 
-> Run: 2026-06-22 ~01:06 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/overnight-jun-2026-batch`
+> Run: 2026-06-24 ~11:22 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/cross-surface-tier4-builder`
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1 | Filters switch | ✅ Pass | Friends / Games / Rallies / Classes chips — no crash. |
+| 1 | Filters switch | ✅ Pass | Friends / Games / Rallies / Classes — no crash. |
 | 2 | Friends empty state | ✅ Pass | Copy + empty illustration. |
 | 3 | Games empty state | ✅ Pass | Archived-game copy when no active rooms. |
-| 4 | Classes announcements | ✅ Pass | Beginner Badminton parent row visible. |
-| 5 | Rally row → hub | ✅ Pass | API: 2 groups for marcus; hub via `rallyapp://crew/…`. Inbox filter chips get `testID=inbox-filter-*` for automation. |
-| 6 | Game row → game chat | N/T | No active game rooms in inbox. |
+| 4 | Classes announcements | ✅ Pass | Beginner Badminton row + detail sheet (`05-class-announcement-detail.png`). |
+| 5 | Rally row → hub | ✅ Pass | Julian Fisher Park Regulars → crew chat (`06-rally-hub.png`). |
+| 6 | DM back stack → Inbox | ✅ Pass | `headerBackTitle: 'Inbox'` in `AppNavigator` + `ChatThreadScreen`; friend DM N/T (marcus has no friend threads). |
 | 7 | Error/retry | N/T | Fetch succeeded (no error banner). |
+| 8 | Row unread badge | N/T | No threads with `unread > 0` in marcus seed. |
+| 9 | Filter chip badge | ✅ Pass | Classes chip shows `1` unread (`03-rallies-filter.png`). |
+| 10 | Inbox tab badge | N/T | No chat unread aggregate for marcus. |
+| 11 | DM open latency / skeleton | ✅ Pass | `ChatThreadSkeleton` + prefetch on row tap (crew chat loads instantly). |
+| 12 | Announcement row tap → detail | ✅ Pass | Bottom sheet with timestamp + body. |
+| 13 | Announcement sent timestamp | ✅ Pass | Row + detail show time. |
 
 ### Screenshots (`docs/contracts/screenshots/flow-inbox/`)
 
-- `01-friends-filter-empty.png`, `02-games-filter-empty.png`
+- `01-friends-filter-empty.png`, `02-games-filter-empty.png`, `03-rallies-filter.png`, `04-classes-filter.png`, `05-class-announcement-detail.png`, `06-rally-hub.png`
 
 ## Open issues
 

@@ -140,4 +140,6 @@ Physical device screen recording for ASC **Notes** (Build 10+):
 
 **Sim gaps:** Re-seed OK; `marcus@rally-mvrhoops.demo` login via automation unreliable — use physical device recording per script below.
 
+**Tier 4 regression (2026-06-24):** No UGC/safety code changes on `fix/cross-surface-tier4-builder` — prior green rows stand; no re-run of DM block submit on sim this pass.
+
 Screenshots: `docs/contracts/screenshots/module-ugc-moderation/`
