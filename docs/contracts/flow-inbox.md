@@ -87,6 +87,13 @@ North-star: **Open Inbox → tap game row → game chat opens with GameRoom head
 
 - `01-friends-filter-empty.png`, `02-games-filter-empty.png`, `03-rallies-filter.png`, `04-classes-filter.png`, `05-class-announcement-detail.png`, `06-rally-hub.png`
 
+## Visual tier 5 checklist (2026-06-24)
+
+- [ ] Filter chips readable at 393pt — 4-across not cramped; Classes badge does not truncate label (H2: scroll vs 3+More)
+- [ ] Empty state uses branded icon — not emoji 💬
+- [ ] Empty title reflects filter (“No Rally chats yet”) not generic alone
+- [ ] Row meta chips align to single line where possible
+
 ## Open issues
 
 | Date | Blocker | Owner |
