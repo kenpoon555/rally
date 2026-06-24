@@ -1,9 +1,12 @@
 import { CONFIG, readEnvOptional } from './config';
 
-/** Public TestFlight / Play internal URLs — override via EAS secrets when available. */
+/** Install URLs — set IOS_INSTALL_URL / ANDROID_INSTALL_URL in EAS production secrets. */
+const ASC_APP_STORE_URL = 'https://apps.apple.com/app/id6777569179';
+
 export const APP_LINKS = {
   iosInstallUrl:
-    readEnvOptional('IOS_INSTALL_URL') || 'https://testflight.apple.com/join/gBcW7gA2',
+    readEnvOptional('IOS_INSTALL_URL') ||
+    (__DEV__ ? 'https://testflight.apple.com/join/gBcW7gA2' : ASC_APP_STORE_URL),
   androidInstallUrl:
     readEnvOptional('ANDROID_INSTALL_URL') ||
     'https://play.google.com/store/apps/details?id=app.rally.sports',

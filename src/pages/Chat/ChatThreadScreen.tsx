@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Keyboard,
@@ -18,6 +17,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import {
   getConversationMessages,
+  takeCachedConversationMessages,
   getConversationPeerUserIds,
   getConversationById,
   markConversationRead,
@@ -47,6 +47,7 @@ import { listConversationSessionCards } from '../../services/sessionCardService'
 import { ConversationSessionCard } from '../../types/sessionCard';
 import { AvailabilityPoll } from '../../types/availabilityPoll';
 import { ChatMessageBubble } from '../../components/chat/ChatMessageBubble';
+import { ChatThreadSkeleton } from '../../components/chat/ChatThreadSkeleton';
 import { ChatQuickReplies } from '../../components/chat/ChatQuickReplies';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
@@ -413,6 +414,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     const displayTitle = isGameRoom ? title || 'Game Room' : title || 'Chat';
     navigation.setOptions({
       title: displayTitle,
+      headerBackTitle: 'Inbox',
       headerTitle: isCrewChat && resolvedGroupId
         ? () => (
             <TouchableOpacity
@@ -448,7 +450,8 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     setLoading(true);
     setErrorText(null);
     try {
-      const rows = await getConversationMessages(conversationId, 100);
+      const cached = takeCachedConversationMessages(conversationId);
+      const rows = cached ?? (await getConversationMessages(conversationId, 100));
       setMessages(rows);
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
@@ -542,11 +545,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   if (loading && messages.length === 0) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <ChatThreadSkeleton />;
   }
 
   const focusedSession = crewSessions.find((s) => s.activity_id === focusedActivityId);

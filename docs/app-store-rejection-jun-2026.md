@@ -1,4 +1,83 @@
-# App Store rejection — Jun 17, 2026 (Build 6)
+# App Store rejections — Jun 2026
+
+---
+
+## Build 11 — Jun 24, 2026 (Guideline 2.2 — still beta-testing UI)
+
+**Submission ID:** `c5b8e615-5701-4cd5-a951-2d41b64805c1`  
+**Review device:** iPad Air 11-inch (M3)  
+**Version:** 1.0 (11)
+
+### What Apple said
+
+> Your app **still** includes features that are intended to support beta testing. Since you are submitting a production version of your app, features intended to support beta testing are not appropriate.
+
+This is a **repeat** of Guideline 2.2 after Build 10 work (PR #63, `0681d97`) removed literal “Beta” labels from Welcome, Profile → Settings, and Feedback. Apple is not only matching the word `beta` — they treat **limited-rollout / manual-ops / tester-recruitment** surfaces as beta-testing support.
+
+### What they are likely referring to (reviewer path)
+
+Walkthrough with `marcus@rally-mvrhoops.demo` on iPad (iPhone layout):
+
+| Priority | Surface | What reviewer sees | Why Apple may flag it |
+|----------|---------|-------------------|------------------------|
+| **P0** | **App Review notes** (ASC) | Paste still says *“Rally LA — **closed LA sports beta**”* (see below) | Tells reviewer to evaluate as a beta, not 1.0 |
+| **P0** | **Profile → Me** | **Sport captain program** — “Apply to be a captain”, “direct line to us” | Tester / ambassador recruitment |
+| **P0** | **Profile → Me** | **Need help finding a game?** — “we will **match you manually** in Los Angeles” | Manual concierge = beta ops, not finished product |
+| **P1** | **Login / Signup** (`AuthScreenLayout`) | LA-only headline + only **Badminton / Pickleball** chips | Reads as closed cohort, not full launch |
+| **P1** | **Welcome** last slide | `MARKET_COPY.headline` — LA + 3 sports only | Geographic / sport wedge = limited beta |
+| **P1** | **Onboarding modal** (new signup) | Same headline; sport picker = **2 sports only** (`BETA_SPORTS`) | Beta wedge onboarding |
+| **P1** | **Play empty** | `playEmptyRegion` — “focused on LA …” footer | Closed-market messaging |
+| **P2** | **Admin** (if `is_admin`) | “Beta feedback”, “Metrics for **beta health**” | Literal beta admin tooling |
+| **P2** | **Edge / share defaults** | `appLinks.ts` TestFlight URL fallback | TestFlight install links in production flows |
+
+**Already fixed in Build 10 (#63):** Welcome/Profile no longer say “Rally Beta”; Settings → “Send feedback”; feedback screen title neutral; `BetaMarketBanner` not mounted on Profile Me.
+
+### Fix plan (Build 12)
+
+**A. App Store Connect (no binary — do before resubmit)**
+
+- [ ] **App Store → version 1.0 → App Review Information → Notes** — see [store-review-test-accounts.md](./store-review-test-accounts.md) for ASC navigation + production paste
+- [ ] **App description / subtitle** (if they mention beta): align with 1.0 product language.
+
+**B. Code (production binary)**
+
+| Item | Action |
+|------|--------|
+| Captain program block | Hide in production **or** reframe as “Partner with Rally” without apply / direct-line recruitment |
+| Concierge block | Remove from Profile Me **or** replace with self-serve copy (no “match you manually”) |
+| `MARKET_COPY` / auth chips | Short neutral tagline; show full sport set on auth (include Basketball) |
+| `OnboardingModal` | All launch sports, not `BETA_SPORTS` (2 only) |
+| `playEmptyRegion` | Remove or soften to “More sports coming soon” without “focused on LA” wedge |
+| `AdminScreen` | Rename “Beta feedback” → “User feedback”; drop “beta health” subtitle |
+| `IOS_INSTALL_URL` | EAS secret → App Store URL, not TestFlight default |
+
+**C. Resubmit**
+
+- [x] Code on `fix/app-store-build-12` — captain/concierge hidden, copy neutralized, build **12**
+- [x] `eas.json` production — coach flags **on**; Classes/coach UI **role-gated** (not global off)
+- [x] Edge invite pages — App Store default, not TestFlight (`supabase/functions/_shared/installUrls.ts`)
+- [x] ASC App Review notes + reply — done by you
+- [ ] Deploy edge functions: `supabase functions deploy game-invite rally-invite --linked`
+- [ ] Paste production notes in ASC — [store-review-test-accounts.md](./store-review-test-accounts.md) *(if not already)*
+- [ ] EAS `production` build from branch with Build 12 fixes
+- [ ] Submit for review
+
+Contract: [`module-production-surface.md`](./contracts/module-production-surface.md)
+
+### Submit timing (don’t waste a build)
+
+While Apple reviews Build 11, keep iterating on `fix/app-store-build-12` **without** uploading a new build until you are ready. Each ASC submit consumes a review cycle.
+
+| Track | Build profile | Coach flags | Who |
+|-------|---------------|-------------|-----|
+| **App Store submit** | `production` | On, role-gated | Reviewer `marcus` sees pickup-only; coaches/parents see coach UI |
+| **Internal QA** | `preview` or `production` TestFlight | On | You + coaches — set `is_coach` or enrollments on test accounts |
+
+**Coach testers:** `update profiles set is_coach = true where email = '…'` or use parent enrollment seed — not “turn flags off.”
+
+---
+
+## Build 6 — Jun 17, 2026 (2.5.4, 2.1(a), 5.1.1(v))
 
 **Submission ID:** `6b9effbb-be23-4cf0-b78e-100fced6d0bd`  
 **Review device:** iPad Air 11-inch (M3)  
@@ -83,36 +162,15 @@ supabase db query --linked -f supabase/scripts/seed_beta_test_data.sql
 
 **B. App Store Connect → App → App Review Information**
 
+See current production paste: [store-review-test-accounts.md](./store-review-test-accounts.md) (Build 12+).
+
 | Field | Value |
 |-------|--------|
 | Sign-in required | Yes |
 | Username | `marcus@rally-mvrhoops.demo` |
 | Password | `MonroviaHoops26!` |
 
-**C. Notes for reviewer (paste)**
-
-```text
-Rally LA — closed LA sports beta. Email/password only (no Apple Sign In on login screen).
-
-LOGIN
-  Email: marcus@rally-mvrhoops.demo
-  Password: MonroviaHoops26!
-
-AFTER LOGIN (pre-seeded demo data)
-  • Inbox: "Julian Fisher Park Regulars" Rally thread + game chats
-  • Today / Play: LA-area pickup games
-  • Tap Inbox → Rally row → Chat / Play tabs
-  • Profile → Legal (terms, waiver, privacy)
-
-Optional second account (member view):
-  Email: derek@rally-mvrhoops.demo
-  Password: MonroviaHoops26!
-
-Location: tap Allow When In Use on first Discover/Map prompt (foreground only).
-
-Support: kunyupoon495@gmail.com
-Privacy: https://kenpoon555.github.io/rally/privacy-policy
-```
+**C. Notes for reviewer** — **superseded.** Use [store-review-test-accounts.md](./store-review-test-accounts.md) only. Do not use the Build 6 “closed LA sports beta” paste.
 
 **D. Smoke test on physical device with production build**
 

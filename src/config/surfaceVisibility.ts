@@ -39,6 +39,23 @@ export function shouldShowPlayClassesSegment(ctx: PlayClassesSegmentContext): bo
   return false;
 }
 
+export type InboxClassesFilterContext = {
+  classInboxEnabled: boolean;
+  hasClassContext: boolean;
+  isCoach: boolean;
+  userId?: string | null;
+};
+
+/** Inbox Classes filter — same role gate as Play Classes (flag alone is not enough). */
+export function shouldShowInboxClassesFilter(ctx: InboxClassesFilterContext): boolean {
+  return shouldShowPlayClassesSegment({
+    classesDiscoverEnabled: ctx.classInboxEnabled,
+    userId: ctx.userId,
+    isCoach: ctx.isCoach,
+    hasClassContext: ctx.hasClassContext,
+  });
+}
+
 /** Meetup-style discover sports — empty copy uses "meetups" not "games". */
 export const MEETUP_DISCOVER_SPORTS: SportType[] = [
   SportType.RUNNING,
@@ -72,8 +89,9 @@ export function freeAgentEmptyCopy(sport: string): { title: string; body: string
       body: 'Post your availability from Profile, or check back later.',
     };
   }
+  const sportLabel = getSportMetadata(sport)?.shortLabel ?? sport;
   return {
-    title: `No ${sport.toLowerCase()} players posting yet`,
+    title: `No ${sportLabel} players posting yet`,
     body: 'Try another sport in the strip, or host a game and invite friends.',
   };
 }

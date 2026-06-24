@@ -96,6 +96,8 @@ North-star: **Host opens past session → marks attendance → reliability updat
 
 **Last validated:** 2026-06-22 (sim + RPC)
 
+**Tier 4 (2026-06-24):** DEFER per product review `attendance-rater` — no builder changes; prior RPC proof stands. Full sim E2E N/T this pass.
+
 ### Screenshots
 
 - `04-success-confirmation.png` — recap card after partial submit

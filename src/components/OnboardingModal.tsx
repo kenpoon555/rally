@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
-import { MARKET_COPY } from '../constants/betaCopy';
-import { BETA_REGION } from '../constants/betaRegion';
-import { SportType } from '../constants/sports';
+import { LAUNCH_SPORT_TYPES, SportType } from '../constants/sports';
 import {
   ONBOARDING_FLAGS,
   setOnboardingPreference,
@@ -11,7 +9,6 @@ import { updateUserProfile } from '../services/userService';
 import { Button, Chip } from './ui';
 import { colors, spacing, typography } from '../constants/theme';
 
-const BETA_SPORTS: SportType[] = ['Badminton', 'Pickleball'];
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Competitive'] as const;
 
 type PlayIntent = 'casual' | 'serious' | 'both';
@@ -50,9 +47,9 @@ export const OnboardingModal: React.FC<Props> = ({ visible, userId, onComplete }
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
       <View style={styles.container}>
         <Text style={styles.title}>What do you want to play?</Text>
-        <Text style={styles.subtitle}>{MARKET_COPY.headline}</Text>
+        <Text style={styles.subtitle}>Pick your main sport — you can change this anytime.</Text>
         <View style={styles.chipRow}>
-          {BETA_SPORTS.map((name) => (
+          {LAUNCH_SPORT_TYPES.map((name) => (
             <Chip
               key={name}
               label={name}
@@ -96,7 +93,7 @@ export const OnboardingModal: React.FC<Props> = ({ visible, userId, onComplete }
         </View>
 
         <Text style={styles.location}>
-          General area: {BETA_REGION.name} (court picker uses approximate location when you host)
+          When you host, we use your location to suggest nearby courts.
         </Text>
         <Button title={busy ? 'Saving…' : 'Continue'} onPress={() => void handleContinue()} disabled={busy} />
       </View>

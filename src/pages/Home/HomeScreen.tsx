@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useLocation } from '../../hooks/useLocation';
-import { useActivities } from '../../hooks/useActivities';
+import { useActivities, useMyGames } from '../../hooks/useActivities';
 import { useGeofence } from '../../hooks/useGeofence';
 import ActivityConfirmationModal from '../../components/ActivityConfirmationModal';
 import { Activity } from '../../types/activity';
@@ -64,6 +64,8 @@ import {
 import { useCoachParent } from '../../hooks/useCoachParent';
 import { coachClassToActivity, listDiscoverClasses, userIsCoach } from '../../services/coachParentService';
 import { CreateRolePickerSheet } from '../../components/coachParent/CreateRolePickerSheet';
+import { buildPlayStripSports, bumpPreferredSportsMru } from '../../utils/buildPlayStripSports';
+import { orderSportsAttended } from '../../utils/profileScorecardHelpers';
 
 function runRawLocationTest() {
   addLocationLog('Raw test: started (expo-location)');
@@ -99,9 +101,6 @@ type TabParamList = {
 
 type Props = BottomTabScreenProps<TabParamList, 'Home'>;
 
-/** Quick-pick sports in the Play strip; full catalog via More. */
-const PLAY_STRIP_SPORT_COUNT = 3;
-
 const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user, loading: authLoading, refreshUser } = useAuth();
   const isFocused = useIsFocused();
@@ -109,21 +108,29 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const location = locState?.location ?? null;
   const fetchLocation = locState?.fetchLocation ?? (async () => {});
   const { sports } = useSportsCatalog();
+  const { games: myGames } = useMyGames(user?.id ?? '');
   const preferredSport = user?.preferred_sports?.[0];
   const [selectedSport, setSelectedSport] = useState(() => resolveUserDefaultSport(preferredSport));
   const effectiveSportFilter = selectedSport;
   const orderedPlaySports = useMemo(() => sortSportsForPlayTab(sports), [sports]);
-  const stripSports = useMemo(() => {
-    const primary = orderedPlaySports.slice(0, PLAY_STRIP_SPORT_COUNT);
-    if (primary.some((sport) => sport.name === selectedSport)) {
-      return primary;
-    }
-    const selected = orderedPlaySports.find((sport) => sport.name === selectedSport);
-    if (!selected) {
-      return primary;
-    }
-    return [...primary.slice(0, PLAY_STRIP_SPORT_COUNT - 1), selected];
-  }, [orderedPlaySports, selectedSport]);
+  const attendedSports = useMemo(
+    () =>
+      orderSportsAttended(
+        [...myGames.active, ...myGames.past],
+        user?.preferred_sports ?? []
+      ),
+    [myGames.active, myGames.past, user?.preferred_sports]
+  );
+  const { stripSports, showMore: showSportPicker } = useMemo(
+    () =>
+      buildPlayStripSports({
+        catalogSports: orderedPlaySports,
+        selectedSport: effectiveSportFilter,
+        preferredSports: user?.preferred_sports ?? [],
+        attendedSports,
+      }),
+    [orderedPlaySports, effectiveSportFilter, user?.preferred_sports, attendedSports]
+  );
   const [sportPickerOpen, setSportPickerOpen] = useState(false);
   const moreSportSelected = useMemo(
     () => !stripSports.some((sport) => sport.name === selectedSport),
@@ -210,12 +217,19 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSportFilter = useCallback(
     async (sport: string) => {
       setSelectedSport(sport);
-      if (!user?.id || user.preferred_sports?.[0] === sport) {
+      if (!user?.id) {
+        return;
+      }
+      const nextMru = bumpPreferredSportsMru(user.preferred_sports, sport);
+      const unchanged =
+        nextMru.length === (user.preferred_sports?.length ?? 0) &&
+        nextMru.every((value, index) => value === user.preferred_sports?.[index]);
+      if (unchanged) {
         return;
       }
       try {
         await updateUserProfile(user.id, {
-          preferred_sports: [sport] as typeof user.preferred_sports,
+          preferred_sports: nextMru as typeof user.preferred_sports,
         });
         await refreshUser();
       } catch {
@@ -502,7 +516,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
           sports={stripSports}
           selectedSport={selectedSport}
           onSelect={(sport) => void handleSportFilter(sport)}
-          onMorePress={() => setSportPickerOpen(true)}
+          onMorePress={showSportPicker ? () => setSportPickerOpen(true) : undefined}
           moreSelected={moreSportSelected}
           moreLabel="More"
         />
@@ -701,6 +715,7 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
         visible={sportPickerOpen}
         sports={orderedPlaySports}
         selectedSport={selectedSport}
+        recentSportNames={user?.preferred_sports ?? []}
         onSelect={(sport) => void handleSportFilter(sport)}
         onClose={() => setSportPickerOpen(false)}
       />
