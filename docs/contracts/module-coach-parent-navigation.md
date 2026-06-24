@@ -100,9 +100,27 @@ Preset: `classDiscover` in `gameCardLayouts.ts`.
 
 | State | Must show |
 |-------|-----------|
-| **Parent** | Coach/class announcement threads |
+| **Parent** | Coach/class announcement threads in Inbox → **Classes** filter |
 | **Coach** | Parent replies, can't-make-it, enrollment |
 | **No child DM** | Coach → parent/guardian only — [module-student-visibility.md](./module-student-visibility.md) |
+| **Row detail** | Tap announcement → readable full message + sent time — [flow-inbox.md](./flow-inbox.md) |
+
+### Coach broadcast (tier 4 product review)
+
+**Human gate H1 (locked R1=A):** MVP = **session defer/cancel + Notify parents** toggle only (`ClassOperationsSheet`). Freeform class-note composer is **backlog** (persona `coach-announcement-sender` P0 deferred).
+
+| State | Must show (MVP) |
+|-------|-----------------|
+| **Manage session** | Defer / Cancel with **Notify parents** switch (default on) |
+| **Parent receive** | Notification row in Inbox → Classes (`class_parent_notifications`) |
+| **Class detail Chat tab** | Placeholder until composer ships — must not imply working DM |
+
+| State | Backlog (post-H1 B) |
+|-------|---------------------|
+| **Compose note** | Coach Tools or Class detail → freeform message → parent Inbox Classes |
+| **Chat tab** | Read-only history + compose for coach |
+
+**Product review:** [2026-06-24-cross-surface-tier4-synthesis.md](../product-review/consolidated/2026-06-24-cross-surface-tier4-synthesis.md)
 
 ## Create flow — role-based options
 

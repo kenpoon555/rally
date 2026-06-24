@@ -54,6 +54,7 @@ Written pass/fail targets for agent validation loops. See [advisoragent.md](../.
 | [flow-create-game.md](./flow-create-game.md) | Create activity + share |
 | [flow-play-screen.md](./flow-play-screen.md) | Discover / Today + empty states |
 | [flow-inbox.md](./flow-inbox.md) | Inbox filters + navigation |
+| [flow-post-game-review.md](./flow-post-game-review.md) | Post-lock player ratings + Today prompt |
 | [flow-profile.md](./flow-profile.md) | Profile + player modal |
 | [flow-auth-onboarding.md](./flow-auth-onboarding.md) | Auth, legal gate, deep links |
 | [module-production-surface.md](./module-production-surface.md) | **App Store** — no beta-testing UI in production |

@@ -31,6 +31,8 @@ import { colors, radius, spacing, typography } from '../../constants/theme';
 import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
 import { listClassAnnouncements } from '../../services/coachParentService';
 import { ClassAnnouncementInboxItem } from '../../types/coachParent';
+import { useCoachParent } from '../../hooks/useCoachParent';
+import { shouldShowInboxClassesFilter } from '../../config/surfaceVisibility';
 
 type TabParamList = {
   Home: undefined;
@@ -79,27 +81,47 @@ type InboxFilter = ChatInboxFilter | 'announcements';
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
+  const { isCoach, hasClassContext } = useCoachParent();
   const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
   const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
   const [announcements, setAnnouncements] = useState<ClassAnnouncementInboxItem[]>([]);
 
+  const showInboxClasses = useMemo(
+    () =>
+      shouldShowInboxClassesFilter({
+        classInboxEnabled: CLASS_INBOX_ANNOUNCE,
+        userId: user?.id,
+        isCoach,
+        hasClassContext,
+      }),
+    [user?.id, isCoach, hasClassContext]
+  );
+
   useFocusEffect(
     useCallback(() => {
       load({ force: false });
-      if (CLASS_INBOX_ANNOUNCE) {
-        void listClassAnnouncements(user?.id).then(setAnnouncements);
+      if (showInboxClasses) {
+        void listClassAnnouncements(user?.id, { isCoach, hasClassContext }).then(setAnnouncements);
+      } else {
+        setAnnouncements([]);
       }
-    }, [load, user?.id])
+    }, [load, user?.id, showInboxClasses, isCoach, hasClassContext])
   );
 
   const filters = useMemo(() => {
     const base: { id: InboxFilter; label: string }[] = [...FILTERS];
-    if (CLASS_INBOX_ANNOUNCE) {
+    if (showInboxClasses) {
       base.push({ id: 'announcements', label: 'Classes' });
     }
     return base;
-  }, []);
+  }, [showInboxClasses]);
+
+  React.useEffect(() => {
+    if (!showInboxClasses && filter === 'announcements') {
+      setFilter('friends');
+    }
+  }, [showInboxClasses, filter]);
 
   const visibleItems = useMemo(() => {
     if (filter === 'announcements') {

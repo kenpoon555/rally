@@ -1,15 +1,31 @@
-# Store review — test accounts (Apple + Google Play)
+# Store review — test accounts & reviewer notes
 
-**Last updated:** 2026-06-13  
-**Backend:** Production store builds use the Supabase project configured in EAS **`production`** env (today: preview project `casljueycxsqexpkdiuq`). Demo accounts must exist in that database.
+**Last updated:** 2026-06-24  
+**Canonical paste:** Use the blocks below for **every** App Store and Play Store resubmit.  
+**Backend:** Production store builds use the Supabase project in EAS **`production`** env (today: `casljueycxsqexpkdiuq`). Re-seed demo data the **same day** you upload a build.
 
-**Privacy policy (public):** https://kenpoon555.github.io/rally/privacy-policy
+**Privacy policy:** https://kenpoon555.github.io/rally/privacy-policy  
+**Support:** kunyupoon495@gmail.com
 
 ---
 
-## Primary reviewer account (use for both stores)
+## Pre-submit checklist
 
-Use this for **Google Play → App content → App access → Sign-in required** and for **Apple TestFlight / App Review** notes.
+Use before **any** Apple or Google submission:
+
+| # | Check | Where |
+|---|--------|--------|
+| 1 | Demo login works on the **exact build** you are uploading | TestFlight or release build on device |
+| 2 | `marcus@…` sees Inbox + Play content | Re-seed if empty (commands below) |
+| 3 | Apple **App Review Information** has demo creds + **Notes** (production paste) | App Store Connect |
+| 4 | Notes contain **no** “beta”, “TestFlight”, “closed beta”, or “founding member” | ASC + Play Console |
+| 5 | Production binary is **Build 12+** (Guideline 2.2 fixes) | `app.json` / EAS |
+| 6 | Delete account works (Profile → Settings → Legal) | Device smoke test |
+| 7 | Location is **When In Use** only (no background GPS) | Already fixed Build 7+ |
+
+---
+
+## Primary reviewer account (Apple + Google)
 
 | Field | Value |
 |-------|--------|
@@ -17,53 +33,129 @@ Use this for **Google Play → App content → App access → Sign-in required**
 | **Email / username** | `marcus@rally-mvrhoops.demo` |
 | **Password** | `MonroviaHoops26!` |
 
-**Login:** Welcome → **Log in** → email + password (Supabase email/password — no Sign in with Apple).
+**Login:** Welcome → **Log in** → email + password (no Sign in with Apple on the login screen).
 
 **After login, reviewers should see:**
 
-- **Today** / **Play** tabs with LA-area games
-- **Inbox** → **Julian Fisher Park Regulars** Rally (basketball crew) if Monrovia seed is applied
-- **Discover** — public pickup games
-- **Profile** → Legal (terms, waiver, location privacy)
+- **Today** / **Play** — LA-area pickup games
+- **Inbox** — **Julian Fisher Park Regulars** Rally thread (if Monrovia seed applied)
+- **Profile → Settings → Legal** — terms, waiver, privacy, delete account
+- **Profile → Settings → Help** — send feedback (not “beta feedback”)
+
+**Optional member account** (second reviewer path):
+
+| Email | Password |
+|-------|----------|
+| `derek@rally-mvrhoops.demo` | `MonroviaHoops26!` |
 
 ---
 
-## Apple — what we submitted
+## Apple — where to paste notes
 
-**TestFlight external (`rally_external`, build 6):** Beta App Review uses the same demo host account above unless you changed it in App Store Connect.
+App Review notes live in **App Store Connect**, not in this repo.
 
-| Where in ASC | What to enter / verify |
-|--------------|------------------------|
-| **TestFlight → External group → build → Test Information** | “What to Test” + sign-in notes (below) |
-| **App → App Information → App Review Information** | Same username/password when you submit **public App Store** later |
-| **Contact** | `kunyupoon495@gmail.com` |
+### A. Demo login + walkthrough notes (edit before submit)
 
-### Copy-paste — Apple “Notes for reviewer” / What to Test
+| Step | Location |
+|------|----------|
+| 1 | [App Store Connect](https://appstoreconnect.apple.com) → **My Apps** → **Rally LA** |
+| 2 | Top tab → **Distribution** |
+| 3 | Left sidebar → **iOS App** → click **1.0** (version row, not “App Information”) |
+| 4 | Scroll to **App Review Information** |
+| 5 | **Sign-in required** → **Yes** |
+| 6 | **Username** → `marcus@rally-mvrhoops.demo` |
+| 7 | **Password** → `MonroviaHoops26!` |
+| 8 | **Notes** → paste block below |
+| 9 | Attach new build → **Submit for Review** |
+
+> **Not here:** **App Information** (name, bundle ID) and **App Review** (rejection thread) do **not** have the Notes field.
+
+### B. Apple rejection reply (after a rejection)
+
+Left sidebar → **General** → **App Review** (red badge) → **Reply** in the message thread.
+
+Use when resubmitting Build 12 after Guideline 2.2:
 
 ```text
-Rally is a closed LA beta for pickup sports and recurring crews (Rallies).
+We addressed Guideline 2.2 in build 12:
 
-Sign-in (required):
+- Removed in-app beta-testing surfaces (sport captain applications, manual concierge matching).
+- Replaced limited-rollout copy on welcome, auth, onboarding, and Play empty states.
+- Updated App Review Information notes to describe the production app (no beta/TestFlight language).
+
+Demo account unchanged: marcus@rally-mvrhoops.demo / MonroviaHoops26!
+
+Thank you for reviewing.
+```
+
+---
+
+### Copy-paste — App Review Information → Notes
+
+**Use this for every App Store resubmit (Build 12+).**
+
+```text
+Rally — pickup sports and recurring crews (Rallies) in Los Angeles.
+
+SIGN-IN (required)
   Email: marcus@rally-mvrhoops.demo
   Password: MonroviaHoops26!
 
-After login, allow Location when prompted (Discover / map). Optional: Notifications.
+  Email/password only — no Sign in with Apple on the login screen.
 
-Suggested path:
-  1. Log in with credentials above
-  2. Open Inbox → tap a Rally or game row
-  3. Play tab → browse games; tap a card for detail
-  4. Profile → Legal for terms and location privacy
+AFTER LOGIN
+  • Allow Location when prompted (When In Use — foreground only; no background tracking).
+  • Optional: Notifications.
 
-UGC: users can chat and report issues; hosts can lock rosters. No payments in-app.
+SUGGESTED REVIEW PATH
+  1. Log in with credentials above.
+  2. Inbox → open "Julian Fisher Park Regulars" (Rally chat) or a game thread.
+  3. Play → browse games → tap a card for game detail and roster.
+  4. Profile → Settings → Legal (terms, waiver, privacy).
+  5. Profile → Settings → Delete account (in-app account deletion — Guideline 5.1.1(v)).
+
+USER-GENERATED CONTENT
+  • Users can chat in Rally and game threads.
+  • DM or group chat: open Safety (header) → Report user or Block user.
+  • Profile → Settings → Blocked users to manage blocks.
+  • Terms require zero tolerance for objectionable content; signup includes community standards acceptance.
+
+OPTIONAL SECOND ACCOUNT (crew member view)
+  Email: derek@rally-mvrhoops.demo
+  Password: MonroviaHoops26!
+
+No payments in-app. Adults 18+ signup path in this build.
 
 Support: kunyupoon495@gmail.com
 Privacy: https://kenpoon555.github.io/rally/privacy-policy
 ```
 
+### Do not use (caused Build 11 rejection)
+
+```text
+Rally LA — closed LA sports beta
+Rally is a closed LA beta for pickup sports...
+```
+
 ---
 
-## Google Play — App access sign-in form
+## Apple — TestFlight only (optional)
+
+**TestFlight → External group → Test Information** is separate from App Store review. You may use the same demo account; avoid “closed beta” in external tester copy.
+
+```text
+Rally — pickup sports in Los Angeles.
+
+Sign-in: marcus@rally-mvrhoops.demo / MonroviaHoops26!
+
+Try: Inbox → Julian Fisher Park Regulars · Play → open a game · Profile → Settings.
+
+Support: kunyupoon495@gmail.com
+```
+
+---
+
+## Google Play — App access sign-in
 
 **Play Console → Policy → App content → App access** → *All or some functionality is restricted* → **Add sign-in details**
 
@@ -76,70 +168,87 @@ Privacy: https://kenpoon555.github.io/rally/privacy-policy
 ### Any other information required for access
 
 ```text
-Rally uses email + password login only (no Google/Apple SSO on the login screen).
+Rally — pickup sports and recurring crews in Los Angeles.
 
-1. Open the app → tap Log in on the welcome screen.
-2. Enter the email and password above.
-3. Accept terms if prompted; tap Allow for location (needed for Discover).
-4. Main tabs: Today, Play (Discover), Map, Inbox, Profile.
+Login: email + password only (no Google/Apple SSO on the login screen).
 
-Demo data: host account is seeded with a basketball Rally "Julian Fisher Park Regulars"
-and sample games in the Los Angeles area. If login fails, demo seed may need to be
-re-run on the backend (see "Keep demo accounts working" below).
+1. Open app → Log in on welcome screen.
+2. Email: marcus@rally-mvrhoops.demo
+   Password: MonroviaHoops26!
+3. Accept terms if prompted; allow location When In Use (Play / map).
+4. Tabs: Today, Play, Map, Inbox, Profile.
 
-No 2FA, no invite-only gate for login, no special hardware.
+Demo data: host account has basketball Rally "Julian Fisher Park Regulars"
+and sample LA games. If login fails, demo seed may need re-run on backend.
 
-Privacy policy: https://kenpoon555.github.io/rally/privacy-policy
+Account deletion: Profile → Settings → Legal → Delete account.
+
+UGC: chat in Rallies/games; report and block via Safety in chat; blocked users in Profile → Settings.
+
+No 2FA. No invite-only login gate. No special hardware.
+
+Privacy: https://kenpoon555.github.io/rally/privacy-policy
 Support: kunyupoon495@gmail.com
 ```
 
 ---
 
-## Other demo accounts (optional)
+## Other demo accounts (internal QA only)
 
-Same password for all Monrovia demo users (`MonroviaHoops26!`, or `RALLY_DEMO_PASSWORD` if set when seeding):
+Same password for Monrovia demo users (`MonroviaHoops26!`):
 
 | Email | Role | Username |
 |-------|------|----------|
 | `marcus@rally-mvrhoops.demo` | Rally host | `@marcus` |
 | `derek@rally-mvrhoops.demo` | Crew member | `@derek` |
-| … | … | `jordan`, `alex`, `casey`, `riley`, `devin`, `taylor`, `morgan`, `chris` |
+| `{username}@rally-mvrhoops.demo` | Member | `jordan`, `alex`, `casey`, … |
 
-Pattern: `{username}@rally-mvrhoops.demo`
-
-**Member-style testing (already in a Rally):** real profile `@kunyu` exists after beta seed — use only on devices you control; **do not** put personal passwords in store forms.
+**Do not** put personal accounts or `@kunyu` passwords in store forms.
 
 ---
 
 ## Keep demo accounts working
 
-If reviewers report **Invalid email or password**, re-seed the linked Supabase project:
+If reviewers report **Invalid email or password**, re-seed the linked Supabase project **same day as upload**:
 
 ```bash
 cd RallyApp
 
-# Auth users + Julian Fisher Park Rally demo
 SUPABASE_SERVICE_ROLE_KEY=... node scripts/seed-monrovia-basketball-rally-demo.mjs
 supabase db query --linked -f supabase/scripts/seed_monrovia_basketball_rally_demo.sql
 
-# Optional: broader beta fixtures (@kunyu friends, Discover games)
+# Optional: extra Discover fixtures
 supabase db query --linked -f supabase/scripts/seed_beta_test_data.sql
 ```
 
-Default demo password is set in `scripts/seed-monrovia-basketball-rally-demo.mjs` (`RALLY_DEMO_PASSWORD` or `MonroviaHoops26!`).
+### Invite landing pages (edge functions)
+
+Share links for games/Rallies open `game-invite` / `rally-invite` web pages. **Get Rally on iPhone** now defaults to the **App Store** (`id6777569179`), not TestFlight.
+
+```bash
+cd RallyApp
+supabase functions deploy game-invite rally-invite --yes
+```
+
+Optional override via secrets:
+
+```bash
+supabase secrets set IOS_INSTALL_URL="https://apps.apple.com/app/id6777569179" --project-ref casljueycxsqexpkdiuq
+```
 
 ---
 
 ## Security notes
 
-- Demo passwords are **intentionally shared** with Apple/Google reviewers only — rotate if abused.
-- **Never** publish reviewer passwords on GitHub Pages or public store listings.
-- Real founder accounts (`kunyupoon495@gmail.com`, etc.) are **not** for store review forms.
+- Demo passwords are shared with Apple/Google reviewers only — rotate if abused.
+- Never publish reviewer passwords on public websites or store listings.
+- Founder emails are **not** for store review forms.
 
 ---
 
 ## Related docs
 
-- [beta-testflight-play-internal.md](./beta-testflight-play-internal.md) — TestFlight + Play tracks
-- [contracts/README.md](./contracts/README.md) — `@kunyu` + `marcus@…` for QA loops
-- [store-listings-app-store-play.md](./store-listings-app-store-play.md) — listing checklist
+- [app-store-rejection-jun-2026.md](./app-store-rejection-jun-2026.md) — rejection history + Build 12 fixes
+- [APP_STORE_PLAY_STORE_PREP.md](./APP_STORE_PLAY_STORE_PREP.md) — EAS build + listing checklist
+- [contracts/module-production-surface.md](./contracts/module-production-surface.md) — Guideline 2.2 contract
+- [contracts/module-ugc-moderation.md](./contracts/module-ugc-moderation.md) — Guideline 1.2 UGC proof

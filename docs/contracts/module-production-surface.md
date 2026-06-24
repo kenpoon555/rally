@@ -1,7 +1,7 @@
 # Module — Production App Store surface (no beta-testing UI)
 
 **Contract id:** `module-production-surface`  
-**Status:** Draft — App Store Build 10 (Guideline 2.2)  
+**Status:** Draft — App Store Build 11 rejected (Guideline 2.2 repeat)  
 **Screens:** Welcome, Login, Signup, Profile, Play empty, Onboarding, Feedback  
 **Related code:** `src/constants/betaCopy.ts`, `src/constants/productCopy.ts`, `BetaMarketBanner`, `BetaFeedbackScreen`, `OnboardingModal`, `WelcomeScreen`, `AuthScreenLayout`, `DiscoverEmptyState`
 
@@ -9,7 +9,7 @@
 
 The **App Store production binary** must not present itself as a beta-testing product. TestFlight is for tester recruitment; the store build reads as a normal 1.0 app for LA pickup sports.
 
-North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges, founding-member recruitment, or in-app beta feedback branding.
+North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges, founding-member recruitment, manual concierge, captain apply flows, or in-app beta feedback branding. Apple 2.2 (Build 11, Jun 24) still failed after literal “beta” removal — treat **limited-rollout + manual-ops** UI as in-scope.
 
 ## Demo setup
 
@@ -22,7 +22,7 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 | Surface | Must NOT show (production) | May show (neutral) |
 |---------|--------------------------|-------------------|
 | Welcome / auth | “Rally **Beta**”, “test Rally”, “Founding Member” | LA availability, sport chips |
-| Profile → Me | “**LA BETA**” badge card | Player card, sport prefs |
+| Profile → Me | “**LA BETA**” badge card; **Sport captain program** apply; **Concierge** manual match | Player card, sport prefs |
 | Profile → Settings | Section titled “**Beta**”; “Beta feedback” | “Help” / “Send feedback” |
 | Feedback screen | Title “**Beta** feedback”; founder perks pitch | “Send feedback”, support copy |
 | Onboarding modal | Beta headline; founder benefits | Sport/skill picker only |
@@ -41,6 +41,9 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 - [ ] **Onboarding modal** (first session): no beta headline or founder benefits block
 - [ ] **Play → Games empty**: footer does not contain “beta”
 - [ ] **Global search** (release bundle): no user-facing `accessibilityLabel` / visible text “Beta feedback”
+- [ ] **Profile → Me**: no Sport captain “Apply” / concierge “match you manually” blocks (Build 11)
+- [ ] **Auth sport chips**: not a 2-sport wedge only (include full launch set)
+- [ ] **ASC App Review notes**: no “beta”, “TestFlight”, or “closed beta” in reviewer paste
 
 ### Stability
 
@@ -67,7 +70,7 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 
 | ID | Decision | Options | Default |
 |----|----------|---------|---------|
-| H1 | LA geography callout | A) Remove entirely · B) Neutral “Available in Los Angeles” | **B** |
+| H1 | LA geography callout | A) Remove entirely · B) Neutral “Available in Los Angeles” | **A** (Build 12 — product copy, no geo wedge on welcome) |
 
 ## Screenshots required
 
@@ -90,15 +93,22 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 | Date | Blocker | Owner |
 |------|---------|-------|
 | 2026-06-22 | Apple 2.2 Build 9 — beta UI in production | Builder |
+| 2026-06-24 | Apple 2.2 Build 11 — captain/concierge + LA wedge + ASC notes | Builder |
 
 ## Validator report
 
-> Run: 2026-06-23 ~23:30 PT · regression on `dev` after play-discover polish
+> Run: 2026-06-24 · after Apple **Build 11** rejection (Guideline 2.2 repeat)
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
-| 1–8 | Guideline 2.2 rows | ✅ Pass | No change since 2026-06-22 run; spot-check Profile/Play on `dev` |
-| 9 | Feedback path | ⏳ | Device recording (Build 10 resubmission) |
-| 10 | No redbox | ✅ Pass | Play / You / Inbox load |
+| 1–7 | Literal “beta” strings (Welcome, auth, settings, feedback, onboarding, play empty) | ✅ Pass | Build 10 (#63) — spot-check on `dev` |
+| 8 | No “Beta feedback” in Settings | ✅ Pass | “Send feedback” under Help |
+| 9 | Profile → Me — no beta banner | ✅ Pass | `BetaMarketBanner` not mounted |
+| 10 | Profile → Me — **no beta-ops recruitment** | ❌ Fail | Captain program + concierge visible to all users |
+| 11 | Auth — not 2-sport wedge | ❌ Fail | `AuthScreenLayout` chips: Badminton + Pickleball only |
+| 12 | Onboarding — full sport set | ❌ Fail | `BETA_SPORTS` = 2 sports |
+| 13 | ASC review notes | ❌ Fail | Doc still has “closed LA sports beta” paste — must update in Connect |
+| 14 | Admin (if reachable) | ⚠️ | “Beta feedback” section title remains |
+| 15 | No redbox | ✅ Pass | Play / You / Inbox load |
 
-Screenshots: `docs/contracts/screenshots/module-production-surface/`
+**Build 12 blockers:** rows 10–13. Screenshots: `docs/contracts/screenshots/module-production-surface/`

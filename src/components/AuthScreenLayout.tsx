@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing, typography } from '../constants/theme';
 import { APP_NAME, APP_TAGLINE } from '../constants/brand';
 import { MARKET_COPY } from '../constants/betaCopy';
+import { AUTH_SURFACE_SPORT_TYPES } from '../constants/sports';
 import { RallyMark } from './RallyMark';
 import { colors as themeColors, spacing as themeSpacing, typography as themeTypography } from '../constants/theme';
 import { KeyboardSafeView, keyboardAwareScrollProps } from './ui/KeyboardSafeView';
@@ -28,10 +29,13 @@ export function AuthScreenLayout({ title, subtitle, children }: Props) {
           <RallyMark size="lg" style={styles.logoMark} />
           <Text style={styles.brandName}>{APP_NAME}</Text>
           <Text style={styles.tagline}>{APP_TAGLINE}</Text>
-          <Text style={styles.betaLine}>{MARKET_COPY.headline}</Text>
+          <Text style={styles.marketLine}>{MARKET_COPY.headline}</Text>
           <View style={styles.sportRow}>
-            <Text style={styles.sportChip}>Badminton</Text>
-            <Text style={styles.sportChip}>Pickleball</Text>
+            {AUTH_SURFACE_SPORT_TYPES.map((sport) => (
+              <Text key={sport} style={styles.sportChip}>
+                {sport}
+              </Text>
+            ))}
           </View>
         </View>
 
@@ -72,7 +76,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  betaLine: {
+  marketLine: {
     ...typography.caption,
     marginTop: themeSpacing.md,
     color: themeColors.textSecondary,

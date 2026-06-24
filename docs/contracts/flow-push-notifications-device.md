@@ -12,6 +12,8 @@ Background push reaches the recipient on **physical** iOS and Android store/prev
 
 North-star: **Friend sends chat while recipient app is backgrounded → banner appears → tap opens correct screen.**
 
+**Tier 4 product review (sim):** Validate **in-app** unread signals only — Inbox row badges, filter chip badges, Inbox tab badge ([flow-inbox.md](./flow-inbox.md)). Push delivery remains **device-only** in this contract; defer to validation queue after in-app badges ship.
+
 ## Preconditions (Validator must verify before fail)
 
 | Check | How |

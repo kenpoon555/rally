@@ -39,6 +39,23 @@ export function shouldShowPlayClassesSegment(ctx: PlayClassesSegmentContext): bo
   return false;
 }
 
+export type InboxClassesFilterContext = {
+  classInboxEnabled: boolean;
+  hasClassContext: boolean;
+  isCoach: boolean;
+  userId?: string | null;
+};
+
+/** Inbox Classes filter — same role gate as Play Classes (flag alone is not enough). */
+export function shouldShowInboxClassesFilter(ctx: InboxClassesFilterContext): boolean {
+  return shouldShowPlayClassesSegment({
+    classesDiscoverEnabled: ctx.classInboxEnabled,
+    userId: ctx.userId,
+    isCoach: ctx.isCoach,
+    hasClassContext: ctx.hasClassContext,
+  });
+}
+
 /** Meetup-style discover sports — empty copy uses "meetups" not "games". */
 export const MEETUP_DISCOVER_SPORTS: SportType[] = [
   SportType.RUNNING,
