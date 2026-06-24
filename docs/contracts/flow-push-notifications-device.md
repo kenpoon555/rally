@@ -81,6 +81,8 @@ where user_id = '<recipient_uuid>';
 | 2026-06-21 | Device still not receiving chat push after build 9 — validate token + FCM v1 end-to-end | — |
 | 2026-06-21 | Validator blocked: Jade iPhone unavailable; sim cannot run APNs/FCM checklist — resume with `./.cursor/hooks/validation-loop-start.sh --queue gtm2-feedback-jun-2026 --from flow-push-notifications-device` on physical hardware | Validator |
 
+**Tier 4 (2026-06-24):** Sim cannot exercise push delivery — out of scope per contract. Sign-out token warning implemented on builder branch (`AuthContext`); device push E2E deferred to hardware queue.
+
 ## Out of scope
 
 - Simulator push (APNs unavailable)

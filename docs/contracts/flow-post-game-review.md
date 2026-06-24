@@ -80,8 +80,26 @@ North-star: **Game ends → prompt within ~2h → stars + submit → prompt remo
 
 | Date | Blocker | Owner |
 |------|---------|-------|
-| 2026-06-24 | Stale queue after submit (Profile still shows rated row) | Fixer |
-| 2026-06-24 | No Today card — Profile-only path | Builder (H2) |
+| — | — | — |
+
+## Validator report
+
+> Run: 2026-06-24 ~11:26 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/cross-surface-tier4-builder`
+
+| # | Checklist item | Pass | Notes |
+|---|----------------|------|-------|
+| 1 | Today card when pending | ✅ Pass | `01-today-review-card.png` — "40 players waiting". |
+| 2 | Profile Rate Players expanded | ✅ Pass | `02-profile-rate-players-expanded.png` — (39) after submit. |
+| 3 | Review form + stars | ✅ Pass | `03-review-form.png`; a11y labels on stars + Submit. |
+| 4 | Sticky submit CTA | ✅ Pass | Footer Submit visible without scroll. |
+| 5 | Submit + success alert | ✅ Pass | "Thanks — Rating saved…" |
+| 6 | Queue decrements | ✅ Pass | Today 40→39 without manual refresh (`04-post-submit-queue.png`). |
+| 7 | Player chips (host) | N/T | Single-player path on first activity; host multi-chip on other games. |
+| 8 | Default stars unset (P3) | ⚠️ Note | Defaults 3/5 — P3 defer. |
+
+### Screenshots
+
+`docs/contracts/screenshots/flow-post-game-review/` — all four required files captured.
 
 ## Product review source
 

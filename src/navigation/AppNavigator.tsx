@@ -147,7 +147,11 @@ const MainStack = () => (
       component={PostGameAttendanceScreen}
       options={{ title: 'Attendance' }}
     />
-    <Stack.Screen name={ROUTES.CHAT.THREAD} component={ChatThreadScreen} options={{ title: 'Chat' }} />
+    <Stack.Screen
+      name={ROUTES.CHAT.THREAD}
+      component={ChatThreadScreen}
+      options={{ title: 'Chat', headerBackTitle: 'Inbox' }}
+    />
     <Stack.Screen name={ROUTES.FRIENDS.LIST} component={FriendsScreen} options={{ title: 'Friends' }} />
     <Stack.Screen name={ROUTES.MY_GAMES.TAB} component={MyGamesScreen} options={{ title: 'My Games' }} />
     <Stack.Screen

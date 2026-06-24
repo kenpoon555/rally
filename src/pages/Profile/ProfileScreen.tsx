@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
 import { updateUserProfile, deleteOwnAccount } from '../../services/userService';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
@@ -21,6 +21,7 @@ import {
   getProfileReviewStats,
   PendingReviewPrompt,
 } from '../../services/reviewService';
+import { subscribeReviewPromptsInvalidation } from '../../utils/reviewPromptsBus';
 import { ProfileReviewStats } from '../../types/review';
 import {
   getProfileTrustStats,
@@ -239,6 +240,24 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     loadReviewPrompts();
   }, [loadReviewPrompts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadReviewPrompts();
+    }, [loadReviewPrompts])
+  );
+
+  useEffect(() => {
+    return subscribeReviewPromptsInvalidation(() => {
+      void loadReviewPrompts();
+    });
+  }, [loadReviewPrompts]);
+
+  useEffect(() => {
+    if (rateablePromptCount > 0) {
+      setShowRatings(true);
+    }
+  }, [rateablePromptCount]);
 
   useEffect(() => {
     if (user?.push_quiet_hours_start === 22 && user?.push_quiet_hours_end === 8) {
@@ -508,7 +527,10 @@ const ProfileScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await signOut();
+            const result = await signOut();
+            if (result?.warning) {
+              Alert.alert('Signed out', result.warning);
+            }
           } catch (error: unknown) {
             Alert.alert('Error', error instanceof Error ? error.message : 'Failed to sign out');
           }

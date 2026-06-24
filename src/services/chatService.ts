@@ -289,6 +289,26 @@ export const getConversationMembers = async (
   return (data || []) as ConversationMember[];
 };
 
+const prefetchedMessages = new Map<string, ChatMessage[]>();
+
+export function takeCachedConversationMessages(conversationId: string): ChatMessage[] | null {
+  const cached = prefetchedMessages.get(conversationId);
+  if (!cached) {
+    return null;
+  }
+  prefetchedMessages.delete(conversationId);
+  return cached;
+}
+
+export const prefetchConversationMessages = async (
+  conversationId: string,
+  limit: number = 50
+): Promise<ChatMessage[]> => {
+  const messages = await getConversationMessages(conversationId, limit);
+  prefetchedMessages.set(conversationId, messages);
+  return messages;
+};
+
 export const getConversationMessages = async (
   conversationId: string,
   limit: number = 50

@@ -47,7 +47,7 @@ import { GameCardDetailHero } from '../../components/game/GameCardDetailHero';
 import { detailPresetForActivity, shareModeForViewer } from '../../config/gameCardLayouts';
 import { shareGameInvite } from '../../services/inviteLinkService';
 import { RegularGroup } from '../../types/regularGroup';
-import { PlayerReviewForm } from '../../components/PlayerReviewForm';
+import { PlayerReviewForm, PlayerReviewSubmitButton } from '../../components/PlayerReviewForm';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
 import { getGameRecapIdForActivity } from '../../services/gameRecapService';
 import { reportCourtIssue, CourtReportType } from '../../services/courtService';
@@ -76,6 +76,7 @@ import {
   getReviewsByReviewerForActivity,
   submitPlayerReview,
 } from '../../services/reviewService';
+import { invalidateReviewPrompts } from '../../utils/reviewPromptsBus';
 import { getActivityDetailMatchingCopy } from '../../constants/sports';
 import { trackProductEvent } from '../../services/analyticsService';
 import { PRIMARY_COLOR, colors, radius, spacing } from '../../constants/theme';
@@ -820,6 +821,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       setFriendliness(3);
       setPhysicality(3);
       setVibe(3);
+      invalidateReviewPrompts();
       const remaining = pendingReviewTargetIds.filter((id) => id !== activeReviewTargetId);
       if (isHost && remaining.length > 0) {
         setReviewTargetUserId(remaining[0]);
@@ -1066,7 +1068,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
 
   return (
     <KeyboardSafeView style={styles.container}>
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} {...keyboardAwareScrollProps}>
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={[
+        styles.content,
+        showReviewForm ? styles.contentWithStickyReview : null,
+      ]}
+      {...keyboardAwareScrollProps}
+    >
       <GameCardDetailHero
         activity={activity}
         timeLabel={timeLabel}
@@ -1294,6 +1303,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           onChangeComment={setReviewComment}
           submitting={submittingReview}
           onSubmit={() => void handleSubmitReview()}
+          hideSubmit
         />
       ) : null}
 
@@ -1527,6 +1537,15 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         }}
       />
     </ScrollView>
+    {showReviewForm ? (
+      <View style={styles.stickyReviewFooter}>
+        <PlayerReviewSubmitButton
+          submitting={submittingReview}
+          disabled={!activeReviewTargetId}
+          onSubmit={() => void handleSubmitReview()}
+        />
+      </View>
+    ) : null}
     </KeyboardSafeView>
   );
 };
@@ -1542,6 +1561,21 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
+  },
+  contentWithStickyReview: {
+    paddingBottom: spacing.xxxl + 72,
+  },
+  stickyReviewFooter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   headerCloseBtn: {
     marginLeft: spacing.md,

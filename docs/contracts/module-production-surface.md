@@ -111,4 +111,6 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 | 14 | Admin (if reachable) | ⚠️ | “Beta feedback” section title remains |
 | 15 | No redbox | ✅ Pass | Play / You / Inbox load |
 
-**Build 12 blockers:** rows 10–13. Screenshots: `docs/contracts/screenshots/module-production-surface/`
+**Build 12 blockers:** rows 10–13 resolved on `dev` (BETA_OPS off, 3-sport auth wedge). **Tier 4 regression (2026-06-24):** spot-check pass on `fix/cross-surface-tier4-builder` — no redbox on Play/You/Inbox.
+
+Screenshots: `docs/contracts/screenshots/module-production-surface/`

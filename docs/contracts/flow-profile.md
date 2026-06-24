@@ -51,15 +51,24 @@ North-star: **Profile loads → stats/scorecard visible → edit saves → persi
 
 ## Validator report
 
-> Run: 2026-06-22 ~13:06 PT · iOS Simulator · branch `fix/play-discover-builder` · `@marcus`
+> Run: 2026-06-24 ~11:26 PT · iOS Simulator · `marcus@rally-mvrhoops.demo` · branch `fix/cross-surface-tier4-builder`
 
 | # | Checklist item | Pass | Notes |
 |---|----------------|------|-------|
 | 1 | Cold load | ✅ Pass | Profile Me tab loads. |
 | 2 | Photo upload | N/T | Not exercised. |
-| 3 | Scorecard | ✅ Pass | Games/Going/Attendance visible. |
+| 3 | Scorecard | ✅ Pass | Games/Going/Attendance + "1 review" after rating submit. |
 | 4 | Sign out | N/T | Not exercised this pass. |
 | 5 | Beta feedback | N/T | Flag-dependent. |
+| 6 | Rate Players (n) | ✅ Pass | (39) expanded — `01-profile-rate-players.png`. |
+| 7 | Auto-expanded | ✅ Pass | Section open by default when n>0. |
+| 8 | Above Preferences | ✅ Pass | Rate Players between hero and Preferences. |
+| 9 | Tap prompt → detail | ✅ Pass | Via Today card → activity detail form. |
+| 10 | Trust line after submit | ✅ Pass | "1 review · public rating after 5". |
+
+### Screenshots
+
+`docs/contracts/screenshots/flow-profile/01-profile-rate-players.png`
 
 ## Open issues
 

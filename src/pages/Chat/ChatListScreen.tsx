@@ -4,6 +4,8 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -22,11 +24,16 @@ import {
 import {
   ensureActivityGroupConversation,
   getOrCreateDirectConversation,
+  prefetchConversationMessages,
 } from '../../services/chatService';
 import { ROUTES } from '../../constants/routes';
 import { Avatar, Chip, EmptyState, ScreenHeader } from '../../components/ui';
 import { SportIconForSurface } from '../../components/SportIconForSurface';
 import { formatInboxMessageDate } from '../../utils/chatHelpers';
+import {
+  countUnreadClassAnnouncements,
+  markClassAnnouncementsSeen,
+} from '../../services/classAnnouncementReadStore';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
 import { listClassAnnouncements } from '../../services/coachParentService';
@@ -86,6 +93,14 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
   const [announcements, setAnnouncements] = useState<ClassAnnouncementInboxItem[]>([]);
+  const [announcementsUnread, setAnnouncementsUnread] = useState(0);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<ClassAnnouncementInboxItem | null>(
+    null
+  );
+
+  const refreshAnnouncementsUnread = useCallback(async (rows: ClassAnnouncementInboxItem[]) => {
+    setAnnouncementsUnread(await countUnreadClassAnnouncements(rows.map((row) => row.id)));
+  }, []);
 
   const showInboxClasses = useMemo(
     () =>
@@ -102,11 +117,15 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     useCallback(() => {
       load({ force: false });
       if (showInboxClasses) {
-        void listClassAnnouncements(user?.id, { isCoach, hasClassContext }).then(setAnnouncements);
+        void listClassAnnouncements(user?.id, { isCoach, hasClassContext }).then((rows) => {
+          setAnnouncements(rows);
+          void refreshAnnouncementsUnread(rows);
+        });
       } else {
         setAnnouncements([]);
+        setAnnouncementsUnread(0);
       }
-    }, [load, user?.id, showInboxClasses, isCoach, hasClassContext])
+    }, [load, user?.id, showInboxClasses, isCoach, hasClassContext, refreshAnnouncementsUnread])
   );
 
   const filters = useMemo(() => {
@@ -141,12 +160,21 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     } as never);
   };
 
+  React.useEffect(() => {
+    if (filter === 'announcements' && announcements.length > 0) {
+      void markClassAnnouncementsSeen(announcements.map((row) => row.id)).then(() => {
+        setAnnouncementsUnread(0);
+      });
+    }
+  }, [filter, announcements]);
+
   const openThread = (
     conversationId: string,
     title: string,
     activityId?: string,
     groupId?: string
   ) => {
+    void prefetchConversationMessages(conversationId, 100);
     navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
       conversationId,
       title,
@@ -292,7 +320,11 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
             <Chip
               key={f.id}
               label={f.label}
-              badge={f.id === 'announcements' ? 0 : unreadByFilter[f.id as ChatInboxFilter]}
+              badge={
+                f.id === 'announcements'
+                  ? announcementsUnread
+                  : unreadByFilter[f.id as ChatInboxFilter]
+              }
               selected={filter === f.id}
               tone="primary"
               compact
@@ -312,13 +344,28 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           data={announcements}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <View style={styles.row}>
+            <TouchableOpacity
+              style={styles.row}
+              onPress={() => {
+                setSelectedAnnouncement(item);
+                void markClassAnnouncementsSeen([item.id]).then(() => {
+                  setAnnouncementsUnread((count) => Math.max(0, count - 1));
+                });
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={`Class announcement, ${item.class_title}`}
+            >
               <View style={styles.rowMain}>
                 <Text style={styles.rowTitle}>{item.class_title}</Text>
-                <Text style={styles.rowSubtitle}>{item.preview}</Text>
-                <Text style={styles.announceMeta}>To parents · not child DM</Text>
+                <Text style={styles.rowSubtitle} numberOfLines={2}>
+                  {item.preview}
+                </Text>
+                <Text style={styles.announceMeta}>
+                  To parents · not child DM
+                  {item.sent_at ? ` · ${formatInboxMessageDate(item.sent_at)}` : ''}
+                </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
           contentContainerStyle={announcements.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
@@ -367,6 +414,36 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           }
         />
       )}
+
+      <Modal
+        visible={selectedAnnouncement != null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedAnnouncement(null)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setSelectedAnnouncement(null)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            {selectedAnnouncement ? (
+              <>
+                <Text style={styles.modalTitle}>{selectedAnnouncement.class_title}</Text>
+                <Text style={styles.modalMeta}>
+                  To parents · not child DM
+                  {selectedAnnouncement.sent_at
+                    ? ` · ${new Date(selectedAnnouncement.sent_at).toLocaleString()}`
+                    : ''}
+                </Text>
+                <Text style={styles.modalBody}>{selectedAnnouncement.preview}</Text>
+                <TouchableOpacity
+                  style={styles.modalClose}
+                  onPress={() => setSelectedAnnouncement(null)}
+                >
+                  <Text style={styles.modalCloseText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 };
@@ -522,6 +599,45 @@ const styles = StyleSheet.create({
   emptyList: {
     flexGrow: 1,
     justifyContent: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  modalTitle: {
+    ...typography.bodyMedium,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  modalMeta: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginBottom: spacing.md,
+  },
+  modalBody: {
+    ...typography.body,
+    color: colors.text,
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+  },
+  modalClose: {
+    alignSelf: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  modalCloseText: {
+    ...typography.bodyMedium,
+    color: colors.primary,
+    fontWeight: '600',
   },
 });
 
