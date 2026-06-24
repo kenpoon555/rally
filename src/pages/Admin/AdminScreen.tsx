@@ -94,7 +94,7 @@ const METRIC_ROWS: { key: keyof AdminPlatformMetrics; label: string; hint?: stri
   { key: 'conversations_opened_7d', label: 'Conversations opened (7d)' },
   { key: 'rallies_total', label: 'Active Rallies' },
   { key: 'pending_reports', label: 'Pending reports' },
-  { key: 'feedback_7d', label: 'Beta feedback (7d)' },
+  { key: 'feedback_7d', label: 'User feedback (7d)' },
   { key: 'users_suspended', label: 'Suspended users' },
 ];
 
@@ -238,7 +238,7 @@ const AdminScreen: React.FC<Props> = () => {
     >
       <Text style={styles.title}>Admin</Text>
       <Text style={styles.subtitle}>
-        Metrics for beta health · Moderation for reports & feedback. See docs/PUNISHMENT_AND_TRUST.md.
+        Metrics for product health · Moderation for reports & feedback. See docs/PUNISHMENT_AND_TRUST.md.
       </Text>
 
       <View style={styles.tabRow}>
@@ -547,7 +547,7 @@ const AdminScreen: React.FC<Props> = () => {
         ))
       )}
 
-      <Text style={styles.sectionTitle}>Beta feedback ({feedback.length})</Text>
+      <Text style={styles.sectionTitle}>User feedback ({feedback.length})</Text>
       {feedback.length === 0 ? (
         <Text style={styles.empty}>No feedback yet.</Text>
       ) : (

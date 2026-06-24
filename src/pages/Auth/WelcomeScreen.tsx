@@ -67,7 +67,7 @@ const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={styles.title}>{slide.title}</Text>
             <Text style={styles.body}>{slide.body}</Text>
             {index === WELCOME_SLIDES.length - 1 ? (
-              <Text style={styles.beta}>{MARKET_COPY.headline}</Text>
+              <Text style={styles.marketLine}>{MARKET_COPY.headline}</Text>
             ) : null}
           </View>
         ))}
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     maxWidth: 320,
   },
-  beta: {
+  marketLine: {
     ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',

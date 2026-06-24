@@ -44,6 +44,8 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 | **overnight-batch-jun-2026** | overnight-batch | — | — | `baseline` (+ prior queues) | ✅ Complete · PR [#55](https://github.com/kenpoon555/rally/pull/55) |
 | **phase-validation-jun-2026** | — | — | — | `phase1a`–`ops` | ✅ Complete · PR [#56](https://github.com/kenpoon555/rally/pull/56) |
 | **play-discover-round1** | play-discover-jun-2026 | 1 | 6/6 | `role-surface-audit` | ✅ Complete · PR [#58](https://github.com/kenpoon555/rally/pull/58) |
+| **play-discover-round2-picky** | play-discover-jun-2026 | 2 | 4/4 | `play-discover-matrix` | ✅ Complete · PR [#61](https://github.com/kenpoon555/rally/pull/61) |
+| **play-discover-round3-ux** | play-discover-jun-2026 | 3 | 4/4 | `play-discover-matrix` | ✅ Complete · contracts [#67](https://github.com/kenpoon555/rally/pull/67) · src [#68](https://github.com/kenpoon555/rally/pull/68) |
 
 ---
 
@@ -165,7 +167,35 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 **Screenshots:** `module-role-surfaces/01`–`04` including fresh R0 `@playerr0pd1782160073` (`02-r0-no-classes-segment.png`).
 
-**Optional tier 2:** `play-discover-round2-picky` (personas) **or** fast builder pass via `play-discover-matrix` — B7 strip slot 3 + B11 empty icon ([tier2 handoff](./consolidated/2026-06-22-play-discover-tier2-validation-handoff.md)).
+**Follow-up tiers:** see tier 2 + tier 3 below — `play-discover-jun-2026` UX loop **closed** on `dev` (2026-06-23).
+
+### Tier 2 — `play-discover-round2-picky` · 2026-06-22
+
+**Tag:** `play-discover-picky` · **Personas:** 4/4 (`play-sport-matrix-auditor`, minimalist, teen, pickleball-first-timer) · **Validation:** `play-discover-matrix` green
+
+| ID | Fix | Priority |
+|----|-----|----------|
+| B7 | Off-strip sport visible in strip slot 3 | P1 |
+| B11 | Discover empty hero icon aligned (no square tile) | P1 |
+
+**PR:** [#61](https://github.com/kenpoon555/rally/pull/61) `fix/play-discover-tier2-ux` → merged `dev`  
+**Synthesis:** [play-discover-picky-synthesis](./consolidated/2026-06-22-play-discover-picky-synthesis.md)
+
+### Tier 3 — `play-discover-round3-ux` · 2026-06-22
+
+**Tag:** `play-discover-ux` · **Personas:** 4/4 (unanimous pre-builder FAIL on strip personalization) · **Validation:** `play-discover-matrix` green (`--from flow-play-screen`)
+
+| ID | Fix | Priority |
+|----|-----|----------|
+| B16 | Personalized strip — MRU + `orderSportsAttended` | P0 |
+| B17 | Up to 5 visible sport chips; More = overflow | P1 |
+| B18 | `preferred_sports` MRU array (max 5) on profile | P1 |
+
+**PRs:** Contracts [#67](https://github.com/kenpoon555/rally/pull/67) · Src [#68](https://github.com/kenpoon555/rally/pull/68) `fix/play-discover-ux-strip` → merged `dev`  
+**Synthesis:** [play-discover-ux-synthesis](./consolidated/2026-06-22-play-discover-ux-synthesis.md)  
+**New persona:** `play-ux-personalization-auditor` (catalog D)
+
+**Deferred (P2):** B19 Recent in More sheet (H2=A) · B12–B15 tier-2 carry (invite hint, Players copy, free-agent recency)
 
 ---
 
@@ -173,13 +203,16 @@ Personas (Layer 1) → Consolidator → Pre-approve → [human if blocked]
 
 See [PHASE-VALIDATION-STATUS.md](../contracts/PHASE-VALIDATION-STATUS.md).
 
-**Device N/T:** `flow-push-notifications-device`, `gtm1-launch-gate`, mini-tournament two-account QA.
+**Device N/T:** `flow-push-notifications-device`, `gtm1-launch-gate`, mini-tournament two-account QA, `app-store-build-10` UGC report/block device rows.
 
-**Next product-review loop (optional):** `play-discover-round2-picky` — or close `play-discover-jun-2026` and ship.
+**Optional product-review loops:**
 
-```bash
-./.cursor/hooks/product-review-loop-start.sh --queue play-discover-round2-picky
-```
+| Queue | When |
+|-------|------|
+| `play-discover-round3-expert` | Coach/parent + meetup regression (separate from UX tier 3) |
+| **`cross-surface-tier4-round1`** | **Next** — 8 personas, full-app behavioral bar ([TIER-MODEL.md](./TIER-MODEL.md)) |
+| **`visual-tier5-round1`** | After tier 4 — 8 design personas, artistic bar |
+| Post-ship UX re-audit | Re-run tier 3 personas on merged `dev` for PASS verdicts (cosmetic) |
 
 Coach/parent `v1.1`–`v1.4` tracks remain when scoped separately.
 

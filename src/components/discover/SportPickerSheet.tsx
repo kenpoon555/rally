@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal,
   Pressable,
@@ -23,7 +23,11 @@ type Props = {
   selectedSport: string;
   onSelect: (sport: string) => void;
   onClose: () => void;
+  /** MRU sport names from profile — shown in a Recent row above the full grid. */
+  recentSportNames?: string[];
 };
+
+const RECENT_MAX = 5;
 
 export const SportPickerSheet: React.FC<Props> = ({
   visible,
@@ -31,8 +35,28 @@ export const SportPickerSheet: React.FC<Props> = ({
   selectedSport,
   onSelect,
   onClose,
+  recentSportNames = [],
 }) => {
   const insets = useSafeAreaInsets();
+  const sportsByName = useMemo(() => new Map(sports.map((sport) => [sport.name, sport])), [sports]);
+  const recentSports = useMemo(() => {
+    const seen = new Set<string>();
+    const items: SportPickerItem[] = [];
+    for (const name of recentSportNames) {
+      if (!name || seen.has(name)) {
+        continue;
+      }
+      const item = sportsByName.get(name);
+      if (item) {
+        seen.add(name);
+        items.push(item);
+      }
+      if (items.length >= RECENT_MAX) {
+        break;
+      }
+    }
+    return items;
+  }, [recentSportNames, sportsByName]);
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -44,19 +68,47 @@ export const SportPickerSheet: React.FC<Props> = ({
           <View style={styles.handle} />
           <Text style={styles.title}>All sports</Text>
           <Text style={styles.subtitle}>Pick a sport to filter games and players nearby.</Text>
-          <ScrollView contentContainerStyle={styles.grid} keyboardShouldPersistTaps="handled">
-            {sports.map((sport) => (
-              <View key={sport.id} style={styles.gridCell}>
-                <SportFilterIconItem
-                  sport={sport.name}
-                  selected={selectedSport === sport.name}
-                  onPress={() => {
-                    onSelect(sport.name);
-                    onClose();
-                  }}
-                />
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+            {recentSports.length > 0 ? (
+              <View style={styles.recentSection}>
+                <Text style={styles.sectionLabel}>Recent</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.recentRow}
+                >
+                  {recentSports.map((sport) => (
+                    <View key={`recent-${sport.id}`} style={styles.recentCell}>
+                      <SportFilterIconItem
+                        sport={sport.name}
+                        selected={selectedSport === sport.name}
+                        onPress={() => {
+                          onSelect(sport.name);
+                          onClose();
+                        }}
+                      />
+                    </View>
+                  ))}
+                </ScrollView>
               </View>
-            ))}
+            ) : null}
+            <Text style={[styles.sectionLabel, recentSports.length > 0 && styles.sectionLabelSpaced]}>
+              All sports
+            </Text>
+            <View style={styles.grid}>
+              {sports.map((sport) => (
+                <View key={sport.id} style={styles.gridCell}>
+                  <SportFilterIconItem
+                    sport={sport.name}
+                    selected={selectedSport === sport.name}
+                    onPress={() => {
+                      onSelect(sport.name);
+                      onClose();
+                    }}
+                  />
+                </View>
+              ))}
+            </View>
           </ScrollView>
           <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
             <Text style={styles.doneText}>Done</Text>
@@ -99,13 +151,37 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
+  scrollContent: {
+    paddingBottom: spacing.md,
+  },
+  sectionLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+  },
+  sectionLabelSpaced: {
+    marginTop: spacing.lg,
+  },
+  recentSection: {
+    marginBottom: spacing.xs,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    paddingBottom: spacing.xs,
+  },
+  recentCell: {
+    alignItems: 'center',
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'flex-start',
     rowGap: spacing.lg,
     columnGap: spacing.sm,
-    paddingBottom: spacing.md,
   },
   gridCell: {
     width: '31%',

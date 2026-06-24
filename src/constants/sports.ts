@@ -227,6 +227,13 @@ export const LAUNCH_SPORT_TYPES = SPORT_TYPES.filter(
   (s) => SPORT_METADATA[s].launchEnabled
 );
 
+/** Auth marketing chips — full LA wedge (not a 2-sport closed beta). */
+export const AUTH_SURFACE_SPORT_TYPES: SportType[] = [
+  SportType.BADMINTON,
+  SportType.PICKLEBALL,
+  SportType.BASKETBALL,
+];
+
 /** Play tab filter order — LA beta sports first, then broader launch set. */
 export const PLAY_TAB_SPORT_ORDER: SportType[] = [
   SportType.PICKLEBALL,

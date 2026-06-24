@@ -55,6 +55,7 @@ North-star: **Signup/login terms → flag content → block user → blocked use
 - [ ] Blocked user **hidden from chat inbox** / cannot open new DM
 - [ ] Open DM with blocked user shows read-only / blocked state (no send)
 - [ ] **Profile → Settings → Safety → Blocked users** lists blocked account
+- [ ] **E2E (tier 4):** Block `@VCB` (or test user) → Inbox Friends row **removed** on return without relaunch — `block-report-skeptic`
 
 ### Admin / developer notification
 
@@ -126,9 +127,9 @@ Physical device screen recording for ASC **Notes** (Build 10+):
 | 2 | Login terms before Sign in | ✅ | Zero-tolerance footer; `02-login-terms-footer.png` |
 | 3 | Community standards — no tolerance language | ✅ | `COMMUNITY_STANDARDS_TEXT` on signup + legal gate |
 | 4 | Before you play — community standards section | ✅ | `flow-auth-onboarding/01-legal-gate-community-standards.png` |
-| 5 | DM Safety → Report / Block | ⏳ | Sim: marcus login did not complete; code path exists in `SafetyActionsSheet` |
-| 6 | Report inserts `user_reports` row | ⏳ | SQL proof deferred — device recording script |
-| 7 | Group long-press → Report | ⏳ | `ChatMessageBubble` + hint in Settings; no crew thread on empty test user |
+| 5 | DM Safety → Report / Block | ✅ Pass | `@kunyu` → @VCB DM; Safety sheet `04-dm-safety-report-block.png` (2026-06-23 re-run) |
+| 6 | Report inserts `user_reports` row | ⏳ | Submit flow + SQL proof — device recording |
+| 7 | Group long-press → Report | ⏳ | Code path exists; crew thread needs marcus seed on sim |
 | 8 | Report ≤3 taps from chat | ✅ | DM: header Safety (2 taps to report mode) |
 | 9 | Block → confirmation → success | ⏳ | Needs DM thread on device |
 | 10 | Block auto-submits developer report | ✅ | Code: `blockUser` calls `submitUserReport` after upsert |
@@ -138,5 +139,7 @@ Physical device screen recording for ASC **Notes** (Build 10+):
 | 14 | Admin `user_reports` queue | ⏳ | `AdminScreen` exists; verify after report on device |
 
 **Sim gaps:** Re-seed OK; `marcus@rally-mvrhoops.demo` login via automation unreliable — use physical device recording per script below.
+
+**Tier 4 regression (2026-06-24):** No UGC/safety code changes on `fix/cross-surface-tier4-builder` — prior green rows stand; no re-run of DM block submit on sim this pass.
 
 Screenshots: `docs/contracts/screenshots/module-ugc-moderation/`

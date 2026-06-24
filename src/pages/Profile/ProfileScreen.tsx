@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
 import { updateUserProfile, deleteOwnAccount } from '../../services/userService';
 import { useSportsCatalog } from '../../hooks/useSportsCatalog';
@@ -21,6 +21,7 @@ import {
   getProfileReviewStats,
   PendingReviewPrompt,
 } from '../../services/reviewService';
+import { subscribeReviewPromptsInvalidation } from '../../utils/reviewPromptsBus';
 import { ProfileReviewStats } from '../../types/review';
 import {
   getProfileTrustStats,
@@ -55,6 +56,7 @@ import {
   formatRallyMemberSince,
   orderSportsAttended,
 } from '../../utils/profileScorecardHelpers';
+import { bumpPreferredSportsMru } from '../../utils/buildPlayStripSports';
 import { setProfilePayment, formatPaymentLabel } from '../../services/paymentService';
 import { PreferredPayment } from '../../types/user';
 import { getMyCaptainStatus, submitCaptainApplication } from '../../services/captainService';
@@ -75,6 +77,7 @@ import { useCoachParent } from '../../hooks/useCoachParent';
 import { ProfileFamilySection } from '../../components/coachParent/ProfileFamilySection';
 import { ProfileCoachToolsSection } from '../../components/coachParent/ProfileCoachToolsSection';
 import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
+import { BETA_OPS_SURFACES_ENABLED } from '../../constants/betaFlags';
 import {
   listMyPendingFillInvites,
   respondFillInvite,
@@ -237,6 +240,24 @@ const ProfileScreen: React.FC = () => {
   useEffect(() => {
     loadReviewPrompts();
   }, [loadReviewPrompts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadReviewPrompts();
+    }, [loadReviewPrompts])
+  );
+
+  useEffect(() => {
+    return subscribeReviewPromptsInvalidation(() => {
+      void loadReviewPrompts();
+    });
+  }, [loadReviewPrompts]);
+
+  useEffect(() => {
+    if (rateablePromptCount > 0) {
+      setShowRatings(true);
+    }
+  }, [rateablePromptCount]);
 
   useEffect(() => {
     if (user?.push_quiet_hours_start === 22 && user?.push_quiet_hours_end === 8) {
@@ -419,16 +440,22 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleDefaultSport = async (sport: string) => {
-    if (!user?.id || user.preferred_sports?.[0] === sport) {
-      setShowSportPicker(false);
+    setShowSportPicker(false);
+    if (!user?.id) {
+      return;
+    }
+    const nextMru = bumpPreferredSportsMru(user.preferred_sports, sport);
+    const unchanged =
+      nextMru.length === (user.preferred_sports?.length ?? 0) &&
+      nextMru.every((value, index) => value === user.preferred_sports?.[index]);
+    if (unchanged) {
       return;
     }
     try {
       await updateUserProfile(user.id, {
-        preferred_sports: [sport] as typeof user.preferred_sports,
+        preferred_sports: nextMru as typeof user.preferred_sports,
       });
       await refreshUser();
-      setShowSportPicker(false);
     } catch (error: unknown) {
       Alert.alert('Update failed', error instanceof Error ? error.message : 'Could not update sport.');
     }
@@ -500,7 +527,10 @@ const ProfileScreen: React.FC = () => {
         style: 'destructive',
         onPress: async () => {
           try {
-            await signOut();
+            const result = await signOut();
+            if (result?.warning) {
+              Alert.alert('Signed out', result.warning);
+            }
           } catch (error: unknown) {
             Alert.alert('Error', error instanceof Error ? error.message : 'Failed to sign out');
           }
@@ -673,6 +703,7 @@ const ProfileScreen: React.FC = () => {
         </View>
       ) : null}
 
+      {BETA_OPS_SURFACES_ENABLED ? (
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.captainProgram}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.captainProgramHint}</Text>
@@ -796,6 +827,7 @@ const ProfileScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
+      ) : null}
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.freeAgents}</Text>
@@ -1110,6 +1142,7 @@ const ProfileScreen: React.FC = () => {
         )}
       </View>
 
+      {BETA_OPS_SURFACES_ENABLED ? (
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>{PRODUCT_COPY.concierge}</Text>
         <Text style={styles.hint}>{PRODUCT_COPY.conciergeHint}</Text>
@@ -1180,8 +1213,10 @@ const ProfileScreen: React.FC = () => {
           </View>
         ) : null}
       </View>
+      ) : null}
 
-      {(captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
+      {BETA_OPS_SURFACES_ENABLED &&
+      (captainStatus?.captains ?? []).some((c) => c.status === 'active') ? (
         <View style={styles.sectionCard}>
           <Text style={styles.groupLabel}>{PRODUCT_COPY.captainFeedback}</Text>
           <Text style={styles.hint}>{PRODUCT_COPY.captainFeedbackHint}</Text>
