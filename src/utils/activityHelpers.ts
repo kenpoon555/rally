@@ -285,14 +285,14 @@ export function getGameListSpotsBadgeLabel(
   }
   const missing = activity.missing_players ?? 0;
   if (missing > 0) {
-    return missing === 1 ? '1 spot left' : `${missing} spots left`;
+    return `${missing} left`;
   }
   const { filled, total } = getRosterSeatCounts(activity);
   const open = Math.max(total - filled, 0);
   if (open <= 0) {
     return 'Full';
   }
-  return open === 1 ? '1 spot left' : `${open} spots left`;
+  return `${open} left`;
 }
 
 export function getRosterSeatCounts(

@@ -71,18 +71,20 @@ const SignupScreen: React.FC<Props> = ({ navigation, route }) => {
         editable={!loading}
       />
 
+      <AuthTermsNotice variant="signup" />
+
       <TouchableOpacity
         style={styles.termsRow}
         onPress={() => setAgreedToTerms((v) => !v)}
         disabled={loading}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: agreedToTerms }}
       >
         <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
           {agreedToTerms ? <Text style={styles.checkmark}>✓</Text> : null}
         </View>
         <Text style={styles.termsText}>{SIGNUP_LEGAL_LABEL}</Text>
       </TouchableOpacity>
-
-      <AuthTermsNotice variant="signup" />
 
       <Button
         title="Create account"
@@ -106,7 +108,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: spacing.lg,
-    marginTop: -spacing.sm,
   },
   checkbox: {
     width: 22,
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
   },
   checkmark: {
-    color: colors.textInverse,
+    color: colors.onPrimary,
     fontSize: 13,
     fontWeight: '700',
   },

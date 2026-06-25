@@ -638,7 +638,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   addButtonText: {
-    color: colors.textInverse,
+    color: colors.onPrimary,
     fontSize: 14,
     fontWeight: '600',
   },
