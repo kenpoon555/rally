@@ -72,7 +72,7 @@ import {
 import { FreeAgentAvailabilityPreset, FreeAgentInvite, MyFreeAgentPost } from '../../types/freeAgent';
 import { formatActivityTime } from '../../utils/activityHelpers';
 import { submitConciergeRequest } from '../../services/conciergeService';
-import { submitCaptainFeedback } from '../../services/captainFeedbackService';
+import { profileDisplayName } from '../../utils/profileDisplayName';
 import { useCoachParent } from '../../hooks/useCoachParent';
 import { ProfileFamilySection } from '../../components/coachParent/ProfileFamilySection';
 import { ProfileCoachToolsSection } from '../../components/coachParent/ProfileCoachToolsSection';
@@ -102,7 +102,7 @@ const ProfileScreen: React.FC = () => {
   };
 
   const [savingNickname, setSavingNickname] = useState(false);
-  const [nickname, setNickname] = useState(user?.nickname || user?.username || '');
+  const [nickname, setNickname] = useState(() => profileDisplayName(user));
   const [reviewStats, setReviewStats] = useState<ProfileReviewStats | null>(null);
   const [reviewPrompts, setReviewPrompts] = useState<PendingReviewPrompt[]>([]);
   const [reviewPromptsLoading, setReviewPromptsLoading] = useState(false);
@@ -208,8 +208,8 @@ const ProfileScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    setNickname(user?.nickname || user?.username || '');
-  }, [user?.nickname, user?.username]);
+    setNickname(profileDisplayName(user));
+  }, [user?.nickname, user?.username, user?.email]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -399,7 +399,7 @@ const ProfileScreen: React.FC = () => {
       return;
     }
     const trimmed = nickname.trim() || user.username;
-    if (trimmed === (user.nickname || user.username)) {
+    if (trimmed === profileDisplayName(user)) {
       return;
     }
     setSavingNickname(true);
