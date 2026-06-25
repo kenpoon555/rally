@@ -209,7 +209,7 @@ const ProfileScreen: React.FC = () => {
 
   useEffect(() => {
     setNickname(profileDisplayName(user));
-  }, [user?.nickname, user?.username, user?.email]);
+  }, [user]);
 
   useEffect(() => {
     if (!user?.id) {
