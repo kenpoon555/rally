@@ -1,10 +1,15 @@
 import React from 'react';
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, spacing, typography } from '../../constants/theme';
 import { Button } from './Button';
 
+type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
 type Props = {
   icon?: string;
+  /** Branded vector glyph in a neutral ring — preferred over emoji `icon`. */
+  iconName?: IconName;
   title: string;
   message: string;
   primaryAction?: { label: string; onPress: () => void };
@@ -14,6 +19,7 @@ type Props = {
 
 export function EmptyState({
   icon = '🏸',
+  iconName,
   title,
   message,
   primaryAction,
@@ -22,7 +28,13 @@ export function EmptyState({
 }: Props) {
   return (
     <View style={[styles.wrap, style]}>
-      <Text style={styles.icon}>{icon}</Text>
+      {iconName ? (
+        <View style={styles.iconRing}>
+          <MaterialCommunityIcons name={iconName} size={32} color={colors.primaryDark} />
+        </View>
+      ) : (
+        <Text style={styles.icon}>{icon}</Text>
+      )}
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.message}>{message}</Text>
       {(primaryAction || secondaryAction) && (
@@ -52,6 +64,15 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 40,
+    marginBottom: spacing.md,
+  },
+  iconRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
   },
   title: {

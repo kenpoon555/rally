@@ -80,7 +80,7 @@ export function SportIcon({ sport, size = 'md', style, variant = 'tile', selecte
             height: FILTER_BOX,
             borderRadius: FILTER_BOX / 2,
             borderWidth: selected ? 3 : 2,
-            borderColor: selected ? colors.primary : colors.accent,
+            borderColor: selected ? colors.primary : colors.border,
           },
           style,
         ]}

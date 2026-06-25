@@ -110,7 +110,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
     [activity, isLockedWelcoming]
   );
 
-  const trailingWidth = trailingAction ? 96 : 76;
+  const trailingWidth = trailingAction ? 96 : 84;
   const leadingColumnWidth = showStatusSignal ? GAME_LIST_SIGNAL_COLUMN : 42;
   const listIconPreset = sportIconPreset ?? getSportIconPreset('todayGameList');
 
@@ -145,7 +145,7 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
           {hasCustomTitle ? (
             <View style={styles.metaRow}>
               <Ionicons name="location-outline" size={13} color={colors.textTertiary} />
-              <Text style={styles.metaText} numberOfLines={1}>
+              <Text style={styles.metaText} numberOfLines={2}>
                 {courtName}
               </Text>
             </View>

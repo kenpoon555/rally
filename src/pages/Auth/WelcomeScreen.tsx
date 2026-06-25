@@ -173,11 +173,11 @@ const styles = StyleSheet.create({
   },
   cta: {
     borderRadius: radius.pill,
-    backgroundColor: '#B1E346',
+    backgroundColor: colors.primary,
     minHeight: 56,
   },
   ctaText: {
-    color: colors.textInverse,
+    color: colors.onPrimary,
     fontSize: 18,
     fontWeight: '800',
     letterSpacing: 0.15,

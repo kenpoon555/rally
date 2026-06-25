@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   stepNumber: {
     ...typography.caption,
     fontWeight: '800',
-    color: colors.textInverse,
+    color: colors.onPrimary,
   },
   stepNumberMuted: {
     color: colors.textSecondary,

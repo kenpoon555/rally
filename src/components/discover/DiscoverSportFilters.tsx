@@ -108,7 +108,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: colors.accent,
+    borderColor: colors.border,
     marginBottom: spacing.xs,
   },
   iconRingSelected: {
