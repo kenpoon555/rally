@@ -15,9 +15,9 @@
     },
     "ios": {
       "bundleIdentifier": "com.rallyapp",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "icon": "./assets/branding/icon-1024.png",
-      "buildNumber": "12",
+      "buildNumber": "14",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -33,7 +33,7 @@
         "backgroundColor": "#F5F4F0"
       },
       "softwareKeyboardLayoutMode": "resize",
-      "versionCode": 12
+      "versionCode": 14
     },
     "extra": {
       "eas": {

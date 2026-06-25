@@ -1,8 +1,8 @@
 # Store review — test accounts & reviewer notes
 
-**Last updated:** 2026-06-24  
+**Last updated:** 2026-06-25  
 **Canonical paste:** Use the blocks below for **every** App Store and Play Store resubmit.  
-**Backend:** Production store builds use the Supabase project in EAS **`production`** env (today: `casljueycxsqexpkdiuq`). Re-seed demo data the **same day** you upload a build.
+**Backend:** Production store builds use the Supabase project in EAS **`production`** env (today: `casljueycxsqexpkdiuq`). Re-seed demo data the **same day** you upload a build using `./scripts/seed-store-review-demo.sh`.
 
 **Privacy policy:** https://kenpoon555.github.io/rally/privacy-policy  
 **Support:** kunyupoon495@gmail.com
@@ -19,9 +19,13 @@ Use before **any** Apple or Google submission:
 | 2 | `marcus@…` sees Inbox + Play content | Re-seed if empty (commands below) |
 | 3 | Apple **App Review Information** has demo creds + **Notes** (production paste) | App Store Connect |
 | 4 | Notes contain **no** “beta”, “TestFlight”, “closed beta”, or “founding member” | ASC + Play Console |
-| 5 | Production binary is **Build 12+** (Guideline 2.2 fixes) | `app.json` / EAS |
-| 6 | Delete account works (Profile → Settings → Legal) | Device smoke test |
-| 7 | Location is **When In Use** only (no background GPS) | Already fixed Build 7+ |
+| 5 | Production binary is **Build 14+** (Guideline 2.2 — populated demo + iPad) | `app.json` / EAS |
+| 6 | **Re-seed** with `./scripts/seed-store-review-demo.sh` same day as upload | Supabase linked |
+| 7 | Delete account works (Profile → Settings → Legal) | Device smoke test |
+| 8 | Location is **When In Use** only (no background GPS) | Already fixed Build 7+ |
+| 9 | Play → Discover shows **multiple sports** (not empty) for `marcus@…` | Device smoke test |
+| 10 | Inbox → Rallies / Games / Friends have threads | Device smoke test |
+| 11 | Profile → Display name is **Marcus** (not `.demo` email) | Device smoke test |
 
 ---
 
@@ -37,8 +41,9 @@ Use before **any** Apple or Google submission:
 
 **After login, reviewers should see:**
 
-- **Today** / **Play** — LA-area pickup games
-- **Inbox** — **Julian Fisher Park Regulars** Rally thread (if Monrovia seed applied)
+- **Today** — upcoming Rally game + map
+- **Play** — Basketball, Pickleball, and Badminton games nearby (open join)
+- **Inbox** — **Julian Fisher Park Regulars** Rally thread, game room chat, friend DM with @derek
 - **Profile → Settings → Legal** — terms, waiver, privacy, delete account
 - **Profile → Settings → Help** — send feedback (not “beta feedback”)
 
@@ -74,16 +79,19 @@ App Review notes live in **App Store Connect**, not in this repo.
 
 Left sidebar → **General** → **App Review** (red badge) → **Reply** in the message thread.
 
-Use when resubmitting Build 12 after Guideline 2.2:
+Use when resubmitting Build 14 after Guideline 2.2 (concept / empty app):
 
 ```text
-We addressed Guideline 2.2 in build 12:
+We addressed Guideline 2.2 in build 14:
 
-- Removed in-app beta-testing surfaces (sport captain applications, manual concierge matching).
-- Replaced limited-rollout copy on welcome, auth, onboarding, and Play empty states.
-- Updated App Review Information notes to describe the production app (no beta/TestFlight language).
+- Re-seeded the demo account with a complete experience: multiple upcoming public games across Basketball, Pickleball, and Badminton on Play; populated Inbox (Rally chat, game room, friend messages).
+- Fixed demo profile display name (no .demo email shown in UI).
+- Enabled native iPad layout (supportsTablet).
+- Build 12 already removed beta-testing surfaces (captain apply, concierge, beta copy).
 
 Demo account unchanged: marcus@rally-mvrhoops.demo / MonroviaHoops26!
+
+Suggested path: Log in → Play (browse games) → Inbox (Rally + game chat) → Profile → Settings → Delete account.
 
 Thank you for reviewing.
 ```
@@ -92,7 +100,7 @@ Thank you for reviewing.
 
 ### Copy-paste — App Review Information → Notes
 
-**Use this for every App Store resubmit (Build 12+).**
+**Use this for every App Store resubmit (Build 14+).**
 
 ```text
 Rally — pickup sports and recurring crews (Rallies) in Los Angeles.
@@ -107,12 +115,16 @@ AFTER LOGIN
   • Allow Location when prompted (When In Use — foreground only; no background tracking).
   • Optional: Notifications.
 
-SUGGESTED REVIEW PATH
+SUGGESTED REVIEW PATH (complete experience — not a demo)
   1. Log in with credentials above.
-  2. Inbox → open "Julian Fisher Park Regulars" (Rally chat) or a game thread.
-  3. Play → browse games → tap a card for game detail and roster.
-  4. Profile → Settings → Legal (terms, waiver, privacy).
-  5. Profile → Settings → Delete account (in-app account deletion — Guideline 5.1.1(v)).
+  2. Play → Basketball — open "Wednesday evening run" or similar; view roster and game detail.
+  3. Play → Pickleball / Badminton — additional open games listed.
+  4. Inbox → Rallies → "Julian Fisher Park Regulars" (crew chat + session card).
+  5. Inbox → Games → game room thread with messages.
+  6. Inbox → Friends → direct message with @derek.
+  7. Profile → Me — display name "Marcus" (not email).
+  8. Profile → Settings → Legal (terms, waiver, privacy).
+  9. Profile → Settings → Delete account (in-app account deletion — Guideline 5.1.1(v)).
 
 USER-GENERATED CONTENT
   • Users can chat in Rally and game threads.
@@ -209,16 +221,21 @@ Same password for Monrovia demo users (`MonroviaHoops26!`):
 
 ## Keep demo accounts working
 
-If reviewers report **Invalid email or password**, re-seed the linked Supabase project **same day as upload**:
+If reviewers report **Invalid email or password**, or empty Play/Inbox, re-seed the linked Supabase project **same day as upload**:
+
+```bash
+cd RallyApp
+./scripts/seed-store-review-demo.sh
+```
+
+Or manually:
 
 ```bash
 cd RallyApp
 
 SUPABASE_SERVICE_ROLE_KEY=... node scripts/seed-monrovia-basketball-rally-demo.mjs
 supabase db query --linked -f supabase/scripts/seed_monrovia_basketball_rally_demo.sql
-
-# Optional: extra Discover fixtures
-supabase db query --linked -f supabase/scripts/seed_beta_test_data.sql
+supabase db query --linked -f supabase/scripts/seed_store_review_demo.sql
 ```
 
 ### Invite landing pages (edge functions)

@@ -2,6 +2,39 @@
 
 ---
 
+## Build 13 — Jun 25, 2026 (Guideline 2.2 — concept / incomplete experience)
+
+**Submission ID:** `c5b8e615-5701-4cd5-a951-2d41b64805c1`  
+**Review device:** iPad Air 11-inch (M3)  
+**Version:** 1.0 (13)
+
+### What Apple said
+
+> Your app is designed to **demonstrate the app concept** to potential customers. … revise the app and metadata so that it is appropriate for public distribution and **provides users a complete experience**.
+
+Different sub-reason from Build 11 (beta-testing UI). Build 12 fixed captain/concierge/beta copy; Build 13 failed because the **demo account showed an empty/near-empty app** on review.
+
+### Root cause
+
+| Surface | Reviewer saw | Fix (Build 14) |
+|---------|--------------|----------------|
+| Play → Discover | Empty (no nearby games) | `seed_store_review_demo.sql` — 4 `nearby` games, 3 sports, different hosts |
+| Inbox | Empty filters | Rally chat + game room + friend DM seeded |
+| Profile | `marcus@rally-mvrhoops.demo` as display name | SQL nicknames + `profileDisplayName()` guard |
+| iPad | Scaled iPhone shell | `supportsTablet: true` |
+
+### Fix plan (Build 14)
+
+See [app-store-review-log.md](./app-store-review-log.md) and branch `fix/app-store-build-14`.
+
+```bash
+cd RallyApp
+./scripts/seed-store-review-demo.sh   # same day as upload
+eas build --profile production --platform ios
+```
+
+---
+
 ## Build 11 — Jun 24, 2026 (Guideline 2.2 — still beta-testing UI)
 
 **Submission ID:** `c5b8e615-5701-4cd5-a951-2d41b64805c1`  

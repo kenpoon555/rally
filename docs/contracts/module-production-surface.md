@@ -44,6 +44,8 @@ North-star: **No reviewer-visible “beta tester” funnel** — no Beta badges,
 - [ ] **Profile → Me**: no Sport captain “Apply” / concierge “match you manually” blocks (Build 11)
 - [ ] **Auth sport chips**: not a 2-sport wedge only (include full launch set)
 - [ ] **ASC App Review notes**: no “beta”, “TestFlight”, or “closed beta” in reviewer paste
+- [ ] **Demo seed**: Play Discover + Inbox populated for `marcus@…` (Build 14 — `seed_store_review_demo.sql`)
+- [ ] **Profile display name**: not raw `.demo` email
 
 ### Stability
 
