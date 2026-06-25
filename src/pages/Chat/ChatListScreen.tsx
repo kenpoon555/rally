@@ -305,6 +305,24 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         ? 'No Rally chats yet. Start a Rally from Today or save one from a game.'
         : 'No friend messages yet. Add friends from Profile.';
 
+  const emptyTitle =
+    filter === 'announcements'
+      ? 'No class chats yet'
+      : filter === 'games'
+      ? 'No game chats yet'
+      : filter === 'rallies'
+        ? 'No Rally chats yet'
+        : 'No friend messages yet';
+
+  const emptyIconName =
+    filter === 'announcements'
+      ? ('bullhorn-outline' as const)
+      : filter === 'games'
+      ? ('calendar-check-outline' as const)
+      : filter === 'rallies'
+        ? ('account-group-outline' as const)
+        : ('account-multiple-outline' as const);
+
   return (
     <View style={styles.container}>
       <ScreenHeader
@@ -369,7 +387,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           )}
           contentContainerStyle={announcements.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
-            <EmptyState icon="📣" title="Nothing here yet" message={emptyCopy} />
+            <EmptyState iconName={emptyIconName} title={emptyTitle} message={emptyCopy} />
           }
         />
       ) : loading && visibleItems.length === 0 ? (
@@ -386,8 +404,8 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
           contentContainerStyle={visibleItems.length === 0 ? styles.emptyList : undefined}
           ListEmptyComponent={
             <EmptyState
-                icon="💬"
-                title="Nothing here yet"
+                iconName={emptyIconName}
+                title={emptyTitle}
                 message={emptyCopy}
                 primaryAction={
                   filter !== 'friends'
@@ -586,7 +604,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   unreadBadgeText: {
-    color: colors.textInverse,
+    color: colors.onAccent,
     fontSize: 11,
     fontWeight: '700',
   },

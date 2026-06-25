@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { supabase } from '../services/api/supabase';
 import { navigateFromNotificationData } from '../navigation/navigationRef';
+import { gameEndMs } from '../utils/activityExpiry';
 
 /**
  * In-app alerts when a game you're in is finalized (Realtime — not push).
@@ -29,11 +30,17 @@ export function useGameLifecycleNotifications(userId: string | undefined): void 
             match_status?: string;
             user_id?: string;
             sport_type?: string;
+            start_time?: string;
+            duration?: number | null;
           };
           if (!row.id || row.match_status !== 'finalized') {
             return;
           }
           if (seenFinalizedRef.current.has(row.id)) {
+            return;
+          }
+          // Never alert for games that have already ended (stale/backfill/seed updates).
+          if (row.start_time && Date.now() >= gameEndMs({ start_time: row.start_time, duration: row.duration })) {
             return;
           }
 

@@ -172,6 +172,13 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 
 **Post-ship (2026-06-23):** [post-ship check](./2026-06-23-play-discover-ux-post-ship-check.md) — tier 3 personalization **Pass** on `dev`. B19 Recent + B12 title case in polish PR.
 
+## Visual tier 5 checklist (2026-06-24)
+
+- [ ] Sport strip idle ring neutral; selected ring `primary` only — [module-visual-design-system.md](./module-visual-design-system.md)
+- [ ] `+ Host` / Host CTA uses `onPrimary` on lime fill
+- [ ] Players segment: no duplicate header + section subcopy
+- [ ] Games empty card: single CTA; fold budget for rally teaser below
+
 ## Open issues
 
 | Date | Blocker | Owner |
