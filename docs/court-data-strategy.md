@@ -10,11 +10,29 @@ Last updated: 2026-05-31
 
 | Layer | What it does |
 |-------|----------------|
-| **Seed scripts** | Bootstrap LA beta (`scripts/seed-la-courts.mjs`; legacy `seed-bay-area-*` archived) |
+| **Seed scripts** | Bootstrap LA beta — 97 curated courts across 10 sports / 7 regions (Westside, South Bay, SGV, SFV, DTLA/Central, Eastside, Long Beach/SE). Court list is the single source of truth in `scripts/la-courts-data.mjs`; legacy `seed-bay-area-*` archived |
 | **Google Places add** | Host searches on Create Game → saved as `source='places'`, shared for everyone |
 | **Community reports** | Host/player taps **Report court issue** on Activity Details |
 | **Auto-hide** | 2 distinct **closed** reports → `is_active = false` (hidden from picker) |
 | **Nearby RPC** | `get_nearby_locations` returns only `is_active = true` courts |
+
+### Seeding LA courts
+
+```bash
+cd RallyApp
+
+# Edit / add courts in one place:
+#   scripts/la-courts-data.mjs   (name, sport_type, google_place_id, region, [lng, lat])
+
+# Option A — service role (inserts directly):
+node scripts/seed-la-courts.mjs            # needs SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+
+# Option B — SQL (no service role; runs on linked project):
+node scripts/gen-la-courts-sql.mjs         # regenerate supabase/scripts/seed_la_courts.sql
+supabase db query --linked -f supabase/scripts/seed_la_courts.sql
+```
+
+Both paths are idempotent (guarded by `google_place_id`) and use **static lat/lng — no Google Places calls, $0 to seed**. After editing the court list, always regenerate the SQL so the two stay in sync.
 
 Columns on `activity_locations`:
 
