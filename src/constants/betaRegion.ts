@@ -1,4 +1,4 @@
-/** Closed beta geography — Los Angeles metro. */
+/** Launch geography — Los Angeles metro. */
 export const BETA_REGION = {
   name: 'Los Angeles',
   /** Central LA — dev simulator fallback when GPS is unavailable. */

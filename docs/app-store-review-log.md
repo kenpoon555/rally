@@ -14,8 +14,9 @@
 
 | Build | Date | Guideline | Issue (short) | Status |
 |-------|------|-----------|---------------|--------|
-| **1.0 (14)** | — | **2.2** | Populated demo + iPad + display name (in progress) | **FIXING** — branch `fix/app-store-build-14` |
-| **1.0 (13)** | 2026-06-25 | **2.2** | "Demonstrates a concept / not a complete experience" — empty app for reviewer | Superseded by Build 14 plan |
+| **1.0 (15)** | 2026-06-26 | **2.2** | "Still includes features intended to support beta testing" — Profile → "Send feedback / **Report bugs**" routed to a `BetaFeedback` screen | **FIXING** — branch `fix/app-store-build-16` |
+| 1.0 (14) | 2026-06-25 | 2.2 | Populated demo + iPad + display name | Shipped (empty-app angle resolved); superseded by Build 15 |
+| 1.0 (13) | 2026-06-25 | 2.2 | "Demonstrates a concept / not a complete experience" — empty app for reviewer | Fixed in Build 14 |
 | 1.0 (11) | 2026-06-24 | 2.2 | Beta-testing UI (captain apply, concierge manual match, LA wedge, ASC notes) | Fixed in Build 12 (code on `dev`) |
 | 1.0 (9) | 2026-06-22 | 2.2 | Beta UI in production (literal "Beta" badges) | Fixed in Build 10 (#63) |
 | 1.0 (6) | 2026-06-17 | 2.5.4 | `UIBackgroundModes: location` with no background-GPS feature | Fixed Build 7 (Info.plist) |
@@ -26,7 +27,44 @@ Legend: **OPEN** = needs work before next submit · Fixed = shipped & not re-fla
 
 ---
 
-## 1.0 (13) — 2026-06-25 · Guideline 2.2 (concept / incomplete experience) · OPEN
+## 1.0 (15) — 2026-06-26 · Guideline 2.2 (beta-testing features) · FIXING (Build 16)
+
+**Submission ID:** `1767d049-b7a0-440e-883d-5d95d329c5e9`
+**Review device:** iPad Air 11-inch (M3) · **Version:** 1.0 (15)
+
+### What Apple said
+
+> Your app includes still features that are intended to support beta testing. Since you are submitting a production version of your app, features intended to support beta testing are not appropriate.
+
+This is the **beta-testing-UI** flavor of 2.2 again (like Build 9/11), **not** the empty-app angle (Build 13, fixed in 14). Build 14's data/iPad work landed and that reason did not recur.
+
+### Root cause (full scan, 2026-06-26)
+
+**Primary — a "Report bugs" feedback surface named `BetaFeedback`.**
+
+| Surface | What reviewer sees | Why it reads as beta |
+|---------|-------------------|----------------------|
+| **Profile → Settings → Help → "Send feedback"** | value text **"Report bugs or ideas"** | Routed to `ROUTES.FEEDBACK.BETA` → screen **`BetaFeedbackScreen`**; "report bugs" is a classic beta/QA affordance |
+| Feedback screen hint | "Share **bugs**, confusing moments, or ideas." | "bugs" wording reinforces beta bug-reporting |
+
+This was the **only** ungated, reviewer-visible beta-testing affordance left (Admin dashboard is `is_admin`-gated; demo accounts confirmed non-admin).
+
+### Fix (Build 16) — on `fix/app-store-build-16`
+- [x] Rename route `FEEDBACK.BETA → FEEDBACK.MAIN` (`'BetaFeedback' → 'Feedback'`); rename `BetaFeedbackScreen.tsx → FeedbackScreen.tsx` (component + param list).
+- [x] Profile row value "Report bugs or ideas" → **"Questions or ideas"**.
+- [x] `feedbackHint` drops "bugs" → neutral product-feedback wording.
+- [x] Reworded internal comments ("closed beta", "2-sport closed beta") so no "beta-test" phrasing remains in shipped source.
+- [x] `buildNumber` / `versionCode` → **16** (> reviewed 15).
+- [x] **Automated guard:** `__tests__/noBetaSurfaces.test.ts` scans `src/` for beta-test signals (`report a bug`, `beta feedback`, `TestFlight`, `closed beta`, `founding member`, `early access`, …) and fails `npm test` (→ CI gate) if any reappear.
+- [ ] EAS production build from `fix/app-store-build-16` → submit Build 16.
+- [ ] Reply in ASC rejection thread (template in [store-review-test-accounts.md](./store-review-test-accounts.md)).
+
+### Did we address Apple's previous question?
+**Yes.** Build 13's empty-app reason did not recur after Build 14. Build 15 is a separate, specific beta-feature flag — the `BetaFeedback`/"report bugs" surface — now removed, with a regression guard so it cannot ship again.
+
+---
+
+## 1.0 (13) — 2026-06-25 · Guideline 2.2 (concept / incomplete experience) · Fixed in Build 14
 
 **Submission ID:** `c5b8e615-5701-4cd5-a951-2d41b64805c1`
 **Review device:** iPad Air 11-inch (M3) · **Version:** 1.0 (13)
