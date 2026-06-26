@@ -1464,9 +1464,9 @@ const ProfileScreen: React.FC = () => {
         <Text style={styles.groupLabel}>Help</Text>
         <ProfileSettingsRow
           label="Send feedback"
-          value="Report bugs or ideas"
+          value="Questions or ideas"
           onPress={() =>
-            navigation.navigate(ROUTES.FEEDBACK.BETA as never, { screen: 'Profile' } as never)
+            navigation.navigate(ROUTES.FEEDBACK.MAIN as never, { screen: 'Profile' } as never)
           }
         />
       </View>

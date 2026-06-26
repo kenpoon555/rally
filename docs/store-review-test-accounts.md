@@ -19,7 +19,7 @@ Use before **any** Apple or Google submission:
 | 2 | `marcus@…` sees Inbox + Play content | Re-seed if empty (commands below) |
 | 3 | Apple **App Review Information** has demo creds + **Notes** (production paste) | App Store Connect |
 | 4 | Notes contain **no** “beta”, “TestFlight”, “closed beta”, or “founding member” | ASC + Play Console |
-| 5 | Production binary is **Build 14+** (Guideline 2.2 — populated demo + iPad) | `app.json` / EAS |
+| 5 | Production binary is **Build 16+** (Guideline 2.2 — populated demo + iPad + no beta-feedback surface) | `app.json` / EAS |
 | 6 | **Re-seed** with `./scripts/seed-store-review-demo.sh` same day as upload | Supabase linked |
 | 7 | Delete account works (Profile → Settings → Legal) | Device smoke test |
 | 8 | Location is **When In Use** only (no background GPS) | Already fixed Build 7+ |
@@ -79,7 +79,23 @@ App Review notes live in **App Store Connect**, not in this repo.
 
 Left sidebar → **General** → **App Review** (red badge) → **Reply** in the message thread.
 
-Use when resubmitting Build 14 after Guideline 2.2 (concept / empty app):
+Use when resubmitting **Build 16** after Guideline 2.2 (beta-testing features — Submission ID `1767d049-b7a0-440e-883d-5d95d329c5e9`):
+
+```text
+Thank you for the detail. We removed the remaining beta-testing feature in build 16:
+
+- The Profile > Settings "Send feedback" item previously offered "Report bugs or ideas" and opened an internal bug-reporting screen. We removed the bug-reporting framing entirely. It is now a standard product feedback/support form ("Questions or ideas") with no beta, bug-report, or tester language anywhere in the app.
+- We also added an automated check to our build pipeline that blocks any beta-testing wording (e.g. "report a bug", "beta", "TestFlight", "early access") from shipping in a production release.
+
+This is a fully public, production release. There is no TestFlight gating, invite code, beta badge, or tester recruitment in the app.
+
+Demo account unchanged: marcus@rally-mvrhoops.demo / MonroviaHoops26!
+Suggested path: Log in → Play (browse games) → Inbox (Rally + game chat) → Profile → Settings.
+
+Please let us know if any specific surface still reads as beta-testing and we will address it immediately.
+```
+
+<details><summary>Previous reply (Build 14 — concept / empty app)</summary>
 
 ```text
 We addressed Guideline 2.2 in build 14:
@@ -95,6 +111,7 @@ Suggested path: Log in → Play (browse games) → Inbox (Rally + game chat) →
 
 Thank you for reviewing.
 ```
+</details>
 
 ---
 

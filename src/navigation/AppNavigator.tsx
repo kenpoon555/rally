@@ -28,7 +28,7 @@ import ChatListScreen from '../pages/Chat/ChatListScreen';
 import ChatThreadScreen from '../pages/Chat/ChatThreadScreen';
 import MyGamesScreen from '../pages/Games/MyGamesScreen';
 import AdminScreen from '../pages/Admin/AdminScreen';
-import BetaFeedbackScreen from '../pages/Feedback/BetaFeedbackScreen';
+import FeedbackScreen from '../pages/Feedback/FeedbackScreen';
 import MiniTournamentScreen from '../pages/Tournament/MiniTournamentScreen';
 import RegularsCrewScreen from '../pages/Regulars/RegularsCrewScreen';
 import SportLandingScreen from '../pages/Landing/SportLandingScreen';
@@ -166,8 +166,8 @@ const MainStack = () => (
     />
     <Stack.Screen name={ROUTES.ADMIN.MAIN} component={AdminScreen} options={{ title: 'Admin' }} />
     <Stack.Screen
-      name={ROUTES.FEEDBACK.BETA}
-      component={BetaFeedbackScreen}
+      name={ROUTES.FEEDBACK.MAIN}
+      component={FeedbackScreen}
       options={{ title: 'Send feedback' }}
     />
     <Stack.Screen
