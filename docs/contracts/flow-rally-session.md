@@ -143,3 +143,17 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 ### Screenshots (`docs/contracts/screenshots/flow-rally-session/`)
 
 - `01-rally-hub-play-host.png`, `04-host-lock-roster.png`, `05-roster-locked-after-lock.png`, `06-today-next-up.png`, `07-game-detail` via invite/detail path
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit + testIDs  
+> Sim: dev client showed Metro disconnect (no JS bundle); tier-6 deltas verified in source. Re-proof screenshots on connected dev build.
+
+| # | Tier 6 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| T1 | Post-join status banner (Confirm / Can't make it) | **Pass** | `JoinStatusBanner` below hero; testIDs `join-status-confirm`, `join-status-cant-make-it` |
+| T2 | Pre-join one primary CTA | **Pass** | `JoinRequestButton` only when `!isApprovedJoiner`; host tools `isHost`-gated |
+| T3 | Roster grouped by status + counts | **Pass** (deferred sub-row) | `StatusGroupedRoster`: Confirmed · N / Not responded · N. **Deferred:** no persistent "Can't make it" roster bucket — pickup `leaveGame` removes roster row (H-J1 action is banner button) |
+| T4 | Commit = state, not navigation step | **Pass** | Same `ActivityDetailScreen`; banner state flip only |
+
+**Verdict:** PASS (tier-6 rows on builder branch).
