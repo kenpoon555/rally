@@ -1122,6 +1122,23 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         onCostNoteBlur={() => void handleSaveCostNote()}
       />
 
+      {!isHost && isApprovedJoiner && !isFinalized && !activity.regular_group_id && !fromGameRoom ? (
+        <JoinStatusBanner
+          state={iAmReady ? 'confirmed' : 'joined'}
+          whenLabel={activity.start_time ? formatActivityTime(activity.start_time, activity.duration) : null}
+          onConfirm={handleSetReady}
+          onCantMakeIt={handleLeaveGame}
+          busy={settingReady || leaving}
+        />
+      ) : null}
+
+      {(isHost || isApprovedJoiner) && !activity.regular_group_id && !fromGameRoom ? (
+        <View style={styles.rosterPanel}>
+          <Text style={styles.sectionTitle}>Roster</Text>
+          <StatusGroupedRoster activity={activity} />
+        </View>
+      ) : null}
+
       {showHostToolsPanel ? (
         <View style={gameCardPanelStyles.panel}>
           <Text style={gameCardPanelStyles.panelTitle}>
@@ -1316,35 +1333,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <JoinRequestButton activity={activity} onRequestSent={refetch} />
         </View>
       )}
-
-      {!isHost && isApprovedJoiner && !isFinalized && activity.regular_group_id ? (
-        <Text style={styles.gameRoomHint}>
-          Chat lives on the Rally Chat tab. Tap I'm in on Play when you can make it.
-        </Text>
-      ) : null}
-
-      {!isHost && isApprovedJoiner && !isFinalized && !activity.regular_group_id && showChat ? (
-        <Text style={styles.gameRoomHint}>
-          Open Game Room to tap I'm in, chat with players, or leave this game.
-        </Text>
-      ) : null}
-
-      {!isHost && isApprovedJoiner && !isFinalized && !showChat ? (
-        <JoinStatusBanner
-          state={iAmReady ? 'confirmed' : 'joined'}
-          whenLabel={activity.start_time ? formatActivityTime(activity.start_time, activity.duration) : null}
-          onConfirm={handleSetReady}
-          onCantMakeIt={handleLeaveGame}
-          busy={settingReady || leaving}
-        />
-      ) : null}
-
-      {(isHost || isApprovedJoiner) && !activity.regular_group_id ? (
-        <View style={styles.rosterPanel}>
-          <Text style={styles.sectionTitle}>Roster</Text>
-          <StatusGroupedRoster activity={activity} />
-        </View>
-      ) : null}
 
       {isApprovedJoiner && !isHost && isFinalized && (
         <Text style={styles.inGameText}>{PRODUCT_COPY.afterLockCantLeave}</Text>

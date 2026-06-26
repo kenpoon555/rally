@@ -41,7 +41,7 @@ export type GameListViewerState = 'joined' | 'confirmed' | 'hosting' | 'waitlist
 const VIEWER_STATE_LABEL: Record<GameListViewerState, string> = {
   joined: "You're in",
   confirmed: 'Confirmed',
-  hosting: 'Hosting',
+  hosting: 'Hosted by you',
   waitlist: 'Waitlisted',
 };
 
