@@ -227,7 +227,7 @@ export const LAUNCH_SPORT_TYPES = SPORT_TYPES.filter(
   (s) => SPORT_METADATA[s].launchEnabled
 );
 
-/** Auth marketing chips — full LA wedge (not a 2-sport closed beta). */
+/** Auth marketing chips — full multi-sport LA lineup. */
 export const AUTH_SURFACE_SPORT_TYPES: SportType[] = [
   SportType.BADMINTON,
   SportType.PICKLEBALL,
