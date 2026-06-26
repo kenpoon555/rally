@@ -44,6 +44,8 @@ import {
 } from '../../services/miniTournamentService';
 import { MiniTournament } from '../../types/miniTournament';
 import { GameCardDetailHero } from '../../components/game/GameCardDetailHero';
+import { JoinStatusBanner } from '../../components/game/JoinStatusBanner';
+import { StatusGroupedRoster } from '../../components/game/StatusGroupedRoster';
 import { detailPresetForActivity, shareModeForViewer } from '../../config/gameCardLayouts';
 import { shareGameInvite } from '../../services/inviteLinkService';
 import { RegularGroup } from '../../types/regularGroup';
@@ -874,13 +876,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     void applyReady(true);
   };
 
-  const handleUndoReady = () => {
-    if (!activity || !iAmReady) {
-      return;
-    }
-    void applyReady(false);
-  };
-
   const handleLeaveGame = () => {
     if (!activity || isHost || isFinalized) {
       return;
@@ -1335,43 +1330,19 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       ) : null}
 
       {!isHost && isApprovedJoiner && !isFinalized && !showChat ? (
-        <View style={styles.ctaRow}>
-          {iAmReady ? (
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                styles.ctaRowButton,
-                settingReady && styles.utilityButtonDisabled,
-              ]}
-              onPress={handleUndoReady}
-              disabled={settingReady}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {settingReady ? 'Saving...' : PRODUCT_COPY.undoImIn}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                styles.ctaRowButton,
-                settingReady && styles.utilityButtonDisabled,
-              ]}
-              onPress={handleSetReady}
-              disabled={settingReady}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {settingReady ? 'Saving...' : PRODUCT_COPY.imIn}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.leaveButton, styles.ctaRowButton, leaving && styles.utilityButtonDisabled]}
-            onPress={handleLeaveGame}
-            disabled={leaving}
-          >
-            <Text style={styles.leaveButtonText}>{leaving ? 'Leaving...' : 'Leave game'}</Text>
-          </TouchableOpacity>
+        <JoinStatusBanner
+          state={iAmReady ? 'confirmed' : 'joined'}
+          whenLabel={activity.start_time ? formatActivityTime(activity.start_time, activity.duration) : null}
+          onConfirm={handleSetReady}
+          onCantMakeIt={handleLeaveGame}
+          busy={settingReady || leaving}
+        />
+      ) : null}
+
+      {(isHost || isApprovedJoiner) && !activity.regular_group_id ? (
+        <View style={styles.rosterPanel}>
+          <Text style={styles.sectionTitle}>Roster</Text>
+          <StatusGroupedRoster activity={activity} />
         </View>
       ) : null}
 
@@ -1885,6 +1856,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  rosterPanel: {
+    marginTop: 6,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
 });
 

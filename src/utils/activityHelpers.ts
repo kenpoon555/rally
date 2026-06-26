@@ -646,6 +646,33 @@ export function getActivityTotalSpots(
   return (activity.player_count ?? 1) + getActivityOpenSpots(activity);
 }
 
+/**
+ * Viewer's personal relationship to a game, for the discover card chip (taste-tier6 J4).
+ * hosting → confirmed (ready) → joined (approved) → waitlist. Null when unrelated.
+ */
+export function getViewerGameState(
+  activity: Activity,
+  userId?: string
+): 'hosting' | 'confirmed' | 'joined' | 'waitlist' | null {
+  if (!userId) {
+    return null;
+  }
+  if (activity.user_id === userId) {
+    return 'hosting';
+  }
+  const mine = (activity.join_requests || []).find((jr) => jr.user_id === userId);
+  if (!mine) {
+    return null;
+  }
+  if (mine.status === 'waitlisted') {
+    return 'waitlist';
+  }
+  if (mine.status === 'approved') {
+    return activity.match_status === 'finalized' || mine.ready_at ? 'confirmed' : 'joined';
+  }
+  return null;
+}
+
 /** Nearest games first; activities without coordinates sort to the end. */
 export const sortActivitiesByDistance = (
   activities: Activity[],
