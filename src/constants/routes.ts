@@ -43,7 +43,7 @@ export const ROUTES = {
     MAIN: 'Admin',
   },
   FEEDBACK: {
-    BETA: 'BetaFeedback',
+    MAIN: 'Feedback',
   },
   LANDING: {
     SPORT: 'SportLanding',
