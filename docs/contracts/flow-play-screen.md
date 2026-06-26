@@ -87,6 +87,14 @@ Full role rules: [module-role-surfaces.md](./module-role-surfaces.md). Validator
 - [ ] **Attended sports:** `@kunyu`-style account — strip reflects played sports, not forced global PB/BB head when attendance differs
 - [ ] **Empty-state hero icon:** glyph centered; no misaligned square tile behind icon ([module-sport-icon.md](./module-sport-icon.md) `discoverEmptyState`)
 
+### Tier 6 — Join Loop authoring (taste-tier6 · 2026-06-26)
+
+- [ ] **Personal-state chip** on discover row when viewer is enrolled ("You're in", "Hosted by you", "On waitlist")
+- [ ] **Urgency hook** one-liner per card (spots + time-to-start + distance) — scannable without opening detail
+- [ ] Join-loop entry: **Games** segment is default; personal chip visible on Today NEXT UP when confirm pending
+
+**Product review:** [taste-tier6 synthesis](../product-review/consolidated/2026-06-26-taste-tier6-synthesis.md)
+
 ## Play → Classes (deferred — separate contract)
 
 Third segment **Games | Players | Classes** is specified in [module-coach-parent-navigation.md](./module-coach-parent-navigation.md). Hidden behind feature flag until v1.1. **Not part of GTM 1 baseline validation.**

@@ -92,10 +92,19 @@ Ship-quality Rally surfaces share one visual language: readable hierarchy, consi
 | H2 | Inbox filter layout at 393pt | A) Scrollable chips B) 3 + More C) Shorten “Classes” label |
 | H3 | Map on list cards | A) Detail-only “Open in Maps” B) 48×48 thumbnail on list rows |
 
+## Theming (exploration gate)
+
+The app ships one palette (`constants/theme.ts` "Neon"). Theme exploration is run by the `theme-reviewer` persona per [theme-exploration-plan.md](../redesign/theme-exploration-plan.md). **This contract is the accessibility gate:** before any proposed palette is implemented as a real theme variant, the validator must confirm it against the **Required tokens** above —
+
+- [ ] Body/secondary text passes WCAG AA contrast on `background` and `surface`.
+- [ ] Every fill uses the palette's `onPrimary` / `onAccent` (no white label on light lime/yellow).
+- [ ] Status colors (`success`/`warning`/`error`/`info`) stay legible on the theme's surfaces.
+- [ ] Theme rounds change **palette only** — no spacing/type/structure changes.
+
 ## Out of scope
 
 - New features or navigation changes
-- Dark mode (light mode bar only this cycle)
+- Dark mode shipping (Theme C "Night Court" is an *exploration* render, not a shipped dark mode this cycle)
 - iPad layouts
 
 ## Open issues

@@ -44,6 +44,14 @@ North-star: **Approved joiner opens game chat → confirms I'm in → host locks
 - [ ] Game card link opens Activity detail
 - [ ] Exit row matches host vs member vs finalized rules
 
+### Tier 6 — Join Loop authoring (taste-tier6 · 2026-06-26)
+
+- [ ] **Player viewport:** status-grouped roster + sticky **Message** — no lock/nudge/need-players/tournament CTAs
+- [ ] **Host viewport:** existing ops (lock, nudge, join requests) — unchanged or moved to overflow sheet
+- [ ] Tournaments / need-players **out of join loop v1** player path (H-J2 default A)
+
+**Product review:** [taste-tier6 synthesis](../product-review/consolidated/2026-06-26-taste-tier6-synthesis.md)
+
 ## Screenshots required
 
 Save to `docs/contracts/screenshots/flow-game-room/`:

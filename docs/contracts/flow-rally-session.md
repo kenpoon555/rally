@@ -74,6 +74,15 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 - [ ] Host manage row (Time / Court / Link / Friends) when host tools apply
 - [ ] No hooks-after-early-return crash on load
 
+### Tier 6 — Join Loop authoring (taste-tier6 · 2026-06-26)
+
+- [ ] **Post-join status banner** at top: "You're in — {time}" with primary **Confirm** and secondary **Can't make it** (coaching vocabulary)
+- [ ] Pre-join: **one** full-width primary CTA (Join / I'm in); host tools + reviews + tournaments below fold or in overflow
+- [ ] **Roster grouped by status** (Confirmed / Not responded / Can't make) with section counts — same labels as class roster
+- [ ] "Commit" is a **state** on this screen, not a separate navigation step
+
+**Product review:** [taste-tier6 synthesis](../product-review/consolidated/2026-06-26-taste-tier6-synthesis.md) · H-J1 default A (Confirm / Can't make)
+
 ### Android keyboard (if testing Android)
 - [ ] Rally chat composer not covered by keyboard (`KeyboardSafeView` on RegularsCrew)
 - [ ] Activity detail cost/session note fields visible above keyboard on blur/focus

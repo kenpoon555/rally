@@ -52,6 +52,14 @@ North-star: **Host opens past session → marks attendance → reliability updat
 - [ ] Non-host blocked with clear message if they reach attendance route
 - [ ] Network/RPC failure shows retry — no silent fail
 
+### Tier 6 — Join Loop authoring (taste-tier6 · 2026-06-26)
+
+- [ ] **Host path unchanged:** attendance form + recap prompt after locked past session
+- [ ] **Player path:** after game ends, lightweight screen with **Find next game** CTA (deep link Play or Today) — not host attendance toggles
+- [ ] Player exit supports **rejoin-within-14d** north-star (next game suggestion when available)
+
+**Product review:** [taste-tier6 synthesis](../product-review/consolidated/2026-06-26-taste-tier6-synthesis.md) · H-J3 default A
+
 ## Screenshots required
 
 `docs/contracts/screenshots/flow-post-game-attendance/`
