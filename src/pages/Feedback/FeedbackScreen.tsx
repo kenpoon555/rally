@@ -7,12 +7,12 @@ import { Button, KeyboardSafeView, keyboardAwareScrollProps } from '../../compon
 import { colors, spacing, typography } from '../../constants/theme';
 
 type MainStackParamList = {
-  BetaFeedback: { screen?: string; activityId?: string } | undefined;
+  Feedback: { screen?: string; activityId?: string } | undefined;
 };
 
-type Props = NativeStackScreenProps<MainStackParamList, 'BetaFeedback'>;
+type Props = NativeStackScreenProps<MainStackParamList, 'Feedback'>;
 
-const BetaFeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
+const FeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -24,7 +24,7 @@ const BetaFeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     setSending(true);
     try {
-      await submitProductFeedback(trimmed, route.params?.screen ?? 'BetaFeedback', route.params?.activityId);
+      await submitProductFeedback(trimmed, route.params?.screen ?? 'Feedback', route.params?.activityId);
       Alert.alert(PRODUCT_COPY.feedbackThanks, undefined, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
@@ -100,4 +100,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default BetaFeedbackScreen;
+export default FeedbackScreen;

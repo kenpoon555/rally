@@ -148,7 +148,7 @@ export const PRODUCT_COPY = {
   nextHostBadge: 'Next host',
   feedbackTitle: 'Send feedback',
   feedbackHint:
-    'Share bugs, confusing moments, or ideas. We read every message.',
+    "Tell us what's working, what's confusing, or what to build next. We read every message.",
   feedbackPlaceholder: 'What worked? What confused you? What should we build next?',
   feedbackThanks: 'Thanks — we read every note.',
   feedbackSubmit: 'Send feedback',
