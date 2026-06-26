@@ -118,6 +118,27 @@ Pick **one persona per Agent session** (or one human reviewer). Run consolidator
 
 ---
 
+## Persona catalog B2 — student / class response (2)
+
+**Focus:** The **student/parent Next Class** experience — respond to the upcoming session and reach the coach. Built on existing data (`response_status: confirmed | cant_make_it | not_responded`); the surface (`components/coachParent/TodayMyClassesCard.tsx`) currently only *shows* status with no action.
+**Contract:** [flow-class-session-response.md](../contracts/flow-class-session-response.md)
+
+| persona-id | Role | Level | One-line goal |
+|------------|------|-------|---------------|
+| `student-cant-make-next-class` | Student / parent-managed | R3 · R5 | "I can't go to the next class — tell the coach in ≤2 taps and see my status flip to *Can't make it*." |
+| `student-message-coach` | Student / parent | R3 · R5 | "I have a question before the session — message the coach from the class card without hunting through chat." |
+
+### Account hints (catalog B2)
+
+| persona-id | Suggested login | Setup |
+|------------|-----------------|-------|
+| `student-cant-make-next-class` | `marcus@rally-mvrhoops.demo` (parent w/ enrollment) | Upcoming session in next 48h; start status `not_responded` |
+| `student-message-coach` | parent w/ child enrollment | Coach = Marcus or approved coach; existing class chat thread |
+
+**Bar:** respond action is **≤2 taps** from Today/Next Class, status reflects immediately, and "Message coach" lands in the correct class thread (not a generic DM). Coach sees the response in their roster groups ([ClassDetailScreen](../../src/pages/CoachParent/ClassDetailScreen.tsx)).
+
+---
+
 ## Persona catalog E — cross-surface picky (tier 4 · 8)
 
 **Focus:** Behavioral depth across tabs — not one hotspot. High bar: weird paths, empty states, wrong-surface leaks.  
@@ -170,6 +191,70 @@ Pick **one persona per Agent session** (or one human reviewer). Run consolidator
 ### Account hints (catalog F)
 
 Use `@kunyu` or marcus; capture **light mode** screenshots at 390×844 unless testing iPad. Tag FAILs with frame name + element (e.g. `inbox-filter-chip-padding`).
+
+---
+
+## Persona catalog G — taste / authoring (tier 6 · 8 taste personas)
+
+**Focus:** Not "is it usable" or "is it pretty" — **"is it the *right* thing, and does it delight?"** Tier 6 runs **per screen**, one core loop at a time. These are **8 taste personas (lenses)**, not user types: run **≥3 per screen** (recommended set below), or the **full 8** on a hero screen, then consolidate per loop.
+**Bar:** [TIER-MODEL.md](./TIER-MODEL.md) tier 6 rubric (KEEP / CHANGE / CUT). At least one CHANGE/CUT per screen expected.
+**Output:** per-screen verdict + single highest-leverage authoring change → [core-loop-redesign-spec.md](../redesign/core-loop-redesign-spec.md). **Not** a builder bug list.
+**When:** standalone *before* authoring a redesign (highest leverage), or after tier 5 craft pass.
+
+| persona-id | Lens | The one question it asks | Licensed to |
+|------------|------|--------------------------|-------------|
+| `taste-want-it` | Desire | "Would I personally choose to open this screen?" | Flag joyless-but-correct screens |
+| `taste-one-job` | Focus | "What is the ONE job? What competes with the primary action?" | **Cut** secondary actions |
+| `taste-first-3s` | First impression | "Calm/confident/delightful — or busy/anxious/generic in 3s?" | Demand a clear emotional read |
+| `taste-best-in-class` | Benchmark | "Vs the best app doing *this job*, where do we lose?" | Name a concrete competitor gap |
+| `taste-one-joy` | Delight | "Where is the single moment of joy? If none, invent one." | **Add** one delight detail |
+| `taste-scope-skeptic` | Scope | "Should this screen exist? Merge/defer/delete?" | **Cut / merge** whole screens |
+| `taste-authored` | Coherence | "Authored by one hand, or assembled from features?" | Flag inconsistency across the loop |
+| `taste-momentum` | Pull-through | "Does this screen *pull* me to the next step in the loop — or dead-end me?" | **Add** the next-step hook; flag dead-ends |
+
+### Core-loop screens to run Tier 6 on (Join Loop — do these first)
+
+| # | Screen | File | Recommended lenses |
+|---|--------|------|--------------------|
+| 1 | Discover feed | Play tab · `components/game/GameListCard.tsx` | want-it, one-job, first-3s |
+| 2 | Game detail | `pages/Activity/ActivityDetailScreen.tsx` | one-job, scope-skeptic, best-in-class |
+| 3 | Commit / RSVP state | `ActivityDetailScreen` (post-join) | one-job, one-joy, authored |
+| 4 | Game room + roster | `components/GameRoomActionBar.tsx` | one-job, authored, best-in-class |
+| 5 | Post-game → next | `pages/Activity/PostGameAttendanceScreen.tsx` | one-joy, scope-skeptic, want-it |
+
+### Account hints (catalog G)
+
+Use `marcus@rally-mvrhoops.demo` (re-seeded) for populated loop state; `@kunyu` for personal-state variants. Capture the frame, then write the **authoring verdict**, not a bug — e.g. "CUT the secondary 'Share' CTA; it competes with Join" or "CHANGE roster to status groups (port from `ClassDetailScreen`)."
+
+### One-line Agent prompt (Tier 6)
+
+```
+Tier 6 taste review: lens {lens-id} on screen {screen} per docs/product-review/personas.md catalog G + TIER-MODEL.md tier 6 rubric.
+iOS sim, marcus@rally-mvrhoops.demo. Screenshot the frame. Output KEEP/CHANGE/CUT + the single highest-leverage authoring change. Feed docs/redesign/core-loop-redesign-spec.md. No code, no Validator, no bug list.
+```
+
+---
+
+## Persona catalog H — theme reviewer (1, generative)
+
+**Focus:** The app has **one** palette today (`constants/theme.ts` "Neon" lime/yellow). This persona **pitches alternate themes** and produces side-by-side themed renders so the founder + validator can pick a direction — without committing code first.
+**Process & themes:** [theme-exploration-plan.md](../redesign/theme-exploration-plan.md)
+
+| persona-id | Role | One-line goal | Output |
+|------------|------|---------------|--------|
+| `theme-reviewer` | Art director | "Pitch 2–3 coherent themes for Rally and show every Join-Loop screen in each, so we can feel the difference." | A themed-screenshot matrix (baseline + each theme × each screen) + a one-paragraph rationale per theme |
+
+**How it runs (per [theme-exploration-plan.md](../redesign/theme-exploration-plan.md)):**
+1. **Baseline capture** — screenshot the current Join-Loop screens on the iOS sim (the 5 in catalog G).
+2. **Pitch** — propose 2–3 named palettes as full token sets (e.g. *Court Neon* = current, *Night Court* = dark, *Clean Sport* = blue-on-white like the reference mockup).
+3. **Render** — produce one themed image **per screen × per theme** (generated mockups for the fast founder look).
+4. **Validate** — the **validator** confirms each proposed palette passes contrast/`onPrimary`/`onAccent` rules in [module-visual-design-system.md](../contracts/module-visual-design-system.md) before any palette is implemented as a real theme variant.
+
+### One-line Agent prompt (theme reviewer)
+
+```
+Theme review: per docs/redesign/theme-exploration-plan.md, screenshot the 5 Join-Loop screens (catalog G) on iOS sim (marcus@rally-mvrhoops.demo). Then render each screen under each proposed theme. Output the themed matrix + per-theme rationale. Validator checks contrast vs module-visual-design-system before any palette ships.
+```
 
 ---
 
@@ -286,6 +371,7 @@ Used by [review-queues.json](./review-queues.json) and [PRODUCT-REVIEW-LOOP.md](
 | **3 — Expert** | `round3-*` | 4 | **One** deep area (strip MRU, coach org gaps) — not full app |
 | **4 — Cross-surface** | `tier4-round1` | **8** | Every major component; weird users; behavioral depth |
 | **5 — Visual** | `tier5-round1` | **8** | Design / beauty / hierarchy — designer bar |
+| **6 — Taste** | `tier6-<loop>` | **3 lenses / screen** | "Right thing + delight?" — licensed to cut/merge/redo; authoring not bugs |
 
 Start tier 2 only after tier 1 consolidator + Builder/Validator pass on P0 items. Tier 4 chains after feature loops close or runs parallel (docs-only).
 

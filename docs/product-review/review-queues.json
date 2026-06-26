@@ -223,5 +223,61 @@
     "contract_focus": [
       "module-visual-design-system"
     ]
+  },
+  "class-response-round1": {
+    "description": "Tier 1 — 2 student personas: respond to next class (Can't make it / Message coach)",
+    "tier": 1,
+    "personas": [
+      "student-cant-make-next-class",
+      "student-message-coach"
+    ],
+    "min_reviews_before_consolidate": 2,
+    "consolidator_tag": "class-response",
+    "validation_queue": "class-response",
+    "contract_focus": [
+      "flow-class-session-response",
+      "module-coach-parent-navigation"
+    ]
+  },
+  "taste-tier6-join-loop": {
+    "description": "Tier 6 — 8 taste personas across the 5 Join-Loop screens; authoring verdicts (KEEP/CHANGE/CUT), not bugs",
+    "tier": 6,
+    "personas": [
+      "taste-want-it",
+      "taste-one-job",
+      "taste-first-3s",
+      "taste-best-in-class",
+      "taste-one-joy",
+      "taste-scope-skeptic",
+      "taste-authored",
+      "taste-momentum"
+    ],
+    "min_reviews_before_consolidate": 8,
+    "consolidator_tag": "taste-tier6",
+    "validation_queue": "taste-tier6",
+    "screens": [
+      "components/game/GameListCard.tsx",
+      "pages/Activity/ActivityDetailScreen.tsx",
+      "pages/Activity/ActivityDetailScreen.tsx#commit",
+      "components/GameRoomActionBar.tsx",
+      "pages/Activity/PostGameAttendanceScreen.tsx"
+    ],
+    "contract_focus": [
+      "core-loop-redesign-spec"
+    ]
+  },
+  "theme-explore-round1": {
+    "description": "Theme reviewer — pitch 2-3 palettes, render Join-Loop screens per theme; validator gates contrast before any palette ships",
+    "tier": 6,
+    "generative": true,
+    "personas": [
+      "theme-reviewer"
+    ],
+    "min_reviews_before_consolidate": 1,
+    "consolidator_tag": "theme-explore",
+    "validation_queue": "theme-explore",
+    "contract_focus": [
+      "module-visual-design-system"
+    ]
   }
 }
