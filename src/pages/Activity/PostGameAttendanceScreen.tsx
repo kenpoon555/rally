@@ -16,6 +16,8 @@ import { getGameRecap, shareGameRecap } from '../../services/gameRecapService';
 import { Button, ScreenHeader } from '../../components/ui';
 import { colors, spacing, typography } from '../../constants/theme';
 import { formatActivityTime, getApprovedParticipants } from '../../utils/activityHelpers';
+import { PRODUCT_COPY } from '../../constants/productCopy';
+import { ROUTES } from '../../constants/routes';
 
 export type PostGameAttendanceParams = {
   PostGameAttendance: { activityId: string };
@@ -96,10 +98,30 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     );
   }
 
-  if (!activity || !isHost) {
+  if (!activity) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.error}>Only the host can submit attendance.</Text>
+        <Text style={styles.error}>This game is no longer available.</Text>
+      </View>
+    );
+  }
+
+  // Players don't record attendance — close the loop by pulling them to the next game (J6).
+  if (!isHost) {
+    return (
+      <View style={styles.container}>
+        <ScreenHeader
+          title={PRODUCT_COPY.postGamePlayerTitle}
+          subtitle={formatActivityTime(activity.start_time, activity.duration)}
+        />
+        <ScrollView contentContainerStyle={styles.playerScroll}>
+          <Text style={styles.playerBody}>{PRODUCT_COPY.postGamePlayerBody}</Text>
+          <Button
+            title={PRODUCT_COPY.findNextGame}
+            onPress={() => navigation.navigate(ROUTES.HOME.MAIN as never)}
+            style={styles.submit}
+          />
+        </ScrollView>
       </View>
     );
   }
@@ -152,6 +174,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
   scroll: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  playerScroll: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.md },
+  playerBody: { ...typography.body, color: colors.textSecondary },
   hint: { ...typography.caption, color: colors.textSecondary, marginBottom: spacing.lg },
   hostRow: {
     flexDirection: 'row',

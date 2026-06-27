@@ -71,3 +71,15 @@ Save to `docs/contracts/screenshots/flow-game-room/`:
 | Date | Blocker | Owner |
 |------|---------|-------|
 | — | Not validated yet | — |
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit
+
+| # | Tier 6 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| T1 | Player viewport: grouped roster + Message | **Pass** | `StatusGroupedRoster` in player footer; chat composer = Message surface (game room is chat thread) |
+| T2 | Host viewport unchanged | **Pass** | Lock/nudge/join requests remain `isHost`-gated |
+| T3 | Tournaments/need-players out of player path | **Pass** | Host-only `showPostNeedPlayers` / `showFillIns`; not rendered for `showPlayerActions` |
+
+**Verdict:** PASS (tier-6 rows).

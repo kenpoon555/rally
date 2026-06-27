@@ -68,6 +68,7 @@ import { getRegularGroupById } from '../services/regularGroupService';
 import { setFocusedGameRoomActivityId } from '../utils/gameRoomFocus';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
 import { PlayerTrustLine } from './PlayerTrustLine';
+import { StatusGroupedRoster } from './game/StatusGroupedRoster';
 import { SessionRotationPanel } from './SessionRotationPanel';
 import { SportIconForSurface } from './SportIconForSurface';
 import { sportSupportsRotation } from '../constants/sports';
@@ -1716,6 +1717,19 @@ export const GameRoomFooter: React.FC = () => {
         </View>
       ) : null}
 
+      {showPlayerActions && !isCrewGame ? (
+        <View style={styles.playerRosterBlock}>
+          <StatusGroupedRoster
+            activity={activity}
+            onPlayerPress={(member) =>
+              member.userId
+                ? openPlayerProfile({ id: member.userId, username: member.name }, 'Player')
+                : undefined
+            }
+          />
+        </View>
+      ) : null}
+
       {showPlayerActions || showHostFinalize ? (
         <View style={styles.actionRow}>
           {showPlayerActions ? (
@@ -2232,6 +2246,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
+  },
+  playerRosterBlock: {
+    marginBottom: spacing.sm,
   },
   flexBtn: {
     flex: 1,

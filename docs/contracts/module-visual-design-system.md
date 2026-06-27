@@ -149,3 +149,14 @@ The app ships one palette (`constants/theme.ts` "Neon"). Theme exploration is ru
 **Deferred (not failures):** filter-chip layout (H2), profile display-name seed data (P2), chat bubble live check (no seed), dev banner (B11 P2).
 **Screenshots:** `docs/contracts/screenshots/module-visual-design-system/` (02 play strip+empty, 04 inbox friends empty, 05 inbox games empty, 06 profile top).
 **Verdict:** PASS for builder minimum B1–B7.
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit
+
+| # | Item | Result | Notes |
+|---|------|--------|-------|
+| T1 | Join Loop status banner tokens | **Pass** | `JoinStatusBanner` uses `colors.primary`/`onPrimary`, `successSoft`, `onPrimary` on CTA |
+| T2 | Banner motion (J9) | **Deferred** | P2 delight — static banner only |
+
+**Verdict:** PASS (J9 motion deferred per backlog).
