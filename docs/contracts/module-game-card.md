@@ -14,6 +14,15 @@ One **preset-driven** game card family. Screens pick a **surface preset** (where
 
 **This sprint validates only the delta** not already green in baseline: detail hero (pickup vs rally), venue/session/cost notes, and wiring invariants. List rows and session I'm-in/lock are covered by other contracts (see below).
 
+## Theming (palette) — TM3
+
+Personal-state chip ("You're in") and the **urgency hook** ("4 spots left · starts in 3h") must stay legible in **every shipped palette**:
+
+- [ ] Urgency hook text meets WCAG AA contrast on the card `surface` in each palette (lime-on-white is the weak case — round 1 theme A; passes in B orange / C lime-on-dark).
+- [ ] Personal-state chip uses a **tint** background, never a second solid `primary` fill (so it never competes with the join CTA — see `module-visual-design-system` "one filled-primary per surface").
+
+> Source: theme-explore-round1 ([synthesis](../product-review/consolidated/2026-06-26-theme-explore-synthesis.md)).
+
 ## Already validated elsewhere (do not re-test in this sprint)
 
 | Surface | Preset | Contract | Status |

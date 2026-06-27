@@ -21,6 +21,7 @@ Ship-quality Rally surfaces share one visual language: readable hierarchy, consi
 |-------|----------------|----------|
 | **Primary fill** | `colors.primary` (lime) | Black text on lime without `onPrimary` |
 | **On-primary text** | `colors.onPrimary` (#141916) | `textInverse` (white) on lime buttons |
+| **One filled-primary per surface** | At most one solid `primary` fill action per surface; status / personal-state chips ("You're in", "Confirmed") use a **tint** background | A second solid primary fill competing with the join CTA |
 | **Sport chip idle ring** | `borderSubtle` / neutral | `colors.accent` (yellow) on every idle chip |
 | **Sport chip selected** | `primary` 3px ring + `primaryDark` label | Yellow ring when selected |
 | **Empty state icon** | Sport SVG / branded glyph | Emoji (💬 etc.) in ship screens |
@@ -99,7 +100,10 @@ The app ships one palette (`constants/theme.ts` "Neon"). Theme exploration is ru
 - [ ] Body/secondary text passes WCAG AA contrast on `background` and `surface`.
 - [ ] Every fill uses the palette's `onPrimary` / `onAccent` (no white label on light lime/yellow).
 - [ ] Status colors (`success`/`warning`/`error`/`info`) stay legible on the theme's surfaces.
+- [ ] **One filled-primary per surface** holds in the palette — status/personal-state chips render as a tint, not a second solid primary fill (caught lime CTA vs lime "You're in" pill collision in round 1, themes A/C).
 - [ ] Theme rounds change **palette only** — no spacing/type/structure changes.
+
+> **Round 1 (2026-06-26):** matrix [theme-rounds/2026-06-26](../redesign/theme-rounds/2026-06-26/theme-matrix.md). Candidate **B — Clean Sport** (blue-on-white) is the ship-candidate pending founder pick (H1) + this gate. Candidate A keeps brand equity but must resolve the one-filled-primary collision; C (dark) parked as a separate dark-mode workstream.
 
 ## Out of scope
 

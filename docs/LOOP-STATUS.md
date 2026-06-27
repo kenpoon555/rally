@@ -1,12 +1,10 @@
 # Rally loop status
 
-_Updated: 2026-06-26 22:19 UTC_
+_Updated: 2026-06-27 00:08 UTC_
 
-**Release loop:** `visual-tier5-jun-2026`
+## 🔄 IN PROGRESS — next: spawn_contract_pr
 
-## ▶️ QUEUED — contract `module-visual-design-system` (1/1)
-
-No agent running. Say **continue** OR use one Agent chat with **stop hook** enabled (Settings → Hooks).
+auto-pass (approve_with_notes) — contract PR next
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -14,18 +12,19 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `taste-tier6-join-loop` tier 6
-- phase: `contract_pr_pending` · status: `running`
+- queue: `theme-explore-round1` tier 6
+- phase: `contract_pr_pending` · status: `approved`
 - layer_2: `pending`
-- personas: 8/8
-- builder branch: `fix/taste-tier6-builder`
+- personas: 1/1
+- builder branch: `fix/ name)-builder`
 
 ## Validation
 
-- queue: `visual-tier5`
-- contract: `module-visual-design-system` (1/1)
-- phase: `validated` · status: `pass`
-- chain_enabled: True
+- queue: `taste-tier6`
+- contract: `module-visual-design-system` (6/6)
+- phase: `done` · status: `pass`
+- chain_enabled: False
+- notes: VALIDATION_GREEN_ALL taste-tier6 · 2026-06-26 · fix/taste-tier6-builder @ 048f2ef. Code audit + fixer round 1 (banner placement, chip wiring). Sim live screenshots deferred — dev client Metro disconnect.
 
 ---
 
