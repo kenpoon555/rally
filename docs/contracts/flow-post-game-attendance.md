@@ -109,3 +109,15 @@ North-star: **Host opens past session → marks attendance → reliability updat
 ### Screenshots
 
 - `04-success-confirmation.png` — recap card after partial submit
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit
+
+| # | Tier 6 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| T1 | Host path unchanged | **Pass** | Host attendance form + submit unchanged |
+| T2 | Player path: Find next game | **Pass** | Non-host renders `postGamePlayerTitle` + `findNextGame` → `ROUTES.HOME.MAIN` |
+| T3 | Rejoin-within-14d suggestion | **Deferred** | Generic CTA ships; personalized next-game row deferred (not J6 minimum) |
+
+**Verdict:** PASS (tier-6 rows; T3 deferred).

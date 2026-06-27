@@ -192,3 +192,15 @@ Third segment **Games | Players | Classes** is specified in [module-coach-parent
 | Date | Blocker | Owner |
 |------|---------|-------|
 | 2026-06-22 | Running filter leak — **resolved** on builder branch | — |
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit
+
+| # | Tier 6 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| T1 | Personal-state chip on discover row | **Pass** | `getViewerGameState` + `viewerState` chip; labels include "You're in", "Hosted by you", "Waitlisted" |
+| T2 | Urgency hook one-liner | **Pass** | `buildUrgencyHook` + `showUrgencyHook` on discover `GameCardShell`; testID `game-card-urgency-hook` |
+| T3 | Games segment default + NEXT UP chip | **Pass** | `discoverMode` defaults `'games'`; `NextUpCard` passes `viewerState` |
+
+**Verdict:** PASS (tier-6 rows).

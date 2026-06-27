@@ -34,7 +34,11 @@ import { ScreenHeader, SegmentToggle } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
-import { shouldShowInDiscoverFeed, sortDiscoverFeedActivities } from '../../utils/activityHelpers';
+import {
+  getViewerGameState,
+  shouldShowInDiscoverFeed,
+  sortDiscoverFeedActivities,
+} from '../../utils/activityHelpers';
 import { getBlockedUserIds } from '../../services/safetyService';
 import { getUserFriends } from '../../services/friendsService';
 import { getMyRegularGroups } from '../../services/regularGroupService';
@@ -659,6 +663,8 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               activity={item}
               userLocation={discoverLocation}
               isHost={item.user_id === user?.id}
+              viewerState={getViewerGameState(item, user?.id)}
+              showUrgencyHook={section.key !== 'locked'}
               onPress={() => openActivityDetail(item.id)}
             />
           )}

@@ -201,3 +201,15 @@ Save to `docs/contracts/screenshots/module-game-card/`:
 | A3 | gameCardLayouts tests pass | N/T | Not run this round |
 
 **Last validated:** 2026-06-22 · screenshot `01-upcoming-detail-hero.png`
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit  
+> Handoff item "detail hero single-column decision" — no tier-6 checklist row in contract; baseline hero unchanged.
+
+| # | Item | Result | Notes |
+|---|------|--------|-------|
+| H1 | Detail hero layout (handoff) | **Deferred** | No tier-6 checklist row; hero structure unchanged this cycle |
+| H2 | Join banner below hero | **Pass** | Banner + roster sit directly under `GameCardDetailHero` |
+
+**Verdict:** PASS (no tier-6 contract rows; handoff H1 deferred).
