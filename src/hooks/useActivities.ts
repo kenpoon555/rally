@@ -75,7 +75,7 @@ export const useActivities = (
       return;
     }
     const subscription = supabase
-      .channel('activities')
+      .channel('activities-discover')
       .on(
         'postgres_changes',
         {

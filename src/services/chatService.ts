@@ -479,7 +479,8 @@ export const getLastMessagePreviews = async (
     .select('conversation_id, content, created_at')
     .in('conversation_id', conversationIds)
     .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(Math.min(conversationIds.length * 5, 500));
 
   if (error) {
     return {};
