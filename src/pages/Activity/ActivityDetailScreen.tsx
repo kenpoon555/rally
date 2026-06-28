@@ -980,7 +980,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
-  const showChat = canOpenActivityChat(activity, user?.id) || isGroupMember;
+  // Game Room / chat is a *member* surface. `canOpenActivityChat` only reports
+  // whether the chat is live (e.g. fixed game with 2+ players) — it is NOT
+  // viewer-membership aware, so on its own it leaks "Open Game Room" to people
+  // who haven't joined. Require the viewer to actually be on the game.
+  const isGameMember = Boolean(isHost || isApprovedJoiner || isGroupMember);
+  const showChat = (canOpenActivityChat(activity, user?.id) || isGroupMember) && isGameMember;
   const chatArchived = isGameChatReadOnly(activity);
   const wasOnGame =
     isHost || isApprovedJoiner || Boolean(myJoinRequest) || user?.id === activity.user_id;

@@ -258,6 +258,38 @@ Theme review: per docs/redesign/theme-exploration-plan.md, screenshot the 5 Join
 
 ---
 
+## Persona catalog I — dogfood / build-truth triage (tier 0 · 2)
+
+**Focus:** Sit in front of the **freshly-built** feature on a real sim/device (not mockups, not a code audit) and **classify + route** every observation. This is the founder sniff test that catches self-contradictions and wrong-viewer leaks the Validator (audit) cannot feel. **Output is a triage table, not bugs-or-praise.**
+**Bar:** [TIER-MODEL.md](./TIER-MODEL.md) tier 0 rubric — every observation → exactly one of `makes-sense` / `necessary` / `bug` / `needs-more-detail` / `simplify`, with a route.
+**When:** Right after a Validator marks a queue green and **before** the src PR merges; or any time a build lands on a device.
+
+| persona-id | Lens | The one job | Routes to |
+|------------|------|-------------|-----------|
+| `dogfood-triager` | Founder build-truth | "Use the real build end-to-end; for each thing, is it correct / needed / confusing / under-specified?" | bug→builder, needs-detail→contract, simplify/necessary→Tier 6 |
+| `state-matrix-skeptic` | Viewer-state coverage | "Walk **every viewer state** of this surface (not-joined / requested / approved / host / finalized / cancelled) — does each state show only the right actions?" | wrong-viewer action → bug + viewer-state matrix in contract |
+
+### Why `state-matrix-skeptic` exists
+
+The "non-member sees **Open Game Room**" defect (Jun 2026) was a missing-state, not a broken happy-path: validation walked the *member* path, never the *not-joined viewer* path. This persona's whole job is to enumerate viewer states and check the visible-action set per state — and to demand a **viewer-state × visible-actions matrix** in any contract that lacks one (see [flow-game-room.md](../contracts/flow-game-room.md)).
+
+### Account hints (catalog I)
+
+| persona-id | Suggested login | Setup |
+|------------|-----------------|-------|
+| `dogfood-triager` | `marcus@rally-mvrhoops.demo` + a second non-member login | Real seed; walk the just-built feature |
+| `state-matrix-skeptic` | Two accounts: host (`marcus@…`) **and** a non-member (`@kunyu`) | View the *same* game from both — confirm action sets differ correctly |
+
+### One-line Agent prompt (tier 0 dogfood triage)
+
+```
+Tier 0 dogfood triage: persona {dogfood-triager|state-matrix-skeptic} on the just-built {feature} per docs/product-review/personas.md catalog I + TIER-MODEL.md tier 0 rubric.
+Real build on sim/device. For every observation output one row: observation → bucket (makes-sense|necessary|bug|needs-more-detail|simplify) → route → contract section to touch.
+No fixes in this pass — classify and route only.
+```
+
+---
+
 ## Sim note
 
 Monrovia demo seed is **basketball**. For non-basketball personas:
@@ -366,6 +398,7 @@ Used by [review-queues.json](./review-queues.json) and [PRODUCT-REVIEW-LOOP.md](
 
 | Tier | Queue suffix | Personas (min) | Reviewer mindset |
 |------|--------------|----------------|------------------|
+| **0 — Dogfood triage** | `tier0-<loop>` | 1–2 (catalog I) | Use the **real build**; classify every observation (makes-sense/necessary/bug/needs-detail/simplify) and route it. The router, run after validator-green / before src PR merge. |
 | **1 — Discovery** | `round1` | 6 | Note friction P1–P3; blocked journeys OK if documented |
 | **2 — Picky** | `round2-picky` | 4–6 | Complete full journey; no silent failures; stricter P0 bar |
 | **3 — Expert** | `round3-*` | 4 | **One** deep area (strip MRU, coach org gaps) — not full app |

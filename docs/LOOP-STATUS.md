@@ -1,10 +1,10 @@
 # Rally loop status
 
-_Updated: 2026-06-26 23:22 UTC_
+_Updated: 2026-06-28 06:02 UTC_
 
-## ▶️ QUEUED — contract `flow-rally-session` (1/6)
+## 👤 WAITING ON YOU — approve pre-review
 
-No agent running. Say **continue** OR use one Agent chat with **stop hook** enabled (Settings → Hooks).
+Run `./.cursor/hooks/product-review-loop-approve.sh` in this chat (or terminal).
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -12,18 +12,19 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `taste-tier6-join-loop` tier 6
-- phase: `validation_spawned` · status: `running`
-- layer_2: `merged`
-- personas: 8/8
-- builder branch: `fix/taste-tier6-builder`
+- queue: `tier0-join-loop` tier 0
+- phase: `review_done` · status: `awaiting_human`
+- layer_2: `None`
+- personas: 2/1
+- builder branch: `fix/ name)-builder`
 
 ## Validation
 
-- queue: `taste-tier6`
-- contract: `flow-rally-session` (1/6)
-- phase: `started` · status: `running`
-- chain_enabled: True
+- queue: `class-response`
+- contract: `module-coach-parent-navigation` (2/2)
+- phase: `done` · status: `pass`
+- chain_enabled: False
+- notes: PASS (code audit) fix/class-response-builder @ 26a893b. CR1-CR5 verified; Message coach routes to class chat surface (live two-way thread deferred — infra); sim screenshots deferred (Metro/standalone blocker); noBetaSurfaces guard passed live.
 
 ---
 

@@ -54,6 +54,11 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 - [ ] Play tab lists upcoming session(s) for seeded demo
 - [ ] Empty Play state renders when no upcoming game (host can schedule)
 
+### Ready-count copy (H2 resolved · 2026-06-27)
+> Founder decision (T0 H2): drop the denominator. "1 of 1 marked ready" was wrong (read `countReadyParticipants` while WHO'S GOING/dots read `player_count`).
+- [ ] Detail ready summary reads **"{readyCount} ready"** — no "of M" denominator
+- [ ] `readyCount` is the count of confirmed/`ready_at` participants (host + ready joiners); never contradicts the roster dots
+
 ### Session card (`CrewGameSessionCard`)
 - [ ] Court, time, roster seat bar visible
 - [ ] Member **Join** only when not on roster; **I'm in** when on roster and not ready
