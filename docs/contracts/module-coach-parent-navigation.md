@@ -194,6 +194,8 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 
 ### Today / hub
 - [x] Parent sees My Classes when enrolled
+- [ ] **Message coach** from `TodayMyClassesCard` opens the class chat thread in ≤2 taps ([flow-class-session-response.md](./flow-class-session-response.md) — class-response-round1)
+- [ ] Parent **Confirm / Can't make it** inline on Next Class row when `not_responded` ([flow-class-session-response.md](./flow-class-session-response.md))
 - [x] Coach sees Classes I teach / today card
 - [x] R0 player Today: **no** MY CLASSES block (B4) — `@valadult862552` pre-coach
 - [x] Teen Today: **no** MY CLASSES block (B4) — contract 3

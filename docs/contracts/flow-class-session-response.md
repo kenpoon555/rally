@@ -9,6 +9,16 @@
 
 A student/parent can respond to their upcoming class in **≤2 taps** and reach the coach without hunting through chat. The data already supports the response states; this contract covers the **affordance** and the **message-coach entry point** that are currently missing.
 
+## Current state (verified 2026-06-27 · class-response-round1)
+
+**Review verdict:** FAIL — implementation not started. Personas `student-cant-make-next-class`, `student-message-coach` (static audit on `dev`).
+
+- `TodayMyClassesCard.tsx` — status display only; row tap → `ClassDetail` overview. **No Confirm / Can't make it / Message coach.**
+- `studentEnrollmentService.ts` — reads `response_status`; **no parent write helper.**
+- `ClassDetailScreen.tsx` — coach `groupedRoster` by status ✅; chat tab exists but not ≤2 taps from Today card.
+
+Builder backlog: `docs/product-review/consolidated/2026-06-27-class-response-builder-backlog.md` (CR1–CR6).
+
 ## Current state (verified 2026-06-26)
 
 - `ParentClassEnrollment.response_status` exists: `confirmed | cant_make_it | not_responded`.
