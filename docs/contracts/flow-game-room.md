@@ -29,7 +29,29 @@ North-star: **Approved joiner opens game chat → confirms I'm in → host locks
 | **Crew join** | Rally member not on roster | Crew game with spots | Join / waitlist CTA |
 | **Archived chat** | Post-grace | Past game | Read-only copy + back to chats |
 
+## Viewer-state × visible-actions matrix (T0 · 2026-06-27)
+
+> Added by Tier 0 dogfood triage (`state-matrix-skeptic`): a **non-member** viewing a public fixed game with 2+ players saw **"Open Game Room"** *and* "Request to Join". Root cause: the entry point gated on `canOpenActivityChat`, which reports **chat liveness** (finalized, or fixed + `player_count ≥ 2`), **not viewer membership**. Game Room is a **member surface** — the entry point must require the viewer to actually be on the game.
+
+**Membership = host OR approved joiner OR rally-group member.** `canOpenActivityChat` (liveness) is **necessary but not sufficient** — gate every Game Room entry point with membership too (`isGameMember` in `ActivityDetailScreen`).
+
+| Viewer state | Open Game Room | Request to Join | Confirm / Can't make it | Host ops (lock/nudge/requests) |
+|--------------|:--------------:|:---------------:|:-----------------------:|:------------------------------:|
+| **Not joined** (no request) | ❌ | ✅ | ❌ | ❌ |
+| **Requested** (pending) | ❌ | ❌ (pending state) | ❌ | ❌ |
+| **Approved joiner** | ✅ | ❌ | ✅ | ❌ |
+| **Host** | ✅ | ❌ | ✅ (host = ready) | ✅ |
+| **Finalized** (member) | ✅ (read state) | ❌ | per finalize rules | host only |
+| **Cancelled / past** | ❌ (or archived read-only) | ❌ | ❌ | ❌ |
+
+**Invariant:** "Open Game Room" and "Request to Join" are **mutually exclusive** for a given viewer — a member never sees "Request to Join"; a non-member never sees "Open Game Room".
+
 ## Pass/fail checklist
+
+### Viewer-state gating (T0)
+- [ ] Non-member viewing a live (fixed, 2+ players) game sees **Request to Join** only — **no** "Open Game Room"
+- [ ] Approved joiner / host sees **Open Game Room**, **never** "Request to Join"
+- [ ] Game Room entry points require membership, not just `canOpenActivityChat` liveness
 
 ### Stability
 - [ ] No redbox opening game chat from Inbox or detail
