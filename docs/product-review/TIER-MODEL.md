@@ -1,4 +1,4 @@
-# Product review tier model (T1–T5)
+# Product review tier model (T0–T6)
 
 **Purpose:** Define what each tier optimizes for, minimum persona count, and how queues chain into contracts + validation.
 
@@ -10,6 +10,7 @@
 
 | Tier | Name | Bar | Personas (min) | Scope |
 |------|------|-----|----------------|--------|
+| **0** | **Dogfood / build-truth triage** | **“I just used the *real* build — is each thing correct, needed, or confusing?”** | **1–2** (founder / dogfood) | The **just-built** feature on a real sim/device. **Classify & route**, don't optimize. The router that feeds every other tier + contracts. |
 | **1** | Coverage | “Does the journey work?” | **6** | One release theme (onboarding, pickup, Play discover) |
 | **2** | Picky | “Zero silent failures / wrong surface” | **4–6** | Same theme, stricter rubric; matrix audits |
 | **3** | Expert / deep UX | “Repeat-user excellence in **one** hotspot” | **4** | Narrow (e.g. Play strip MRU) — **not** full-app |
@@ -18,6 +19,17 @@
 | **6** | **Taste / authoring** | **“Would I *want* to use this? Is it the right thing — and does it delight?”** | **8 taste personas** (≥3 / screen) | **Per screen**, one loop at a time — judgment & scope, not bugs. Theme exploration (`theme-reviewer`) runs here too. |
 
 **Layer 3 (validation)** in MASTER-LOOP is separate: sim + contract proof after builder. It is **not** the same as product-review tier 3.
+
+### Why Tier 0 exists (the gap T1–T6 cannot close)
+
+Tiers 1–6 all run on **either the existing app or pre-build judgment/mockups** (T6 authors *before* code; the Validator proves code *matches a contract*, often by audit). **None of them sits a human in front of the freshly-built feature and asks "wait — does this actually behave right?"** That is why two defects shipped past validation on the class-response / join-loop build (Jun 2026):
+
+1. **Self-contradiction** — a discover card showed **"5 left"** (trailing badge, from server `missing_players`) next to **"9 spots left"** (urgency hook, from a client roster calc on unloaded list rows). Both "passed" because each was individually contract-legal.
+2. **Wrong-viewer action** — a **non-member** viewing a public game saw **"Open Game Room"** (a member surface) *and* "Request to Join", because `canOpenActivityChat` reports *chat liveness*, not *viewer membership*.
+
+Neither contract said *"spot counts have one source"* or *"which actions show per viewer-state"* — so neither could be flagged as a bug. **Tier 0's job is to catch these by use, then route them:** the contradiction → `bug` + a contract `needs-more-detail` rule; the leak → `bug` + a viewer-state action matrix the contract was missing.
+
+**Tier 0 is the router, not the apex.** Its output is not a quality score — it is a classified, routed worklist that *feeds* the right tier / builder / contract.
 
 ### Why Tier 6 exists (the gap tiers 1–5 cannot close)
 
@@ -68,7 +80,14 @@ Tier **5** re-walks the same surfaces with **design rubric only** (no new featur
   → taste-tier6-<loop> (8 taste personas, ≥3 / screen) → redesign spec → builder
   → theme-explore (theme-reviewer, generative) → founder pick → validator contrast gate
   → validation queues per contract handoff
+  → ┌─ T0 dogfood triage (real build, after validator-green / before src PR merge) ─┐
+    │   bug → builder + contract regression row                                     │
+    │   needs-more-detail → contract PR                                             │
+    │   simplify / necessary / makes-sense → Tier 6 / cut                           │
+    └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+**T0 is a loop, not a one-shot stage.** It runs after *any* build lands on a real device — it has no fixed position in the ladder because its whole point is to be the continuous "use the real thing" check that re-routes work back into the right tier or contract.
 
 Tier 6 may also run **first**, standalone, to *author* a redesign before any feature loop — that is its highest-leverage use (see the Join Loop spec).
 
@@ -79,6 +98,26 @@ Tier 6 may also run **first**, standalone, to *author* a redesign before any fea
 | `visual-tier5-jun-2026` | `visual-tier5-round1` | requires tier4 contract merge (or parallel docs-only) |
 
 Start tier 4 **after** App Store Build 12 ship, or run **docs-only** tier-4 reviews in parallel (no src PR) to build backlog.
+
+---
+
+## Tier 0 rubric — dogfood / build-truth triage
+
+Run on the **actually-built feature** (real sim/device, real data — not mockups, not a code audit), against its **merged contract**. Walk it like a skeptical user, and for **every observation** assign **exactly one** bucket, then route it. Speed over coverage — this is the founder sniff test, not an 8-persona sweep.
+
+| # | Bucket | The question | Example (Jun 2026) | Route to |
+|---|--------|--------------|--------------------|----------|
+| 1 | **Makes sense?** | Does this behave the way a real user would expect — coherent intent, no surprise? | Card pulls you toward the next step | If **no** → Tier 6 / redesign spec |
+| 2 | **Necessary?** | Is every element / action / screen earning its place, or is it over-build / noise? | Two competing CTAs on one card | If **no** → Tier 6 `taste-scope-skeptic` / `taste-one-job` (cut) |
+| 3 | **Bug?** | Does it contradict the contract, **itself**, or reality? | "5 left" vs "9 spots left"; non-member sees "Open Game Room" | **Builder backlog** + add a regression row to the contract |
+| 4 | **Needs more detail?** | Is the contract **silent / ambiguous**, so you *can't tell* intended vs bug? | No rule said spot counts share one source; no per-viewer-state action matrix | **Contract PR** — add the missing rule / matrix |
+| 5 | **Can simplify?** | Redundant info, duplicated number, too many taps/steps? | Spot count printed twice on one card | Tier 6 authoring, or builder if mechanical |
+
+**Output:** a single **triage table** per surface — `observation → bucket → route → contract section to touch`. No fixes in this pass; Tier 0 only classifies and routes. A finding can be both a `bug` *and* expose a `needs-more-detail` contract gap (today's two defects were exactly that) — log both rows.
+
+**When it runs:** continuously / opportunistically — every time you (or anyone) actually uses a freshly-built feature. Especially right after a Validator marks a queue green, **before** the src PR merges, since validation-by-audit cannot feel a self-contradiction. It is the cheapest tier and the first line of defense.
+
+**Tier 0 vs the rest:** T1–T6 *optimize* (work → correct → deep → broad → beautiful → right+delightful). **T0 *classifies*** what the real build is actually doing and points each finding at the tier/contract/builder that should own it.
 
 ---
 
@@ -135,6 +174,7 @@ Score **KEEP / CHANGE / CUT** per screen (not PASS/FAIL — Tier 6 makes *author
 
 | Tier | `min_reviews_before_consolidate` |
 |------|----------------------------------|
+| **0** | **1** (founder/dogfood pass; no consolidator — routes findings directly) |
 | 1 | 6 |
 | 2 | 4–6 |
 | 3 | 4 |

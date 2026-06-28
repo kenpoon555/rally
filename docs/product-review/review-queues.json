@@ -279,5 +279,28 @@
     "contract_focus": [
       "module-visual-design-system"
     ]
+  },
+  "tier0-join-loop": {
+    "description": "Tier 0 — dogfood/build-truth triage on the just-built Join-Loop + class-response build. Classify & route every observation (makes-sense/necessary/bug/needs-more-detail/simplify); no consolidator.",
+    "tier": 0,
+    "triage": true,
+    "personas": [
+      "dogfood-triager",
+      "state-matrix-skeptic"
+    ],
+    "min_reviews_before_consolidate": 1,
+    "consolidator_tag": "tier0-join-loop",
+    "validation_queue": "class-response",
+    "screens": [
+      "components/game/GameListCard.tsx",
+      "pages/Activity/ActivityDetailScreen.tsx",
+      "components/coachParent/TodayMyClassesCard.tsx"
+    ],
+    "contract_focus": [
+      "module-game-card",
+      "flow-game-room",
+      "flow-class-session-response",
+      "module-coach-parent-navigation"
+    ]
   }
 }

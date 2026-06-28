@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Activity } from '../../types/activity';
-import { getRosterSeatCaption, getRosterSeatCounts } from '../../utils/activityHelpers';
+import { getActivitySpotsState, getRosterSeatCounts } from '../../utils/activityHelpers';
 import { getSportIconName } from '../SportIcon';
 import { colors, typography } from '../../constants/theme';
 
@@ -62,8 +62,10 @@ export const RosterSeatBar: React.FC<Props> = ({
   const slots = Math.min(Math.max(total, 1), MAX_DOTS);
   const filledDots = Math.min(filled, slots);
   const iconName = getSportIconName(sportType);
-  const { label, tone } = getRosterSeatCaption(filled, total);
+  const spots = getActivitySpotsState(activity);
   const isWide = variant === 'wide';
+  const label = isWide ? spots.label : spots.compactLabel;
+  const tone: 'full' | 'open' = spots.tone === 'full' ? 'full' : 'open';
   const dotSize = isWide ? DOT_WIDE : DOT_COMPACT;
   const iconSize = isWide ? ICON_WIDE : ICON_COMPACT;
 
