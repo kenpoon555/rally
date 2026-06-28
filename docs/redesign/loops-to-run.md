@@ -32,7 +32,7 @@ Two parallel tracks now:
 |------|-------|-------|-----------|
 | **ADR-0001** (discover RPC) | Eng | **ACCEPTED** | Build: new SQL migration + `getNearbyActivities` thin wrapper |
 | **ADR-0002** (chat channel ownership) | Eng | **ACCEPTED** | Build: `useChatChannel` hook; refactor `ChatThreadScreen` + `RallyChatPanel` |
-| **ADR-0003** (typed navigation) | Eng | **proposed** | Founder decides: ~4–6h migration; eliminates 118 `as never` casts; low urgency, high value before reactions |
+| **ADR-0003** (typed navigation) | Eng | **ACCEPTED** | Build: `src/navigation/types.ts` + global augmentation; delete 6 local ParamList dupes; ~4–6h |
 
 ---
 

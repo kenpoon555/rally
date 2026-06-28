@@ -1,6 +1,6 @@
 # ADR-0003: Single typed navigation param list
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-06-28
 - **Lens / source:** state-management-auditor
 - **Severity:** P1
