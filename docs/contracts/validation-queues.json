@@ -177,5 +177,12 @@
       "module-game-card",
       "module-visual-design-system"
     ]
+  },
+  "class-response": {
+    "description": "class-response-round1 — student/parent Next Class actions (Confirm / Can't make it / Message coach)",
+    "contracts": [
+      "flow-class-session-response",
+      "module-coach-parent-navigation"
+    ]
   }
 }
