@@ -7,6 +7,30 @@ Each entry: PR # · branch · what shipped · why it matters.
 
 ## 2026-06-28 (session 2)
 
+### E4 `error-resilience-auditor` — 4 findings (docs only, no PR yet)
+**File:** `docs/eng-review/error-resilience-auditor/2026-06-28-review.md`
+
+| # | Finding | Priority |
+|---|---------|----------|
+| 1 | **Realtime reconnect: no backfill** — messages sent during network drop silently absent until re-nav | **P1 backlog** |
+| 2 | **`withRetry` no backoff** — retries write ops immediately; risk of duplicate send on 500-after-success | P2 backlog |
+| 3 | **Host join-request panel: silent error** — `loadJoinRequests` failure logs to console only, no UI feedback | P2 backlog |
+| 4 | `respond()`, `applyReady`, bootstrap session — all **CORRECT** (optimistic + rollback + Alert + timeout guards) | ✅ |
+
+---
+
+### E3 `state-management-auditor` — 3 findings (docs only, no PR yet)
+**File:** `docs/eng-review/state-management-auditor/2026-06-28-review.md`
+**ADR drafted:** `docs/eng-review/adr/0003-typed-navigation.md`
+
+| # | Finding | Priority |
+|---|---------|----------|
+| 1 | **118 `as never` nav casts** — fragmented per-file ParamList; only 6 of 22 routes typed globally | **→ ADR-0003** |
+| 2 | **6× local `MainStackParamList` definitions** — each file carries a different partial copy, no sync | P1 (fixed by ADR-0003) |
+| 3 | **187 effects, 0 exhaustive-deps suppressions** — all deps correct | ✅ no action |
+
+---
+
 ### E2 `scalability-skeptic` — 5 findings (docs only, no PR yet)
 **File:** `docs/eng-review/scalability-skeptic/2026-06-28-review.md`
 
@@ -73,8 +97,8 @@ Migration `074_discover_perf_indexes.sql` pushed via `supabase db push --linked`
 | E0 query-cost-auditor | Done | PR #97 (indexes) + PR #99 (parallelization) |
 | E1 realtime-fanout-reviewer | Done | PR #98 (review doc + ADR-0002) + PR #99 (mechanical fixes) |
 | E2 scalability-skeptic | **Done** | 5 findings: chat scroll-back (P1), enrich cap (P1), inbox cap (P2), roster windowing (P2) |
-| E3 state-management-auditor | Queued | `as never` nav casts |
-| E4 error-resilience-auditor | Queued | Optimistic writes + iOS black screen |
+| E3 state-management-auditor | **Done** | 118 `as never` casts → ADR-0003 (typed nav); 6 local ParamList dupes; 0 exhaustive-deps violations (clean) |
+| E4 error-resilience-auditor | **Done** | Realtime backfill gap (P1); `withRetry` no backoff (P2); host panel silent error (P2); respond/applyReady/bootstrap CORRECT |
 
 ---
 

@@ -32,6 +32,7 @@ Two parallel tracks now:
 |------|-------|-------|-----------|
 | **ADR-0001** (discover RPC) | Eng | **ACCEPTED** | Build: new SQL migration + `getNearbyActivities` thin wrapper |
 | **ADR-0002** (chat channel ownership) | Eng | **ACCEPTED** | Build: `useChatChannel` hook; refactor `ChatThreadScreen` + `RallyChatPanel` |
+| **ADR-0003** (typed navigation) | Eng | **proposed** | Founder decides: ~4–6h migration; eliminates 118 `as never` casts; low urgency, high value before reactions |
 
 ---
 
@@ -42,8 +43,8 @@ Run **one lens per session** ([eng-personas.md](../eng-review/eng-personas.md));
 | # | Lens | Target | Why now |
 |---|------|--------|---------|
 | ~~E2~~ | ~~`scalability-skeptic`~~ | **DONE** — 5 findings; chat scroll-back (P1) + enrich cap (P1) + inbox cap (P2) + roster windowing (P2) queued | — |
-| E3 | `state-management-auditor` | the recurring `as never` nav casts | Typed-navigation ADR candidate |
-| E4 | `error-resilience-auditor` | optimistic writes + stale-session bootstrap (the iOS "black screen") | Resilience of the paths users already hit |
+| ~~E3~~ | ~~`state-management-auditor`~~ | **DONE** — 118 `as never` casts → ADR-0003 proposed; 0 effect dep issues | — |
+| ~~E4~~ | ~~`error-resilience-auditor`~~ | **DONE** — Realtime backfill gap (P1); `withRetry` + host panel silent error (P2); core paths CORRECT | — |
 
 **Mechanical fixes queued from query-cost-auditor (no ADR needed):**
 - `idx_activities_status_start_time` partial index — **in PR #97**
