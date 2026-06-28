@@ -1,37 +1,88 @@
-# Loops to run — consolidated (2026-06-26)
+# Roadmap — what's left to run (living doc)
 
-What the founder decision on 2026-06-26 created, and the exact order to run it.
+_Last updated: 2026-06-28. Supersedes the 2026-06-26 "loops to run" list (those 3 loops are all shipped — see Done)._
 
-## Decision recap
-- **Keep** the core Join Loop. **Do not** run the pickup "steal" backlog (parked).
-- **One product change:** student/parent **Next Class → "Can't make it" + "Message coach"** ([flow-class-session-response.md](../contracts/flow-class-session-response.md)).
-- **Process:** +2 student personas, +8 taste personas (Tier 6), +1 theme-reviewer persona.
+Two parallel tracks now:
+- **Product track** — UX tiers 0–6 (judge the screens). [TIER-MODEL.md](../product-review/TIER-MODEL.md)
+- **Engineering track** — perf / architecture / scale (judge the system). [ENG-REVIEW-MODEL.md](../eng-review/ENG-REVIEW-MODEL.md)
 
-## Run order
+> Why two tracks: tiers 0–6 all share one axis (a human looking at a screen) and saturate. Real continued improvement comes from *orthogonal* axes — engineering, and eventually real-usage telemetry — not from running a 9th opinion pass. See the 2026-06-28 strategy note in chat.
 
-| # | Loop (queue) | Tier | Personas (count) | Validates / Output |
-|---|--------------|------|------------------|--------------------|
-| 1 | `class-response-round1` | 1 | `student-cant-make-next-class`, `student-message-coach` (2) | [flow-class-session-response.md](../contracts/flow-class-session-response.md) — the new Next Class actions |
-| 2 | `taste-tier6-join-loop` | 6 | `taste-want-it`, `taste-one-job`, `taste-first-3s`, `taste-best-in-class`, `taste-one-joy`, `taste-scope-skeptic`, `taste-authored`, `taste-momentum` (8) | Authoring verdicts on the 5 Join-Loop screens → [core-loop-redesign-spec.md](./core-loop-redesign-spec.md) |
-| 3 | `theme-explore-round1` | 6 (generative) | `theme-reviewer` (1) | Themed-screenshot matrix → founder pick → validator contrast gate ([theme-exploration-plan.md](./theme-exploration-plan.md)) |
+---
 
-**Total new personas:** 2 student + 8 taste + 1 theme = **11**.
-**Total new loops:** **3** (`class-response-round1`, `taste-tier6-join-loop`, `theme-explore-round1`).
+## ✅ Done (this arc)
+
+| Loop / work | Track | Output | PR |
+|-------------|-------|--------|----|
+| `class-response-round1` | Product T1 | Next Class actions (Confirm / Can't make it / Message coach) | #92, #93 |
+| `taste-tier6-join-loop` | Product T6 | Join-Loop authoring verdicts (J1–J7) | #89, #90 |
+| `theme-explore-round1` | Product T6 (gen) | 6 theme candidates + logos; contrast gate | #91 |
+| `tier0-join-loop` | Product T0 | Dogfood triage → spot-label single source + viewer-state gating + ready-count copy (H1/H2) | #95, #96 |
+| **`query-cost-auditor` on discover feed** | Eng | 6 findings + EXPLAIN proof; 2 indexes (PR #97); ADR-0001 proposed | #97 |
+| **`realtime-fanout-reviewer` on chat channels** | Eng | 4 findings; ADR-0002 proposed (channel-ownership model for reactions) | this PR |
+
+---
+
+## 🔜 In progress / decisions open
+
+| Item | Track | State | Next step |
+|------|-------|-------|-----------|
+| **ADR-0001** (discover RPC) | Eng | proposed | Founder decides: consolidate to single RPC vs keep waterfall |
+| **ADR-0002** (chat channel ownership) | Eng | proposed | Founder decides: refactor before reactions or ship reactions with 2-channel workaround |
+
+---
+
+## 📋 Next — Engineering track
+
+Run **one lens per session** ([eng-personas.md](../eng-review/eng-personas.md)); ≥3 lenses before consolidating to ADRs.
+
+| # | Lens | Target | Why now |
+|---|------|--------|---------|
+| E2 | `scalability-skeptic` | discover + a 2k-message thread, on a **large seed** | Confirms ADR-0001 wall numbers with real data |
+| E3 | `state-management-auditor` | the recurring `as never` nav casts | Typed-navigation ADR candidate |
+| E4 | `error-resilience-auditor` | optimistic writes + stale-session bootstrap (the iOS "black screen") | Resilience of the paths users already hit |
+
+**Mechanical fixes queued from query-cost-auditor (no ADR needed):**
+- `idx_activities_status_start_time` partial index — **in PR #97**
+- `idx_join_requests_activity_status` — **in PR #97**
+- Fold/parallelize the discover waterfall queries (Findings 3, 4 from query-cost-auditor)
+- Dedupe double join_requests fetch (Finding 3)
+
+**Mechanical fixes queued from realtime-fanout-reviewer (no ADR needed):**
+- Abort flag in `useJoinRequestNotifications` `setupHostListeners` (Finding 2)
+- Rename `channel('activities')` → `channel('activities-discover')` in `useActivities` (Finding 3)
+- Cap `getLastMessagePreviews` fallback with `.limit(conversationIds.length)` (Finding 4)
+
+---
+
+## 📋 Next — Product features & track
+
+| # | Item | Approach | Notes |
+|---|------|----------|-------|
+| P1 | **Message reactions** | **Contract-first** (not a persona loop) | Lock 6 founder decisions (emoji set, gesture, where/who incl. **minor-safety on class announcements**, notifications, display) + data model via Eng track (`message_reactions` table, RLS, realtime reuse — ties to ADR-0002) |
+| P2 | **CR-T0-3** | Builder backlog | Today header vs Next Up time mismatch (4:50 vs 5:00) — single time source |
+| P3 | **CR-T0-4** | Seed fixture | 3-viewer fixture (host / member / non-member) for live state-matrix runs |
+| P4 | **Theme palette decision** | Founder pick | Choose from 6 candidates in `theme-rounds/2026-06-26/`; then validator contrast gate before any palette ships |
+| P5 | `cross-surface-tier4-round1` | Product T4 (8 personas) | Inbox/chat/reviews/attendance/trust/classes — **not yet run**; chains after a feature loop or docs-only |
+| P6 | `visual-tier5-round1` | Product T5 (8 personas) | Design QA; requires T4 contract merge or runs parallel docs-only |
+
+---
+
+## 🧭 Not yet set up (future, founder-approved direction)
+
+| Item | What it adds |
+|------|--------------|
+| **Telemetry / outcome loop** | The real improvement engine: pick 3–4 north-star metrics (activation, D7 return, crash-free), let real numbers drive fixes instead of personas. Uses existing `analyticsService.ts`. *(Deferred — not selected yet.)* |
+| **Accessibility axis** | Dynamic type, screen reader, contrast — another orthogonal lens family |
+
+---
 
 ## Suggested sequencing
-1. **`taste-tier6-join-loop` first** — highest leverage; tells us *what* to change before we build. No code, no validator, no bug list — authoring verdicts only.
-2. **`theme-explore-round1` in parallel** — independent of taste; produces directions for the founder to feel. Validator gates contrast before any palette ships.
-3. **`class-response-round1` after the class feature is built** — this one *is* a buildable contract, so: build the Next Class actions → run the 2 student personas → validator.
 
-## Quick-start prompts
-- **Taste (run 8×, one persona each):** see [personas.md catalog G](../product-review/personas.md) one-line prompt.
-- **Theme:** see [personas.md catalog H](../product-review/personas.md) one-line prompt.
-- **Class response:** standard Tier 1 persona review against `flow-class-session-response`.
-
-## Files touched by this decision
-- `docs/redesign/core-loop-redesign-spec.md` — decision log added; steal list parked.
-- `docs/redesign/theme-exploration-plan.md` — new.
-- `docs/contracts/flow-class-session-response.md` — new.
-- `docs/contracts/module-visual-design-system.md` — theming gate section.
-- `docs/product-review/personas.md` — catalog B2 (2 student), catalog G → 8 taste, catalog H (theme-reviewer).
-- `docs/product-review/review-queues.json` — 3 new queues.
+1. **Founder reviews ADR-0001 and ADR-0002** — these gate the biggest upcoming work (discover RPC refactor, reactions).
+2. **Land PR #97 indexes** (mechanical, low-risk, immediate win on discover).
+3. **Land mechanical fixes from E1** (abort flag, channel rename, fallback cap) — independent, low-risk.
+4. **P1 reactions contract** — once ADR-0002 is decided, lock the 6 founder decisions then build.
+5. **E2 scalability-skeptic** on a large seed — validates ADR-0001 wall numbers.
+6. Batch **P2/P3** (small Tier-0 backlog) anytime.
+7. **P4 theme pick** whenever you want to feel directions; **P5/P6** when feature work settles.
