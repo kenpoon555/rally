@@ -162,3 +162,16 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 | T4 | Commit = state, not navigation step | **Pass** | Same `ActivityDetailScreen`; banner state flip only |
 
 **Verdict:** PASS (tier-6 rows on builder branch).
+
+### Validator report — tier0-join-loop · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/tier0-join-loop-builder` @ `30c87e8` · **code audit + live Android** (iOS sim blocked).
+
+| # | Ready-count copy row (H2) | Result | Notes |
+|---|---------------------------|--------|-------|
+| 1 | Detail ready summary reads "{n} ready" — no "of M" | **Pass (code+live)** | `GameCardDetailHero` L165 `${readyCount} ready${…}`. Live detail: "1 ready" (was "1 of 1 marked ready") |
+| 2 | readyCount never contradicts roster dots | **Pass (live)** | Live detail: "1 ready" + WHO'S GOING 3 + "5 more to start" all coherent (host ready, 2 not yet) |
+
+> Note: `productCopy.ts:225` ("Waiting on confirmations · {ready}/{roster} ready") is a **session-card** waiting string on a different surface — out of scope for this detail-hero row; no contradiction observed.
+
+**Verdict:** PASS (H2 ready-count copy; live-verified on Android).

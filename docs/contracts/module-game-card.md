@@ -246,3 +246,17 @@ Save to `docs/contracts/screenshots/module-game-card/`:
 | H2 | Join banner below hero | **Pass** | Banner + roster sit directly under `GameCardDetailHero` |
 
 **Verdict:** PASS (no tier-6 contract rows; handoff H1 deferred).
+
+### Validator report — tier0-join-loop · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/tier0-join-loop-builder` @ `30c87e8` · **code audit + live Android** (iOS sim blocked — stale-session onboarding). Live evidence: `docs/product-review/tier0/screenshots/`, `dogfood-triager/2026-06-27/`.
+
+| # | Tier-0 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| 1 | One source per number | **Pass (code+live)** | `getGameListSpotsBadgeLabel` → `getActivitySpotsState` (server `missing_players`/`player_count`/`roster_max`). No `getActivityRosterSummary` spot calc on list rows |
+| 2 | No two spot numbers; urgency hook time-only | **Pass (code+live)** | `buildUrgencyHook` returns "Starts in {n}h/m" only. Live discover card: "5 to start" + "Starts in 9h" (no second count) |
+| 3 | Spots label state-aware (more-to-start → spots-left → Full) | **Pass (code+live)** | `getActivitySpotsState`: `missing>0`→"{n} more to start"/"{n} to start"; open→"{n} spots left"/"{n} left"; full→"Full". Live detail "5 more to start"; badge "5 to start" |
+| 4 | Discover badge + detail seat bar both call `getActivitySpotsState` | **Pass (code)** | `RosterSeatBar` line 65 uses helper (wide=full label, compact=compactLabel); badge via `getGameListSpotsBadgeLabel` |
+| A | Audit: no contradicting counts | **Pass** | Single helper; tsc clean (only pre-existing `as never` nav quirks); lint clean |
+
+**Verdict:** PASS (tier-0 rows; live discover+detail verified on Android, member/host states code-audited).

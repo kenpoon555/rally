@@ -275,24 +275,49 @@ export function getRosterSeatCaption(
   return { label: `${open} spots open`, tone: 'open' };
 }
 
+export type SpotsStateTone = 'recruiting' | 'open' | 'full';
+
+/**
+ * Single source of truth for the "spots" label on any surface (discover badge,
+ * detail seat bar). State-aware so the same game reads the same everywhere
+ * (T0 · 2026-06-27 — resolves discover "5 left" vs detail "7 spots open"):
+ *
+ * - **Below roster minimum** (game not yet viable): `"{missing} more to start"`
+ * - **Viable, room left**: `"{open} spots left"`
+ * - **Full**: `"Full"`
+ *
+ * All figures come from server fields (`missing_players`, `player_count`,
+ * `roster_max`) so list rows (no loaded participants) and detail agree.
+ */
+export function getActivitySpotsState(
+  activity: Pick<Activity, 'roster_min' | 'roster_max' | 'player_count' | 'missing_players' | 'match_status'>
+): { label: string; compactLabel: string; tone: SpotsStateTone } {
+  const missing = activity.missing_players ?? 0;
+  if (missing > 0) {
+    return { label: `${missing} more to start`, compactLabel: `${missing} to start`, tone: 'recruiting' };
+  }
+  const total = Math.max(getActivityRosterMax(activity), 1);
+  const filled = activity.player_count ?? 1;
+  const open = Math.max(total - filled, 0);
+  if (open <= 0) {
+    return { label: 'Full', compactLabel: 'Full', tone: 'full' };
+  }
+  return {
+    label: open === 1 ? '1 spot left' : `${open} spots left`,
+    compactLabel: `${open} left`,
+    tone: 'open',
+  };
+}
+
 /** Trailing pill on Play discover list cards. */
 export function getGameListSpotsBadgeLabel(
-  activity: Pick<Activity, 'missing_players' | 'player_count' | 'roster_max' | 'match_status'>,
+  activity: Pick<Activity, 'roster_min' | 'missing_players' | 'player_count' | 'roster_max' | 'match_status'>,
   lockedWelcoming: boolean
 ): string {
   if (lockedWelcoming) {
     return 'Almost full';
   }
-  const missing = activity.missing_players ?? 0;
-  if (missing > 0) {
-    return `${missing} left`;
-  }
-  const { filled, total } = getRosterSeatCounts(activity);
-  const open = Math.max(total - filled, 0);
-  if (open <= 0) {
-    return 'Full';
-  }
-  return `${open} left`;
+  return getActivitySpotsState(activity).compactLabel;
 }
 
 export function getRosterSeatCounts(

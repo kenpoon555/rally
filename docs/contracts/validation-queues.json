@@ -184,5 +184,13 @@
       "flow-class-session-response",
       "module-coach-parent-navigation"
     ]
+  },
+  "tier0-join-loop": {
+    "description": "Tier 0 dogfood triage — derived-count single source (module-game-card), viewer-state gating (flow-game-room), ready-count copy (flow-rally-session)",
+    "contracts": [
+      "module-game-card",
+      "flow-game-room",
+      "flow-rally-session"
+    ]
   }
 }
