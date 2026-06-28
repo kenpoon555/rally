@@ -54,3 +54,20 @@ Builder backlog: `docs/product-review/consolidated/2026-06-27-class-response-bui
 - Pickup/Rally RSVP (separate `flow-rally-session`).
 - Bulk multi-child response (one enrollment row at a time for now).
 - Coach-initiated session changes (covered by class operations).
+
+## Validator report — class-response · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/class-response-builder` @ `26a893b` · **code audit** (sim blocked — standalone `com.rallyapp` build, Metro disconnect "No script URL provided", same as taste-tier6). Guard test executed live.
+
+| # | Checklist row | Result | Notes |
+|---|---------------|--------|-------|
+| 1 | Parent marks **Can't make it** ≤2 taps, row flips | **Pass (code)** | `TodayMyClassesCard` renders inline Confirm/Can't make it when `not_responded`; 1 tap → `respond()` optimistic flip + `updateParentEnrollmentResponse` write. Rollback on error. |
+| 2 | **Confirm** sets `confirmed`; contextual change after | **Pass (code)** | Confirmed→shows Can't make it; cant_make_it→shows Confirm (change/undo path). |
+| 3 | **Message coach** lands in class chat, **not** generic DM | **Pass (code, scoped)** | Card → `ClassDetail` **Chat** tab in 1 tap (class context, never a friend DM). **Limitation:** chat tab is announcement-only infra today — a live two-way parent↔coach class thread is **deferred** (pre-existing infra gap, not in CR1–CR5 backlog). |
+| 4 | Coach roster reflects status grouping | **Pass (code)** | `ClassDetailScreen.groupedRoster` reads `response_status`; demo write syncs `DEMO_ROSTER`; DB write via RLS-scoped update. |
+| 5 | No response actions on `cancelled` / `deferred` | **Pass (code)** | `sessionBlocksResponse()` hides Confirm/Can't make it/Message coach; status label only. |
+| 6 | No beta/test language | **Pass (test)** | `npx jest noBetaSurfaces` → 2 passed. |
+
+**Deferred:** live sim screenshots (Metro/standalone blocker); two-way class chat thread (infra, tracked separately — Message coach routes to the class chat surface today).
+
+**Verdict:** PASS (code audit; live thread + sim capture deferred as noted).

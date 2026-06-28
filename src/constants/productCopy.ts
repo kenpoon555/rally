@@ -45,6 +45,7 @@ export const PRODUCT_COPY = {
   undoImIn: "Can't make it",
   confirmAttendance: 'Confirm',
   cantMakeIt: "Can't make it",
+  messageCoach: 'Message coach',
   joinStatusConfirmedTitle: "You're confirmed",
   joinStatusJoinedTitle: "You're in",
   joinStatusConfirmedHint: 'See you on court. Tap below if your plans change.',

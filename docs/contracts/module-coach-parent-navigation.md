@@ -171,6 +171,17 @@ GTM 1: **all off** — store build must pass **flag-off** checklist below.
 
 Do not mark navigation green on flags-on run alone — **both modes** must pass before CPS pilot.
 
+## Validator report — class-response · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/class-response-builder` @ `26a893b` · code audit (sim blocked — Metro/standalone). Scope: the 2 new Today-hub rows from class-response-round1.
+
+| # | Row | Result | Notes |
+|---|-----|--------|-------|
+| 1 | Message coach from `TodayMyClassesCard` → class chat ≤2 taps | **Pass (code, scoped)** | `today-class-message-coach-*` → `ClassDetail` Chat tab in 1 tap; class context, never friend DM. Live two-way thread deferred (announcement-only infra). |
+| 2 | Parent Confirm / Can't make it inline when `not_responded` | **Pass (code)** | Inline actions render for `not_responded`; hidden for cancelled/deferred. |
+
+**Verdict:** PASS (code audit). Existing flag-off/flag-on rows unchanged by this queue.
+
 ## Pass/fail checklist
 
 ### Flag-off — production store build (GTM 1 required)
@@ -194,8 +205,8 @@ Do not mark navigation green on flags-on run alone — **both modes** must pass 
 
 ### Today / hub
 - [x] Parent sees My Classes when enrolled
-- [ ] **Message coach** from `TodayMyClassesCard` opens the class chat thread in ≤2 taps ([flow-class-session-response.md](./flow-class-session-response.md) — class-response-round1)
-- [ ] Parent **Confirm / Can't make it** inline on Next Class row when `not_responded` ([flow-class-session-response.md](./flow-class-session-response.md))
+- [x] **Message coach** from `TodayMyClassesCard` opens the class chat surface in ≤2 taps — 1 tap → `ClassDetail` Chat tab, class context (not a generic DM); live two-way thread deferred (infra) ([flow-class-session-response.md](./flow-class-session-response.md) — class-response-round1)
+- [x] Parent **Confirm / Can't make it** inline on Next Class row when `not_responded` ([flow-class-session-response.md](./flow-class-session-response.md))
 - [x] Coach sees Classes I teach / today card
 - [x] R0 player Today: **no** MY CLASSES block (B4) — `@valadult862552` pre-coach
 - [x] Teen Today: **no** MY CLASSES block (B4) — contract 3

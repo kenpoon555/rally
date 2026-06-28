@@ -77,7 +77,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [rallyMemberPreviews, setRallyMemberPreviews] = useState<Record<string, RallyMemberPreview>>({});
   const [reviewPrompts, setReviewPrompts] = useState<PendingReviewPrompt[]>([]);
   const dashboard = useHomeDashboard(activeGames, user?.id);
-  const { enrollments, isCoach, coachClasses, showTodayMyClasses } = useCoachParent();
+  const { enrollments, isCoach, coachClasses, showTodayMyClasses, reload: reloadCoachParent } =
+    useCoachParent();
   const coachToday = useMemo(
     () => (user?.id && isCoach ? coachTodayClasses(user.id) : []),
     [user?.id, isCoach]
@@ -354,7 +355,13 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
           <TodayPlayerReviewCard prompts={reviewPrompts} onPress={openReviewActivity} />
 
-          {showTodayMyClasses ? <TodayMyClassesCard enrollments={enrollments} /> : null}
+          {showTodayMyClasses ? (
+            <TodayMyClassesCard
+              enrollments={enrollments}
+              parentUserId={user?.id}
+              onRefresh={reloadCoachParent}
+            />
+          ) : null}
           {COACH_DASHBOARD && isCoach ? (
             <TodayCoachClassesCard classes={coachToday.length ? coachToday : coachClasses} />
           ) : null}
