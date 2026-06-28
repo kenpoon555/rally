@@ -105,3 +105,18 @@ Save to `docs/contracts/screenshots/flow-game-room/`:
 | T3 | Tournaments/need-players out of player path | **Pass** | Host-only `showPostNeedPlayers` / `showFillIns`; not rendered for `showPlayerActions` |
 
 **Verdict:** PASS (tier-6 rows).
+
+### Validator report — tier0-join-loop · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/tier0-join-loop-builder` @ `30c87e8` · **code audit + live Android** (iOS sim blocked). Live evidence: `docs/product-review/state-matrix-skeptic/2026-06-27/` (non-member + member).
+
+| # | Viewer-state gating row | Result | Notes |
+|---|-------------------------|--------|-------|
+| 1 | Non-member (live, fixed 2+) → Request to Join only, no Open Game Room | **Pass (code+live)** | `showChat = (canOpenActivityChat ∥ isGroupMember) && isGameMember`. Live: non-member detail = Request to Join only (`01-detail-nonmember.png`) |
+| 2 | Approved joiner / host → Open Game Room, never Request to Join | **Pass (code+live)** | `isGameMember = isHost ∥ isApprovedJoiner ∥ isGroupMember`; member Next Up → Game Room chat (`02-member-gameroom.png`). Non-member CTA block gated `!isHost && !isApprovedJoiner` |
+| 3 | Entry requires membership, not just `canOpenActivityChat` liveness | **Pass (code)** | `ActivityDetailScreen` L987–988 — liveness AND-ed with `isGameMember` |
+| 4 | Matrix: requested/finalized/cancelled rows | **Pass (code, audit)** | Pending excluded from `isGameMember`; finalized member retains room; cancelled blocks per `sessionBlocksResponse`. Live multi-account fixture deferred → CR-T0-4 |
+
+**Invariant check:** "Open Game Room" ⊥ "Request to Join" holds — member never sees Request to Join; non-member never sees Open Game Room.
+
+**Verdict:** PASS (live not-joined + member both sides; pending/finalized/cancelled code-audited, live fixture deferred to CR-T0-4).
