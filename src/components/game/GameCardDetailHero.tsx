@@ -162,8 +162,8 @@ export const GameCardDetailHero: React.FC<GameCardDetailHeroProps> = ({
         maxVisible={6}
         readySummary={
           !isFinalized
-            ? `${readyCount} of ${rosterCount} marked ready${
-                readyCount < rosterCount ? " · amber dot = still waiting" : ''
+            ? `${readyCount} ready${
+                readyCount < rosterCount ? ' · amber dot = still waiting' : ''
               }`
             : undefined
         }

@@ -11,7 +11,6 @@ import { Activity } from '../../types/activity';
 import { activityCourtName, activityGameName } from '../../constants/playIntent';
 import {
   formatDistance,
-  getActivityRosterSummary,
   getDistanceToActivity,
   getGameListSpotsBadgeLabel,
   isTonightUrgency,
@@ -45,21 +44,22 @@ const VIEWER_STATE_LABEL: Record<GameListViewerState, string> = {
   waitlist: 'Waitlisted',
 };
 
-/** Scannable "why this game now" hook (J7): spots-left + starts-in, composed from existing fields. */
+/**
+ * Scannable "why this game now" hook (J7): time-to-start only.
+ * Spots-left is intentionally NOT shown here — the trailing badge is the single
+ * source of truth for open spots (it reads server `missing_players`/`player_count`).
+ * The roster summary used previously double-counted spots from unloaded list rows,
+ * contradicting the badge (e.g. badge "5 left" vs hook "9 spots left").
+ */
 function buildUrgencyHook(activity: Activity): string | null {
-  const parts: string[] = [];
-  const { onRoster, capacity } = getActivityRosterSummary(activity);
-  const spotsLeft = Math.max(0, capacity - onRoster);
-  if (spotsLeft > 0 && Number.isFinite(spotsLeft)) {
-    parts.push(spotsLeft === 1 ? '1 spot left' : `${spotsLeft} spots left`);
+  if (!activity.start_time) {
+    return null;
   }
-  if (activity.start_time) {
-    const diffMin = Math.round((new Date(activity.start_time).getTime() - Date.now()) / 60000);
-    if (diffMin > 0 && diffMin <= 24 * 60) {
-      parts.push(diffMin >= 60 ? `starts in ${Math.round(diffMin / 60)}h` : `starts in ${diffMin}m`);
-    }
+  const diffMin = Math.round((new Date(activity.start_time).getTime() - Date.now()) / 60000);
+  if (diffMin <= 0 || diffMin > 24 * 60) {
+    return null;
   }
-  return parts.length > 0 ? parts.join(' · ') : null;
+  return diffMin >= 60 ? `Starts in ${Math.round(diffMin / 60)}h` : `Starts in ${diffMin}m`;
 }
 
 export type GameListCardProps = {
