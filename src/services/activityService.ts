@@ -26,6 +26,7 @@ import { ensureSupabaseSessionReady } from './api/ensureSupabaseSession';
 import { ensureActivityGroupConversation } from './chatService';
 import { activityHasFriend } from '../utils/activityHelpers';
 import { getUserFriends } from './friendsService';
+import { Friend } from '../types/friends';
 
 /**
  * Create a new activity
@@ -218,7 +219,7 @@ async function enrichActivitiesWithJoinRequests(
     .filter((activity) => activity.user_id === viewerId)
     .map((activity) => activity.id);
 
-  const [mineRes, hostJoinRes] = await Promise.all([
+  const [mineRes, hostJoinRes, approvedRes] = await Promise.all([
     supabase
       .from('join_requests')
       .select(JOIN_REQUEST_CARD_SELECT)
@@ -231,6 +232,11 @@ async function enrichActivitiesWithJoinRequests(
           .in('activity_id', hostActivityIds)
           .in('status', ['approved', 'pending'])
       : Promise.resolve({ data: [] as JoinRequest[], error: null }),
+    supabase
+      .from('join_requests')
+      .select(JOIN_REQUEST_CARD_SELECT)
+      .in('activity_id', activityIds)
+      .eq('status', 'approved'),
   ]);
 
   const byActivity = new Map<string, JoinRequest[]>();
@@ -248,14 +254,7 @@ async function enrichActivitiesWithJoinRequests(
   for (const row of (hostJoinRes.data || []) as JoinRequest[]) {
     addRow(row);
   }
-
-  const { data: approvedRows } = await supabase
-    .from('join_requests')
-    .select(JOIN_REQUEST_CARD_SELECT)
-    .in('activity_id', activityIds)
-    .eq('status', 'approved');
-
-  for (const row of (approvedRows || []) as JoinRequest[]) {
+  for (const row of (approvedRes.data || []) as JoinRequest[]) {
     addRow(row);
   }
 
@@ -474,7 +473,34 @@ export const getNearbyActivities = async (
     );
   }
 
-  let { activities, errorMessage } = await queryDiscoverActivities(sportType);
+  const authUserId = authUser?.id;
+
+  const [{ activities, errorMessage }, hostedRaw, friendsRaw] = await Promise.all([
+    queryDiscoverActivities(sportType),
+    authUserId
+      ? getUserActivities(authUserId).catch((hostedErr) => {
+          if (__DEV__) {
+            addDiscoverLog(
+              'hosted merge skipped:',
+              hostedErr instanceof Error ? hostedErr.message : String(hostedErr)
+            );
+          }
+          return [] as Activity[];
+        })
+      : Promise.resolve([] as Activity[]),
+    authUserId
+      ? getUserFriends(authUserId).catch((friendErr) => {
+          if (__DEV__) {
+            addDiscoverLog(
+              'friend list skipped:',
+              friendErr instanceof Error ? friendErr.message : String(friendErr)
+            );
+          }
+          return [] as Friend[];
+        })
+      : Promise.resolve([] as Friend[]),
+  ]);
+
   if (errorMessage && activities.length === 0) {
     throw new Error(`Could not load games: ${errorMessage}`);
   }
@@ -487,22 +513,9 @@ export const getNearbyActivities = async (
     );
   }
 
-  let hostedActive: Activity[] = [];
-  if (authUser) {
-    try {
-      const hosted = await getUserActivities(authUser.id);
-      hostedActive = hosted.filter(
-        (activity) => activity.status === 'active' && isActivityListingActive(activity)
-      );
-    } catch (hostedErr) {
-      if (__DEV__) {
-        addDiscoverLog(
-          'hosted merge skipped:',
-          hostedErr instanceof Error ? hostedErr.message : String(hostedErr)
-        );
-      }
-    }
-  }
+  const hostedActive = hostedRaw.filter(
+    (activity) => activity.status === 'active' && isActivityListingActive(activity)
+  );
 
   const mergedById = new Map<string, Activity>();
   for (const activity of activities) {
@@ -512,26 +525,11 @@ export const getNearbyActivities = async (
     mergedById.set(activity.id, activity);
   }
 
-  const authUserId = authUser?.id;
-
-  let friendIds = new Set<string>();
-  if (authUserId) {
-    try {
-      const friends = await getUserFriends(authUserId);
-      friendIds = new Set(
-        friends
-          .map((friendship) => friendship.friend?.id || friendship.friend_id)
-          .filter((id): id is string => Boolean(id))
-      );
-    } catch (friendErr) {
-      if (__DEV__) {
-        addDiscoverLog(
-          'friend list skipped:',
-          friendErr instanceof Error ? friendErr.message : String(friendErr)
-        );
-      }
-    }
-  }
+  const friendIds = new Set(
+    friendsRaw
+      .map((friendship) => friendship.friend?.id || friendship.friend_id)
+      .filter((id): id is string => Boolean(id))
+  );
 
   const friendRadius = CONFIG.FRIEND_DISCOVERY_RADIUS_M;
 
