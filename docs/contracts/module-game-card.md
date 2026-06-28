@@ -90,6 +90,29 @@ Use `discoverPresetKey()`, `detailPresetForActivity()`, `gameListVariantFromPres
 | `RallySessionCard` | `sessionInline` | `CrewGameSessionCard` + `createGameCardSessionActions` |
 | `GameCardDetailHero` | `detailHero` | Detail hero on `ActivityDetailScreen` |
 
+## Derived counts — single source of truth (T0 · 2026-06-27)
+
+> Added by Tier 0 dogfood triage: a discover card showed **"5 left"** (trailing badge) next to **"9 spots left"** (urgency hook) on the *same* card. Root cause: the badge read server `missing_players` / `player_count`, while the hook computed `capacity − (1 + approvedParticipants)` from a roster summary that is **unreliable on list rows** (participants aren't loaded → falls back to `capacity − 1`).
+
+- [ ] **One source per number.** Any "spots / left / open" figure on a card derives from **one** helper. On list rows that is `getGameListSpotsBadgeLabel` (server `missing_players` → `player_count` fallback). Do **not** also compute spots from `getActivityRosterSummary` on list surfaces — it needs loaded participants the list doesn't have.
+- [ ] **No two spot numbers on one card.** The trailing badge is the single spot indicator. The **urgency hook does not restate a spot count** — it carries *time-to-start only* ("Starts in 9h"). If a second spot figure is ever wanted, it must read the **same** helper as the badge and match exactly.
+- [ ] **If two surfaces legitimately differ** (e.g. list badge vs detail "X spots open"), the difference must be *explained by state* (list = unconfirmed server count; detail = live roster) and both must be internally consistent — never two contradicting numbers in the same viewport.
+
+### Spots label — state-aware single helper (H1 resolved · 2026-06-27)
+
+> Founder decision (T0 H1): one state-aware label, identical on discover **and** detail (was "5 left" vs "7 spots open" for the same game).
+
+`getActivitySpotsState(activity)` is the **only** producer of the spots label. From server fields (`missing_players`, `player_count`, `roster_max`):
+
+| State | Condition | Label | Tone |
+|-------|-----------|-------|------|
+| Recruiting | `missing_players > 0` (below roster minimum — not yet viable) | **"{n} more to start"** | recruiting |
+| Open | viable, `roster_max − player_count > 0` | **"{n} spots left"** (1 → "1 spot left") | open |
+| Full | no open seats | **"Full"** | full |
+
+- [ ] Discover badge (`getGameListSpotsBadgeLabel`) and detail seat bar (`RosterSeatBar`) both call `getActivitySpotsState` — no independent spot strings.
+- [ ] Wording is open to copy refinement, but the **two-state transition** ("more to start" → "spots left" at the minimum) is the contract.
+
 ## Rules for agents
 
 1. **Add surfaces via presets** — extend `GAME_CARD_PRESETS` and this contract surfaces map; do not add per-screen layout flags.
@@ -141,6 +164,7 @@ Use `discoverPresetKey()`, `detailPresetForActivity()`, `gameListVariantFromPres
 
 ## Pass/fail — audit (grep / unit)
 
+- [ ] **No contradicting counts:** trailing badge and any other count on the same card derive from the **same** helper (`getGameListSpotsBadgeLabel` on list rows); urgency hook carries time-to-start only, no spot count (see "Derived counts — single source of truth")
 - [ ] Every wired surface in **Surfaces map** uses listed preset + shell
 - [ ] No duplicated join/I'm in/lock/nudge handlers outside `gameCardSessionActions.ts` / `useGameCardSessionActions.ts` / `RallySessionCard`
 - [ ] `detailPresetForActivity()` used on detail (not hardcoded pickup/rally flags on screen)
