@@ -1,6 +1,6 @@
 # Roadmap — what's left to run (living doc)
 
-_Last updated: 2026-06-28. Supersedes the 2026-06-26 "loops to run" list (those 3 loops are all shipped — see Done)._
+_Last updated: 2026-06-28 (session 2). Supersedes the 2026-06-26 "loops to run" list (those 3 loops are all shipped — see Done)._
 
 Two parallel tracks now:
 - **Product track** — UX tiers 0–6 (judge the screens). [TIER-MODEL.md](../product-review/TIER-MODEL.md)
@@ -19,7 +19,10 @@ Two parallel tracks now:
 | `theme-explore-round1` | Product T6 (gen) | 6 theme candidates + logos; contrast gate | #91 |
 | `tier0-join-loop` | Product T0 | Dogfood triage → spot-label single source + viewer-state gating + ready-count copy (H1/H2) | #95, #96 |
 | **`query-cost-auditor` on discover feed** | Eng | 6 findings + EXPLAIN proof; 2 indexes (PR #97); ADR-0001 proposed | #97 |
-| **`realtime-fanout-reviewer` on chat channels** | Eng | 4 findings; ADR-0002 proposed (channel-ownership model for reactions) | this PR |
+| **`realtime-fanout-reviewer` on chat channels** | Eng | 4 findings; ADR-0002 proposed (channel-ownership model for reactions) | #98 |
+| **5 mechanical fixes** (discover waterfall, channel rename, abort flag, fallback cap) | Eng | PR #99; 19/19 tests pass | #99 |
+| **DB indexes applied to production** | Eng | `074_discover_perf_indexes.sql` pushed to production 2026-06-28 | — |
+| **`scalability-skeptic` on 4 surfaces** | Eng | 5 findings; 1 → ADR-0001 (accepted), 4 → backlog | — |
 
 ---
 
@@ -27,8 +30,8 @@ Two parallel tracks now:
 
 | Item | Track | State | Next step |
 |------|-------|-------|-----------|
-| **ADR-0001** (discover RPC) | Eng | proposed | Founder decides: consolidate to single RPC vs keep waterfall |
-| **ADR-0002** (chat channel ownership) | Eng | proposed | Founder decides: refactor before reactions or ship reactions with 2-channel workaround |
+| **ADR-0001** (discover RPC) | Eng | **ACCEPTED** | Build: new SQL migration + `getNearbyActivities` thin wrapper |
+| **ADR-0002** (chat channel ownership) | Eng | **ACCEPTED** | Build: `useChatChannel` hook; refactor `ChatThreadScreen` + `RallyChatPanel` |
 
 ---
 
@@ -38,7 +41,7 @@ Run **one lens per session** ([eng-personas.md](../eng-review/eng-personas.md));
 
 | # | Lens | Target | Why now |
 |---|------|--------|---------|
-| E2 | `scalability-skeptic` | discover + a 2k-message thread, on a **large seed** | Confirms ADR-0001 wall numbers with real data |
+| ~~E2~~ | ~~`scalability-skeptic`~~ | **DONE** — 5 findings; chat scroll-back (P1) + enrich cap (P1) + inbox cap (P2) + roster windowing (P2) queued | — |
 | E3 | `state-management-auditor` | the recurring `as never` nav casts | Typed-navigation ADR candidate |
 | E4 | `error-resilience-auditor` | optimistic writes + stale-session bootstrap (the iOS "black screen") | Resilience of the paths users already hit |
 
