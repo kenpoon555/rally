@@ -236,7 +236,8 @@ async function enrichActivitiesWithJoinRequests(
       .from('join_requests')
       .select(JOIN_REQUEST_CARD_SELECT)
       .in('activity_id', activityIds)
-      .eq('status', 'approved'),
+      .eq('status', 'approved')
+      .limit(activityIds.length * 20),
   ]);
 
   const byActivity = new Map<string, JoinRequest[]>();

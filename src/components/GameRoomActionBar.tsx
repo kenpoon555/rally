@@ -101,6 +101,7 @@ type GameRoomContextValue = {
   rosterCount: number;
   pendingRequests: JoinRequest[];
   loadingRequests: boolean;
+  requestsError: string | null;
   approvedParticipants: JoinRequest[];
   sortedApprovedParticipants: JoinRequest[];
   nextHostCandidate: JoinRequest | undefined;
@@ -188,6 +189,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const { activity, loading, refetch } = useActivity(activityId);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState(false);
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -327,13 +329,16 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const loadJoinRequests = useCallback(async () => {
     if (!isHost) {
       setJoinRequests([]);
+      setRequestsError(null);
       return;
     }
     setLoadingRequests(true);
+    setRequestsError(null);
     try {
       setJoinRequests(await getActivityJoinRequests(activityId));
-    } catch {
+    } catch (err) {
       setJoinRequests([]);
+      setRequestsError(err instanceof Error ? err.message : 'Could not load join requests.');
     } finally {
       setLoadingRequests(false);
     }
@@ -705,6 +710,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     rosterCount,
     pendingRequests,
     loadingRequests,
+    requestsError,
     approvedParticipants,
     sortedApprovedParticipants,
     nextHostCandidate,
@@ -1190,6 +1196,7 @@ export const GameRoomFooter: React.FC = () => {
     iAmReady,
     pendingRequests,
     loadingRequests,
+    requestsError,
     finalizing,
     settingReady,
     onOpenDetails,
@@ -1680,6 +1687,8 @@ export const GameRoomFooter: React.FC = () => {
           {pendingExpanded ? (
             loadingRequests ? (
               <ActivityIndicator size="small" color={colors.primary} style={styles.pendingLoader} />
+            ) : requestsError ? (
+              <Text style={styles.requestsErrorText}>{requestsError}</Text>
             ) : (
               pendingRequests.map((req) => (
                 <View key={req.id} style={styles.pendingRow}>
@@ -2192,6 +2201,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   pendingLoader: {
+    marginVertical: 6,
+  },
+  requestsErrorText: {
+    fontSize: 12,
+    color: colors.error,
     marginVertical: 6,
   },
   pendingRow: {

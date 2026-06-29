@@ -15,6 +15,7 @@ const withRetry = async <T>(action: () => Promise<T>, retries: number = 1): Prom
       if (attempt === retries) {
         throw error;
       }
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
   throw lastError instanceof Error ? lastError : new Error('Unknown chat service failure');
@@ -259,7 +260,8 @@ export const getMyConversations = async (userId: string): Promise<Conversation[]
     `
     )
     .eq('user_id', userId)
-    .eq('is_active', true);
+    .eq('is_active', true)
+    .limit(200);
 
   if (error) {
     throw new Error(`Failed to load conversations: ${error.message}`);
@@ -311,17 +313,20 @@ export const prefetchConversationMessages = async (
 
 export const getConversationMessages = async (
   conversationId: string,
-  limit: number = 50
+  limit: number = 50,
+  before?: string
 ): Promise<ChatMessage[]> => {
-  const { data, error } = await withRetry(() =>
-    supabase
+  const { data, error } = await withRetry(() => {
+    let q = supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
-      .limit(limit)
-  );
+      .limit(limit);
+    if (before) q = q.lt('created_at', before);
+    return q;
+  });
 
   if (error) {
     throw new Error(`Failed to load messages: ${error.message}`);
