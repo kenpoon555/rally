@@ -18,8 +18,8 @@ import {
   getConversationMessages,
   markConversationRead,
   sendConversationMessage,
-  subscribeToConversationMessages,
 } from '../../services/chatService';
+import { useChatChannel } from '../../hooks/useChatChannel';
 import { getConversationPolls } from '../../services/availabilityPollService';
 import { ChatMessage } from '../../types/chat';
 import { AvailabilityPoll } from '../../types/availabilityPoll';
@@ -54,6 +54,7 @@ export const RallyChatPanel: React.FC<Props> = ({
   onRetryChat,
   onGoToPlay,
 }) => {
+  const chatChannel = useChatChannel(conversationId ?? '');
   const navigation = useNavigation();
   const { user } = useAuth();
   const listRef = useRef<FlatList<ChatMessage>>(null);
@@ -127,28 +128,39 @@ export const RallyChatPanel: React.FC<Props> = ({
   }, [conversationId, loadMessages, reloadCrewPolls]);
 
   useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-    const subscription = subscribeToConversationMessages(conversationId, (message) => {
-      setMessages((prev) => {
-        if (prev.some((msg) => msg.id === message.id)) {
-          return prev;
+    if (!conversationId) return;
+
+    chatChannel.register({
+      table: 'messages',
+      event: 'INSERT',
+      filter: `conversation_id=eq.${conversationId}`,
+      handler: (payload) => {
+        const message = payload.new as ChatMessage;
+        setMessages((prev) => {
+          if (prev.some((msg) => msg.id === message.id)) return prev;
+          return [...prev, message];
+        });
+        if (message.message_type === 'system' || message.activity_id) {
+          void reloadCrewSessions();
         }
-        return [...prev, message];
-      });
-      if (message.message_type === 'system' || message.activity_id) {
-        void reloadCrewSessions();
-      }
-      if (user?.id) {
-        markConversationRead(conversationId, user.id).catch(() => null);
-      }
-      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+        if (user?.id) {
+          markConversationRead(conversationId, user.id).catch(() => null);
+        }
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      },
     });
-    return () => {
-      void subscription.unsubscribe();
-    };
-  }, [conversationId, reloadCrewSessions, user?.id]);
+
+    chatChannel.subscribe(() => {
+      void getConversationMessages(conversationId, 20).then((recent) => {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newOnes = recent.filter((m) => !existingIds.has(m.id));
+          return newOnes.length > 0 ? [...prev, ...newOnes].sort((a, b) =>
+            a.created_at < b.created_at ? -1 : 1) : prev;
+        });
+      }).catch(() => null);
+    });
+  }, [conversationId, chatChannel, reloadCrewSessions, user?.id]);
 
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !!conversationId,

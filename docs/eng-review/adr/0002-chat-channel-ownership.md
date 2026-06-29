@@ -1,6 +1,6 @@
 # ADR-0002: Introduce a channel-ownership hook for conversation realtime
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-06-28
 - **Lens / source:** `realtime-fanout-reviewer` ([review](../realtime-fanout-reviewer/2026-06-28-review.md))
 - **Severity:** P1
