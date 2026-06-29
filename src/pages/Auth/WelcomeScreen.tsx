@@ -18,12 +18,7 @@ import { MARKET_COPY } from '../../constants/betaCopy';
 import { AGE_GATE_ONBOARDING } from '../../constants/parentStudentFlags';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing, typography } from '../../constants/theme';
-
-type AuthStackParamList = {
-  Welcome: undefined;
-  Login: undefined;
-  Signup: undefined;
-};
+import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 

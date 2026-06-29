@@ -90,7 +90,7 @@ import { FillInvite } from '../../types/fillIn';
 import { GameFriendInvite } from '../../types/gameFriendInvite';
 
 const ProfileScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation();
   const { user, signOut, refreshUser } = useAuth();
   const { sports } = useSportsCatalog();
   const defaultSport = resolveUserDefaultSport(user?.preferred_sports?.[0]);
@@ -98,7 +98,7 @@ const ProfileScreen: React.FC = () => {
   const { showFamily, showCoachTools, students } = useCoachParent();
 
   const openActivityDetail = (activityId: string) => {
-    navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
+    navigation.navigate(ROUTES.ACTIVITY.DETAIL, { activityId });
   };
 
   const [savingNickname, setSavingNickname] = useState(false);
@@ -668,21 +668,21 @@ const ProfileScreen: React.FC = () => {
         icon="people-outline"
         title="Friends"
         subtitle="Add friends, requests, and messages"
-        onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST as never)}
+        onPress={() => navigation.navigate(ROUTES.FRIENDS.LIST)}
       />
       <ProfileLinkCard
         icon="search-outline"
         title="Find friends"
         subtitle="Search by username"
         onPress={() =>
-          navigation.navigate(ROUTES.FRIENDS.LIST as never, { openSearch: true } as never)
+          navigation.navigate(ROUTES.FRIENDS.LIST, { openSearch: true })
         }
       />
       <ProfileLinkCard
         icon="calendar-outline"
         title="My games"
         subtitle="Upcoming, past, and hosting"
-        onPress={() => navigation.navigate(ROUTES.MY_GAMES.TAB as never)}
+        onPress={() => navigation.navigate(ROUTES.MY_GAMES.TAB)}
       />
 
       {regularGroups.length > 0 ? (
@@ -694,9 +694,9 @@ const ProfileScreen: React.FC = () => {
               label={group.name}
               value={group.sport_type}
               onPress={() =>
-                navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
                   groupId: group.id,
-                } as never)
+                })
               }
             />
           ))}
@@ -921,9 +921,9 @@ const ProfileScreen: React.FC = () => {
                           ]);
                           setFreeAgentInvites(invites);
                           setMyFreeAgentPost(post);
-                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, {
                             activityId: invite.activity_id,
-                          } as never);
+                          });
                         } catch (error: unknown) {
                           Alert.alert(
                             'Could not accept',
@@ -980,9 +980,9 @@ const ProfileScreen: React.FC = () => {
                         try {
                           await respondFillInvite(invite.id, true);
                           setFillInvites(await listMyPendingFillInvites());
-                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, {
                             activityId: invite.activity_id,
-                          } as never);
+                          });
                         } catch (error: unknown) {
                           Alert.alert(
                             'Could not accept',
@@ -1309,9 +1309,9 @@ const ProfileScreen: React.FC = () => {
             label="Test class enroll picker"
             value="Child profile picker"
             onPress={() =>
-              navigation.navigate(ROUTES.COACH_PARENT.CHILD_PICKER as never, {
+              navigation.navigate(ROUTES.COACH_PARENT.CHILD_PICKER, {
                 classTitle: 'Beginner Badminton',
-              } as never)
+              })
             }
           />
         </View>
@@ -1466,7 +1466,7 @@ const ProfileScreen: React.FC = () => {
           label="Send feedback"
           value="Questions or ideas"
           onPress={() =>
-            navigation.navigate(ROUTES.FEEDBACK.MAIN as never, { screen: 'Profile' } as never)
+            navigation.navigate(ROUTES.FEEDBACK.MAIN)
           }
         />
       </View>

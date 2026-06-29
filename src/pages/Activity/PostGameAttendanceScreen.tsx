@@ -18,12 +18,13 @@ import { colors, spacing, typography } from '../../constants/theme';
 import { formatActivityTime, getApprovedParticipants } from '../../utils/activityHelpers';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ROUTES } from '../../constants/routes';
+import type { RootStackParamList } from '../../navigation/types';
 
 export type PostGameAttendanceParams = {
   PostGameAttendance: { activityId: string };
 };
 
-type Props = NativeStackScreenProps<PostGameAttendanceParams, 'PostGameAttendance'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'PostGameAttendance'>;
 
 const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
   const { activityId } = route.params;
@@ -118,7 +119,7 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
           <Text style={styles.playerBody}>{PRODUCT_COPY.postGamePlayerBody}</Text>
           <Button
             title={PRODUCT_COPY.findNextGame}
-            onPress={() => navigation.navigate(ROUTES.HOME.MAIN as never)}
+            onPress={() => navigation.navigate('MainTabs', { screen: ROUTES.HOME.MAIN })}
             style={styles.submit}
           />
         </ScrollView>

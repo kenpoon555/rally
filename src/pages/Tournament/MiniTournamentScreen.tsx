@@ -24,12 +24,13 @@ import {
 import { MiniTournament, MiniTournamentMatch, MiniTournamentMember } from '../../types/miniTournament';
 import { Button, KeyboardSafeView, ScreenHeader, keyboardAwareScrollProps } from '../../components/ui';
 import { colors, radius, spacing, typography } from '../../constants/theme';
+import type { RootStackParamList } from '../../navigation/types';
 
 export type MiniTournamentStackParams = {
   MiniTournament: { tournamentId: string };
 };
 
-type Props = NativeStackScreenProps<MiniTournamentStackParams, 'MiniTournament'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'MiniTournament'>;
 
 function formatTeamLabel(users?: { username: string }[]): string {
   if (!users?.length) {

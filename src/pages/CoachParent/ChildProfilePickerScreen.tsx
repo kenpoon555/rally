@@ -17,15 +17,9 @@ import { ClassEnrollmentInvite, StudentProfile } from '../../types/coachParent';
 import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { ROUTES } from '../../constants/routes';
 import { canCreateStudentProfiles } from '../../types/ageCategory';
+import type { RootStackParamList } from '../../navigation/types';
 
-type Params = {
-  ChildProfilePicker: {
-    classTitle?: string;
-    invite?: ClassEnrollmentInvite;
-  };
-};
-
-type Props = NativeStackScreenProps<Params, 'ChildProfilePicker'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ChildProfilePicker'>;
 
 const ChildProfilePickerScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -64,9 +58,9 @@ const ChildProfilePickerScreen: React.FC<Props> = ({ navigation, route }) => {
         studentProfileId: row.id,
         invite,
       });
-      navigation.replace(ROUTES.COACH_PARENT.ENROLLMENT_CONFIRMATION as never, {
+      navigation.replace(ROUTES.COACH_PARENT.ENROLLMENT_CONFIRMATION, {
         enrollment,
-      } as never);
+      });
     } catch (err) {
       Alert.alert(
         'Enrollment failed',
@@ -112,9 +106,7 @@ const ChildProfilePickerScreen: React.FC<Props> = ({ navigation, route }) => {
             style={styles.addBtn}
             testID="child-picker-add"
             onPress={() =>
-              navigation.navigate(ROUTES.COACH_PARENT.ADD_CHILD_PROFILE as never, {
-                returnToInvite: invite,
-              } as never)
+              navigation.navigate(ROUTES.COACH_PARENT.ADD_CHILD_PROFILE)
             }
           >
             <Text style={styles.addBtnText}>+ Add child profile</Text>

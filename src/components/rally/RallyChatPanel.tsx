@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
 import { useCrewChatSessions } from '../../hooks/useCrewChatSessions';
 import {
@@ -43,7 +43,6 @@ type Props = {
   chatLoading: boolean;
   onRetryChat: () => void;
   onGoToPlay: () => void;
-  navigation: NativeStackNavigationProp<any>;
 };
 
 export const RallyChatPanel: React.FC<Props> = ({
@@ -54,8 +53,8 @@ export const RallyChatPanel: React.FC<Props> = ({
   chatLoading,
   onRetryChat,
   onGoToPlay,
-  navigation,
 }) => {
+  const navigation = useNavigation();
   const { user } = useAuth();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -95,7 +94,6 @@ export const RallyChatPanel: React.FC<Props> = ({
     conversationId,
     groupId,
     userId: user?.id,
-    navigation,
     onAfterAction: () => {
       void loadMessages();
     },
@@ -212,11 +210,11 @@ export const RallyChatPanel: React.FC<Props> = ({
   };
 
   const handleScheduleFromPoll = (option: { starts_at: string; label: string }) => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as never, {
+    navigation.navigate(ROUTES.ACTIVITY.CREATE, {
       prefillStartTime: option.starts_at,
       prefillTitle: option.label,
       prefillGroupId: groupId,
-    } as never);
+    });
   };
 
   if (chatLoading) {

@@ -33,12 +33,9 @@ import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { formatActivityTime } from '../../utils/activityHelpers';
 import { COACH_MINOR_ROSTER, PARENT_PILOT_ENROLLMENT } from '../../constants/parentStudentFlags';
 import { COACH_CLASS_OPERATIONS } from '../../constants/coachOpsFlags';
+import type { RootStackParamList } from '../../navigation/types';
 
-type Params = {
-  ClassDetail: { classId: string; initialTab?: ClassDetailTab };
-};
-
-type Props = NativeStackScreenProps<Params, 'ClassDetail'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ClassDetail'>;
 
 const TABS: { id: ClassDetailTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },

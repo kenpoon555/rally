@@ -35,6 +35,7 @@ import { RallyCrewPanel } from '../../components/rally/RallyCrewPanel';
 import { KeyboardSafeView } from '../../components/ui';
 import { colors, spacing } from '../../constants/theme';
 import { devTestCrewDormancyNudge } from '../../services/crewDormancyNudgeService';
+import type { RootStackParamList } from '../../navigation/types';
 
 export type RegularsCrewStackParams = {
   RegularsCrew: {
@@ -44,7 +45,7 @@ export type RegularsCrewStackParams = {
   };
 };
 
-type Props = NativeStackScreenProps<RegularsCrewStackParams, 'RegularsCrew'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'RegularsCrew'>;
 
 const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
   const { groupId, initialTab, promptShareInvite } = route.params;
@@ -141,7 +142,7 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
       return;
     }
     sharePromptHandled.current = true;
-    navigation.setParams({ promptShareInvite: false } as never);
+    navigation.setParams({ promptShareInvite: false });
     void shareRallyGroupInvite(group);
   }, [group, navigation, promptShareInvite]);
 
@@ -247,7 +248,6 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
           chatLoading={chatLoading}
           onRetryChat={() => void bootstrapChat()}
           onGoToPlay={() => setTab('play')}
-          navigation={navigation}
         />
       ) : null}
 
@@ -261,7 +261,6 @@ const RegularsCrewScreen: React.FC<Props> = ({ route, navigation }) => {
           busyActivityId={busyActivityId}
           setBusyActivityId={setBusyActivityId}
           onReload={refreshAll}
-          navigation={navigation}
         />
       ) : null}
 
