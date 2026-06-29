@@ -437,6 +437,28 @@ export async function hostUpdateGameCourt(
   return updated;
 }
 
+async function callDiscoverRpc(
+  viewerId: string | undefined,
+  latitude: number | undefined,
+  longitude: number | undefined,
+  radius: number,
+  sportType: SportType | undefined,
+  limit = 30
+): Promise<Activity[]> {
+  const { data, error } = await supabase.rpc('discover_activities', {
+    p_viewer: viewerId ?? null,
+    p_lat: latitude ?? null,
+    p_lng: longitude ?? null,
+    p_radius_m: radius,
+    p_sport: sportType ?? null,
+    p_limit: limit,
+    p_cursor_start_time: null,
+    p_cursor_id: null,
+  });
+  if (error) throw new Error(`discover_activities RPC: ${error.message}`);
+  return ((data as { activity: Activity; distance_m: number | null }[]) || []).map((row) => row.activity);
+}
+
 export const getNearbyActivities = async (
   latitude?: number,
   longitude?: number,
@@ -475,8 +497,22 @@ export const getNearbyActivities = async (
 
   const authUserId = authUser?.id;
 
-  const [{ activities, errorMessage }, hostedRaw, friendsRaw] = await Promise.all([
-    queryDiscoverActivities(sportType),
+  let activities: Activity[];
+  let rpcSucceeded = false;
+
+  try {
+    activities = await callDiscoverRpc(authUserId, latitude, longitude, effectiveRadius, sportType);
+    rpcSucceeded = true;
+  } catch (rpcErr) {
+    if (__DEV__) addDiscoverLog('RPC fallback:', rpcErr instanceof Error ? rpcErr.message : String(rpcErr));
+    const result = await queryDiscoverActivities(sportType);
+    activities = result.activities;
+    if (result.errorMessage && activities.length === 0) {
+      throw new Error(`Could not load games: ${result.errorMessage}`);
+    }
+  }
+
+  const [hostedRaw, friendsRaw] = await Promise.all([
     authUserId
       ? getUserActivities(authUserId).catch((hostedErr) => {
           if (__DEV__) {
@@ -500,10 +536,6 @@ export const getNearbyActivities = async (
         })
       : Promise.resolve([] as Friend[]),
   ]);
-
-  if (errorMessage && activities.length === 0) {
-    throw new Error(`Could not load games: ${errorMessage}`);
-  }
 
   if (__DEV__) {
     addDiscoverLog(
@@ -537,11 +569,20 @@ export const getNearbyActivities = async (
     isActivityListingActive(activity)
   );
 
-  const enriched = await enrichActivitiesWithJoinRequests(activeActivities, authUserId);
+  const enriched = rpcSucceeded
+    ? activeActivities
+    : await enrichActivitiesWithJoinRequests(activeActivities, authUserId);
 
   const filtered = enriched.filter((activity) => {
     if (authUserId && activity.user_id === authUserId) {
       return true;
+    }
+    if (rpcSucceeded) {
+      // Server already applied geo filter; only apply friend-radius boost for activities
+      // that weren't returned by the RPC (i.e. hosted games merged in from hostedActive).
+      if (!hostedActive.some((h) => h.id === activity.id)) {
+        return true;
+      }
     }
     if (__DEV__) {
       return true;
