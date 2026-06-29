@@ -92,10 +92,10 @@ export const TodayMyClassesCard: React.FC<Props> = ({
 
   const openClassDetail = useCallback(
     (row: ParentClassEnrollment, initialTab: 'overview' | 'chat' = 'overview') => {
-      navigation.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL as never, {
+      navigation.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL, {
         classId: row.class_id,
         initialTab,
-      } as never);
+      });
     },
     [navigation]
   );
@@ -109,7 +109,7 @@ export const TodayMyClassesCard: React.FC<Props> = ({
         <Text style={styles.empty}>No upcoming classes for your children.</Text>
         <TouchableOpacity
           onPress={() =>
-            navigation.navigate(ROUTES.COACH_PARENT.FAMILY_PROFILES as never)
+            navigation.navigate(ROUTES.COACH_PARENT.FAMILY_PROFILES)
           }
         >
           <Text style={styles.link}>Manage classes for your child →</Text>

@@ -52,22 +52,9 @@ import { ChatQuickReplies } from '../../components/chat/ChatQuickReplies';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
 import { KeyboardSafeView, useComposerBottomPadding } from '../../components/ui';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  ActivityDetail: { activityId: string; fromGameRoom?: boolean };
-  CreateActivity: undefined;
-  Profile: undefined;
-  ChatList: undefined;
-  ChatThread: {
-    conversationId: string;
-    title?: string;
-    activityId?: string;
-    groupId?: string;
-  };
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'ChatThread'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ChatThread'>;
 
 const GameRoomChatBody: React.FC<{
   isGameRoom: boolean;
@@ -404,10 +391,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!resolvedGroupId) {
       return;
     }
-    navigation.replace(ROUTES.REGULAR_GROUP.CREW as never, {
+    navigation.replace(ROUTES.REGULAR_GROUP.CREW, {
       groupId: resolvedGroupId,
       initialTab: 'chat',
-    } as never);
+    });
   }, [navigation, resolvedGroupId]);
 
   useEffect(() => {
@@ -555,11 +542,11 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const crewPollsHost = Boolean(user?.id && crewHostId && user.id === crewHostId);
 
   const handleScheduleFromPoll = (option: { starts_at: string; label: string }) => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as never, {
+    navigation.navigate(ROUTES.ACTIVITY.CREATE, {
       prefillStartTime: option.starts_at,
       prefillTitle: option.label,
       prefillGroupId: resolvedGroupId,
-    } as never);
+    });
   };
 
   const chatBody = (
@@ -573,10 +560,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           <RallyPlayTabHint
             actionCount={playActionCount}
             onPress={() =>
-              navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+              navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
                 groupId: resolvedGroupId,
                 initialTab: 'play',
-              } as never)
+              })
             }
           />
         ) : null
@@ -614,10 +601,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             isCrewChat && resolvedGroupId ? openRallyHub : undefined
           }
           onOpenDetails={() =>
-            navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+            navigation.navigate(ROUTES.ACTIVITY.DETAIL, {
               activityId: resolvedActivityId,
               fromGameRoom: true,
-            } as never)
+            })
           }
           onLeftGame={() => navigation.goBack()}
           onScheduledNextGame={async (newActivityId) => {
@@ -626,9 +613,9 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
               setFocusedActivityId(newActivityId);
               await loadMessages();
             } else {
-              navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+              navigation.navigate(ROUTES.ACTIVITY.DETAIL, {
                 activityId: newActivityId,
-              } as never);
+              });
             }
           }}
         >

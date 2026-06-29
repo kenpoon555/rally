@@ -2,13 +2,9 @@ import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { colors, spacing } from '../../constants/theme';
-import { ParentClassEnrollment } from '../../types/coachParent';
+import type { RootStackParamList } from '../../navigation/types';
 
-type Params = {
-  EnrollmentConfirmation: { enrollment: ParentClassEnrollment };
-};
-
-type Props = NativeStackScreenProps<Params, 'EnrollmentConfirmation'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'EnrollmentConfirmation'>;
 
 const EnrollmentConfirmationScreen: React.FC<Props> = ({ navigation, route }) => {
   const { enrollment } = route.params;

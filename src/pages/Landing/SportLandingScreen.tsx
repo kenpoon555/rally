@@ -24,11 +24,13 @@ import { formatActivityTime } from '../../utils/activityHelpers';
 import { formatSkillLevelLabel } from '../../services/captainService';
 import { BETA_REGION } from '../../constants/betaRegion';
 
+import type { RootStackParamList } from '../../navigation/types';
+
 export type SportLandingStackParams = {
   SportLanding: { sportSlug: string };
 };
 
-type Props = NativeStackScreenProps<SportLandingStackParams, 'SportLanding'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'SportLanding'>;
 
 const SportLandingScreen: React.FC<Props> = ({ route, navigation }) => {
   const sport = sportFromSlug(route.params.sportSlug) ?? 'Badminton';
@@ -63,13 +65,13 @@ const SportLandingScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const openDiscover = (options?: { highlightRecruiting?: boolean }) => {
-    navigation.navigate('MainTabs' as never, {
+    navigation.navigate('MainTabs', {
       screen: ROUTES.HOME.MAIN,
       params: {
         sportFilter: sport,
         highlightOpenSpots: options?.highlightRecruiting ?? false,
       },
-    } as never);
+    });
   };
 
   if (loading && !payload) {
@@ -170,9 +172,9 @@ const SportLandingScreen: React.FC<Props> = ({ route, navigation }) => {
               key={session.id}
               style={styles.listCard}
               onPress={() =>
-                navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+                navigation.navigate(ROUTES.ACTIVITY.DETAIL, {
                   activityId: session.id,
-                } as never)
+                })
               }
             >
               <Text style={styles.listTitle}>

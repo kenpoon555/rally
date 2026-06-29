@@ -15,12 +15,9 @@ import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { ROUTES } from '../../constants/routes';
 import { PARENT_PILOT_ENROLLMENT } from '../../constants/parentStudentFlags';
 import { canCreateStudentProfiles } from '../../types/ageCategory';
+import type { RootStackParamList } from '../../navigation/types';
 
-type Params = {
-  ParentClassInvite: { inviteToken: string };
-};
-
-type Props = NativeStackScreenProps<Params, 'ParentClassInvite'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ParentClassInvite'>;
 
 const ParentClassInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -87,7 +84,7 @@ const ParentClassInviteScreen: React.FC<Props> = ({ navigation, route }) => {
         <Text style={styles.hint}>Parents must sign in to enroll a child in this class.</Text>
         <TouchableOpacity
           style={styles.primaryBtn}
-          onPress={() => navigation.navigate(ROUTES.AUTH.LOGIN as never)}
+          onPress={() => navigation.navigate(ROUTES.AUTH.LOGIN)}
         >
           <Text style={styles.primaryBtnText}>Log in to enroll</Text>
         </TouchableOpacity>
@@ -127,9 +124,9 @@ const ParentClassInviteScreen: React.FC<Props> = ({ navigation, route }) => {
         style={styles.primaryBtn}
         testID="class-invite-continue"
         onPress={() =>
-          navigation.navigate(ROUTES.COACH_PARENT.CHILD_PICKER as never, {
+          navigation.navigate(ROUTES.COACH_PARENT.CHILD_PICKER, {
             invite,
-          } as never)
+          })
         }
       >
         <Text style={styles.primaryBtnText}>Choose child profile</Text>
@@ -138,9 +135,7 @@ const ParentClassInviteScreen: React.FC<Props> = ({ navigation, route }) => {
         style={styles.secondaryBtn}
         testID="class-invite-add-child"
         onPress={() =>
-          navigation.navigate(ROUTES.COACH_PARENT.ADD_CHILD_PROFILE as never, {
-            returnToInvite: invite,
-          } as never)
+          navigation.navigate(ROUTES.COACH_PARENT.ADD_CHILD_PROFILE)
         }
       >
         <Text style={styles.secondaryBtnText}>+ Add child profile</Text>

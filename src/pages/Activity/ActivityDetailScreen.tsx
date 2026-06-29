@@ -94,27 +94,9 @@ import {
 } from '../../components/game/GameCardIconActionBar';
 import { GameCardSection, gameCardPanelStyles } from '../../components/game/GameCardSection';
 import { JoinRequestsSheet } from '../../components/game/JoinRequestsSheet';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  ActivityDetail: {
-    activityId?: string;
-    inviteToken?: string;
-    hostInvite?: boolean;
-    fromGameRoom?: boolean;
-  };
-  CreateActivity: undefined;
-  PostGameAttendance: { activityId: string };
-  ChatThread: { conversationId: string; title?: string; activityId?: string; groupId?: string };
-  MiniTournament: { tournamentId: string };
-  RegularsCrew: {
-    groupId: string;
-    initialTab?: 'chat' | 'play' | 'members';
-    promptShareInvite?: boolean;
-  };
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ActivityDetail'>;
 
 const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { activityId: routeActivityId, inviteToken, hostInvite, fromGameRoom } = route.params;
@@ -350,7 +332,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       headerLeft: () => (
         <TouchableOpacity
           onPress={() =>
-            canGoBack ? navigation.goBack() : navigation.navigate('MainTabs' as never)
+            canGoBack ? navigation.goBack() : navigation.navigate('MainTabs')
           }
           hitSlop={8}
           style={styles.headerCloseBtn}
@@ -561,12 +543,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         : await scheduleNextGameFromActivity(activity.id, startIso);
       setSchedulePickerVisible(false);
       if (activity.regular_group_id) {
-        navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+        navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
           groupId: activity.regular_group_id,
           initialTab: 'play',
-        } as never);
+        });
       } else {
-        (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
+        navigation.replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
       }
     } catch (error: any) {
       Alert.alert('Schedule failed', error?.message || 'Could not schedule next game.');
@@ -650,7 +632,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setCreatingTournament(true);
     try {
       const tournamentId = await createMiniTournament(regularGroup.id);
-      navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
+      navigation.navigate(ROUTES.TOURNAMENT.MINI, { tournamentId });
     } catch (err: unknown) {
       Alert.alert(
         'Mini tournament',
@@ -673,11 +655,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           setCreatingRegularGroup(true);
           try {
             const groupId = await createRegularGroupFromActivity(activity.id);
-            navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+            navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
               groupId,
               initialTab: 'chat',
               promptShareInvite: true,
-            } as never);
+            });
           } catch (err: any) {
             Alert.alert('Could not create group', err?.message || 'Try again.');
           } finally {
@@ -689,16 +671,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const openMiniTournament = (tournamentId: string) => {
-    navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
+    navigation.navigate(ROUTES.TOURNAMENT.MINI, { tournamentId });
   };
 
   const openRegularsCrew = () => {
     if (!regularGroup?.id) {
       return;
     }
-    navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+    navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
       groupId: regularGroup.id,
-    } as never);
+    });
   };
 
   const handleReportCourt = () => {
@@ -1441,9 +1423,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <TouchableOpacity
           style={styles.utilityButton}
           onPress={() =>
-            navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE as never, {
+            navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE, {
               activityId: activity!.id,
-            } as never)
+            })
           }
         >
           <Text style={styles.utilityButtonText}>Record who showed up</Text>

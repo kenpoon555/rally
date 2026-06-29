@@ -8,11 +8,7 @@ import { AuthScreenLayout } from '../../components/AuthScreenLayout';
 import { AuthTermsNotice } from '../../components/auth/AuthTermsNotice';
 import { Button, TextField } from '../../components/ui';
 import { colors, spacing } from '../../constants/theme';
-
-type AuthStackParamList = {
-  Login: undefined;
-  Signup: undefined;
-};
+import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 

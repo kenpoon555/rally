@@ -1224,7 +1224,7 @@ export const GameRoomFooter: React.FC = () => {
   const [loadingNeedRequests, setLoadingNeedRequests] = useState(false);
   const [postingNeed, setPostingNeed] = useState(false);
   const [needExpanded, setNeedExpanded] = useState(false);
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation();
   const [fillIns, setFillIns] = useState<FillInSuggestion[]>([]);
   const [loadingFillIns, setLoadingFillIns] = useState(false);
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
@@ -1370,13 +1370,13 @@ export const GameRoomFooter: React.FC = () => {
   const showFillIns =
     isHost && !isFinalized && !isCrewGame && (activity.missing_players ?? 0) > 0;
   const openDiscoverForPlayers = () => {
-    navigation.navigate('MainTabs' as never, {
+    navigation.navigate('MainTabs', {
       screen: ROUTES.HOME.MAIN,
       params: {
         sportFilter: activity.sport_type,
         highlightOpenSpots: true,
       },
-    } as never);
+    });
   };
 
   const handleInviteFillIn = (suggestion: FillInSuggestion) => {
