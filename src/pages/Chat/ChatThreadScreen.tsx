@@ -22,8 +22,8 @@ import {
   getConversationById,
   markConversationRead,
   sendConversationMessage,
-  subscribeToConversationMessages,
 } from '../../services/chatService';
+import { useChatChannel } from '../../hooks/useChatChannel';
 import { ChatMessage, Conversation } from '../../types/chat';
 import { getRegularGroupById } from '../../services/regularGroupService';
 import { RallyPlayTabHint } from '../../components/rally/RallyPlayTabHint';
@@ -204,6 +204,7 @@ const GameRoomChatBody: React.FC<{
 
 const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const { conversationId, title, activityId, groupId } = route.params;
+  const chatChannel = useChatChannel(conversationId);
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + 44 : 0;
@@ -456,25 +457,37 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   }, [loadMessages]);
 
   useEffect(() => {
-    const subscription = subscribeToConversationMessages(conversationId, (message) => {
-      setMessages((prev) => {
-        if (prev.some((msg) => msg.id === message.id)) {
-          return prev;
+    chatChannel.register({
+      table: 'messages',
+      event: 'INSERT',
+      filter: `conversation_id=eq.${conversationId}`,
+      handler: (payload) => {
+        const message = payload.new as ChatMessage;
+        setMessages((prev) => {
+          if (prev.some((msg) => msg.id === message.id)) return prev;
+          return [...prev, message];
+        });
+        if (isCrewChat && (message.message_type === 'system' || message.activity_id)) {
+          void reloadCrewSessions();
         }
-        return [...prev, message];
-      });
-      if (isCrewChat && (message.message_type === 'system' || message.activity_id)) {
-        void reloadCrewSessions();
-      }
-      if (user?.id) {
-        markConversationRead(conversationId, user.id).catch(() => null);
-      }
+        if (user?.id) {
+          markConversationRead(conversationId, user.id).catch(() => null);
+        }
+      },
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [conversationId, isCrewChat, reloadCrewSessions, user?.id]);
+    chatChannel.subscribe(() => {
+      // onReconnect: re-fetch recent messages and merge to fill the gap
+      void getConversationMessages(conversationId, 20).then((recent) => {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newOnes = recent.filter((m) => !existingIds.has(m.id));
+          return newOnes.length > 0 ? [...prev, ...newOnes].sort((a, b) =>
+            a.created_at < b.created_at ? -1 : 1) : prev;
+        });
+      }).catch(() => null);
+    });
+  }, [conversationId, chatChannel, isCrewChat, reloadCrewSessions, user?.id]);
 
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !blockedThread,
