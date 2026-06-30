@@ -7,7 +7,7 @@ type ChangeHandler = (payload: RealtimePostgresChangesPayload<Record<string, unk
 interface ListenerConfig {
   table: string;
   event: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-  filter: string;
+  filter?: string;
   handler: ChangeHandler;
 }
 
@@ -22,12 +22,14 @@ function attachListener(
   channel: ReturnType<typeof supabase.channel>,
   config: ListenerConfig
 ): void {
+  const opts: Record<string, unknown> = {
+    event: config.event,
+    schema: 'public',
+    table: config.table,
+  };
+  if (config.filter) opts.filter = config.filter;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (channel as any).on(
-    'postgres_changes',
-    { event: config.event, schema: 'public', table: config.table, filter: config.filter },
-    config.handler
-  );
+  (channel as any).on('postgres_changes', opts, config.handler);
 }
 
 export function useChatChannel(conversationId: string): ChatChannelHandle {
