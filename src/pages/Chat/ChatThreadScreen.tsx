@@ -23,8 +23,13 @@ import {
   markConversationRead,
   sendConversationMessage,
 } from '../../services/chatService';
+import {
+  getReactionsForMessages,
+  addReaction,
+  removeReaction,
+} from '../../services/reactionService';
 import { useChatChannel } from '../../hooks/useChatChannel';
-import { ChatMessage, Conversation } from '../../types/chat';
+import { ChatMessage, Conversation, MessageReaction, ReactionEmoji } from '../../types/chat';
 import { getRegularGroupById } from '../../services/regularGroupService';
 import { RallyPlayTabHint } from '../../components/rally/RallyPlayTabHint';
 import { countPlayTabActions } from '../../utils/playTabActions';
@@ -49,6 +54,7 @@ import { AvailabilityPoll } from '../../types/availabilityPoll';
 import { ChatMessageBubble } from '../../components/chat/ChatMessageBubble';
 import { ChatThreadSkeleton } from '../../components/chat/ChatThreadSkeleton';
 import { ChatQuickReplies } from '../../components/chat/ChatQuickReplies';
+import { ReactionPicker } from '../../components/chat/ReactionPicker';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
 import { KeyboardSafeView, useComposerBottomPadding } from '../../components/ui';
@@ -80,6 +86,9 @@ const GameRoomChatBody: React.FC<{
   showQuickReplies?: boolean;
   onQuickReply?: (text: string) => void;
   onMessageLongPress?: (message: ChatMessage) => void;
+  reactions?: Record<string, MessageReaction[]>;
+  onLongPressReact?: (message: ChatMessage) => void;
+  onToggleReaction?: (messageId: string, emoji: ReactionEmoji) => void;
 }> = ({
   isGameRoom,
   isCrewChat,
@@ -104,6 +113,9 @@ const GameRoomChatBody: React.FC<{
   showQuickReplies = false,
   onQuickReply,
   onMessageLongPress,
+  reactions,
+  onLongPressReact,
+  onToggleReaction,
 }) => {
   const gameRoom = useOptionalGameRoom();
   const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
@@ -163,7 +175,11 @@ const GameRoomChatBody: React.FC<{
         <ChatMessageBubble
           message={item}
           isMine={item.sender_id === userId}
+          reactions={reactions?.[item.id]}
+          currentUserId={userId}
           onLongPressOther={onMessageLongPress}
+          onLongPressReact={onLongPressReact}
+          onToggleReaction={onToggleReaction}
         />
       )}
     />
@@ -229,6 +245,8 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [crewHostId, setCrewHostId] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, MessageReaction[]>>({});
+  const [pickerMessage, setPickerMessage] = useState<ChatMessage | null>(null);
 
   const isCrewChat = conversation?.conversation_type === 'crew_group';
   const resolvedGroupId = groupId ?? conversation?.regular_group_id ?? undefined;
@@ -443,6 +461,15 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       const rows = cached ?? (await getConversationMessages(conversationId, 100));
       setMessages(rows);
       setHasMoreMessages(rows.length >= 100);
+      if (rows.length > 0) {
+        const rxns = await getReactionsForMessages(rows.map((m) => m.id));
+        const map: Record<string, MessageReaction[]> = {};
+        for (const r of rxns) {
+          if (!map[r.message_id]) map[r.message_id] = [];
+          map[r.message_id].push(r);
+        }
+        setReactions(map);
+      }
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
       }
@@ -463,11 +490,22 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       if (older.length > 0) {
         setMessages((prev) => [...older, ...prev]);
         setHasMoreMessages(older.length >= 100);
+        const rxns = await getReactionsForMessages(older.map((m) => m.id));
+        setReactions((prev) => {
+          const next = { ...prev };
+          for (const r of rxns) {
+            if (!next[r.message_id]) next[r.message_id] = [];
+            if (!next[r.message_id].some((x) => x.id === r.id)) {
+              next[r.message_id] = [...next[r.message_id], r];
+            }
+          }
+          return next;
+        });
       } else {
         setHasMoreMessages(false);
       }
     } catch {
-      // older load failures are non-critical; user can pull again
+      // non-critical; user can pull again
     } finally {
       setLoading(false);
     }
@@ -494,6 +532,38 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         if (user?.id) {
           markConversationRead(conversationId, user.id).catch(() => null);
         }
+      },
+    });
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'INSERT',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.new as MessageReaction;
+        setMessages((prev) => {
+          if (!prev.some((m) => m.id === r.message_id)) return prev;
+          setReactions((rxns) => {
+            const list = rxns[r.message_id] ?? [];
+            if (list.some((x) => x.id === r.id)) return rxns;
+            return { ...rxns, [r.message_id]: [...list, r] };
+          });
+          return prev;
+        });
+      },
+    });
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'DELETE',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.old as MessageReaction;
+        setReactions((rxns) => {
+          const list = rxns[r.message_id];
+          if (!list) return rxns;
+          return { ...rxns, [r.message_id]: list.filter((x) => x.id !== r.id) };
+        });
       },
     });
 
@@ -565,6 +635,20 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     void sendContent(text);
   };
 
+  const handleToggleReaction = useCallback(
+    (messageId: string, emoji: ReactionEmoji) => {
+      const mine = reactions[messageId]?.some(
+        (r) => r.user_id === user?.id && r.emoji === emoji
+      );
+      if (mine) {
+        removeReaction(messageId, emoji).catch(() => null);
+      } else {
+        addReaction(messageId, emoji).catch(() => null);
+      }
+    },
+    [reactions, user?.id]
+  );
+
   if (loading && messages.length === 0) {
     return <ChatThreadSkeleton />;
   }
@@ -620,6 +704,9 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       showQuickReplies={isCrewChat || isGameRoom}
       onQuickReply={handleQuickReply}
       onMessageLongPress={(message) => void handleMessageLongPress(message)}
+      reactions={reactions}
+      onLongPressReact={setPickerMessage}
+      onToggleReaction={handleToggleReaction}
     />
   );
 
@@ -695,6 +782,21 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           initialReportDetail={safetyReportDetail}
         />
       ) : null}
+
+      <ReactionPicker
+        visible={Boolean(pickerMessage)}
+        myReactions={
+          pickerMessage
+            ? (reactions[pickerMessage.id] ?? [])
+                .filter((r) => r.user_id === user?.id)
+                .map((r) => r.emoji)
+            : []
+        }
+        onSelect={(emoji) => {
+          if (pickerMessage) handleToggleReaction(pickerMessage.id, emoji);
+        }}
+        onClose={() => setPickerMessage(null)}
+      />
     </KeyboardSafeView>
   );
 };

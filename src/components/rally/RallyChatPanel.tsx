@@ -19,9 +19,14 @@ import {
   markConversationRead,
   sendConversationMessage,
 } from '../../services/chatService';
+import {
+  getReactionsForMessages,
+  addReaction,
+  removeReaction,
+} from '../../services/reactionService';
 import { useChatChannel } from '../../hooks/useChatChannel';
 import { getConversationPolls } from '../../services/availabilityPollService';
-import { ChatMessage } from '../../types/chat';
+import { ChatMessage, MessageReaction, ReactionEmoji } from '../../types/chat';
 import { AvailabilityPoll } from '../../types/availabilityPoll';
 import { AvailabilityPollCard } from '../AvailabilityPollCard';
 import { CreateAvailabilityPollSheet } from '../CreateAvailabilityPollSheet';
@@ -29,6 +34,7 @@ import { RallyPlayTabHint } from './RallyPlayTabHint';
 import GameRoomAnnouncementBanner from '../GameRoomAnnouncementBanner';
 import { ChatMessageBubble } from '../chat/ChatMessageBubble';
 import { ChatQuickReplies } from '../chat/ChatQuickReplies';
+import { ReactionPicker } from '../chat/ReactionPicker';
 import { Button, useComposerBottomPadding } from '../ui';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ROUTES } from '../../constants/routes';
@@ -66,6 +72,8 @@ export const RallyChatPanel: React.FC<Props> = ({
   const [errorText, setErrorText] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, MessageReaction[]>>({});
+  const [pickerMessage, setPickerMessage] = useState<ChatMessage | null>(null);
   const composerPaddingBottom = useComposerBottomPadding(spacing.md);
 
   const loadMessages = useCallback(async () => {
@@ -78,6 +86,15 @@ export const RallyChatPanel: React.FC<Props> = ({
       const rows = await getConversationMessages(conversationId, 100);
       setMessages(rows);
       setHasMoreMessages(rows.length >= 100);
+      if (rows.length > 0) {
+        const rxns = await getReactionsForMessages(rows.map((m) => m.id));
+        const map: Record<string, MessageReaction[]> = {};
+        for (const r of rxns) {
+          if (!map[r.message_id]) map[r.message_id] = [];
+          map[r.message_id].push(r);
+        }
+        setReactions(map);
+      }
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
       }
@@ -97,6 +114,17 @@ export const RallyChatPanel: React.FC<Props> = ({
       if (older.length > 0) {
         setMessages((prev) => [...older, ...prev]);
         setHasMoreMessages(older.length >= 100);
+        const rxns = await getReactionsForMessages(older.map((m) => m.id));
+        setReactions((prev) => {
+          const next = { ...prev };
+          for (const r of rxns) {
+            if (!next[r.message_id]) next[r.message_id] = [];
+            if (!next[r.message_id].some((x) => x.id === r.id)) {
+              next[r.message_id] = [...next[r.message_id], r];
+            }
+          }
+          return next;
+        });
       } else {
         setHasMoreMessages(false);
       }
@@ -168,6 +196,38 @@ export const RallyChatPanel: React.FC<Props> = ({
           markConversationRead(conversationId, user.id).catch(() => null);
         }
         requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      },
+    });
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'INSERT',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.new as MessageReaction;
+        setMessages((prev) => {
+          if (!prev.some((m) => m.id === r.message_id)) return prev;
+          setReactions((rxns) => {
+            const list = rxns[r.message_id] ?? [];
+            if (list.some((x) => x.id === r.id)) return rxns;
+            return { ...rxns, [r.message_id]: [...list, r] };
+          });
+          return prev;
+        });
+      },
+    });
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'DELETE',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.old as MessageReaction;
+        setReactions((rxns) => {
+          const list = rxns[r.message_id];
+          if (!list) return rxns;
+          return { ...rxns, [r.message_id]: list.filter((x) => x.id !== r.id) };
+        });
       },
     });
 
@@ -250,6 +310,20 @@ export const RallyChatPanel: React.FC<Props> = ({
     });
   };
 
+  const handleToggleReaction = useCallback(
+    (messageId: string, emoji: ReactionEmoji) => {
+      const mine = reactions[messageId]?.some(
+        (r) => r.user_id === user?.id && r.emoji === emoji
+      );
+      if (mine) {
+        removeReaction(messageId, emoji).catch(() => null);
+      } else {
+        addReaction(messageId, emoji).catch(() => null);
+      }
+    },
+    [reactions, user?.id]
+  );
+
   if (chatLoading) {
     return (
       <View style={styles.centered}>
@@ -326,7 +400,14 @@ export const RallyChatPanel: React.FC<Props> = ({
           }
         }}
         renderItem={({ item }) => (
-          <ChatMessageBubble message={item} isMine={item.sender_id === user?.id} />
+          <ChatMessageBubble
+            message={item}
+            isMine={item.sender_id === user?.id}
+            reactions={reactions[item.id]}
+            currentUserId={user?.id}
+            onLongPressReact={setPickerMessage}
+            onToggleReaction={handleToggleReaction}
+          />
         )}
       />
 
@@ -367,6 +448,21 @@ export const RallyChatPanel: React.FC<Props> = ({
           void reloadCrewPolls();
           void loadMessages();
         }}
+      />
+
+      <ReactionPicker
+        visible={Boolean(pickerMessage)}
+        myReactions={
+          pickerMessage
+            ? (reactions[pickerMessage.id] ?? [])
+                .filter((r) => r.user_id === user?.id)
+                .map((r) => r.emoji)
+            : []
+        }
+        onSelect={(emoji) => {
+          if (pickerMessage) handleToggleReaction(pickerMessage.id, emoji);
+        }}
+        onClose={() => setPickerMessage(null)}
       />
     </View>
   );
