@@ -1,8 +1,10 @@
 import { MyGameEntry } from '../services/activityService';
 import { PRODUCT_COPY } from '../constants/productCopy';
 import type { HostRosterToLock } from '../hooks/useHomeDashboard';
+import { roundToNearestHalfHour } from './todayDateUtils';
+
 function formatNextUpTime(startTime: string): string {
-  return new Date(startTime).toLocaleTimeString('en-US', {
+  return roundToNearestHalfHour(new Date(startTime)).toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
   });

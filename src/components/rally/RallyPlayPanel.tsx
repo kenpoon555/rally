@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { SessionCardPayload } from '../../types/sessionCard';
 import { activityFromSessionCard } from '../../utils/sessionCardHelpers';
 import { Activity } from '../../types/activity';
@@ -30,7 +30,6 @@ type Props = {
   busyActivityId: string | null;
   setBusyActivityId: (id: string | null) => void;
   onReload: () => Promise<void>;
-  navigation: NativeStackNavigationProp<any>;
 };
 
 function tournamentStatusLabel(status: MiniTournament['status']): string {
@@ -90,8 +89,8 @@ export const RallyPlayPanel: React.FC<Props> = ({
   busyActivityId,
   setBusyActivityId,
   onReload,
-  navigation,
 }) => {
+  const navigation = useNavigation();
   const [createOpen, setCreateOpen] = React.useState(false);
   const [winnersById, setWinnersById] = React.useState<
     Record<string, TournamentWinnerSummary | null>
@@ -139,7 +138,7 @@ export const RallyPlayPanel: React.FC<Props> = ({
   }, [tournaments]);
 
   const openTournament = (tournamentId: string) => {
-    navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
+    navigation.navigate(ROUTES.TOURNAMENT.MINI, { tournamentId });
   };
 
   const handleCreated = async (result: { kind: 'activity' | 'tournament'; id: string }) => {
@@ -150,7 +149,7 @@ export const RallyPlayPanel: React.FC<Props> = ({
   };
 
   const openActivityDetail = (activityId: string) => {
-    navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
+    navigation.navigate(ROUTES.ACTIVITY.DETAIL, { activityId });
   };
 
   const renderSessionCard = (card: SessionCardPayload, activity: Activity, isCurrent: boolean) => (

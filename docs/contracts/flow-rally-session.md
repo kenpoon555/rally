@@ -54,6 +54,11 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 - [ ] Play tab lists upcoming session(s) for seeded demo
 - [ ] Empty Play state renders when no upcoming game (host can schedule)
 
+### Ready-count copy (H2 resolved · 2026-06-27)
+> Founder decision (T0 H2): drop the denominator. "1 of 1 marked ready" was wrong (read `countReadyParticipants` while WHO'S GOING/dots read `player_count`).
+- [ ] Detail ready summary reads **"{readyCount} ready"** — no "of M" denominator
+- [ ] `readyCount` is the count of confirmed/`ready_at` participants (host + ready joiners); never contradicts the roster dots
+
 ### Session card (`CrewGameSessionCard`)
 - [ ] Court, time, roster seat bar visible
 - [ ] Member **Join** only when not on roster; **I'm in** when on roster and not ready
@@ -73,6 +78,15 @@ North-star: **Friend in Rally → sees session card → taps I'm in → host loc
 - [ ] Avatar tap opens profile when `userId` present
 - [ ] Host manage row (Time / Court / Link / Friends) when host tools apply
 - [ ] No hooks-after-early-return crash on load
+
+### Tier 6 — Join Loop authoring (taste-tier6 · 2026-06-26)
+
+- [ ] **Post-join status banner** at top: "You're in — {time}" with primary **Confirm** and secondary **Can't make it** (coaching vocabulary)
+- [ ] Pre-join: **one** full-width primary CTA (Join / I'm in); host tools + reviews + tournaments below fold or in overflow
+- [ ] **Roster grouped by status** (Confirmed / Not responded / Can't make) with section counts — same labels as class roster
+- [ ] "Commit" is a **state** on this screen, not a separate navigation step
+
+**Product review:** [taste-tier6 synthesis](../product-review/consolidated/2026-06-26-taste-tier6-synthesis.md) · H-J1 default A (Confirm / Can't make)
 
 ### Android keyboard (if testing Android)
 - [ ] Rally chat composer not covered by keyboard (`KeyboardSafeView` on RegularsCrew)
@@ -134,3 +148,30 @@ Validated with Loop B — see [module-game-card.md](./module-game-card.md) for p
 ### Screenshots (`docs/contracts/screenshots/flow-rally-session/`)
 
 - `01-rally-hub-play-host.png`, `04-host-lock-roster.png`, `05-roster-locked-after-lock.png`, `06-today-next-up.png`, `07-game-detail` via invite/detail path
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit + testIDs  
+> Sim: dev client showed Metro disconnect (no JS bundle); tier-6 deltas verified in source. Re-proof screenshots on connected dev build.
+
+| # | Tier 6 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| T1 | Post-join status banner (Confirm / Can't make it) | **Pass** | `JoinStatusBanner` below hero; testIDs `join-status-confirm`, `join-status-cant-make-it` |
+| T2 | Pre-join one primary CTA | **Pass** | `JoinRequestButton` only when `!isApprovedJoiner`; host tools `isHost`-gated |
+| T3 | Roster grouped by status + counts | **Pass** (deferred sub-row) | `StatusGroupedRoster`: Confirmed · N / Not responded · N. **Deferred:** no persistent "Can't make it" roster bucket — pickup `leaveGame` removes roster row (H-J1 action is banner button) |
+| T4 | Commit = state, not navigation step | **Pass** | Same `ActivityDetailScreen`; banner state flip only |
+
+**Verdict:** PASS (tier-6 rows on builder branch).
+
+### Validator report — tier0-join-loop · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/tier0-join-loop-builder` @ `30c87e8` · **code audit + live Android** (iOS sim blocked).
+
+| # | Ready-count copy row (H2) | Result | Notes |
+|---|---------------------------|--------|-------|
+| 1 | Detail ready summary reads "{n} ready" — no "of M" | **Pass (code+live)** | `GameCardDetailHero` L165 `${readyCount} ready${…}`. Live detail: "1 ready" (was "1 of 1 marked ready") |
+| 2 | readyCount never contradicts roster dots | **Pass (live)** | Live detail: "1 ready" + WHO'S GOING 3 + "5 more to start" all coherent (host ready, 2 not yet) |
+
+> Note: `productCopy.ts:225` ("Waiting on confirmations · {ready}/{roster} ready") is a **session-card** waiting string on a different surface — out of scope for this detail-hero row; no contradiction observed.
+
+**Verdict:** PASS (H2 ready-count copy; live-verified on Android).

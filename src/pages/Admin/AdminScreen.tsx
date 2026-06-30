@@ -48,12 +48,9 @@ import {
 } from '../../types/safety';
 import { colors } from '../../constants/theme';
 import { KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  Admin: undefined;
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'Admin'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Admin'>;
 
 function formatReportTime(iso: string): string {
   const date = new Date(iso);

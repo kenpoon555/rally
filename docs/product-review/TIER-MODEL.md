@@ -15,8 +15,15 @@
 | **3** | Expert / deep UX | “Repeat-user excellence in **one** hotspot” | **4** | Narrow (e.g. Play strip MRU) — **not** full-app |
 | **4** | Cross-surface picky | “Every major tab, weird users, behavioral depth” | **8** | Inbox, chat, reviews, attendance, trust, classes, notifications |
 | **5** | Visual / design | “Art direction, hierarchy, beauty, empty states” | **8** | Screen-by-screen design QA — designer bar |
+| **6** | **Taste / authoring** | **“Would I *want* to use this? Is it the right thing — and does it delight?”** | **8 taste personas** (≥3 / screen) | **Per screen**, one loop at a time — judgment & scope, not bugs. Theme exploration (`theme-reviewer`) runs here too. |
 
 **Layer 3 (validation)** in MASTER-LOOP is separate: sim + contract proof after builder. It is **not** the same as product-review tier 3.
+
+### Why Tier 6 exists (the gap tiers 1–5 cannot close)
+
+Tiers 1–5 are **optimizers** — they make what already exists more correct (1–2), deeper (3–4), and more beautiful (5). **None of them is allowed to question whether the screen should exist, whether the scope is right, or whether it sparks any joy.** That is an *authoring* judgment, and its absence is why a competent app can still feel "assembled" rather than "authored."
+
+**Tier 6 is the only tier allowed to recommend: cut this, merge this, change the scope, or "this is correct but joyless — redo it."** It runs **per screen** (not per journey), one core loop at a time, and feeds the [redesign spec](../../redesign/core-loop-redesign-spec.md).
 
 ---
 
@@ -58,8 +65,12 @@ Tier **5** re-walks the same surfaces with **design rubric only** (no new featur
 [Feature loop T1] → T2 picky → T3 expert (optional, narrow)
   → cross-surface-tier4-round1 (8 personas)
   → visual-tier5-round1 (8 personas)
+  → taste-tier6-<loop> (8 taste personas, ≥3 / screen) → redesign spec → builder
+  → theme-explore (theme-reviewer, generative) → founder pick → validator contrast gate
   → validation queues per contract handoff
 ```
+
+Tier 6 may also run **first**, standalone, to *author* a redesign before any feature loop — that is its highest-leverage use (see the Join Loop spec).
 
 | Release loop id | Starts at | Ends at |
 |-----------------|-----------|---------|
@@ -101,6 +112,25 @@ Design-only — **no** functional bugs unless they block comprehension:
 
 ---
 
+## Tier 6 rubric (every screen, every taste lens)
+
+Score **KEEP / CHANGE / CUT** per screen (not PASS/FAIL — Tier 6 makes *authoring* calls). At least one **CHANGE or CUT** recommendation per screen is expected; "all KEEP" usually means the lens wasn't applied honestly.
+
+1. **Want** — Would I personally *choose* to open and use this screen? (gut check, 1–5)
+2. **One job** — Is there exactly **one** primary action? What competes with it, and what can be cut?
+3. **First 3 seconds** — Emotional first impression: calm / confident / delightful — or busy / anxious / generic?
+4. **Best-in-class** — Versus the best app doing *this exact job*, where does this lose? Name the gap.
+5. **One moment of joy** — Is there a single delightful detail (copy, motion, reward, micro-interaction)? If none, invent one.
+6. **Scope** — Should this screen exist at all? Could it be merged, deferred, or deleted?
+7. **Authored vs assembled** — Does it feel designed by one hand with a point of view, or stitched from features?
+8. **Ship-proud** — Would I demo this exact frame proudly, unprompted?
+
+**Output:** a short per-screen verdict + the single highest-leverage authoring change. Feeds the [redesign spec](../../redesign/core-loop-redesign-spec.md) backlog — **not** a builder bug list.
+
+**Tier 5 vs Tier 6 (do not conflate):** Tier 5 asks *"is this well-made?"* (craft). Tier 6 asks *"is this the right thing, and does it delight?"* (taste). A screen can pass Tier 5 and fail Tier 6 — that is the exact situation this ladder was missing.
+
+---
+
 ## Persona minimum rule
 
 | Tier | `min_reviews_before_consolidate` |
@@ -110,6 +140,7 @@ Design-only — **no** functional bugs unless they block comprehension:
 | 3 | 4 |
 | **4** | **8** |
 | **5** | **8** |
+| **6** | **8 taste personas** (catalog G; ≥3 / screen) + `theme-reviewer` (catalog H) — consolidate per *loop*, not per journey |
 
 Do not run consolidator until the queue minimum is met.
 

@@ -5,12 +5,9 @@ import { PRODUCT_COPY } from '../../constants/productCopy';
 import { submitProductFeedback } from '../../services/feedbackService';
 import { Button, KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
 import { colors, spacing, typography } from '../../constants/theme';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  Feedback: { screen?: string; activityId?: string } | undefined;
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'Feedback'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Feedback'>;
 
 const FeedbackScreen: React.FC<Props> = ({ navigation, route }) => {
   const [body, setBody] = useState('');

@@ -26,7 +26,7 @@ export const ProfileCoachToolsSection: React.FC<Props> = ({ user }) => {
         label="Coach Profile"
         value={`${sport} · LA area`}
         onPress={() =>
-          navigation.navigate(ROUTES.COACH_PARENT.COACH_PROFILE as never)
+          navigation.navigate(ROUTES.COACH_PARENT.COACH_PROFILE)
         }
       />
       <ProfileSettingsRow label="Payment link / note" value={payment} onPress={() => {}} />
@@ -34,14 +34,14 @@ export const ProfileCoachToolsSection: React.FC<Props> = ({ user }) => {
         label="Class Templates"
         value="Optional — use Create Class"
         onPress={() =>
-          navigation.navigate(ROUTES.ACTIVITY.CREATE as never, { createMode: 'class' } as never)
+          navigation.navigate(ROUTES.ACTIVITY.CREATE, { createMode: 'class' })
         }
       />
       <ProfileSettingsRow
         label="Create Class"
         value="Schedule a class Rally"
         onPress={() =>
-          navigation.navigate(ROUTES.ACTIVITY.CREATE as never, { createMode: 'class' } as never)
+          navigation.navigate(ROUTES.ACTIVITY.CREATE, { createMode: 'class' })
         }
       />
     </View>
