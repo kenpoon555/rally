@@ -4,6 +4,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
@@ -190,6 +191,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState<string | null>(null);
+  const pendingRequestOps = useRef(new Set<string>());
   const [finalizing, setFinalizing] = useState(false);
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -390,6 +392,10 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   };
 
   const handleApprove = async (requestId: string) => {
+    if (pendingRequestOps.current.has(requestId)) {
+      return;
+    }
+    pendingRequestOps.current.add(requestId);
     try {
       await approveJoinRequest(requestId, activityId);
       await loadJoinRequests();
@@ -397,16 +403,24 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to approve request';
       Alert.alert('Error', message);
+    } finally {
+      pendingRequestOps.current.delete(requestId);
     }
   };
 
   const handleReject = async (requestId: string) => {
+    if (pendingRequestOps.current.has(requestId)) {
+      return;
+    }
+    pendingRequestOps.current.add(requestId);
     try {
       await rejectJoinRequest(requestId);
       await loadJoinRequests();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to reject request';
       Alert.alert('Error', message);
+    } finally {
+      pendingRequestOps.current.delete(requestId);
     }
   };
 

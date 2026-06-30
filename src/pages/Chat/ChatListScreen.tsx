@@ -82,7 +82,7 @@ type InboxFilter = ChatInboxFilter | 'announcements';
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { isCoach, hasClassContext } = useCoachParent();
-  const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
+  const { items, loading, errorText, load, clearUnread } = useChatInboxWithRealtime(user?.id);
   const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
   const [announcements, setAnnouncements] = useState<ClassAnnouncementInboxItem[]>([]);
@@ -167,6 +167,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     activityId?: string,
     groupId?: string
   ) => {
+    clearUnread(conversationId);
     void prefetchConversationMessages(conversationId, 100);
     navigation.getParent()?.navigate(ROUTES.CHAT.THREAD, {
       conversationId,

@@ -774,6 +774,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         <SafetyActionsSheet
           visible={safetyOpen}
           onClose={closeSafetySheet}
+          onBlocked={() => navigation.goBack()}
           currentUserId={user.id}
           targetUserId={safetyTargetUserId}
           targetUsername={safetyTargetUsername}
