@@ -1333,13 +1333,25 @@ export const GameRoomFooter: React.FC = () => {
             </Text>
           </View>
         ) : null}
+        {isHost ? (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() =>
+              navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE as 'PostGameAttendance', {
+                activityId: activity.id,
+              })
+            }
+          >
+            <Text style={styles.primaryBtnText}>Mark attendance</Text>
+          </TouchableOpacity>
+        ) : null}
         {isHost && canScheduleNext ? (
           <TouchableOpacity
-            style={[styles.primaryBtn, schedulingNext && styles.btnDisabled]}
+            style={[styles.secondaryBtn, schedulingNext && styles.btnDisabled]}
             onPress={handleScheduleNextGame}
             disabled={schedulingNext}
           >
-            <Text style={styles.primaryBtnText}>
+            <Text style={styles.secondaryBtnText}>
               {schedulingNext ? 'Scheduling…' : 'Schedule next game'}
             </Text>
           </TouchableOpacity>

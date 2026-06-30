@@ -1286,8 +1286,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     userId: participant.user_id,
                     username: participant.user?.username || 'Player',
                   }))
-              : activity.user
-                ? [{ userId: activity.user.id, username: activity.user.username }]
+              : activity.user_id
+                ? [{ userId: activity.user_id, username: activity.user?.username || 'Host' }]
                 : []
           }
           selectedPlayerId={activeReviewTargetId}
