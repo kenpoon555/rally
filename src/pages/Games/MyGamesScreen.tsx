@@ -29,7 +29,7 @@ const SEGMENTS: { key: Segment; label: string }[] = [
 ];
 
 const MyGamesScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation();
   const { user } = useAuth();
   const { location } = useLocation(false);
   const { games, loading, refetch } = useMyGames(user?.id || '');
@@ -63,18 +63,18 @@ const MyGamesScreen: React.FC = () => {
   }, [games.active, games.past, segment]);
 
   const openActivityDetail = (activityId: string) => {
-    navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
+    navigation.navigate(ROUTES.ACTIVITY.DETAIL, { activityId });
   };
 
   const openGameRoom = async (activityId: string, title: string) => {
     setOpeningId(activityId);
     try {
       const conversationId = await ensureActivityGroupConversation(activityId);
-      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
+      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD, {
         conversationId,
         title,
         activityId,
-      } as never);
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Could not open game chat.';
       Alert.alert('Chat unavailable', message);
@@ -92,11 +92,11 @@ const MyGamesScreen: React.FC = () => {
   };
 
   const openCreateGame = () => {
-    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE);
   };
 
   const openDiscover = () => {
-    navigation.navigate(ROUTES.HOME.MAIN as never);
+    navigation.navigate('MainTabs', { screen: ROUTES.HOME.MAIN });
   };
 
   const emptyCopy =
@@ -129,7 +129,7 @@ const MyGamesScreen: React.FC = () => {
         ))}
       </View>
 
-      <TouchableOpacity onPress={() => navigation.navigate(ROUTES.CHAT.TAB as never)}>
+      <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: ROUTES.CHAT.TAB })}>
         <Text style={styles.linkText}>Active chats in Inbox →</Text>
       </TouchableOpacity>
 

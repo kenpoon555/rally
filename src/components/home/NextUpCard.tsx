@@ -13,6 +13,7 @@ import { RegularGroup } from '../../types/regularGroup';
 import { parseGeographyCoordinates } from '../../utils/activityLocationGeo';
 import { GameCardShell } from '../game/GameCardShell';
 import { gameListCardVariantForActivity } from '../../config/gameCardLayouts';
+import { getViewerGameState } from '../../utils/activityHelpers';
 import { TodaySectionDotLabel } from './TodaySectionDotLabel';
 import { colors, radius, shadows, spacing, typography } from '../../constants/theme';
 import type { HostLockReadiness } from '../../utils/activityHelpers';
@@ -131,6 +132,7 @@ export const NextUpCard: React.FC<NextUpCardProps> = ({
           userLocation={userLocation}
           isHost={nextGame.role === 'host'}
           variant={gameListCardVariantForActivity(nextGame.activity)}
+          viewerState={getViewerGameState(nextGame.activity, currentUserId)}
           onPress={() => onOpenGameRoom(nextGame)}
           disabled={busy}
           busy={busy}

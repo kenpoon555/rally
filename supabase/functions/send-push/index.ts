@@ -29,12 +29,15 @@ type PushBody = {
 
 function isInQuietHours(
   quietStart: number | null | undefined,
-  quietEnd: number | null | undefined
+  quietEnd: number | null | undefined,
+  tzOffsetMinutes = 0
 ): boolean {
   if (quietStart == null || quietEnd == null) {
     return false;
   }
-  const localHour = new Date().getUTCHours();
+  const now = new Date();
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const localHour = Math.floor(((utcMinutes + tzOffsetMinutes) % 1440 + 1440) % 1440 / 60);
   return quietStart < quietEnd
     ? localHour >= quietStart && localHour < quietEnd
     : localHour >= quietStart || localHour < quietEnd;
@@ -176,7 +179,7 @@ Deno.serve(async (req) => {
 
         const { data: memberProfile } = await admin
           .from('profiles')
-          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end, push_tz_offset_minutes')
           .eq('id', memberId)
           .maybeSingle();
 
@@ -187,7 +190,8 @@ Deno.serve(async (req) => {
         if (
           isInQuietHours(
             memberProfile?.push_quiet_hours_start as number | null | undefined,
-            memberProfile?.push_quiet_hours_end as number | null | undefined
+            memberProfile?.push_quiet_hours_end as number | null | undefined,
+            (memberProfile?.push_tz_offset_minutes as number | undefined) ?? 0
           )
         ) {
           continue;
@@ -266,7 +270,7 @@ Deno.serve(async (req) => {
 
       const { data: hostProfile } = await admin
         .from('profiles')
-        .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+        .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end, push_tz_offset_minutes')
         .eq('id', hostId)
         .maybeSingle();
 
@@ -279,7 +283,8 @@ Deno.serve(async (req) => {
       if (
         isInQuietHours(
           hostProfile?.push_quiet_hours_start as number | null | undefined,
-          hostProfile?.push_quiet_hours_end as number | null | undefined
+          hostProfile?.push_quiet_hours_end as number | null | undefined,
+          (hostProfile?.push_tz_offset_minutes as number | undefined) ?? 0
         )
       ) {
         return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'quiet hours' }), {
@@ -449,6 +454,30 @@ Deno.serve(async (req) => {
             ? `A friend invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`
             : `A host invited you to ${activity.sport_type} at ${courtName}. Open Rally to respond.`);
 
+      const { data: inviteRecipientProfile } = await admin
+        .from('profiles')
+        .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end, push_tz_offset_minutes')
+        .eq('id', payload.target_user_id)
+        .maybeSingle();
+
+      if (inviteRecipientProfile?.is_suspended) {
+        return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'recipient suspended' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (
+        isInQuietHours(
+          inviteRecipientProfile?.push_quiet_hours_start as number | null | undefined,
+          inviteRecipientProfile?.push_quiet_hours_end as number | null | undefined,
+          (inviteRecipientProfile?.push_tz_offset_minutes as number | undefined) ?? 0
+        )
+      ) {
+        return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'quiet hours' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const { data: tokens } = await admin
         .from('user_device_tokens')
         .select('device_token')
@@ -509,7 +538,7 @@ Deno.serve(async (req) => {
 
         const { data: joinerProfile } = await admin
           .from('profiles')
-          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end, push_tz_offset_minutes')
           .eq('id', joinerId)
           .maybeSingle();
 
@@ -517,17 +546,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const quietStart = joinerProfile?.push_quiet_hours_start as number | null | undefined;
-        const quietEnd = joinerProfile?.push_quiet_hours_end as number | null | undefined;
-        if (quietStart != null && quietEnd != null) {
-          const localHour = new Date().getUTCHours();
-          const inQuiet =
-            quietStart < quietEnd
-              ? localHour >= quietStart && localHour < quietEnd
-              : localHour >= quietStart || localHour < quietEnd;
-          if (inQuiet) {
-            continue;
-          }
+        if (
+          isInQuietHours(
+            joinerProfile?.push_quiet_hours_start as number | null | undefined,
+            joinerProfile?.push_quiet_hours_end as number | null | undefined,
+            (joinerProfile?.push_tz_offset_minutes as number | undefined) ?? 0
+          )
+        ) {
+          continue;
         }
 
         const { data: tokens } = await admin
@@ -589,7 +615,7 @@ Deno.serve(async (req) => {
 
         const { data: joinerProfile } = await admin
           .from('profiles')
-          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+          .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end, push_tz_offset_minutes')
           .eq('id', joinerId)
           .maybeSingle();
 
@@ -597,17 +623,14 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const quietStart = joinerProfile?.push_quiet_hours_start as number | null | undefined;
-        const quietEnd = joinerProfile?.push_quiet_hours_end as number | null | undefined;
-        if (quietStart != null && quietEnd != null) {
-          const localHour = new Date().getUTCHours();
-          const inQuiet =
-            quietStart < quietEnd
-              ? localHour >= quietStart && localHour < quietEnd
-              : localHour >= quietStart || localHour < quietEnd;
-          if (inQuiet) {
-            continue;
-          }
+        if (
+          isInQuietHours(
+            joinerProfile?.push_quiet_hours_start as number | null | undefined,
+            joinerProfile?.push_quiet_hours_end as number | null | undefined,
+            (joinerProfile?.push_tz_offset_minutes as number | undefined) ?? 0
+          )
+        ) {
+          continue;
         }
 
         const { data: tokens } = await admin
@@ -635,7 +658,7 @@ Deno.serve(async (req) => {
 
     const { data: recipientProfile } = await admin
       .from('profiles')
-      .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end')
+      .select('is_suspended, push_quiet_hours_start, push_quiet_hours_end, push_tz_offset_minutes')
       .eq('id', recipientUserId)
       .maybeSingle();
 
@@ -645,19 +668,16 @@ Deno.serve(async (req) => {
       });
     }
 
-    const quietStart = recipientProfile?.push_quiet_hours_start as number | null | undefined;
-    const quietEnd = recipientProfile?.push_quiet_hours_end as number | null | undefined;
-    if (quietStart != null && quietEnd != null) {
-      const localHour = new Date().getUTCHours();
-      const inQuiet =
-        quietStart < quietEnd
-          ? localHour >= quietStart && localHour < quietEnd
-          : localHour >= quietStart || localHour < quietEnd;
-      if (inQuiet) {
-        return new Response(JSON.stringify({ ok: true, skipped: 'quiet hours' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (
+      isInQuietHours(
+        recipientProfile?.push_quiet_hours_start as number | null | undefined,
+        recipientProfile?.push_quiet_hours_end as number | null | undefined,
+        (recipientProfile?.push_tz_offset_minutes as number | undefined) ?? 0
+      )
+    ) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'quiet hours' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     if (payload.type === 'join_request') {

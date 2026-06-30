@@ -44,6 +44,8 @@ import {
 } from '../../services/miniTournamentService';
 import { MiniTournament } from '../../types/miniTournament';
 import { GameCardDetailHero } from '../../components/game/GameCardDetailHero';
+import { JoinStatusBanner } from '../../components/game/JoinStatusBanner';
+import { StatusGroupedRoster } from '../../components/game/StatusGroupedRoster';
 import { detailPresetForActivity, shareModeForViewer } from '../../config/gameCardLayouts';
 import { shareGameInvite } from '../../services/inviteLinkService';
 import { RegularGroup } from '../../types/regularGroup';
@@ -92,27 +94,9 @@ import {
 } from '../../components/game/GameCardIconActionBar';
 import { GameCardSection, gameCardPanelStyles } from '../../components/game/GameCardSection';
 import { JoinRequestsSheet } from '../../components/game/JoinRequestsSheet';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  ActivityDetail: {
-    activityId?: string;
-    inviteToken?: string;
-    hostInvite?: boolean;
-    fromGameRoom?: boolean;
-  };
-  CreateActivity: undefined;
-  PostGameAttendance: { activityId: string };
-  ChatThread: { conversationId: string; title?: string; activityId?: string; groupId?: string };
-  MiniTournament: { tournamentId: string };
-  RegularsCrew: {
-    groupId: string;
-    initialTab?: 'chat' | 'play' | 'members';
-    promptShareInvite?: boolean;
-  };
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'ActivityDetail'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ActivityDetail'>;
 
 const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { activityId: routeActivityId, inviteToken, hostInvite, fromGameRoom } = route.params;
@@ -348,7 +332,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       headerLeft: () => (
         <TouchableOpacity
           onPress={() =>
-            canGoBack ? navigation.goBack() : navigation.navigate('MainTabs' as never)
+            canGoBack ? navigation.goBack() : navigation.navigate('MainTabs')
           }
           hitSlop={8}
           style={styles.headerCloseBtn}
@@ -559,12 +543,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         : await scheduleNextGameFromActivity(activity.id, startIso);
       setSchedulePickerVisible(false);
       if (activity.regular_group_id) {
-        navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+        navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
           groupId: activity.regular_group_id,
           initialTab: 'play',
-        } as never);
+        });
       } else {
-        (navigation as any).replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
+        navigation.replace(ROUTES.ACTIVITY.DETAIL, { activityId: newId });
       }
     } catch (error: any) {
       Alert.alert('Schedule failed', error?.message || 'Could not schedule next game.');
@@ -648,7 +632,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     setCreatingTournament(true);
     try {
       const tournamentId = await createMiniTournament(regularGroup.id);
-      navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
+      navigation.navigate(ROUTES.TOURNAMENT.MINI, { tournamentId });
     } catch (err: unknown) {
       Alert.alert(
         'Mini tournament',
@@ -671,11 +655,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           setCreatingRegularGroup(true);
           try {
             const groupId = await createRegularGroupFromActivity(activity.id);
-            navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+            navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
               groupId,
               initialTab: 'chat',
               promptShareInvite: true,
-            } as never);
+            });
           } catch (err: any) {
             Alert.alert('Could not create group', err?.message || 'Try again.');
           } finally {
@@ -687,16 +671,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   };
 
   const openMiniTournament = (tournamentId: string) => {
-    navigation.navigate(ROUTES.TOURNAMENT.MINI as never, { tournamentId } as never);
+    navigation.navigate(ROUTES.TOURNAMENT.MINI, { tournamentId });
   };
 
   const openRegularsCrew = () => {
     if (!regularGroup?.id) {
       return;
     }
-    navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+    navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
       groupId: regularGroup.id,
-    } as never);
+    });
   };
 
   const handleReportCourt = () => {
@@ -874,13 +858,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     void applyReady(true);
   };
 
-  const handleUndoReady = () => {
-    if (!activity || !iAmReady) {
-      return;
-    }
-    void applyReady(false);
-  };
-
   const handleLeaveGame = () => {
     if (!activity || isHost || isFinalized) {
       return;
@@ -985,7 +962,12 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 
   const timeLabel = formatActivityTime(activity.start_time, activity.duration);
-  const showChat = canOpenActivityChat(activity, user?.id) || isGroupMember;
+  // Game Room / chat is a *member* surface. `canOpenActivityChat` only reports
+  // whether the chat is live (e.g. fixed game with 2+ players) — it is NOT
+  // viewer-membership aware, so on its own it leaks "Open Game Room" to people
+  // who haven't joined. Require the viewer to actually be on the game.
+  const isGameMember = Boolean(isHost || isApprovedJoiner || isGroupMember);
+  const showChat = (canOpenActivityChat(activity, user?.id) || isGroupMember) && isGameMember;
   const chatArchived = isGameChatReadOnly(activity);
   const wasOnGame =
     isHost || isApprovedJoiner || Boolean(myJoinRequest) || user?.id === activity.user_id;
@@ -1126,6 +1108,23 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         onCostNoteChange={setCostNoteDraft}
         onCostNoteBlur={() => void handleSaveCostNote()}
       />
+
+      {!isHost && isApprovedJoiner && !isFinalized && !activity.regular_group_id && !fromGameRoom ? (
+        <JoinStatusBanner
+          state={iAmReady ? 'confirmed' : 'joined'}
+          whenLabel={activity.start_time ? formatActivityTime(activity.start_time, activity.duration) : null}
+          onConfirm={handleSetReady}
+          onCantMakeIt={handleLeaveGame}
+          busy={settingReady || leaving}
+        />
+      ) : null}
+
+      {(isHost || isApprovedJoiner) && !activity.regular_group_id && !fromGameRoom ? (
+        <View style={styles.rosterPanel}>
+          <Text style={styles.sectionTitle}>Roster</Text>
+          <StatusGroupedRoster activity={activity} />
+        </View>
+      ) : null}
 
       {showHostToolsPanel ? (
         <View style={gameCardPanelStyles.panel}>
@@ -1287,8 +1286,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                     userId: participant.user_id,
                     username: participant.user?.username || 'Player',
                   }))
-              : activity.user
-                ? [{ userId: activity.user.id, username: activity.user.username }]
+              : activity.user_id
+                ? [{ userId: activity.user_id, username: activity.user?.username || 'Host' }]
                 : []
           }
           selectedPlayerId={activeReviewTargetId}
@@ -1321,59 +1320,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
           <JoinRequestButton activity={activity} onRequestSent={refetch} />
         </View>
       )}
-
-      {!isHost && isApprovedJoiner && !isFinalized && activity.regular_group_id ? (
-        <Text style={styles.gameRoomHint}>
-          Chat lives on the Rally Chat tab. Tap I'm in on Play when you can make it.
-        </Text>
-      ) : null}
-
-      {!isHost && isApprovedJoiner && !isFinalized && !activity.regular_group_id && showChat ? (
-        <Text style={styles.gameRoomHint}>
-          Open Game Room to tap I'm in, chat with players, or leave this game.
-        </Text>
-      ) : null}
-
-      {!isHost && isApprovedJoiner && !isFinalized && !showChat ? (
-        <View style={styles.ctaRow}>
-          {iAmReady ? (
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                styles.ctaRowButton,
-                settingReady && styles.utilityButtonDisabled,
-              ]}
-              onPress={handleUndoReady}
-              disabled={settingReady}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {settingReady ? 'Saving...' : PRODUCT_COPY.undoImIn}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                styles.ctaRowButton,
-                settingReady && styles.utilityButtonDisabled,
-              ]}
-              onPress={handleSetReady}
-              disabled={settingReady}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {settingReady ? 'Saving...' : PRODUCT_COPY.imIn}
-              </Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity
-            style={[styles.leaveButton, styles.ctaRowButton, leaving && styles.utilityButtonDisabled]}
-            onPress={handleLeaveGame}
-            disabled={leaving}
-          >
-            <Text style={styles.leaveButtonText}>{leaving ? 'Leaving...' : 'Leave game'}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
 
       {isApprovedJoiner && !isHost && isFinalized && (
         <Text style={styles.inGameText}>{PRODUCT_COPY.afterLockCantLeave}</Text>
@@ -1477,9 +1423,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         <TouchableOpacity
           style={styles.utilityButton}
           onPress={() =>
-            navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE as never, {
+            navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE, {
               activityId: activity!.id,
-            } as never)
+            })
           }
         >
           <Text style={styles.utilityButtonText}>Record who showed up</Text>
@@ -1885,6 +1831,12 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  rosterPanel: {
+    marginTop: 6,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
 });
 

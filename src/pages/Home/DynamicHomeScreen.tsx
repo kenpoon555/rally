@@ -51,15 +51,9 @@ import {
   PendingReviewPrompt,
 } from '../../services/reviewService';
 import { subscribeReviewPromptsInvalidation } from '../../utils/reviewPromptsBus';
+import type { MainTabParamList } from '../../navigation/types';
 
-type TabParamList = {
-  DynamicHome: undefined;
-  Chats: undefined;
-  Home: undefined;
-  Profile: undefined;
-};
-
-type Props = BottomTabScreenProps<TabParamList, 'DynamicHome'>;
+type Props = BottomTabScreenProps<MainTabParamList, 'DynamicHome'>;
 
 const MAX_ROOM_ROWS = 5;
 
@@ -77,7 +71,8 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   const [rallyMemberPreviews, setRallyMemberPreviews] = useState<Record<string, RallyMemberPreview>>({});
   const [reviewPrompts, setReviewPrompts] = useState<PendingReviewPrompt[]>([]);
   const dashboard = useHomeDashboard(activeGames, user?.id);
-  const { enrollments, isCoach, coachClasses, showTodayMyClasses } = useCoachParent();
+  const { enrollments, isCoach, coachClasses, showTodayMyClasses, reload: reloadCoachParent } =
+    useCoachParent();
   const coachToday = useMemo(
     () => (user?.id && isCoach ? coachTodayClasses(user.id) : []),
     [user?.id, isCoach]
@@ -146,7 +141,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const openReviewActivity = useCallback(
     (activityId: string) => {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, { activityId } as never);
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, { activityId });
     },
     [navigation]
   );
@@ -202,12 +197,12 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
       const title = entry.activity.regular_group_id
         ? PRODUCT_COPY.rallyChat
         : entry.activity.location?.name || `${entry.activity.sport_type} game`;
-      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
+      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD, {
         conversationId,
         title,
         activityId: entry.activity.id,
         groupId: entry.activity.regular_group_id ?? undefined,
-      } as never);
+      });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Could not open Game Room.';
       Alert.alert('Game Room unavailable', message);
@@ -217,20 +212,20 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const openActivityDetails = (activityId: string) => {
-    navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, {
       activityId,
-    } as never);
+    });
   };
 
-  const openDiscover = () => navigation.navigate(ROUTES.HOME.MAIN as never);
+  const openDiscover = () => navigation.navigate(ROUTES.HOME.MAIN);
   const openCreateGame = () =>
-    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never);
-  const openChats = () => navigation.navigate(ROUTES.CHAT.TAB as never);
-  const openProfile = () => navigation.navigate(ROUTES.PROFILE.MAIN as never);
+    navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE);
+  const openChats = () => navigation.navigate(ROUTES.CHAT.TAB);
+  const openProfile = () => navigation.navigate(ROUTES.PROFILE.MAIN);
   const openCrew = (groupId: string) => {
-    navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+    navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW, {
       groupId,
-    } as never);
+    });
   };
 
   const handleRefresh = async () => {
@@ -354,7 +349,13 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
           <TodayPlayerReviewCard prompts={reviewPrompts} onPress={openReviewActivity} />
 
-          {showTodayMyClasses ? <TodayMyClassesCard enrollments={enrollments} /> : null}
+          {showTodayMyClasses ? (
+            <TodayMyClassesCard
+              enrollments={enrollments}
+              parentUserId={user?.id}
+              onRefresh={reloadCoachParent}
+            />
+          ) : null}
           {COACH_DASHBOARD && isCoach ? (
             <TodayCoachClassesCard classes={coachToday.length ? coachToday : coachClasses} />
           ) : null}

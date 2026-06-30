@@ -20,7 +20,7 @@ export const TodayCoachClassesCard: React.FC<Props> = ({ classes }) => {
         <Text style={styles.empty}>No classes scheduled today.</Text>
         <TouchableOpacity
           onPress={() =>
-            navigation.navigate(ROUTES.ACTIVITY.CREATE as never, { createMode: 'class' } as never)
+            navigation.navigate(ROUTES.ACTIVITY.CREATE, { createMode: 'class' })
           }
         >
           <Text style={styles.link}>Create your first class →</Text>
@@ -37,10 +37,10 @@ export const TodayCoachClassesCard: React.FC<Props> = ({ classes }) => {
           key={row.id}
           style={styles.row}
           onPress={() =>
-            navigation.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL as never, {
+            navigation.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL, {
               classId: row.id,
               initialTab: 'roster',
-            } as never)
+            })
           }
         >
           <Text style={styles.classTitle}>{row.title}</Text>

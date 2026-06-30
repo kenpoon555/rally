@@ -79,21 +79,9 @@ import {
   getDefaultDurationFromTemplate,
   getListingTitleHint,
 } from '../../services/sportTemplateService';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  ActivityDetail: { activityId: string };
-  CreateActivity:
-    | {
-        prefillStartTime?: string;
-        prefillTitle?: string;
-        prefillGroupId?: string;
-        createMode?: 'class';
-      }
-    | undefined;
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'CreateActivity'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'CreateActivity'>;
 
 type LocationWithDistance = ActivityLocation & { distanceMeters: number | null };
 
@@ -626,9 +614,9 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           listing.sport_type
         );
 
-        navigation.replace(ROUTES.COACH_PARENT.CLASS_DETAIL as never, {
+        navigation.replace(ROUTES.COACH_PARENT.CLASS_DETAIL, {
           classId: listing.id,
-        } as never);
+        });
 
         try {
           await shareClassEnrollmentInvite(invite);
@@ -1109,10 +1097,10 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
               return;
             }
             if (myRallys.length === 1) {
-              navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+              navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
                 groupId: myRallys[0].id,
                 initialTab: 'play',
-              } as never);
+              });
               return;
             }
             Alert.alert(
@@ -1121,10 +1109,10 @@ const CreateActivityScreen: React.FC<Props> = ({ navigation, route }) => {
               myRallys.map((group) => ({
                 text: group.name,
                 onPress: () =>
-                  navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                  navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
                     groupId: group.id,
                     initialTab: 'play',
-                  } as never),
+                  }),
               }))
             );
           }}

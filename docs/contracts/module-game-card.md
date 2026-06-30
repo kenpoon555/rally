@@ -14,6 +14,15 @@ One **preset-driven** game card family. Screens pick a **surface preset** (where
 
 **This sprint validates only the delta** not already green in baseline: detail hero (pickup vs rally), venue/session/cost notes, and wiring invariants. List rows and session I'm-in/lock are covered by other contracts (see below).
 
+## Theming (palette) — TM3
+
+Personal-state chip ("You're in") and the **urgency hook** ("4 spots left · starts in 3h") must stay legible in **every shipped palette**:
+
+- [ ] Urgency hook text meets WCAG AA contrast on the card `surface` in each palette (lime-on-white is the weak case — round 1 theme A; passes in B orange / C lime-on-dark).
+- [ ] Personal-state chip uses a **tint** background, never a second solid `primary` fill (so it never competes with the join CTA — see `module-visual-design-system` "one filled-primary per surface").
+
+> Source: theme-explore-round1 ([synthesis](../product-review/consolidated/2026-06-26-theme-explore-synthesis.md)).
+
 ## Already validated elsewhere (do not re-test in this sprint)
 
 | Surface | Preset | Contract | Status |
@@ -81,6 +90,29 @@ Use `discoverPresetKey()`, `detailPresetForActivity()`, `gameListVariantFromPres
 | `RallySessionCard` | `sessionInline` | `CrewGameSessionCard` + `createGameCardSessionActions` |
 | `GameCardDetailHero` | `detailHero` | Detail hero on `ActivityDetailScreen` |
 
+## Derived counts — single source of truth (T0 · 2026-06-27)
+
+> Added by Tier 0 dogfood triage: a discover card showed **"5 left"** (trailing badge) next to **"9 spots left"** (urgency hook) on the *same* card. Root cause: the badge read server `missing_players` / `player_count`, while the hook computed `capacity − (1 + approvedParticipants)` from a roster summary that is **unreliable on list rows** (participants aren't loaded → falls back to `capacity − 1`).
+
+- [ ] **One source per number.** Any "spots / left / open" figure on a card derives from **one** helper. On list rows that is `getGameListSpotsBadgeLabel` (server `missing_players` → `player_count` fallback). Do **not** also compute spots from `getActivityRosterSummary` on list surfaces — it needs loaded participants the list doesn't have.
+- [ ] **No two spot numbers on one card.** The trailing badge is the single spot indicator. The **urgency hook does not restate a spot count** — it carries *time-to-start only* ("Starts in 9h"). If a second spot figure is ever wanted, it must read the **same** helper as the badge and match exactly.
+- [ ] **If two surfaces legitimately differ** (e.g. list badge vs detail "X spots open"), the difference must be *explained by state* (list = unconfirmed server count; detail = live roster) and both must be internally consistent — never two contradicting numbers in the same viewport.
+
+### Spots label — state-aware single helper (H1 resolved · 2026-06-27)
+
+> Founder decision (T0 H1): one state-aware label, identical on discover **and** detail (was "5 left" vs "7 spots open" for the same game).
+
+`getActivitySpotsState(activity)` is the **only** producer of the spots label. From server fields (`missing_players`, `player_count`, `roster_max`):
+
+| State | Condition | Label | Tone |
+|-------|-----------|-------|------|
+| Recruiting | `missing_players > 0` (below roster minimum — not yet viable) | **"{n} more to start"** | recruiting |
+| Open | viable, `roster_max − player_count > 0` | **"{n} spots left"** (1 → "1 spot left") | open |
+| Full | no open seats | **"Full"** | full |
+
+- [ ] Discover badge (`getGameListSpotsBadgeLabel`) and detail seat bar (`RosterSeatBar`) both call `getActivitySpotsState` — no independent spot strings.
+- [ ] Wording is open to copy refinement, but the **two-state transition** ("more to start" → "spots left" at the minimum) is the contract.
+
 ## Rules for agents
 
 1. **Add surfaces via presets** — extend `GAME_CARD_PRESETS` and this contract surfaces map; do not add per-screen layout flags.
@@ -132,6 +164,7 @@ Use `discoverPresetKey()`, `detailPresetForActivity()`, `gameListVariantFromPres
 
 ## Pass/fail — audit (grep / unit)
 
+- [ ] **No contradicting counts:** trailing badge and any other count on the same card derive from the **same** helper (`getGameListSpotsBadgeLabel` on list rows); urgency hook carries time-to-start only, no spot count (see "Derived counts — single source of truth")
 - [ ] Every wired surface in **Surfaces map** uses listed preset + shell
 - [ ] No duplicated join/I'm in/lock/nudge handlers outside `gameCardSessionActions.ts` / `useGameCardSessionActions.ts` / `RallySessionCard`
 - [ ] `detailPresetForActivity()` used on detail (not hardcoded pickup/rally flags on screen)
@@ -201,3 +234,29 @@ Save to `docs/contracts/screenshots/module-game-card/`:
 | A3 | gameCardLayouts tests pass | N/T | Not run this round |
 
 **Last validated:** 2026-06-22 · screenshot `01-upcoming-detail-hero.png`
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit  
+> Handoff item "detail hero single-column decision" — no tier-6 checklist row in contract; baseline hero unchanged.
+
+| # | Item | Result | Notes |
+|---|------|--------|-------|
+| H1 | Detail hero layout (handoff) | **Deferred** | No tier-6 checklist row; hero structure unchanged this cycle |
+| H2 | Join banner below hero | **Pass** | Banner + roster sit directly under `GameCardDetailHero` |
+
+**Verdict:** PASS (no tier-6 contract rows; handoff H1 deferred).
+
+### Validator report — tier0-join-loop · 2026-06-27
+
+> Run: 2026-06-27 · branch `fix/tier0-join-loop-builder` @ `30c87e8` · **code audit + live Android** (iOS sim blocked — stale-session onboarding). Live evidence: `docs/product-review/tier0/screenshots/`, `dogfood-triager/2026-06-27/`.
+
+| # | Tier-0 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| 1 | One source per number | **Pass (code+live)** | `getGameListSpotsBadgeLabel` → `getActivitySpotsState` (server `missing_players`/`player_count`/`roster_max`). No `getActivityRosterSummary` spot calc on list rows |
+| 2 | No two spot numbers; urgency hook time-only | **Pass (code+live)** | `buildUrgencyHook` returns "Starts in {n}h/m" only. Live discover card: "5 to start" + "Starts in 9h" (no second count) |
+| 3 | Spots label state-aware (more-to-start → spots-left → Full) | **Pass (code+live)** | `getActivitySpotsState`: `missing>0`→"{n} more to start"/"{n} to start"; open→"{n} spots left"/"{n} left"; full→"Full". Live detail "5 more to start"; badge "5 to start" |
+| 4 | Discover badge + detail seat bar both call `getActivitySpotsState` | **Pass (code)** | `RosterSeatBar` line 65 uses helper (wide=full label, compact=compactLabel); badge via `getGameListSpotsBadgeLabel` |
+| A | Audit: no contradicting counts | **Pass** | Single helper; tsc clean (only pre-existing `as never` nav quirks); lint clean |
+
+**Verdict:** PASS (tier-0 rows; live discover+detail verified on Android, member/host states code-audited).

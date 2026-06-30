@@ -52,6 +52,14 @@ North-star: **Host opens past session → marks attendance → reliability updat
 - [ ] Non-host blocked with clear message if they reach attendance route
 - [ ] Network/RPC failure shows retry — no silent fail
 
+### Tier 6 — Join Loop authoring (taste-tier6 · 2026-06-26)
+
+- [ ] **Host path unchanged:** attendance form + recap prompt after locked past session
+- [ ] **Player path:** after game ends, lightweight screen with **Find next game** CTA (deep link Play or Today) — not host attendance toggles
+- [ ] Player exit supports **rejoin-within-14d** north-star (next game suggestion when available)
+
+**Product review:** [taste-tier6 synthesis](../product-review/consolidated/2026-06-26-taste-tier6-synthesis.md) · H-J3 default A
+
 ## Screenshots required
 
 `docs/contracts/screenshots/flow-post-game-attendance/`
@@ -101,3 +109,15 @@ North-star: **Host opens past session → marks attendance → reliability updat
 ### Screenshots
 
 - `04-success-confirmation.png` — recap card after partial submit
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit
+
+| # | Tier 6 checklist row | Result | Notes |
+|---|----------------------|--------|-------|
+| T1 | Host path unchanged | **Pass** | Host attendance form + submit unchanged |
+| T2 | Player path: Find next game | **Pass** | Non-host renders `postGamePlayerTitle` + `findNextGame` → `ROUTES.HOME.MAIN` |
+| T3 | Rejoin-within-14d suggestion | **Deferred** | Generic CTA ships; personalized next-game row deferred (not J6 minimum) |
+
+**Verdict:** PASS (tier-6 rows; T3 deferred).

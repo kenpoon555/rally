@@ -175,6 +175,7 @@ export async function updatePushQuietHours(
     .update({
       push_quiet_hours_start: startHour,
       push_quiet_hours_end: endHour,
+      push_tz_offset_minutes: -new Date().getTimezoneOffset(),
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId);

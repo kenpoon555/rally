@@ -21,6 +21,7 @@ Ship-quality Rally surfaces share one visual language: readable hierarchy, consi
 |-------|----------------|----------|
 | **Primary fill** | `colors.primary` (lime) | Black text on lime without `onPrimary` |
 | **On-primary text** | `colors.onPrimary` (#141916) | `textInverse` (white) on lime buttons |
+| **One filled-primary per surface** | At most one solid `primary` fill action per surface; status / personal-state chips ("You're in", "Confirmed") use a **tint** background | A second solid primary fill competing with the join CTA |
 | **Sport chip idle ring** | `borderSubtle` / neutral | `colors.accent` (yellow) on every idle chip |
 | **Sport chip selected** | `primary` 3px ring + `primaryDark` label | Yellow ring when selected |
 | **Empty state icon** | Sport SVG / branded glyph | Emoji (💬 etc.) in ship screens |
@@ -92,10 +93,22 @@ Ship-quality Rally surfaces share one visual language: readable hierarchy, consi
 | H2 | Inbox filter layout at 393pt | A) Scrollable chips B) 3 + More C) Shorten “Classes” label |
 | H3 | Map on list cards | A) Detail-only “Open in Maps” B) 48×48 thumbnail on list rows |
 
+## Theming (exploration gate)
+
+The app ships one palette (`constants/theme.ts` "Neon"). Theme exploration is run by the `theme-reviewer` persona per [theme-exploration-plan.md](../redesign/theme-exploration-plan.md). **This contract is the accessibility gate:** before any proposed palette is implemented as a real theme variant, the validator must confirm it against the **Required tokens** above —
+
+- [ ] Body/secondary text passes WCAG AA contrast on `background` and `surface`.
+- [ ] Every fill uses the palette's `onPrimary` / `onAccent` (no white label on light lime/yellow).
+- [ ] Status colors (`success`/`warning`/`error`/`info`) stay legible on the theme's surfaces.
+- [ ] **One filled-primary per surface** holds in the palette — status/personal-state chips render as a tint, not a second solid primary fill (caught lime CTA vs lime "You're in" pill collision in round 1, themes A/C).
+- [ ] Theme rounds change **palette only** — no spacing/type/structure changes.
+
+> **Round 1 (2026-06-26):** matrix [theme-rounds/2026-06-26](../redesign/theme-rounds/2026-06-26/theme-matrix.md). Candidate **B — Clean Sport** (blue-on-white) is the ship-candidate pending founder pick (H1) + this gate. Candidate A keeps brand equity but must resolve the one-filled-primary collision; C (dark) parked as a separate dark-mode workstream.
+
 ## Out of scope
 
 - New features or navigation changes
-- Dark mode (light mode bar only this cycle)
+- Dark mode shipping (Theme C "Night Court" is an *exploration* render, not a shipped dark mode this cycle)
 - iPad layouts
 
 ## Open issues
@@ -136,3 +149,14 @@ Ship-quality Rally surfaces share one visual language: readable hierarchy, consi
 **Deferred (not failures):** filter-chip layout (H2), profile display-name seed data (P2), chat bubble live check (no seed), dev banner (B11 P2).
 **Screenshots:** `docs/contracts/screenshots/module-visual-design-system/` (02 play strip+empty, 04 inbox friends empty, 05 inbox games empty, 06 profile top).
 **Verdict:** PASS for builder minimum B1–B7.
+
+### Validator report — taste-tier6 · 2026-06-26
+
+> Run: 2026-06-26 · branch `fix/taste-tier6-builder` @ `048f2ef` · code audit
+
+| # | Item | Result | Notes |
+|---|------|--------|-------|
+| T1 | Join Loop status banner tokens | **Pass** | `JoinStatusBanner` uses `colors.primary`/`onPrimary`, `successSoft`, `onPrimary` on CTA |
+| T2 | Banner motion (J9) | **Deferred** | P2 delight — static banner only |
+
+**Verdict:** PASS (J9 motion deferred per backlog).

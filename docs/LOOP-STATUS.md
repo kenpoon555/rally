@@ -1,12 +1,10 @@
 # Rally loop status
 
-_Updated: 2026-06-24 06:29 UTC_
+_Updated: 2026-06-26 23:22 UTC_
 
-**Release loop:** `cross-surface-tier4-jun-2026`
+## ▶️ QUEUED — contract `flow-rally-session` (1/6)
 
-## 💤 IDLE — no active self-chain
-
-Say **continue** in orchestrator chat or run `./.cursor/hooks/rally-loop-status.sh`.
+No agent running. Say **continue** OR use one Agent chat with **stop hook** enabled (Settings → Hooks).
 
 _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, baseline validation)._
 
@@ -14,19 +12,18 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ## Product review
 
-- queue: `cross-surface-tier4-round1` tier 4
-- phase: `src_pr_pending` · status: `running`
+- queue: `taste-tier6-join-loop` tier 6
+- phase: `validation_spawned` · status: `running`
 - layer_2: `merged`
 - personas: 8/8
-- builder branch: `fix/cross-surface-tier4-builder`
+- builder branch: `fix/taste-tier6-builder`
 
 ## Validation
 
-- queue: `cross-surface-tier4`
-- contract: `flow-push-notifications-device` (8/8)
-- phase: `done` · status: `pass`
-- chain_enabled: False
-- notes: Queue complete; push device E2E out of scope on sim
+- queue: `taste-tier6`
+- contract: `flow-rally-session` (1/6)
+- phase: `started` · status: `running`
+- chain_enabled: True
 
 ---
 

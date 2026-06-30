@@ -166,5 +166,31 @@
     "contracts": [
       "module-visual-design-system"
     ]
+  },
+  "taste-tier6": {
+    "description": "Tier 6 validation — Join Loop authoring changes from taste-tier6-join-loop (KEEP/CHANGE/CUT shipped)",
+    "contracts": [
+      "flow-rally-session",
+      "flow-play-screen",
+      "flow-game-room",
+      "flow-post-game-attendance",
+      "module-game-card",
+      "module-visual-design-system"
+    ]
+  },
+  "class-response": {
+    "description": "class-response-round1 — student/parent Next Class actions (Confirm / Can't make it / Message coach)",
+    "contracts": [
+      "flow-class-session-response",
+      "module-coach-parent-navigation"
+    ]
+  },
+  "tier0-join-loop": {
+    "description": "Tier 0 dogfood triage — derived-count single source (module-game-card), viewer-state gating (flow-game-room), ready-count copy (flow-rally-session)",
+    "contracts": [
+      "module-game-card",
+      "flow-game-room",
+      "flow-rally-session"
+    ]
   }
 }

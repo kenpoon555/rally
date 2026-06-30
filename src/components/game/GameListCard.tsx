@@ -34,6 +34,34 @@ export { gameListCardVariantForActivity };
 const METERS_PER_MILE = 1609.344;
 const CARD_MIN_HEIGHT = 88;
 
+/** Viewer's personal relationship to this game — drives the discover chip (J4). */
+export type GameListViewerState = 'joined' | 'confirmed' | 'hosting' | 'waitlist';
+
+const VIEWER_STATE_LABEL: Record<GameListViewerState, string> = {
+  joined: "You're in",
+  confirmed: 'Confirmed',
+  hosting: 'Hosted by you',
+  waitlist: 'Waitlisted',
+};
+
+/**
+ * Scannable "why this game now" hook (J7): time-to-start only.
+ * Spots-left is intentionally NOT shown here — the trailing badge is the single
+ * source of truth for open spots (it reads server `missing_players`/`player_count`).
+ * The roster summary used previously double-counted spots from unloaded list rows,
+ * contradicting the badge (e.g. badge "5 left" vs hook "9 spots left").
+ */
+function buildUrgencyHook(activity: Activity): string | null {
+  if (!activity.start_time) {
+    return null;
+  }
+  const diffMin = Math.round((new Date(activity.start_time).getTime() - Date.now()) / 60000);
+  if (diffMin <= 0 || diffMin > 24 * 60) {
+    return null;
+  }
+  return diffMin >= 60 ? `Starts in ${Math.round(diffMin / 60)}h` : `Starts in ${diffMin}m`;
+}
+
 export type GameListCardProps = {
   activity: Activity;
   userLocation?: { latitude: number; longitude: number } | null;
@@ -53,6 +81,10 @@ export type GameListCardProps = {
   showStatusSignal?: boolean;
   /** When status signal is off, which sport icon preset to render. */
   sportIconPreset?: SportIconPreset | null;
+  /** Viewer's personal relationship to this game — shows a chip on the row (J4). */
+  viewerState?: GameListViewerState | null;
+  /** Show the "spots left · starts in Xh" urgency hook line (J7). */
+  showUrgencyHook?: boolean;
 };
 
 export function formatGameCardDistance(
@@ -95,9 +127,15 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
   showWhoGoing = false,
   showStatusSignal = true,
   sportIconPreset,
+  viewerState = null,
+  showUrgencyHook = false,
 }) => {
   const isLockedWelcoming = variant === 'locked_welcoming';
   const isUrgent = isTonightUrgency(activity) && !isLockedWelcoming;
+  const urgencyHook = useMemo(
+    () => (showUrgencyHook && !isLockedWelcoming ? buildUrgencyHook(activity) : null),
+    [showUrgencyHook, isLockedWelcoming, activity]
+  );
   const hasCustomTitle = Boolean(activity.listing_title?.trim());
   const headline = hasCustomTitle ? activityGameName(activity) : activityCourtName(activity);
   const courtName = activityCourtName(activity);
@@ -140,6 +178,17 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
                 <Text style={styles.tonightText}>Tonight</Text>
               </View>
             ) : null}
+            {viewerState ? (
+              <View
+                style={[
+                  styles.viewerChip,
+                  viewerState === 'confirmed' && styles.viewerChipConfirmed,
+                ]}
+                testID={`game-card-viewer-${viewerState}`}
+              >
+                <Text style={styles.viewerChipText}>{VIEWER_STATE_LABEL[viewerState]}</Text>
+              </View>
+            ) : null}
           </View>
 
           {hasCustomTitle ? (
@@ -157,6 +206,12 @@ const GameListCardComponent: React.FC<GameListCardProps> = ({
               {whenLine}
             </Text>
           </View>
+
+          {urgencyHook ? (
+            <Text style={styles.urgencyHook} numberOfLines={1} testID="game-card-urgency-hook">
+              {urgencyHook}
+            </Text>
+          ) : null}
 
           {distanceLabel ? (
             <Text style={styles.distance} numberOfLines={1}>
@@ -280,6 +335,25 @@ const styles = StyleSheet.create({
   tonightText: {
     fontSize: 10,
     fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  viewerChip: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  viewerChipConfirmed: {
+    backgroundColor: colors.successSoft,
+  },
+  viewerChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  urgencyHook: {
+    fontSize: 12,
+    fontWeight: '600',
     color: colors.primaryDark,
   },
   trailing: {

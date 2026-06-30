@@ -27,14 +27,14 @@ export const ProfileFamilySection: React.FC<Props> = ({ students }) => {
         label="Family Profiles"
         value={summary}
         onPress={() =>
-          navigation.navigate(ROUTES.COACH_PARENT.FAMILY_PROFILES as never)
+          navigation.navigate(ROUTES.COACH_PARENT.FAMILY_PROFILES)
         }
       />
       <ProfileSettingsRow
         label="Parent Settings / Consent"
         value="Guardian consent & privacy"
         onPress={() =>
-          navigation.navigate(ROUTES.COACH_PARENT.FAMILY_PROFILES as never)
+          navigation.navigate(ROUTES.COACH_PARENT.FAMILY_PROFILES)
         }
       />
       <Text style={styles.privacy}>Private — only you and enrolled coaches</Text>
