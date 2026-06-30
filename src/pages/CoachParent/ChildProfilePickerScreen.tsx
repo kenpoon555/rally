@@ -13,7 +13,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { listStudentProfiles } from '../../services/coachParentService';
 import { enrollStudentInClass } from '../../services/studentEnrollmentService';
-import { ClassEnrollmentInvite, StudentProfile } from '../../types/coachParent';
+import { StudentProfile } from '../../types/coachParent';
 import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { ROUTES } from '../../constants/routes';
 import { canCreateStudentProfiles } from '../../types/ageCategory';
