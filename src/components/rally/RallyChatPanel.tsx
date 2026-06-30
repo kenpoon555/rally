@@ -62,6 +62,7 @@ export const RallyChatPanel: React.FC<Props> = ({
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
@@ -76,6 +77,7 @@ export const RallyChatPanel: React.FC<Props> = ({
     try {
       const rows = await getConversationMessages(conversationId, 100);
       setMessages(rows);
+      setHasMoreMessages(rows.length >= 100);
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
       }
@@ -85,6 +87,25 @@ export const RallyChatPanel: React.FC<Props> = ({
       setLoading(false);
     }
   }, [conversationId, user?.id]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!conversationId || messages.length === 0) return;
+    setLoading(true);
+    try {
+      const oldest = messages[0].created_at;
+      const older = await getConversationMessages(conversationId, 100, oldest);
+      if (older.length > 0) {
+        setMessages((prev) => [...older, ...prev]);
+        setHasMoreMessages(older.length >= 100);
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch {
+      // non-critical; user can pull again
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId, messages]);
 
   const {
     crewSessions,
@@ -283,7 +304,7 @@ export const RallyChatPanel: React.FC<Props> = ({
         data={messages}
         keyExtractor={(item) => item.id}
         onRefresh={() => {
-          void loadMessages();
+          void (hasMoreMessages ? loadOlderMessages() : loadMessages());
           void reloadCrewSessions();
         }}
         refreshing={loading}

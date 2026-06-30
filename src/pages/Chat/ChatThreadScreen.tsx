@@ -212,6 +212,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [peerUserId, setPeerUserId] = useState<string | null>(null);
   const [peerUsername, setPeerUsername] = useState<string | null>(null);
@@ -441,6 +442,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       const cached = takeCachedConversationMessages(conversationId);
       const rows = cached ?? (await getConversationMessages(conversationId, 100));
       setMessages(rows);
+      setHasMoreMessages(rows.length >= 100);
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
       }
@@ -451,6 +453,25 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       setLoading(false);
     }
   }, [conversationId, user?.id]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (messages.length === 0) return;
+    setLoading(true);
+    try {
+      const oldest = messages[0].created_at;
+      const older = await getConversationMessages(conversationId, 100, oldest);
+      if (older.length > 0) {
+        setMessages((prev) => [...older, ...prev]);
+        setHasMoreMessages(older.length >= 100);
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch {
+      // older load failures are non-critical; user can pull again
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId, messages]);
 
   useEffect(() => {
     loadMessages();
@@ -590,7 +611,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       canSend={canSend}
       onDraftChange={setDraft}
       onSend={() => void handleSend()}
-      onRefresh={() => void loadMessages()}
+      onRefresh={() => void (hasMoreMessages ? loadOlderMessages() : loadMessages())}
       crewPolls={isCrewChat ? crewPolls : undefined}
       crewPollsHost={crewPollsHost}
       onReloadPolls={() => void reloadCrewPolls()}
