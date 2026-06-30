@@ -87,6 +87,7 @@ The codebase has intentional remote telemetry logging (`src/utils/debugIngest.ts
 - **Performance**: Use `React.memo` for list items in `ActivityDetail` and `ChatList` to avoid re-render lag.
 - **Safety**: Never hardcode Supabase keys. Ensure `src/constants/config.ts` is the only entry point for env vars.
 - **Testing**: After every logic change in `src/services/`, run `npm test` automatically.
+- **Contracts**: Before touching chat, activity, navigation, or realtime code, read `docs/ENGINEERING-CONTRACTS.md`. Update it in the same PR if you change a schema, service API, component interface, or realtime channel. Always rebase onto latest `dev` before opening a PR.
 
 ## Task Progress (Agent Use Only)
 - **Actionable tasks:** Use `RallyApp/docs/TASKS.md` as the single task index. Pick **one** task per session to avoid rate limits; complete and check off before starting the next.
