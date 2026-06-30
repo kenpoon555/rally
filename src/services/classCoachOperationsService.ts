@@ -152,3 +152,86 @@ export function sessionStatusLabel(status: SessionStateRow['session_status']): s
   }
   return 'Scheduled';
 }
+
+export async function sendClassAnnouncement(
+  classId: string,
+  coachUserId: string,
+  message: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc('notify_enrolled_class_parents', {
+    p_class_id: classId,
+    p_coach_user_id: coachUserId,
+    p_operation: 'notify',
+    p_message: message,
+  });
+  if (error) {
+    throw error;
+  }
+  return (data as number) ?? 0;
+}
+
+/** Coach view: deduplicated list of announcements sent for a class. */
+export async function listCoachSentAnnouncements(
+  classId: string,
+  coachUserId: string
+): Promise<ClassAnnouncementInboxItem[]> {
+  if (!COACH_CLASS_OPERATIONS) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from('class_parent_notifications')
+    .select('id, operation, message, created_at')
+    .eq('class_id', classId)
+    .eq('coach_user_id', coachUserId)
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) {
+    throw error;
+  }
+  // One row is inserted per enrolled parent per send; deduplicate by message+operation.
+  const seen = new Set<string>();
+  const unique: ClassAnnouncementInboxItem[] = [];
+  for (const row of data ?? []) {
+    const key = `${row.operation as string}|${row.message as string}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push({
+        id: row.id as string,
+        class_title: '',
+        preview: row.message as string,
+        sent_at: row.created_at as string,
+        audience: 'parents',
+        operation: row.operation as ClassAnnouncementInboxItem['operation'],
+      });
+    }
+  }
+  return unique;
+}
+
+/** Parent view: announcements received for a specific class. */
+export async function listParentAnnouncementsForClass(
+  parentUserId: string,
+  classId: string
+): Promise<ClassAnnouncementInboxItem[]> {
+  if (!COACH_CLASS_OPERATIONS) {
+    return [];
+  }
+  const { data, error } = await supabase
+    .from('class_parent_notifications')
+    .select('id, operation, message, created_at')
+    .eq('parent_user_id', parentUserId)
+    .eq('class_id', classId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) {
+    throw error;
+  }
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    class_title: '',
+    preview: row.message as string,
+    sent_at: row.created_at as string,
+    audience: 'parents',
+    operation: row.operation as ClassAnnouncementInboxItem['operation'],
+  }));
+}

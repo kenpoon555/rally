@@ -2,9 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -25,10 +29,13 @@ import {
   applySessionStateToListing,
   cancelCoachClassSession,
   deferCoachClassSession,
+  listCoachSentAnnouncements,
+  listParentAnnouncementsForClass,
+  sendClassAnnouncement,
   sessionStatusLabel,
 } from '../../services/classCoachOperationsService';
 import { ClassOperationsSheet } from '../../components/coachParent/ClassOperationsSheet';
-import { ClassDetailTab, ClassRosterStudent, CoachClassListing } from '../../types/coachParent';
+import { ClassAnnouncementInboxItem, ClassDetailTab, ClassRosterStudent, CoachClassListing } from '../../types/coachParent';
 import { colors, PRIMARY_COLOR, spacing } from '../../constants/theme';
 import { formatActivityTime } from '../../utils/activityHelpers';
 import { COACH_MINOR_ROSTER, PARENT_PILOT_ENROLLMENT } from '../../constants/parentStudentFlags';
@@ -60,6 +67,10 @@ const ClassDetailScreen: React.FC<Props> = ({ route }) => {
   const [sharing, setSharing] = useState(false);
   const [opsVisible, setOpsVisible] = useState(false);
   const [opsLoading, setOpsLoading] = useState(false);
+  const [announcements, setAnnouncements] = useState<ClassAnnouncementInboxItem[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [composeText, setComposeText] = useState('');
+  const [sending, setSending] = useState(false);
   const isCoach = userIsCoach(user);
 
   const load = useCallback(async () => {
@@ -91,6 +102,45 @@ const ClassDetailScreen: React.FC<Props> = ({ route }) => {
       setTab(initialTab);
     }
   }, [initialTab]);
+
+  const loadAnnouncements = useCallback(async () => {
+    if (!user?.id) {
+      return;
+    }
+    setLoadingAnnouncements(true);
+    try {
+      const rows = isCoach
+        ? await listCoachSentAnnouncements(classId, user.id)
+        : await listParentAnnouncementsForClass(user.id, classId);
+      setAnnouncements(rows);
+    } catch {
+      setAnnouncements([]);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  }, [classId, isCoach, user?.id]);
+
+  useEffect(() => {
+    if (tab === 'chat') {
+      void loadAnnouncements();
+    }
+  }, [tab, loadAnnouncements]);
+
+  const handleSendAnnouncement = async () => {
+    if (!user?.id || !composeText.trim()) {
+      return;
+    }
+    setSending(true);
+    try {
+      await sendClassAnnouncement(classId, user.id, composeText.trim());
+      setComposeText('');
+      await loadAnnouncements();
+    } catch (err) {
+      Alert.alert('Could not send', err instanceof Error ? err.message : 'Try again.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   const groupedRoster = useMemo(() => {
     const groups: Record<ClassRosterStudent['status'], ClassRosterStudent[]> = {
@@ -251,6 +301,67 @@ const ClassDetailScreen: React.FC<Props> = ({ route }) => {
       </View>
       {loading ? (
         <ActivityIndicator color={PRIMARY_COLOR} style={styles.loader} />
+      ) : tab === 'chat' ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.chatContainer}
+        >
+          {sessionBanner ? <View style={styles.chatBannerWrap}>{sessionBanner}</View> : null}
+          {loadingAnnouncements ? (
+            <ActivityIndicator color={PRIMARY_COLOR} style={styles.loader} />
+          ) : (
+            <FlatList
+              data={announcements}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.chatList}
+              ListEmptyComponent={
+                <Text style={styles.chatEmpty} testID="class-chat-empty">
+                  No announcements yet.
+                </Text>
+              }
+              renderItem={({ item }) => (
+                <View style={styles.announcementRow}>
+                  {item.operation && item.operation !== 'notify' ? (
+                    <Text style={styles.operationBadge}>
+                      {item.operation === 'defer' ? 'Session deferred' : 'Session cancelled'}
+                    </Text>
+                  ) : null}
+                  <Text style={styles.announcementText}>{item.preview}</Text>
+                  <Text style={styles.announcementTime}>
+                    {new Date(item.sent_at).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </View>
+              )}
+            />
+          )}
+          {isCoach && COACH_CLASS_OPERATIONS ? (
+            <View style={styles.composeRow}>
+              <TextInput
+                style={styles.composeInput}
+                value={composeText}
+                onChangeText={setComposeText}
+                placeholder="Message all parents…"
+                placeholderTextColor={colors.textSecondary}
+                multiline
+                maxLength={500}
+                testID="class-chat-compose"
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, (sending || !composeText.trim()) && styles.sendBtnDisabled]}
+                onPress={() => void handleSendAnnouncement()}
+                disabled={sending || !composeText.trim()}
+                testID="class-chat-send"
+              >
+                <Text style={styles.sendBtnText}>{sending ? '…' : 'Send'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </KeyboardAvoidingView>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {sessionBanner}
@@ -315,11 +426,6 @@ const ClassDetailScreen: React.FC<Props> = ({ route }) => {
                 {renderRosterGroup("Can't make it", groupedRoster.cant_make_it)}
               </>
             )
-          ) : null}
-          {tab === 'chat' ? (
-            <Text style={styles.line} testID="class-chat-parents-only">
-              Parent/coach announcements only — no child DM.
-            </Text>
           ) : null}
         </ScrollView>
       )}
@@ -408,6 +514,58 @@ const styles = StyleSheet.create({
   },
   shareBtnText: { color: colors.surface, fontWeight: '700' },
   emptyRoster: { paddingVertical: spacing.md },
+  chatContainer: { flex: 1 },
+  chatBannerWrap: { padding: spacing.lg, paddingBottom: 0 },
+  chatList: { padding: spacing.lg, flexGrow: 1 },
+  chatEmpty: { color: colors.textSecondary, textAlign: 'center', marginTop: spacing.xl },
+  announcementRow: {
+    backgroundColor: colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  operationBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primaryDark,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  announcementText: { fontSize: 15, color: colors.text, marginBottom: 4 },
+  announcementTime: { fontSize: 12, color: colors.textSecondary },
+  composeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+    gap: spacing.sm,
+  },
+  composeInput: {
+    flex: 1,
+    minHeight: 40,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 15,
+    color: colors.text,
+    backgroundColor: colors.surface,
+  },
+  sendBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    alignSelf: 'flex-end',
+  },
+  sendBtnDisabled: { opacity: 0.4 },
+  sendBtnText: { color: colors.surface, fontWeight: '700', fontSize: 15 },
 });
 
 export default ClassDetailScreen;
