@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '../services/api/supabase';
 
-type RealtimeTable = 'activities' | 'join_requests' | 'messages';
+type RealtimeTable = 'activities' | 'join_requests' | 'messages' | 'user_blocks';
 
 /** Stable table lists — never pass inline array literals to the hook. */
 export const REALTIME_MY_GAMES_TABLES: readonly RealtimeTable[] = [
@@ -13,6 +13,7 @@ export const REALTIME_INBOX_TABLES: readonly RealtimeTable[] = [
   'activities',
   'join_requests',
   'messages',
+  'user_blocks',
 ];
 
 /**

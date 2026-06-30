@@ -11,17 +11,22 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../hooks/useAuth';
 import { useCrewChatSessions } from '../../hooks/useCrewChatSessions';
 import {
   getConversationMessages,
   markConversationRead,
   sendConversationMessage,
-  subscribeToConversationMessages,
 } from '../../services/chatService';
+import {
+  getReactionsForMessages,
+  addReaction,
+  removeReaction,
+} from '../../services/reactionService';
+import { useChatChannel } from '../../hooks/useChatChannel';
 import { getConversationPolls } from '../../services/availabilityPollService';
-import { ChatMessage } from '../../types/chat';
+import { ChatMessage, MessageReaction, ReactionEmoji } from '../../types/chat';
 import { AvailabilityPoll } from '../../types/availabilityPoll';
 import { AvailabilityPollCard } from '../AvailabilityPollCard';
 import { CreateAvailabilityPollSheet } from '../CreateAvailabilityPollSheet';
@@ -29,6 +34,7 @@ import { RallyPlayTabHint } from './RallyPlayTabHint';
 import GameRoomAnnouncementBanner from '../GameRoomAnnouncementBanner';
 import { ChatMessageBubble } from '../chat/ChatMessageBubble';
 import { ChatQuickReplies } from '../chat/ChatQuickReplies';
+import { ReactionPicker } from '../chat/ReactionPicker';
 import { Button, useComposerBottomPadding } from '../ui';
 import { PRODUCT_COPY } from '../../constants/productCopy';
 import { ROUTES } from '../../constants/routes';
@@ -43,7 +49,6 @@ type Props = {
   chatLoading: boolean;
   onRetryChat: () => void;
   onGoToPlay: () => void;
-  navigation: NativeStackNavigationProp<any>;
 };
 
 export const RallyChatPanel: React.FC<Props> = ({
@@ -54,17 +59,21 @@ export const RallyChatPanel: React.FC<Props> = ({
   chatLoading,
   onRetryChat,
   onGoToPlay,
-  navigation,
 }) => {
+  const chatChannel = useChatChannel(conversationId ?? '');
+  const navigation = useNavigation();
   const { user } = useAuth();
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, MessageReaction[]>>({});
+  const [pickerMessage, setPickerMessage] = useState<ChatMessage | null>(null);
   const composerPaddingBottom = useComposerBottomPadding(spacing.md);
 
   const loadMessages = useCallback(async () => {
@@ -76,6 +85,16 @@ export const RallyChatPanel: React.FC<Props> = ({
     try {
       const rows = await getConversationMessages(conversationId, 100);
       setMessages(rows);
+      setHasMoreMessages(rows.length >= 100);
+      if (rows.length > 0) {
+        const rxns = await getReactionsForMessages(rows.map((m) => m.id));
+        const map: Record<string, MessageReaction[]> = {};
+        for (const r of rxns) {
+          if (!map[r.message_id]) map[r.message_id] = [];
+          map[r.message_id].push(r);
+        }
+        setReactions(map);
+      }
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
       }
@@ -86,6 +105,36 @@ export const RallyChatPanel: React.FC<Props> = ({
     }
   }, [conversationId, user?.id]);
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!conversationId || messages.length === 0) return;
+    setLoading(true);
+    try {
+      const oldest = messages[0].created_at;
+      const older = await getConversationMessages(conversationId, 100, oldest);
+      if (older.length > 0) {
+        setMessages((prev) => [...older, ...prev]);
+        setHasMoreMessages(older.length >= 100);
+        const rxns = await getReactionsForMessages(older.map((m) => m.id));
+        setReactions((prev) => {
+          const next = { ...prev };
+          for (const r of rxns) {
+            if (!next[r.message_id]) next[r.message_id] = [];
+            if (!next[r.message_id].some((x) => x.id === r.id)) {
+              next[r.message_id] = [...next[r.message_id], r];
+            }
+          }
+          return next;
+        });
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch {
+      // non-critical; user can pull again
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId, messages]);
+
   const {
     crewSessions,
     bannerIsHost,
@@ -95,7 +144,6 @@ export const RallyChatPanel: React.FC<Props> = ({
     conversationId,
     groupId,
     userId: user?.id,
-    navigation,
     onAfterAction: () => {
       void loadMessages();
     },
@@ -129,28 +177,71 @@ export const RallyChatPanel: React.FC<Props> = ({
   }, [conversationId, loadMessages, reloadCrewPolls]);
 
   useEffect(() => {
-    if (!conversationId) {
-      return;
-    }
-    const subscription = subscribeToConversationMessages(conversationId, (message) => {
-      setMessages((prev) => {
-        if (prev.some((msg) => msg.id === message.id)) {
-          return prev;
+    if (!conversationId) return;
+
+    chatChannel.register({
+      table: 'messages',
+      event: 'INSERT',
+      filter: `conversation_id=eq.${conversationId}`,
+      handler: (payload) => {
+        const message = payload.new as ChatMessage;
+        setMessages((prev) => {
+          if (prev.some((msg) => msg.id === message.id)) return prev;
+          return [...prev, message];
+        });
+        if (message.message_type === 'system' || message.activity_id) {
+          void reloadCrewSessions();
         }
-        return [...prev, message];
-      });
-      if (message.message_type === 'system' || message.activity_id) {
-        void reloadCrewSessions();
-      }
-      if (user?.id) {
-        markConversationRead(conversationId, user.id).catch(() => null);
-      }
-      requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+        if (user?.id) {
+          markConversationRead(conversationId, user.id).catch(() => null);
+        }
+        requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
+      },
     });
-    return () => {
-      void subscription.unsubscribe();
-    };
-  }, [conversationId, reloadCrewSessions, user?.id]);
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'INSERT',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.new as MessageReaction;
+        setMessages((prev) => {
+          if (!prev.some((m) => m.id === r.message_id)) return prev;
+          setReactions((rxns) => {
+            const list = rxns[r.message_id] ?? [];
+            if (list.some((x) => x.id === r.id)) return rxns;
+            return { ...rxns, [r.message_id]: [...list, r] };
+          });
+          return prev;
+        });
+      },
+    });
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'DELETE',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.old as MessageReaction;
+        setReactions((rxns) => {
+          const list = rxns[r.message_id];
+          if (!list) return rxns;
+          return { ...rxns, [r.message_id]: list.filter((x) => x.id !== r.id) };
+        });
+      },
+    });
+
+    chatChannel.subscribe(() => {
+      void getConversationMessages(conversationId, 20).then((recent) => {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newOnes = recent.filter((m) => !existingIds.has(m.id));
+          return newOnes.length > 0 ? [...prev, ...newOnes].sort((a, b) =>
+            a.created_at < b.created_at ? -1 : 1) : prev;
+        });
+      }).catch(() => null);
+    });
+  }, [conversationId, chatChannel, reloadCrewSessions, user?.id]);
 
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !!conversationId,
@@ -212,12 +303,26 @@ export const RallyChatPanel: React.FC<Props> = ({
   };
 
   const handleScheduleFromPoll = (option: { starts_at: string; label: string }) => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as never, {
+    navigation.navigate(ROUTES.ACTIVITY.CREATE, {
       prefillStartTime: option.starts_at,
       prefillTitle: option.label,
       prefillGroupId: groupId,
-    } as never);
+    });
   };
+
+  const handleToggleReaction = useCallback(
+    (messageId: string, emoji: ReactionEmoji) => {
+      const mine = reactions[messageId]?.some(
+        (r) => r.user_id === user?.id && r.emoji === emoji
+      );
+      if (mine) {
+        removeReaction(messageId, emoji).catch(() => null);
+      } else {
+        addReaction(messageId, emoji).catch(() => null);
+      }
+    },
+    [reactions, user?.id]
+  );
 
   if (chatLoading) {
     return (
@@ -273,7 +378,7 @@ export const RallyChatPanel: React.FC<Props> = ({
         data={messages}
         keyExtractor={(item) => item.id}
         onRefresh={() => {
-          void loadMessages();
+          void (hasMoreMessages ? loadOlderMessages() : loadMessages());
           void reloadCrewSessions();
         }}
         refreshing={loading}
@@ -295,7 +400,14 @@ export const RallyChatPanel: React.FC<Props> = ({
           }
         }}
         renderItem={({ item }) => (
-          <ChatMessageBubble message={item} isMine={item.sender_id === user?.id} />
+          <ChatMessageBubble
+            message={item}
+            isMine={item.sender_id === user?.id}
+            reactions={reactions[item.id]}
+            currentUserId={user?.id}
+            onLongPressReact={setPickerMessage}
+            onToggleReaction={handleToggleReaction}
+          />
         )}
       />
 
@@ -336,6 +448,21 @@ export const RallyChatPanel: React.FC<Props> = ({
           void reloadCrewPolls();
           void loadMessages();
         }}
+      />
+
+      <ReactionPicker
+        visible={Boolean(pickerMessage)}
+        myReactions={
+          pickerMessage
+            ? (reactions[pickerMessage.id] ?? [])
+                .filter((r) => r.user_id === user?.id)
+                .map((r) => r.emoji)
+            : []
+        }
+        onSelect={(emoji) => {
+          if (pickerMessage) handleToggleReaction(pickerMessage.id, emoji);
+        }}
+        onClose={() => setPickerMessage(null)}
       />
     </View>
   );

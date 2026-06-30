@@ -4,16 +4,17 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Keyboard,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -68,6 +69,7 @@ import { getRegularGroupById } from '../services/regularGroupService';
 import { setFocusedGameRoomActivityId } from '../utils/gameRoomFocus';
 import PlayerProfileModal, { PlayerProfilePreview } from './PlayerProfileModal';
 import { PlayerTrustLine } from './PlayerTrustLine';
+import { StatusGroupedRoster } from './game/StatusGroupedRoster';
 import { SessionRotationPanel } from './SessionRotationPanel';
 import { SportIconForSurface } from './SportIconForSurface';
 import { sportSupportsRotation } from '../constants/sports';
@@ -100,6 +102,7 @@ type GameRoomContextValue = {
   rosterCount: number;
   pendingRequests: JoinRequest[];
   loadingRequests: boolean;
+  requestsError: string | null;
   approvedParticipants: JoinRequest[];
   sortedApprovedParticipants: JoinRequest[];
   nextHostCandidate: JoinRequest | undefined;
@@ -187,6 +190,8 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const { activity, loading, refetch } = useActivity(activityId);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [requestsError, setRequestsError] = useState<string | null>(null);
+  const pendingRequestOps = useRef(new Set<string>());
   const [finalizing, setFinalizing] = useState(false);
   const [settingReady, setSettingReady] = useState(false);
   const [leaving, setLeaving] = useState(false);
@@ -326,13 +331,16 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   const loadJoinRequests = useCallback(async () => {
     if (!isHost) {
       setJoinRequests([]);
+      setRequestsError(null);
       return;
     }
     setLoadingRequests(true);
+    setRequestsError(null);
     try {
       setJoinRequests(await getActivityJoinRequests(activityId));
-    } catch {
+    } catch (err) {
       setJoinRequests([]);
+      setRequestsError(err instanceof Error ? err.message : 'Could not load join requests.');
     } finally {
       setLoadingRequests(false);
     }
@@ -384,6 +392,10 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
   };
 
   const handleApprove = async (requestId: string) => {
+    if (pendingRequestOps.current.has(requestId)) {
+      return;
+    }
+    pendingRequestOps.current.add(requestId);
     try {
       await approveJoinRequest(requestId, activityId);
       await loadJoinRequests();
@@ -391,16 +403,24 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to approve request';
       Alert.alert('Error', message);
+    } finally {
+      pendingRequestOps.current.delete(requestId);
     }
   };
 
   const handleReject = async (requestId: string) => {
+    if (pendingRequestOps.current.has(requestId)) {
+      return;
+    }
+    pendingRequestOps.current.add(requestId);
     try {
       await rejectJoinRequest(requestId);
       await loadJoinRequests();
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to reject request';
       Alert.alert('Error', message);
+    } finally {
+      pendingRequestOps.current.delete(requestId);
     }
   };
 
@@ -704,6 +724,7 @@ export const GameRoomProvider: React.FC<ProviderProps> = ({
     rosterCount,
     pendingRequests,
     loadingRequests,
+    requestsError,
     approvedParticipants,
     sortedApprovedParticipants,
     nextHostCandidate,
@@ -1134,21 +1155,23 @@ export const GameRoomHeader: React.FC = () => {
         </View>
       ) : null}
 
-      <ScrollView
+      <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rosterStripCompact}
-      >
-        <RosterAvatar
-          label={hostUsername}
-          ready={isHost || isFinalized}
-          role="Host"
-          compact
-          onPress={hostUser ? () => openPlayerProfile(hostUser, 'Host') : undefined}
-        />
-        {sortedApprovedParticipants.map((req) => (
+        data={sortedApprovedParticipants}
+        keyExtractor={(req) => req.id}
+        ListHeaderComponent={
           <RosterAvatar
-            key={req.id}
+            label={hostUsername}
+            ready={isHost || isFinalized}
+            role="Host"
+            compact
+            onPress={hostUser ? () => openPlayerProfile(hostUser, 'Host') : undefined}
+          />
+        }
+        renderItem={({ item: req }) => (
+          <RosterAvatar
             label={req.user?.username || 'Player'}
             ready={participantReady(req)}
             waiting={!isFinalized && !participantReady(req)}
@@ -1163,8 +1186,8 @@ export const GameRoomHeader: React.FC = () => {
                 : undefined
             }
           />
-        ))}
-      </ScrollView>
+        )}
+      />
 
       {showRotation ? (
         <SessionRotationPanel
@@ -1189,6 +1212,7 @@ export const GameRoomFooter: React.FC = () => {
     iAmReady,
     pendingRequests,
     loadingRequests,
+    requestsError,
     finalizing,
     settingReady,
     onOpenDetails,
@@ -1223,7 +1247,7 @@ export const GameRoomFooter: React.FC = () => {
   const [loadingNeedRequests, setLoadingNeedRequests] = useState(false);
   const [postingNeed, setPostingNeed] = useState(false);
   const [needExpanded, setNeedExpanded] = useState(false);
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation();
   const [fillIns, setFillIns] = useState<FillInSuggestion[]>([]);
   const [loadingFillIns, setLoadingFillIns] = useState(false);
   const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
@@ -1309,13 +1333,25 @@ export const GameRoomFooter: React.FC = () => {
             </Text>
           </View>
         ) : null}
+        {isHost ? (
+          <TouchableOpacity
+            style={styles.primaryBtn}
+            onPress={() =>
+              navigation.navigate(ROUTES.ACTIVITY.POST_GAME_ATTENDANCE as 'PostGameAttendance', {
+                activityId: activity.id,
+              })
+            }
+          >
+            <Text style={styles.primaryBtnText}>Mark attendance</Text>
+          </TouchableOpacity>
+        ) : null}
         {isHost && canScheduleNext ? (
           <TouchableOpacity
-            style={[styles.primaryBtn, schedulingNext && styles.btnDisabled]}
+            style={[styles.secondaryBtn, schedulingNext && styles.btnDisabled]}
             onPress={handleScheduleNextGame}
             disabled={schedulingNext}
           >
-            <Text style={styles.primaryBtnText}>
+            <Text style={styles.secondaryBtnText}>
               {schedulingNext ? 'Scheduling…' : 'Schedule next game'}
             </Text>
           </TouchableOpacity>
@@ -1369,13 +1405,13 @@ export const GameRoomFooter: React.FC = () => {
   const showFillIns =
     isHost && !isFinalized && !isCrewGame && (activity.missing_players ?? 0) > 0;
   const openDiscoverForPlayers = () => {
-    navigation.navigate('MainTabs' as never, {
+    navigation.navigate('MainTabs', {
       screen: ROUTES.HOME.MAIN,
       params: {
         sportFilter: activity.sport_type,
         highlightOpenSpots: true,
       },
-    } as never);
+    });
   };
 
   const handleInviteFillIn = (suggestion: FillInSuggestion) => {
@@ -1679,6 +1715,8 @@ export const GameRoomFooter: React.FC = () => {
           {pendingExpanded ? (
             loadingRequests ? (
               <ActivityIndicator size="small" color={colors.primary} style={styles.pendingLoader} />
+            ) : requestsError ? (
+              <Text style={styles.requestsErrorText}>{requestsError}</Text>
             ) : (
               pendingRequests.map((req) => (
                 <View key={req.id} style={styles.pendingRow}>
@@ -1713,6 +1751,19 @@ export const GameRoomFooter: React.FC = () => {
               ))
             )
           ) : null}
+        </View>
+      ) : null}
+
+      {showPlayerActions && !isCrewGame ? (
+        <View style={styles.playerRosterBlock}>
+          <StatusGroupedRoster
+            activity={activity}
+            onPlayerPress={(member) =>
+              member.userId
+                ? openPlayerProfile({ id: member.userId, username: member.name }, 'Player')
+                : undefined
+            }
+          />
         </View>
       ) : null}
 
@@ -2180,6 +2231,11 @@ const styles = StyleSheet.create({
   pendingLoader: {
     marginVertical: 6,
   },
+  requestsErrorText: {
+    fontSize: 12,
+    color: colors.error,
+    marginVertical: 6,
+  },
   pendingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2232,6 +2288,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 4,
+  },
+  playerRosterBlock: {
+    marginBottom: spacing.sm,
   },
   flexBtn: {
     flex: 1,

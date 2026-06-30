@@ -9,15 +9,9 @@ import { canCreateStudentProfiles } from '../../types/ageCategory';
 import { createStudentProfile } from '../../services/studentProfileService';
 import { hasActiveGuardianConsent } from '../../services/guardianConsentService';
 import { canShowGuardianAttestation } from '../../constants/guardianConsent';
-import { ClassEnrollmentInvite } from '../../types/coachParent';
+import type { RootStackParamList } from '../../navigation/types';
 
-type Params = {
-  AddChildProfile: {
-    returnToInvite?: ClassEnrollmentInvite;
-  };
-};
-
-type Props = NativeStackScreenProps<Params, 'AddChildProfile'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'AddChildProfile'>;
 
 const AddChildProfileScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -27,9 +21,9 @@ const AddChildProfileScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const resumeAfterCreate = () => {
     if (returnToInvite) {
-      navigation.replace(ROUTES.COACH_PARENT.CHILD_PICKER as never, {
+      navigation.replace(ROUTES.COACH_PARENT.CHILD_PICKER, {
         invite: returnToInvite,
-      } as never);
+      });
       return;
     }
     navigation.goBack();
@@ -47,16 +41,16 @@ const AddChildProfileScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
     if (!canShowGuardianAttestation()) {
-      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT as never, {
+      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT, {
         returnToInvite,
-      } as never);
+      });
       return;
     }
     const consented = await hasActiveGuardianConsent(user.id);
     if (!consented) {
-      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT as never, {
+      navigation.navigate(ROUTES.COACH_PARENT.GUARDIAN_CONSENT, {
         returnToInvite,
-      } as never);
+      });
       return;
     }
 

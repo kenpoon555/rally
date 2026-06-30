@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { Activity } from '../types/activity';
 import { ConversationSessionCard } from '../types/sessionCard';
 import { listConversationSessionCards } from '../services/sessionCardService';
@@ -17,7 +17,6 @@ type Params = {
   conversationId: string | null;
   groupId: string;
   userId?: string;
-  navigation: NativeStackNavigationProp<any>;
   onAfterAction?: () => void;
 };
 
@@ -25,9 +24,9 @@ export function useCrewChatSessions({
   conversationId,
   groupId,
   userId,
-  navigation,
   onAfterAction,
 }: Params) {
+  const navigation = useNavigation();
   const [crewSessions, setCrewSessions] = useState<ConversationSessionCard[]>([]);
   const [focusedActivityId, setFocusedActivityId] = useState<string | undefined>();
   const [busyActivityId, setBusyActivityId] = useState<string | null>(null);
@@ -186,10 +185,10 @@ export function useCrewChatSessions({
 
   const onOpenDetails = useCallback(
     (act: Activity) => {
-      navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+      navigation.navigate(ROUTES.ACTIVITY.DETAIL, {
         activityId: act.id,
         fromGameRoom: true,
-      } as never);
+      });
     },
     [navigation]
   );

@@ -26,6 +26,7 @@ import { ensureSupabaseSessionReady } from './api/ensureSupabaseSession';
 import { ensureActivityGroupConversation } from './chatService';
 import { activityHasFriend } from '../utils/activityHelpers';
 import { getUserFriends } from './friendsService';
+import { Friend } from '../types/friends';
 
 /**
  * Create a new activity
@@ -218,7 +219,7 @@ async function enrichActivitiesWithJoinRequests(
     .filter((activity) => activity.user_id === viewerId)
     .map((activity) => activity.id);
 
-  const [mineRes, hostJoinRes] = await Promise.all([
+  const [mineRes, hostJoinRes, approvedRes] = await Promise.all([
     supabase
       .from('join_requests')
       .select(JOIN_REQUEST_CARD_SELECT)
@@ -231,6 +232,12 @@ async function enrichActivitiesWithJoinRequests(
           .in('activity_id', hostActivityIds)
           .in('status', ['approved', 'pending'])
       : Promise.resolve({ data: [] as JoinRequest[], error: null }),
+    supabase
+      .from('join_requests')
+      .select(JOIN_REQUEST_CARD_SELECT)
+      .in('activity_id', activityIds)
+      .eq('status', 'approved')
+      .limit(activityIds.length * 20),
   ]);
 
   const byActivity = new Map<string, JoinRequest[]>();
@@ -248,14 +255,7 @@ async function enrichActivitiesWithJoinRequests(
   for (const row of (hostJoinRes.data || []) as JoinRequest[]) {
     addRow(row);
   }
-
-  const { data: approvedRows } = await supabase
-    .from('join_requests')
-    .select(JOIN_REQUEST_CARD_SELECT)
-    .in('activity_id', activityIds)
-    .eq('status', 'approved');
-
-  for (const row of (approvedRows || []) as JoinRequest[]) {
+  for (const row of (approvedRes.data || []) as JoinRequest[]) {
     addRow(row);
   }
 
@@ -438,6 +438,28 @@ export async function hostUpdateGameCourt(
   return updated;
 }
 
+async function callDiscoverRpc(
+  viewerId: string | undefined,
+  latitude: number | undefined,
+  longitude: number | undefined,
+  radius: number,
+  sportType: SportType | undefined,
+  limit = 30
+): Promise<Activity[]> {
+  const { data, error } = await supabase.rpc('discover_activities', {
+    p_viewer: viewerId ?? null,
+    p_lat: latitude ?? null,
+    p_lng: longitude ?? null,
+    p_radius_m: radius,
+    p_sport: sportType ?? null,
+    p_limit: limit,
+    p_cursor_start_time: null,
+    p_cursor_id: null,
+  });
+  if (error) throw new Error(`discover_activities RPC: ${error.message}`);
+  return ((data as { activity: Activity; distance_m: number | null }[]) || []).map((row) => row.activity);
+}
+
 export const getNearbyActivities = async (
   latitude?: number,
   longitude?: number,
@@ -456,17 +478,18 @@ export const getNearbyActivities = async (
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
+  const authUserId = authUser?.id;
+
   if (authUser) {
-    try {
-      await consumeRateLimit('discovery_search', authUser.id);
-    } catch (rateErr) {
+    // fire-and-forget: rate limit is a soft gate, failure is already ignored
+    consumeRateLimit('discovery_search', authUser.id).catch((rateErr) => {
       if (__DEV__) {
         addDiscoverLog(
           'rate limit skipped:',
           rateErr instanceof Error ? rateErr.message : String(rateErr)
         );
       }
-    }
+    });
     void trackProductEvent(
       'discover_refreshed',
       { sport_type: sportType || null },
@@ -474,9 +497,50 @@ export const getNearbyActivities = async (
     );
   }
 
-  let { activities, errorMessage } = await queryDiscoverActivities(sportType);
-  if (errorMessage && activities.length === 0) {
-    throw new Error(`Could not load games: ${errorMessage}`);
+  // Parallelize: RPC, hosted activities, and friend list fly concurrently
+  const [rpcOutcome, hostedRaw, friendsRaw] = await Promise.all([
+    callDiscoverRpc(authUserId, latitude, longitude, effectiveRadius, sportType).then(
+      (acts) => ({ ok: true as const, activities: acts }),
+      (err) => ({ ok: false as const, err })
+    ),
+    authUserId
+      ? getUserActivities(authUserId).catch((hostedErr) => {
+          if (__DEV__) {
+            addDiscoverLog(
+              'hosted merge skipped:',
+              hostedErr instanceof Error ? hostedErr.message : String(hostedErr)
+            );
+          }
+          return [] as Activity[];
+        })
+      : Promise.resolve([] as Activity[]),
+    authUserId
+      ? getUserFriends(authUserId).catch((friendErr) => {
+          if (__DEV__) {
+            addDiscoverLog(
+              'friend list skipped:',
+              friendErr instanceof Error ? friendErr.message : String(friendErr)
+            );
+          }
+          return [] as Friend[];
+        })
+      : Promise.resolve([] as Friend[]),
+  ]);
+
+  let activities: Activity[];
+  let rpcSucceeded: boolean;
+
+  if (rpcOutcome.ok) {
+    activities = rpcOutcome.activities;
+    rpcSucceeded = true;
+  } else {
+    if (__DEV__) addDiscoverLog('RPC fallback:', rpcOutcome.err instanceof Error ? rpcOutcome.err.message : String(rpcOutcome.err));
+    const result = await queryDiscoverActivities(sportType);
+    activities = result.activities;
+    if (result.errorMessage && activities.length === 0) {
+      throw new Error(`Could not load games: ${result.errorMessage}`);
+    }
+    rpcSucceeded = false;
   }
 
   if (__DEV__) {
@@ -487,22 +551,9 @@ export const getNearbyActivities = async (
     );
   }
 
-  let hostedActive: Activity[] = [];
-  if (authUser) {
-    try {
-      const hosted = await getUserActivities(authUser.id);
-      hostedActive = hosted.filter(
-        (activity) => activity.status === 'active' && isActivityListingActive(activity)
-      );
-    } catch (hostedErr) {
-      if (__DEV__) {
-        addDiscoverLog(
-          'hosted merge skipped:',
-          hostedErr instanceof Error ? hostedErr.message : String(hostedErr)
-        );
-      }
-    }
-  }
+  const hostedActive = hostedRaw.filter(
+    (activity) => activity.status === 'active' && isActivityListingActive(activity)
+  );
 
   const mergedById = new Map<string, Activity>();
   for (const activity of activities) {
@@ -512,26 +563,11 @@ export const getNearbyActivities = async (
     mergedById.set(activity.id, activity);
   }
 
-  const authUserId = authUser?.id;
-
-  let friendIds = new Set<string>();
-  if (authUserId) {
-    try {
-      const friends = await getUserFriends(authUserId);
-      friendIds = new Set(
-        friends
-          .map((friendship) => friendship.friend?.id || friendship.friend_id)
-          .filter((id): id is string => Boolean(id))
-      );
-    } catch (friendErr) {
-      if (__DEV__) {
-        addDiscoverLog(
-          'friend list skipped:',
-          friendErr instanceof Error ? friendErr.message : String(friendErr)
-        );
-      }
-    }
-  }
+  const friendIds = new Set(
+    friendsRaw
+      .map((friendship) => friendship.friend?.id || friendship.friend_id)
+      .filter((id): id is string => Boolean(id))
+  );
 
   const friendRadius = CONFIG.FRIEND_DISCOVERY_RADIUS_M;
 
@@ -539,11 +575,20 @@ export const getNearbyActivities = async (
     isActivityListingActive(activity)
   );
 
-  const enriched = await enrichActivitiesWithJoinRequests(activeActivities, authUserId);
+  const enriched = rpcSucceeded
+    ? activeActivities
+    : await enrichActivitiesWithJoinRequests(activeActivities, authUserId);
 
   const filtered = enriched.filter((activity) => {
     if (authUserId && activity.user_id === authUserId) {
       return true;
+    }
+    if (rpcSucceeded) {
+      // Server already applied geo filter; only apply friend-radius boost for activities
+      // that weren't returned by the RPC (i.e. hosted games merged in from hostedActive).
+      if (!hostedActive.some((h) => h.id === activity.id)) {
+        return true;
+      }
     }
     if (__DEV__) {
       return true;

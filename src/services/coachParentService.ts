@@ -14,7 +14,7 @@ import {
 } from '../constants/coachParentFlags';
 import { STUDENT_PROFILES, PARENT_PILOT_ENROLLMENT } from '../constants/parentStudentFlags';
 import { listStudentProfilesForParent } from './studentProfileService';
-import { listParentEnrollmentsFromDb } from './studentEnrollmentService';
+import { listParentEnrollmentsFromDb, updateEnrollmentResponseStatus } from './studentEnrollmentService';
 import {
   getCoachClassListingFromDb,
   listCoachClassListingsFromDb,
@@ -388,4 +388,33 @@ export function coachTodayClasses(coachUserId: string): CoachClassListing[] {
     const start = new Date(row.start_time);
     return start.toDateString() === today.toDateString() || start > today;
   }).slice(0, 2);
+}
+
+/** Parent updates session response from Today My Classes (demo + DB). */
+export async function updateParentEnrollmentResponse(
+  parentUserId: string,
+  enrollmentId: string,
+  status: ParentClassEnrollment['response_status']
+): Promise<ParentClassEnrollment> {
+  if (PARENT_PILOT_ENROLLMENT) {
+    try {
+      return await updateEnrollmentResponseStatus(parentUserId, enrollmentId, status);
+    } catch {
+      // Fall through to demo rows when id is local demo or DB empty.
+    }
+  }
+
+  const demo = DEMO_PARENT_ENROLLMENTS.find(
+    (row) => row.id === enrollmentId && parentUserId === MARCUS_ID
+  );
+  if (!demo) {
+    throw new Error('Could not update class response.');
+  }
+  demo.response_status = status;
+  const roster = DEMO_ROSTER[demo.class_id];
+  const rosterRow = roster?.find((row) => row.display_name === demo.student_name);
+  if (rosterRow) {
+    rosterRow.status = status;
+  }
+  return { ...demo };
 }

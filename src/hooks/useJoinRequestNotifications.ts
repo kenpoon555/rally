@@ -18,6 +18,7 @@ export function useJoinRequestNotifications(userId: string | undefined): void {
     }
 
     const channels: ReturnType<typeof supabase.channel>[] = [];
+    let cancelled = false;
 
     const openActivity = (activityId: string) => {
       navigateFromNotificationData({
@@ -32,6 +33,8 @@ export function useJoinRequestNotifications(userId: string | undefined): void {
         .select('id')
         .eq('user_id', userId)
         .eq('status', 'active');
+
+      if (cancelled) return;
 
       hostedActivityIdsRef.current = (hosted || []).map((row) => row.id as string);
 
@@ -101,6 +104,7 @@ export function useJoinRequestNotifications(userId: string | undefined): void {
     void setupHostListeners();
 
     return () => {
+      cancelled = true;
       for (const channel of channels) {
         supabase.removeChannel(channel);
       }

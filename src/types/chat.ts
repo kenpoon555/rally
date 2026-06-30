@@ -47,3 +47,14 @@ export interface ChatMessage {
   activity_id?: string | null;
   recap_id?: string | null;
 }
+
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '🔥', '💪'] as const;
+export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  emoji: ReactionEmoji;
+  created_at: string;
+}

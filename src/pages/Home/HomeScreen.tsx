@@ -34,7 +34,11 @@ import { ScreenHeader, SegmentToggle } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
-import { shouldShowInDiscoverFeed, sortDiscoverFeedActivities } from '../../utils/activityHelpers';
+import {
+  getViewerGameState,
+  shouldShowInDiscoverFeed,
+  sortDiscoverFeedActivities,
+} from '../../utils/activityHelpers';
 import { getBlockedUserIds } from '../../services/safetyService';
 import { getUserFriends } from '../../services/friendsService';
 import { getMyRegularGroups } from '../../services/regularGroupService';
@@ -82,24 +86,12 @@ function runRawLocationTest() {
     });
 }
 
+import type { MainTabParamList } from '../../navigation/types';
+
 type DiscoverMode = 'games' | 'free_agents' | 'classes';
 type RouteDiscoverMode = DiscoverMode | 'need_players';
 
-type TabParamList = {
-  Home:
-    | {
-        sportFilter?: string;
-        highlightOpenSpots?: boolean;
-        discoverMode?: RouteDiscoverMode;
-      }
-    | undefined;
-  Chats: undefined;
-  MyGames: undefined;
-  Friends: undefined;
-  Profile: undefined;
-};
-
-type Props = BottomTabScreenProps<TabParamList, 'Home'>;
+type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
 
 const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user, loading: authLoading, refreshUser } = useAuth();
@@ -421,9 +413,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const openActivityDetail = useCallback(
     (activityId: string) => {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, {
         activityId,
-      } as never);
+      });
     },
     [navigation]
   );
@@ -436,14 +428,14 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   const navigateToCreateGame = (params?: { createMode?: 'class' }) => {
-    const routeParams = (params ?? {}) as never;
+    const routeParams = params ?? {};
     const parent = navigation.getParent();
     if (parent) {
-      parent.navigate(ROUTES.ACTIVITY.CREATE as never, routeParams);
+      parent.navigate(ROUTES.ACTIVITY.CREATE, routeParams);
       return;
     }
     if (navigationRef.isReady()) {
-      navigationRef.navigate(ROUTES.ACTIVITY.CREATE as never, routeParams);
+      navigationRef.navigate(ROUTES.ACTIVITY.CREATE, routeParams);
     }
   };
 
@@ -615,9 +607,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               userLocation={discoverLocation}
               isHost={item.user_id === user?.id}
               onPress={() =>
-                navigation.getParent()?.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL as never, {
+                navigation.getParent()?.navigate(ROUTES.COACH_PARENT.CLASS_DETAIL, {
                   classId: item.id,
-                } as never)
+                })
               }
             />
           )}
@@ -659,6 +651,8 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
               activity={item}
               userLocation={discoverLocation}
               isHost={item.user_id === user?.id}
+              viewerState={getViewerGameState(item, user?.id)}
+              showUrgencyHook={section.key !== 'locked'}
               onPress={() => openActivityDetail(item.id)}
             />
           )}
@@ -687,9 +681,9 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
                 onOpenRally={
                   crewForEmpty
                     ? () =>
-                        navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+                        navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW, {
                           groupId: crewForEmpty.id,
-                        } as never)
+                        })
                     : undefined
                 }
                 fill

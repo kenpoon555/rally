@@ -6,14 +6,10 @@ import { Button } from '../../components/ui';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
 import { AgeCategory } from '../../types/ageCategory';
+import type { AuthStackParamList } from '../../navigation/types';
 
-export type AuthStackParamList = {
-  Welcome: undefined;
-  AgeGate: undefined;
-  Under13Blocked: undefined;
-  Login: undefined;
-  Signup: { ageCategory: AgeCategory };
-};
+// Re-export for backward compatibility with Under13BlockedScreen and SignupScreen
+export type { AuthStackParamList };
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'AgeGate'>;
 

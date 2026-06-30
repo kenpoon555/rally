@@ -298,6 +298,69 @@ export async function markEnrollmentAttendance(
   }
 }
 
+export async function updateEnrollmentResponseStatus(
+  parentUserId: string,
+  enrollmentId: string,
+  status: ParentClassEnrollment['response_status']
+): Promise<ParentClassEnrollment> {
+  if (!PARENT_PILOT_ENROLLMENT) {
+    throw new Error('Parent enrollment is not enabled.');
+  }
+
+  const { data: profiles, error: profileError } = await supabase
+    .from('student_profiles')
+    .select('id, display_name')
+    .eq('parent_user_id', parentUserId)
+    .eq('status', 'active');
+  if (profileError) {
+    throw profileError;
+  }
+  const profileIds = (profiles ?? []).map((row) => row.id);
+  if (profileIds.length === 0) {
+    throw new Error('No student profiles found for this parent.');
+  }
+
+  const { data, error } = await supabase
+    .from('student_enrollments')
+    .update({ response_status: status })
+    .eq('id', enrollmentId)
+    .in('student_profile_id', profileIds)
+    .eq('status', 'active')
+    .select('*')
+    .maybeSingle();
+  if (error) {
+    throw error;
+  }
+  if (!data) {
+    throw new Error('Enrollment not found or not owned by this parent.');
+  }
+
+  const nameById = new Map((profiles ?? []).map((row) => [row.id, row.display_name as string]));
+  const row = data as EnrollmentRow;
+
+  let session: { session_status: 'scheduled' | 'deferred' | 'cancelled'; effective_start: string } | null =
+    null;
+  if (COACH_CLASS_OPERATIONS && row.class_id) {
+    const { data: state } = await supabase
+      .from('coach_class_session_state')
+      .select('session_status, effective_start')
+      .eq('class_id', row.class_id)
+      .maybeSingle();
+    if (state) {
+      session = {
+        session_status: state.session_status as 'scheduled' | 'deferred' | 'cancelled',
+        effective_start: state.effective_start as string,
+      };
+    }
+  }
+
+  return mapParentEnrollment(
+    row,
+    nameById.get(row.student_profile_id) ?? studentName(row),
+    session
+  );
+}
+
 export async function endEnrollment(parentUserId: string, enrollmentId: string): Promise<void> {
   const { error } = await supabase
     .from('student_enrollments')

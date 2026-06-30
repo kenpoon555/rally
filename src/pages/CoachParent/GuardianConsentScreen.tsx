@@ -13,15 +13,9 @@ import {
 import { PRIVACY_POLICY_URL } from '../../constants/legal';
 import { colors, radius, spacing } from '../../constants/theme';
 import { recordGuardianConsent } from '../../services/guardianConsentService';
-import { ClassEnrollmentInvite } from '../../types/coachParent';
+import type { RootStackParamList } from '../../navigation/types';
 
-type Params = {
-  GuardianConsent: {
-    returnToInvite?: ClassEnrollmentInvite;
-  };
-};
-
-type Props = NativeStackScreenProps<Params, 'GuardianConsent'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'GuardianConsent'>;
 
 const GuardianConsentScreen: React.FC<Props> = ({ navigation, route }) => {
   const { user } = useAuth();
@@ -37,9 +31,7 @@ const GuardianConsentScreen: React.FC<Props> = ({ navigation, route }) => {
     setLoading(true);
     try {
       await recordGuardianConsent(user.id);
-      navigation.navigate(ROUTES.COACH_PARENT.ADD_CHILD_PROFILE as never, {
-        returnToInvite,
-      } as never);
+      navigation.navigate(ROUTES.COACH_PARENT.ADD_CHILD_PROFILE);
     } catch (error: unknown) {
       Alert.alert(
         'Could not record consent',

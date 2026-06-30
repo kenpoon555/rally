@@ -40,16 +40,9 @@ import { listClassAnnouncements } from '../../services/coachParentService';
 import { ClassAnnouncementInboxItem } from '../../types/coachParent';
 import { useCoachParent } from '../../hooks/useCoachParent';
 import { shouldShowInboxClassesFilter } from '../../config/surfaceVisibility';
+import type { MainTabParamList } from '../../navigation/types';
 
-type TabParamList = {
-  Home: undefined;
-  Chats: undefined;
-  Map: undefined;
-  Friends: undefined;
-  Profile: undefined;
-};
-
-type Props = BottomTabScreenProps<TabParamList, 'Chats'>;
+type Props = BottomTabScreenProps<MainTabParamList, 'Chats'>;
 
 const FILTERS: { id: ChatInboxFilter; label: string }[] = [
   { id: 'friends', label: 'Friends' },
@@ -89,7 +82,7 @@ type InboxFilter = ChatInboxFilter | 'announcements';
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
   const { isCoach, hasClassContext } = useCoachParent();
-  const { items, loading, errorText, load } = useChatInboxWithRealtime(user?.id);
+  const { items, loading, errorText, load, clearUnread } = useChatInboxWithRealtime(user?.id);
   const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
   const [announcements, setAnnouncements] = useState<ClassAnnouncementInboxItem[]>([]);
@@ -154,10 +147,10 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     groupId: string,
     initialTab: 'chat' | 'play' | 'members' = 'chat'
   ) => {
-    navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+    navigation.getParent()?.navigate(ROUTES.REGULAR_GROUP.CREW, {
       groupId,
       initialTab,
-    } as never);
+    });
   };
 
   React.useEffect(() => {
@@ -174,13 +167,14 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     activityId?: string,
     groupId?: string
   ) => {
+    clearUnread(conversationId);
     void prefetchConversationMessages(conversationId, 100);
-    navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
+    navigation.getParent()?.navigate(ROUTES.CHAT.THREAD, {
       conversationId,
       title,
       activityId,
       groupId,
-    } as never);
+    });
   };
 
   const openGameChat = async (item: Extract<ChatInboxItem, { kind: 'game' }>) => {
@@ -411,12 +405,12 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
                   filter !== 'friends'
                     ? {
                         label: 'Find a game',
-                        onPress: () => navigation.navigate(ROUTES.HOME.MAIN as never),
+                        onPress: () => navigation.navigate(ROUTES.HOME.MAIN),
                       }
                     : {
                         label: 'Go to Friends',
                         onPress: () =>
-                          navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST as never),
+                          navigation.getParent()?.navigate(ROUTES.FRIENDS.LIST),
                       }
                 }
                 secondaryAction={
@@ -424,7 +418,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
                     ? {
                         label: 'Create game',
                         onPress: () =>
-                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE as never),
+                          navigation.getParent()?.navigate(ROUTES.ACTIVITY.CREATE),
                       }
                     : undefined
                 }

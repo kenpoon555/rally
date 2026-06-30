@@ -19,15 +19,9 @@ import { useAuth } from '../../hooks/useAuth';
 import { fuzzMapCoordinate } from '../../utils/approximateLocation';
 import { PRIVACY_LOCATION_TEXT } from '../../constants/legal';
 import { colors } from '../../constants/theme';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  Map: typeof ROUTES.HOME.MAP;
-  ActivityDetail: { activityId?: string; inviteToken?: string };
-  CreateActivity: undefined;
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, typeof ROUTES.HOME.MAP>;
+type Props = NativeStackScreenProps<RootStackParamList, typeof ROUTES.HOME.MAP>;
 
 const FALLBACK_REGION = {
   latitude: 1.3521,
@@ -95,7 +89,7 @@ const MapScreen: React.FC<Props> = ({ navigation }) => {
   const showEmptyOverlay = !loading && !hasActivityPins && !hasLocationPins;
 
   const handleStartHere = () => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as never);
+    navigation.navigate(ROUTES.ACTIVITY.CREATE);
   };
 
   const handleRefresh = async () => {

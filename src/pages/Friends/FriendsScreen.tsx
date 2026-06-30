@@ -39,14 +39,16 @@ import { colors, radius, spacing } from '../../constants/theme';
 import PlayerProfileModal, { PlayerProfilePreview } from '../../components/PlayerProfileModal';
 import { PlayerTrustLine } from '../../components/PlayerTrustLine';
 
+import type { RootStackParamList } from '../../navigation/types';
+
 export type FriendsStackParams = {
   Friends: { openSearch?: boolean } | undefined;
 };
 
-type Props = NativeStackScreenProps<FriendsStackParams, 'Friends'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Friends'>;
 
 const FriendsScreen: React.FC<Props> = ({ navigation }) => {
-  const route = useRoute<RouteProp<FriendsStackParams, 'Friends'>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Friends'>>();
   const { user } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Friend[]>([]);
@@ -205,10 +207,10 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
     }
     try {
       const conversationId = await getOrCreateDirectConversation(friendUserId, user?.id);
-      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD as never, {
+      navigation.getParent()?.navigate(ROUTES.CHAT.THREAD, {
         conversationId,
         title: username ? `@${username}` : 'Direct message',
-      } as never);
+      });
     } catch (error: any) {
       Alert.alert('Chat unavailable', error?.message || 'Could not open chat right now.');
     }

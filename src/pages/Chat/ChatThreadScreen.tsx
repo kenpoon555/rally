@@ -22,9 +22,14 @@ import {
   getConversationById,
   markConversationRead,
   sendConversationMessage,
-  subscribeToConversationMessages,
 } from '../../services/chatService';
-import { ChatMessage, Conversation } from '../../types/chat';
+import {
+  getReactionsForMessages,
+  addReaction,
+  removeReaction,
+} from '../../services/reactionService';
+import { useChatChannel } from '../../hooks/useChatChannel';
+import { ChatMessage, Conversation, MessageReaction, ReactionEmoji } from '../../types/chat';
 import { getRegularGroupById } from '../../services/regularGroupService';
 import { RallyPlayTabHint } from '../../components/rally/RallyPlayTabHint';
 import { countPlayTabActions } from '../../utils/playTabActions';
@@ -49,25 +54,13 @@ import { AvailabilityPoll } from '../../types/availabilityPoll';
 import { ChatMessageBubble } from '../../components/chat/ChatMessageBubble';
 import { ChatThreadSkeleton } from '../../components/chat/ChatThreadSkeleton';
 import { ChatQuickReplies } from '../../components/chat/ChatQuickReplies';
+import { ReactionPicker } from '../../components/chat/ReactionPicker';
 import { ROUTES } from '../../constants/routes';
 import { colors, radius, spacing } from '../../constants/theme';
 import { KeyboardSafeView, useComposerBottomPadding } from '../../components/ui';
+import type { RootStackParamList } from '../../navigation/types';
 
-type MainStackParamList = {
-  MainTabs: undefined;
-  ActivityDetail: { activityId: string; fromGameRoom?: boolean };
-  CreateActivity: undefined;
-  Profile: undefined;
-  ChatList: undefined;
-  ChatThread: {
-    conversationId: string;
-    title?: string;
-    activityId?: string;
-    groupId?: string;
-  };
-};
-
-type Props = NativeStackScreenProps<MainStackParamList, 'ChatThread'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ChatThread'>;
 
 const GameRoomChatBody: React.FC<{
   isGameRoom: boolean;
@@ -93,6 +86,9 @@ const GameRoomChatBody: React.FC<{
   showQuickReplies?: boolean;
   onQuickReply?: (text: string) => void;
   onMessageLongPress?: (message: ChatMessage) => void;
+  reactions?: Record<string, MessageReaction[]>;
+  onLongPressReact?: (message: ChatMessage) => void;
+  onToggleReaction?: (messageId: string, emoji: ReactionEmoji) => void;
 }> = ({
   isGameRoom,
   isCrewChat,
@@ -117,6 +113,9 @@ const GameRoomChatBody: React.FC<{
   showQuickReplies = false,
   onQuickReply,
   onMessageLongPress,
+  reactions,
+  onLongPressReact,
+  onToggleReaction,
 }) => {
   const gameRoom = useOptionalGameRoom();
   const chatReadOnly = gameRoom?.isChatReadOnly ?? false;
@@ -176,7 +175,11 @@ const GameRoomChatBody: React.FC<{
         <ChatMessageBubble
           message={item}
           isMine={item.sender_id === userId}
+          reactions={reactions?.[item.id]}
+          currentUserId={userId}
           onLongPressOther={onMessageLongPress}
+          onLongPressReact={onLongPressReact}
+          onToggleReaction={onToggleReaction}
         />
       )}
     />
@@ -217,6 +220,7 @@ const GameRoomChatBody: React.FC<{
 
 const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const { conversationId, title, activityId, groupId } = route.params;
+  const chatChannel = useChatChannel(conversationId);
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const keyboardVerticalOffset = Platform.OS === 'ios' ? insets.top + 44 : 0;
@@ -224,6 +228,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [peerUserId, setPeerUserId] = useState<string | null>(null);
   const [peerUsername, setPeerUsername] = useState<string | null>(null);
@@ -240,6 +245,8 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const [crewHostId, setCrewHostId] = useState<string | null>(null);
   const [crewPolls, setCrewPolls] = useState<AvailabilityPoll[]>([]);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const [reactions, setReactions] = useState<Record<string, MessageReaction[]>>({});
+  const [pickerMessage, setPickerMessage] = useState<ChatMessage | null>(null);
 
   const isCrewChat = conversation?.conversation_type === 'crew_group';
   const resolvedGroupId = groupId ?? conversation?.regular_group_id ?? undefined;
@@ -404,10 +411,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!resolvedGroupId) {
       return;
     }
-    navigation.replace(ROUTES.REGULAR_GROUP.CREW as never, {
+    navigation.replace(ROUTES.REGULAR_GROUP.CREW, {
       groupId: resolvedGroupId,
       initialTab: 'chat',
-    } as never);
+    });
   }, [navigation, resolvedGroupId]);
 
   useEffect(() => {
@@ -453,6 +460,16 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       const cached = takeCachedConversationMessages(conversationId);
       const rows = cached ?? (await getConversationMessages(conversationId, 100));
       setMessages(rows);
+      setHasMoreMessages(rows.length >= 100);
+      if (rows.length > 0) {
+        const rxns = await getReactionsForMessages(rows.map((m) => m.id));
+        const map: Record<string, MessageReaction[]> = {};
+        for (const r of rxns) {
+          if (!map[r.message_id]) map[r.message_id] = [];
+          map[r.message_id].push(r);
+        }
+        setReactions(map);
+      }
       if (user?.id) {
         await markConversationRead(conversationId, user.id);
       }
@@ -464,30 +481,104 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [conversationId, user?.id]);
 
+  const loadOlderMessages = useCallback(async () => {
+    if (messages.length === 0) return;
+    setLoading(true);
+    try {
+      const oldest = messages[0].created_at;
+      const older = await getConversationMessages(conversationId, 100, oldest);
+      if (older.length > 0) {
+        setMessages((prev) => [...older, ...prev]);
+        setHasMoreMessages(older.length >= 100);
+        const rxns = await getReactionsForMessages(older.map((m) => m.id));
+        setReactions((prev) => {
+          const next = { ...prev };
+          for (const r of rxns) {
+            if (!next[r.message_id]) next[r.message_id] = [];
+            if (!next[r.message_id].some((x) => x.id === r.id)) {
+              next[r.message_id] = [...next[r.message_id], r];
+            }
+          }
+          return next;
+        });
+      } else {
+        setHasMoreMessages(false);
+      }
+    } catch {
+      // non-critical; user can pull again
+    } finally {
+      setLoading(false);
+    }
+  }, [conversationId, messages]);
+
   useEffect(() => {
     loadMessages();
   }, [loadMessages]);
 
   useEffect(() => {
-    const subscription = subscribeToConversationMessages(conversationId, (message) => {
-      setMessages((prev) => {
-        if (prev.some((msg) => msg.id === message.id)) {
-          return prev;
+    chatChannel.register({
+      table: 'messages',
+      event: 'INSERT',
+      filter: `conversation_id=eq.${conversationId}`,
+      handler: (payload) => {
+        const message = payload.new as ChatMessage;
+        setMessages((prev) => {
+          if (prev.some((msg) => msg.id === message.id)) return prev;
+          return [...prev, message];
+        });
+        if (isCrewChat && (message.message_type === 'system' || message.activity_id)) {
+          void reloadCrewSessions();
         }
-        return [...prev, message];
-      });
-      if (isCrewChat && (message.message_type === 'system' || message.activity_id)) {
-        void reloadCrewSessions();
-      }
-      if (user?.id) {
-        markConversationRead(conversationId, user.id).catch(() => null);
-      }
+        if (user?.id) {
+          markConversationRead(conversationId, user.id).catch(() => null);
+        }
+      },
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [conversationId, isCrewChat, reloadCrewSessions, user?.id]);
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'INSERT',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.new as MessageReaction;
+        setMessages((prev) => {
+          if (!prev.some((m) => m.id === r.message_id)) return prev;
+          setReactions((rxns) => {
+            const list = rxns[r.message_id] ?? [];
+            if (list.some((x) => x.id === r.id)) return rxns;
+            return { ...rxns, [r.message_id]: [...list, r] };
+          });
+          return prev;
+        });
+      },
+    });
+
+    chatChannel.register({
+      table: 'message_reactions',
+      event: 'DELETE',
+      filter: undefined,
+      handler: (payload) => {
+        const r = payload.old as MessageReaction;
+        setReactions((rxns) => {
+          const list = rxns[r.message_id];
+          if (!list) return rxns;
+          return { ...rxns, [r.message_id]: list.filter((x) => x.id !== r.id) };
+        });
+      },
+    });
+
+    chatChannel.subscribe(() => {
+      // onReconnect: re-fetch recent messages and merge to fill the gap
+      void getConversationMessages(conversationId, 20).then((recent) => {
+        setMessages((prev) => {
+          const existingIds = new Set(prev.map((m) => m.id));
+          const newOnes = recent.filter((m) => !existingIds.has(m.id));
+          return newOnes.length > 0 ? [...prev, ...newOnes].sort((a, b) =>
+            a.created_at < b.created_at ? -1 : 1) : prev;
+        });
+      }).catch(() => null);
+    });
+  }, [conversationId, chatChannel, isCrewChat, reloadCrewSessions, user?.id]);
 
   const canSend = useMemo(
     () => !!user?.id && draft.trim().length > 0 && !sending && !blockedThread,
@@ -544,6 +635,20 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
     void sendContent(text);
   };
 
+  const handleToggleReaction = useCallback(
+    (messageId: string, emoji: ReactionEmoji) => {
+      const mine = reactions[messageId]?.some(
+        (r) => r.user_id === user?.id && r.emoji === emoji
+      );
+      if (mine) {
+        removeReaction(messageId, emoji).catch(() => null);
+      } else {
+        addReaction(messageId, emoji).catch(() => null);
+      }
+    },
+    [reactions, user?.id]
+  );
+
   if (loading && messages.length === 0) {
     return <ChatThreadSkeleton />;
   }
@@ -555,11 +660,11 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
   const crewPollsHost = Boolean(user?.id && crewHostId && user.id === crewHostId);
 
   const handleScheduleFromPoll = (option: { starts_at: string; label: string }) => {
-    navigation.navigate(ROUTES.ACTIVITY.CREATE as never, {
+    navigation.navigate(ROUTES.ACTIVITY.CREATE, {
       prefillStartTime: option.starts_at,
       prefillTitle: option.label,
       prefillGroupId: resolvedGroupId,
-    } as never);
+    });
   };
 
   const chatBody = (
@@ -573,10 +678,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           <RallyPlayTabHint
             actionCount={playActionCount}
             onPress={() =>
-              navigation.navigate(ROUTES.REGULAR_GROUP.CREW as never, {
+              navigation.navigate(ROUTES.REGULAR_GROUP.CREW, {
                 groupId: resolvedGroupId,
                 initialTab: 'play',
-              } as never)
+              })
             }
           />
         ) : null
@@ -590,7 +695,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       canSend={canSend}
       onDraftChange={setDraft}
       onSend={() => void handleSend()}
-      onRefresh={() => void loadMessages()}
+      onRefresh={() => void (hasMoreMessages ? loadOlderMessages() : loadMessages())}
       crewPolls={isCrewChat ? crewPolls : undefined}
       crewPollsHost={crewPollsHost}
       onReloadPolls={() => void reloadCrewPolls()}
@@ -599,6 +704,9 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
       showQuickReplies={isCrewChat || isGameRoom}
       onQuickReply={handleQuickReply}
       onMessageLongPress={(message) => void handleMessageLongPress(message)}
+      reactions={reactions}
+      onLongPressReact={setPickerMessage}
+      onToggleReaction={handleToggleReaction}
     />
   );
 
@@ -614,10 +722,10 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
             isCrewChat && resolvedGroupId ? openRallyHub : undefined
           }
           onOpenDetails={() =>
-            navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+            navigation.navigate(ROUTES.ACTIVITY.DETAIL, {
               activityId: resolvedActivityId,
               fromGameRoom: true,
-            } as never)
+            })
           }
           onLeftGame={() => navigation.goBack()}
           onScheduledNextGame={async (newActivityId) => {
@@ -626,9 +734,9 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
               setFocusedActivityId(newActivityId);
               await loadMessages();
             } else {
-              navigation.navigate(ROUTES.ACTIVITY.DETAIL as never, {
+              navigation.navigate(ROUTES.ACTIVITY.DETAIL, {
                 activityId: newActivityId,
-              } as never);
+              });
             }
           }}
         >
@@ -666,6 +774,7 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
         <SafetyActionsSheet
           visible={safetyOpen}
           onClose={closeSafetySheet}
+          onBlocked={() => navigation.goBack()}
           currentUserId={user.id}
           targetUserId={safetyTargetUserId}
           targetUsername={safetyTargetUsername}
@@ -674,6 +783,21 @@ const ChatThreadScreen: React.FC<Props> = ({ route, navigation }) => {
           initialReportDetail={safetyReportDetail}
         />
       ) : null}
+
+      <ReactionPicker
+        visible={Boolean(pickerMessage)}
+        myReactions={
+          pickerMessage
+            ? (reactions[pickerMessage.id] ?? [])
+                .filter((r) => r.user_id === user?.id)
+                .map((r) => r.emoji)
+            : []
+        }
+        onSelect={(emoji) => {
+          if (pickerMessage) handleToggleReaction(pickerMessage.id, emoji);
+        }}
+        onClose={() => setPickerMessage(null)}
+      />
     </KeyboardSafeView>
   );
 };

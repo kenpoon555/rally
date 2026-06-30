@@ -340,7 +340,18 @@ export function useChatInbox(userId: string | undefined) {
     }
   }, [userId]);
 
-  return { items, loading, errorText, totalUnread, load };
+  const clearUnread = useCallback((conversationId: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        'conversationId' in item && item.conversationId === conversationId
+          ? { ...item, unread: 0 }
+          : item
+      )
+    );
+    setTotalUnread((prev) => Math.max(0, prev - 1));
+  }, []);
+
+  return { items, loading, errorText, totalUnread, load, clearUnread };
 }
 
 export function useChatInboxWithRealtime(userId: string | undefined) {
