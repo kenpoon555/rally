@@ -478,17 +478,18 @@ export const getNearbyActivities = async (
   const {
     data: { user: authUser },
   } = await supabase.auth.getUser();
+  const authUserId = authUser?.id;
+
   if (authUser) {
-    try {
-      await consumeRateLimit('discovery_search', authUser.id);
-    } catch (rateErr) {
+    // fire-and-forget: rate limit is a soft gate, failure is already ignored
+    consumeRateLimit('discovery_search', authUser.id).catch((rateErr) => {
       if (__DEV__) {
         addDiscoverLog(
           'rate limit skipped:',
           rateErr instanceof Error ? rateErr.message : String(rateErr)
         );
       }
-    }
+    });
     void trackProductEvent(
       'discover_refreshed',
       { sport_type: sportType || null },
@@ -496,24 +497,12 @@ export const getNearbyActivities = async (
     );
   }
 
-  const authUserId = authUser?.id;
-
-  let activities: Activity[];
-  let rpcSucceeded = false;
-
-  try {
-    activities = await callDiscoverRpc(authUserId, latitude, longitude, effectiveRadius, sportType);
-    rpcSucceeded = true;
-  } catch (rpcErr) {
-    if (__DEV__) addDiscoverLog('RPC fallback:', rpcErr instanceof Error ? rpcErr.message : String(rpcErr));
-    const result = await queryDiscoverActivities(sportType);
-    activities = result.activities;
-    if (result.errorMessage && activities.length === 0) {
-      throw new Error(`Could not load games: ${result.errorMessage}`);
-    }
-  }
-
-  const [hostedRaw, friendsRaw] = await Promise.all([
+  // Parallelize: RPC, hosted activities, and friend list fly concurrently
+  const [rpcOutcome, hostedRaw, friendsRaw] = await Promise.all([
+    callDiscoverRpc(authUserId, latitude, longitude, effectiveRadius, sportType).then(
+      (acts) => ({ ok: true as const, activities: acts }),
+      (err) => ({ ok: false as const, err })
+    ),
     authUserId
       ? getUserActivities(authUserId).catch((hostedErr) => {
           if (__DEV__) {
@@ -537,6 +526,22 @@ export const getNearbyActivities = async (
         })
       : Promise.resolve([] as Friend[]),
   ]);
+
+  let activities: Activity[];
+  let rpcSucceeded: boolean;
+
+  if (rpcOutcome.ok) {
+    activities = rpcOutcome.activities;
+    rpcSucceeded = true;
+  } else {
+    if (__DEV__) addDiscoverLog('RPC fallback:', rpcOutcome.err instanceof Error ? rpcOutcome.err.message : String(rpcOutcome.err));
+    const result = await queryDiscoverActivities(sportType);
+    activities = result.activities;
+    if (result.errorMessage && activities.length === 0) {
+      throw new Error(`Could not load games: ${result.errorMessage}`);
+    }
+    rpcSucceeded = false;
+  }
 
   if (__DEV__) {
     addDiscoverLog(
