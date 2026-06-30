@@ -1,6 +1,70 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repository. Behavioral guidelines apply to all tasks; project rules apply to Rally-specific code.
+
+---
+
+## Behavioral Guidelines
+
+These bias toward caution over speed. For trivial tasks, use judgment.
+
+### 1. Think Before Coding
+
+Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+Minimum code that solves the problem. Nothing speculative.
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that **your** changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan before starting:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria require constant clarification.
+
+---
 
 ## Commands
 
@@ -26,6 +90,8 @@ npm run lint
 
 Run a single test file: `npx jest path/to/test.tsx`
 
+---
+
 ## Environment Setup
 
 Copy `.env.example` to `.env` and fill in:
@@ -34,6 +100,8 @@ Copy `.env.example` to `.env` and fill in:
 - `GEOFENCE_RADIUS`, `LOCATION_UPDATE_INTERVAL`, `LOCATION_DISTANCE_FILTER`
 
 Environment variables are loaded via `react-native-config` and accessed through `src/constants/config.ts`.
+
+---
 
 ## Architecture
 
@@ -77,17 +145,24 @@ Supabase client is initialized in `src/services/api/supabase.ts` with a custom f
 ### Debug Infrastructure
 The codebase has intentional remote telemetry logging (`src/utils/debugIngest.ts`) and a dev location log panel (`src/components/DevLocationLogPanel.tsx`) used for agent-assisted debugging. These are intentional, not dead code.
 
+---
+
 ## Design & UI (Pencil MCP)
 - **Visual Source of Truth**: When building new UI or fixing layouts, always use `pencil.get_canvas_context` to check the latest frames in the Pencil desktop app.
 - **Component Mapping**: Map Pencil components to our existing library in `src/components/`. Do not create new base components if suitable ones exist.
-- **Styling**: Prefer `StyleSheet.create` or Tailwind (whichever you use) over inline styles. Follow the spacing and color palette defined in `src/constants/theme.ts`.
+- **Styling**: Prefer `StyleSheet.create` over inline styles. Follow the spacing and color palette defined in `src/constants/theme.ts`.
 
-## Agentic Development Rules
-- **Error Handling**: Always wrap service calls in try-catch blocks using our `debugIngest` utility.
+---
+
+## Project-Specific Rules
+
+- **Error Handling**: Always wrap service calls in try-catch. Never silently swallow errors in host-facing flows.
 - **Performance**: Use `React.memo` for list items in `ActivityDetail` and `ChatList` to avoid re-render lag.
-- **Safety**: Never hardcode Supabase keys. Ensure `src/constants/config.ts` is the only entry point for env vars.
+- **Safety**: Never hardcode Supabase keys. `src/constants/config.ts` is the only entry point for env vars.
 - **Testing**: After every logic change in `src/services/`, run `npm test` automatically.
 - **Contracts**: Before touching chat, activity, navigation, or realtime code, read `docs/ENGINEERING-CONTRACTS.md`. Update it in the same PR if you change a schema, service API, component interface, or realtime channel. Always rebase onto latest `dev` before opening a PR.
+
+---
 
 ## Task Progress (Agent Use Only)
 - **Actionable tasks:** Use `RallyApp/docs/TASKS.md` as the single task index. Pick **one** task per session to avoid rate limits; complete and check off before starting the next.
