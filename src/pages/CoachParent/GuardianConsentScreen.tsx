@@ -17,9 +17,8 @@ import type { RootStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GuardianConsent'>;
 
-const GuardianConsentScreen: React.FC<Props> = ({ navigation, route }) => {
+const GuardianConsentScreen: React.FC<Props> = ({ navigation, route: _route }) => {
   const { user } = useAuth();
-  const returnToInvite = route.params?.returnToInvite;
   const [checked, setChecked] = useState(false);
   const [loading, setLoading] = useState(false);
   const approved = canShowGuardianAttestation();
