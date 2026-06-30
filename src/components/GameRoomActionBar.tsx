@@ -10,10 +10,10 @@ import { useNavigation } from '@react-navigation/native';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Keyboard,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -1141,21 +1141,23 @@ export const GameRoomHeader: React.FC = () => {
         </View>
       ) : null}
 
-      <ScrollView
+      <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.rosterStripCompact}
-      >
-        <RosterAvatar
-          label={hostUsername}
-          ready={isHost || isFinalized}
-          role="Host"
-          compact
-          onPress={hostUser ? () => openPlayerProfile(hostUser, 'Host') : undefined}
-        />
-        {sortedApprovedParticipants.map((req) => (
+        data={sortedApprovedParticipants}
+        keyExtractor={(req) => req.id}
+        ListHeaderComponent={
           <RosterAvatar
-            key={req.id}
+            label={hostUsername}
+            ready={isHost || isFinalized}
+            role="Host"
+            compact
+            onPress={hostUser ? () => openPlayerProfile(hostUser, 'Host') : undefined}
+          />
+        }
+        renderItem={({ item: req }) => (
+          <RosterAvatar
             label={req.user?.username || 'Player'}
             ready={participantReady(req)}
             waiting={!isFinalized && !participantReady(req)}
@@ -1170,8 +1172,8 @@ export const GameRoomHeader: React.FC = () => {
                 : undefined
             }
           />
-        ))}
-      </ScrollView>
+        )}
+      />
 
       {showRotation ? (
         <SessionRotationPanel
