@@ -89,7 +89,6 @@ function runRawLocationTest() {
 import type { MainTabParamList } from '../../navigation/types';
 
 type DiscoverMode = 'games' | 'free_agents' | 'classes';
-type RouteDiscoverMode = DiscoverMode | 'need_players';
 
 type Props = BottomTabScreenProps<MainTabParamList, 'Home'>;
 
