@@ -373,7 +373,7 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
                   {item.preview}
                 </Text>
                 <Text style={styles.announceMeta}>
-                  To parents · not child DM
+                  {item.coach_display_name ? `${item.coach_display_name} · ` : ''}To parents
                   {item.sent_at ? ` · ${formatInboxMessageDate(item.sent_at)}` : ''}
                 </Text>
               </View>
@@ -439,7 +439,10 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               <>
                 <Text style={styles.modalTitle}>{selectedAnnouncement.class_title}</Text>
                 <Text style={styles.modalMeta}>
-                  To parents · not child DM
+                  {selectedAnnouncement.coach_display_name
+                    ? `${selectedAnnouncement.coach_display_name} · `
+                    : ''}
+                  To parents
                   {selectedAnnouncement.sent_at
                     ? ` · ${new Date(selectedAnnouncement.sent_at).toLocaleString()}`
                     : ''}
