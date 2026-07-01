@@ -82,7 +82,7 @@ type InboxFilter = ChatInboxFilter | 'announcements';
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const { isCoach, hasClassContext } = useCoachParent();
+  const { isCoach, hasClassContext, reload: reloadClassContext } = useCoachParent();
   const { items, loading, errorText, load, clearUnread } = useChatInboxWithRealtime(user?.id);
   const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
@@ -105,6 +105,12 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         hasClassContext,
       }),
     [user?.id, isCoach, hasClassContext]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadClassContext();
+    }, [reloadClassContext])
   );
 
   useFocusEffect(
