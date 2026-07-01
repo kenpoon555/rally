@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   forgotText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.textSecondary,
   },
   linkButton: {
     marginTop: spacing.xl,

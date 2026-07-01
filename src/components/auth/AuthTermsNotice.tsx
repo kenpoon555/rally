@@ -37,9 +37,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.md,
     borderRadius: 12,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   signupHeading: {
     ...typography.bodyMedium,
