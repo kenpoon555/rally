@@ -38,6 +38,7 @@ import {
   getRegularGroupById,
   isRegularGroupMember,
 } from '../../services/regularGroupService';
+import { getUserById } from '../../services/userService';
 import {
   createMiniTournament,
   getTournamentsForGroup,
@@ -99,7 +100,7 @@ import type { RootStackParamList } from '../../navigation/types';
 type Props = NativeStackScreenProps<RootStackParamList, 'ActivityDetail'>;
 
 const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { activityId: routeActivityId, inviteToken, hostInvite, fromGameRoom } = route.params;
+  const { activityId: routeActivityId, inviteToken, hostInvite, fromGameRoom, scrollTo } = route.params;
   const [resolvedActivityId, setResolvedActivityId] = useState<string | undefined>(routeActivityId);
   const activityId = resolvedActivityId || '';
   const { activity, loading, error, refetch } = useActivity(activityId);
@@ -351,6 +352,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [routeActivityId]);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const reviewFormYRef = useRef<number>(0);
+  const [hostProfile, setHostProfile] = useState<{ id: string; username: string; profile_photo_url?: string } | null>(null);
   const arrivedViaHostInvite = useRef(Boolean(hostInvite && inviteToken && !routeActivityId));
   const redirectedToRoom = useRef(false);
   const [resolvingInvite, setResolvingInvite] = useState(false);
@@ -501,6 +505,38 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       cancelled = true;
     };
   }, [regularGroup?.id]);
+
+  // P0-2: scroll to review form when navigated from the "Rate →" CTA
+  useEffect(() => {
+    if (scrollTo !== 'review' || !activity) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({ y: reviewFormYRef.current, animated: true });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [scrollTo, activity]);
+
+  // P0-3: fetch host profile separately when the join didn't return it
+  useEffect(() => {
+    if (!activity?.user_id || activity.user) {
+      setHostProfile(null);
+      return;
+    }
+    let cancelled = false;
+    getUserById(activity.user_id)
+      .then((profile) => {
+        if (!cancelled && profile) {
+          setHostProfile({ id: profile.id, username: profile.username, profile_photo_url: profile.profile_photo_url });
+        }
+      })
+      .catch(() => {
+        // silently ignore; the 'Host' fallback remains
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activity?.user_id, activity?.user]);
 
   useEffect(() => {
     setCostNoteDraft(activity?.cost_note ?? '');
@@ -1051,6 +1087,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   return (
     <KeyboardSafeView style={styles.container}>
     <ScrollView
+      ref={scrollViewRef}
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
@@ -1270,40 +1307,49 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       />
 
       {showReviewForm ? (
-        <PlayerReviewForm
-          subtitle={
-            isHost
-              ? `How did your players show up at ${activity.location?.name || 'this game'}?`
-              : `How was the host for this match?`
-          }
-          players={
-            isHost
-              ? approvedParticipants
-                  .filter((participant) =>
-                    pendingReviewTargetIds.includes(participant.user_id)
-                  )
-                  .map((participant) => ({
-                    userId: participant.user_id,
-                    username: participant.user?.username || 'Player',
-                  }))
-              : activity.user_id
-                ? [{ userId: activity.user_id, username: activity.user?.username || 'Host' }]
-                : []
-          }
-          selectedPlayerId={activeReviewTargetId}
-          onSelectPlayer={isHost ? setReviewTargetUserId : undefined}
-          friendliness={friendliness}
-          physicality={physicality}
-          vibe={vibe}
-          onChangeFriendliness={setFriendliness}
-          onChangePhysicality={setPhysicality}
-          onChangeVibe={setVibe}
-          comment={reviewComment}
-          onChangeComment={setReviewComment}
-          submitting={submittingReview}
-          onSubmit={() => void handleSubmitReview()}
-          hideSubmit
-        />
+        <View
+          onLayout={(e) => {
+            reviewFormYRef.current = e.nativeEvent.layout.y;
+          }}
+        >
+          <PlayerReviewForm
+            subtitle={
+              isHost
+                ? `How did your players show up at ${activity.location?.name || 'this game'}?`
+                : `How was the host for this match?`
+            }
+            players={
+              isHost
+                ? approvedParticipants
+                    .filter((participant) =>
+                      pendingReviewTargetIds.includes(participant.user_id)
+                    )
+                    .map((participant) => ({
+                      userId: participant.user_id,
+                      username: participant.user?.username || 'Player',
+                    }))
+                : activity.user_id
+                  ? [{
+                      userId: activity.user_id,
+                      username: activity.user?.username || hostProfile?.username || 'Host',
+                    }]
+                  : []
+            }
+            selectedPlayerId={activeReviewTargetId}
+            onSelectPlayer={isHost ? setReviewTargetUserId : undefined}
+            friendliness={friendliness}
+            physicality={physicality}
+            vibe={vibe}
+            onChangeFriendliness={setFriendliness}
+            onChangePhysicality={setPhysicality}
+            onChangeVibe={setVibe}
+            comment={reviewComment}
+            onChangeComment={setReviewComment}
+            submitting={submittingReview}
+            onSubmit={() => void handleSubmitReview()}
+            hideSubmit
+          />
+        </View>
       ) : null}
 
       {showReviewWaiting ? (
