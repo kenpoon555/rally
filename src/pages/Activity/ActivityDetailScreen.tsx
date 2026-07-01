@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -125,6 +126,68 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const [vibe, setVibe] = useState(3);
   const [reviewComment, setReviewComment] = useState('');
   const [reviewTargetUserId, setReviewTargetUserId] = useState<string | null>(null);
+
+  const reviewDraftKey = activityId ? `review_draft_${activityId}` : null;
+
+  useEffect(() => {
+    if (!reviewDraftKey) {
+      return;
+    }
+    AsyncStorage.getItem(reviewDraftKey).then((raw) => {
+      if (!raw) {
+        return;
+      }
+      try {
+        const draft = JSON.parse(raw);
+        if (typeof draft.friendliness === 'number') {
+          setFriendliness(draft.friendliness);
+        }
+        if (typeof draft.physicality === 'number') {
+          setPhysicality(draft.physicality);
+        }
+        if (typeof draft.vibe === 'number') {
+          setVibe(draft.vibe);
+        }
+      } catch {
+        // Ignore malformed draft
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reviewDraftKey]);
+
+  const persistRatingDraft = useCallback(
+    (update: { friendliness: number; physicality: number; vibe: number }) => {
+      if (!reviewDraftKey) {
+        return;
+      }
+      AsyncStorage.setItem(reviewDraftKey, JSON.stringify(update)).catch(() => {});
+    },
+    [reviewDraftKey]
+  );
+
+  const handleChangeFriendliness = useCallback(
+    (value: number) => {
+      setFriendliness(value);
+      persistRatingDraft({ friendliness: value, physicality, vibe });
+    },
+    [persistRatingDraft, physicality, vibe]
+  );
+
+  const handleChangePhysicality = useCallback(
+    (value: number) => {
+      setPhysicality(value);
+      persistRatingDraft({ friendliness, physicality: value, vibe });
+    },
+    [persistRatingDraft, friendliness, vibe]
+  );
+
+  const handleChangeVibe = useCallback(
+    (value: number) => {
+      setVibe(value);
+      persistRatingDraft({ friendliness, physicality, vibe: value });
+    },
+    [persistRatingDraft, friendliness, physicality]
+  );
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewedTargetIds, setReviewedTargetIds] = useState<Set<string>>(new Set());
   const [profilePlayer, setProfilePlayer] = useState<PlayerProfilePreview | null>(null);
@@ -841,6 +904,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
       setFriendliness(3);
       setPhysicality(3);
       setVibe(3);
+      if (reviewDraftKey) {
+        AsyncStorage.removeItem(reviewDraftKey).catch(() => {});
+      }
       invalidateReviewPrompts();
       const remaining = pendingReviewTargetIds.filter((id) => id !== activeReviewTargetId);
       if (isHost && remaining.length > 0) {
@@ -1340,9 +1406,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ route, navigation }) => {
             friendliness={friendliness}
             physicality={physicality}
             vibe={vibe}
-            onChangeFriendliness={setFriendliness}
-            onChangePhysicality={setPhysicality}
-            onChangeVibe={setVibe}
+            onChangeFriendliness={handleChangeFriendliness}
+            onChangePhysicality={handleChangePhysicality}
+            onChangeVibe={handleChangeVibe}
             comment={reviewComment}
             onChangeComment={setReviewComment}
             submitting={submittingReview}
