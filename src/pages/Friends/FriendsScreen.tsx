@@ -303,7 +303,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
           }}
           ListEmptyComponent={
             <EmptyState
-              icon="👥"
+              iconName="people-outline"
               title="No friends yet"
               message="Add friends to send quick play invites."
               primaryAction={{ label: 'Add Friends', onPress: () => setActiveTab('search') }}
@@ -377,7 +377,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
           }}
           ListEmptyComponent={
             <EmptyState
-              icon="📬"
+              iconName="email-outline"
               title="No requests right now"
               message="Invite someone to play and start building your list."
               primaryAction={{ label: 'Add Friends', onPress: () => setActiveTab('search') }}
@@ -454,7 +454,7 @@ const FriendsScreen: React.FC<Props> = ({ navigation }) => {
             )}
             ListEmptyComponent={
               <EmptyState
-                icon="🔍"
+                iconName="magnify"
                 title={searchQuery ? 'No users found' : 'Search for players'}
                 message={
                   searchQuery.trim().length < 2
