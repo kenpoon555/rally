@@ -23,6 +23,7 @@ import {
 } from '../../hooks/useChatInbox';
 import {
   ensureActivityGroupConversation,
+  ensureCrewConversation,
   getOrCreateDirectConversation,
   prefetchConversationMessages,
 } from '../../services/chatService';
@@ -206,10 +207,20 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const openGroupRow = (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
-    setOpeningKey(item.key);
+  const openGroupRow = async (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
+    if (item.conversationId === null) {
+      setOpeningKey(item.key);
+      try {
+        await ensureCrewConversation(item.group.id);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Could not open Rally chat.';
+        Alert.alert('Chat unavailable', message);
+        return;
+      } finally {
+        setOpeningKey(null);
+      }
+    }
     openRallyHub(item.group.id, 'chat');
-    setOpeningKey(null);
   };
 
   const handlePress = (item: ChatInboxItem) => {
