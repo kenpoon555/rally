@@ -141,7 +141,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const openReviewActivity = useCallback(
     (activityId: string) => {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, { activityId });
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, { activityId, scrollTo: 'review' });
     },
     [navigation]
   );
