@@ -1400,7 +1400,7 @@ const ProfileScreen: React.FC = () => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Notifications</Text>
-        <Text style={styles.hint}>Quiet hours (UTC) — join pushes skipped during this window.</Text>
+        <Text style={styles.hint}>Quiet hours (local time) — join pushes skipped during this window.</Text>
         <View style={styles.quietRow}>
           {(['off', '22-8', '23-7'] as const).map((preset) => {
             const selected = quietPreset === preset;
