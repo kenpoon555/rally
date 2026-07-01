@@ -31,7 +31,9 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
   const { user } = useAuth();
   const { activity, loading } = useActivity(activityId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [initialSeed, setInitialSeed] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const participants = activity ? getApprovedParticipants(activity) : [];
   const isHost = activity?.user_id === user?.id;
@@ -41,8 +43,27 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     const readyIds = getApprovedParticipants(activity)
       .filter((p) => p.ready_at)
       .map((p) => p.user_id);
-    setSelected(new Set(readyIds));
+    const seed = new Set(readyIds);
+    setSelected(seed);
+    setInitialSeed(seed);
   }, [activity, isHost]);
+
+  const hasUnsavedChanges =
+    !submitted &&
+    (selected.size !== initialSeed.size ||
+      [...selected].some((id) => !initialSeed.has(id)));
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges) return;
+      e.preventDefault();
+      Alert.alert('Discard changes?', 'Your attendance selections will be lost.', [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
 
   const toggle = (userId: string) => {
     setSelected((prev) => {
@@ -56,6 +77,7 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
   const handleSubmit = useCallback(async () => {
     if (!activity) return;
     setSaving(true);
+    setSubmitted(true);
     try {
       const recapId = await submitGameAttendance(activity.id, Array.from(selected));
       if (recapId) {
@@ -82,6 +104,7 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
         ]);
       }
     } catch (error: unknown) {
+      setSubmitted(false);
       Alert.alert(
         'Could not save',
         error instanceof Error ? error.message : 'Try again.'
@@ -103,6 +126,9 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <View style={styles.centered}>
         <Text style={styles.error}>This game is no longer available.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -198,6 +224,8 @@ const styles = StyleSheet.create({
   metaMuted: { ...typography.caption, color: colors.textSecondary },
   submit: { marginTop: spacing.xl },
   error: { ...typography.body, color: colors.textSecondary },
+  backButton: { marginTop: spacing.md, padding: spacing.sm },
+  backButtonText: { ...typography.body, color: colors.primary },
 });
 
 export default PostGameAttendanceScreen;
