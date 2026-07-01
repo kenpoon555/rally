@@ -35,6 +35,7 @@ import {
   countUnreadClassAnnouncements,
   markClassAnnouncementsSeen,
 } from '../../services/classAnnouncementReadStore';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
 import { listClassAnnouncements } from '../../services/coachParentService';
@@ -384,6 +385,12 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               accessibilityRole="button"
               accessibilityLabel={`Class announcement, ${item.class_title}`}
             >
+              <MaterialCommunityIcons
+                name="bullhorn-outline"
+                size={32}
+                color={colors.textSecondary}
+                style={styles.rowIcon}
+              />
               <View style={styles.rowMain}>
                 <Text style={styles.rowTitle}>{item.class_title}</Text>
                 <Text style={styles.rowSubtitle} numberOfLines={2}>
