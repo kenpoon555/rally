@@ -63,7 +63,7 @@ export async function blockUser(
   await submitUserReport({
     reporter_id: blockerId,
     reported_id: blockedId,
-    reason: 'harassment',
+    reason: 'other',
     detail: options?.reportDetail?.trim() || 'User blocked via Safety.',
     context_type: options?.contextType ?? 'profile',
     context_id: options?.contextId ?? null,
