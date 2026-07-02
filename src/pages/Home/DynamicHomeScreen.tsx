@@ -141,7 +141,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
 
   const openReviewActivity = useCallback(
     (activityId: string) => {
-      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, { activityId });
+      navigation.getParent()?.navigate(ROUTES.ACTIVITY.DETAIL, { activityId, scrollTo: 'review' });
     },
     [navigation]
   );
@@ -426,7 +426,7 @@ const DynamicHomeScreen: React.FC<Props> = ({ navigation }) => {
             <EmptyState
               icon="🏸"
               title="No games yet"
-              message="Discover open games in LA or host one and share the invite link with your crew."
+              message="Discover open games near you or host one and share the invite link with your crew."
               primaryAction={{ label: 'Browse Play', onPress: openDiscover }}
               secondaryAction={{ label: 'Host a Game', onPress: openCreateGame }}
             />

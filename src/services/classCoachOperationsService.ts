@@ -93,7 +93,7 @@ export async function listParentClassNotifications(
   }
   const { data, error } = await supabase
     .from('class_parent_notifications')
-    .select('id, class_id, operation, message, created_at')
+    .select('id, class_id, operation, message, created_at, profiles!coach_user_id(username)')
     .eq('parent_user_id', parentUserId)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -116,6 +116,7 @@ export async function listParentClassNotifications(
   return (data ?? []).map((row) => ({
     id: row.id as string,
     class_title: titleByClassId.get(row.class_id as string) ?? 'Class update',
+    coach_display_name: (row.profiles as { username: string } | null)?.username,
     preview: row.message as string,
     sent_at: row.created_at as string,
     audience: 'parents' as const,
@@ -218,7 +219,7 @@ export async function listParentAnnouncementsForClass(
   }
   const { data, error } = await supabase
     .from('class_parent_notifications')
-    .select('id, operation, message, created_at')
+    .select('id, operation, message, created_at, profiles!coach_user_id(username)')
     .eq('parent_user_id', parentUserId)
     .eq('class_id', classId)
     .order('created_at', { ascending: false })
@@ -229,6 +230,7 @@ export async function listParentAnnouncementsForClass(
   return (data ?? []).map((row) => ({
     id: row.id as string,
     class_title: '',
+    coach_display_name: (row.profiles as { username: string } | null)?.username,
     preview: row.message as string,
     sent_at: row.created_at as string,
     audience: 'parents',

@@ -23,6 +23,7 @@ import {
 } from '../../hooks/useChatInbox';
 import {
   ensureActivityGroupConversation,
+  ensureCrewConversation,
   getOrCreateDirectConversation,
   prefetchConversationMessages,
 } from '../../services/chatService';
@@ -34,6 +35,7 @@ import {
   countUnreadClassAnnouncements,
   markClassAnnouncementsSeen,
 } from '../../services/classAnnouncementReadStore';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, radius, spacing, typography } from '../../constants/theme';
 import { CLASS_INBOX_ANNOUNCE } from '../../constants/coachParentFlags';
 import { listClassAnnouncements } from '../../services/coachParentService';
@@ -81,7 +83,7 @@ type InboxFilter = ChatInboxFilter | 'announcements';
 
 const ChatListScreen: React.FC<Props> = ({ navigation }) => {
   const { user } = useAuth();
-  const { isCoach, hasClassContext } = useCoachParent();
+  const { isCoach, hasClassContext, reload: reloadClassContext } = useCoachParent();
   const { items, loading, errorText, load, clearUnread } = useChatInboxWithRealtime(user?.id);
   const [filter, setFilter] = useState<InboxFilter>('friends');
   const [openingKey, setOpeningKey] = useState<string | null>(null);
@@ -104,6 +106,12 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
         hasClassContext,
       }),
     [user?.id, isCoach, hasClassContext]
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadClassContext();
+    }, [reloadClassContext])
   );
 
   useFocusEffect(
@@ -206,10 +214,20 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  const openGroupRow = (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
-    setOpeningKey(item.key);
+  const openGroupRow = async (item: Extract<ChatInboxItem, { kind: 'group' }>) => {
+    if (item.conversationId === null) {
+      setOpeningKey(item.key);
+      try {
+        await ensureCrewConversation(item.group.id);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Could not open Rally chat.';
+        Alert.alert('Chat unavailable', message);
+        return;
+      } finally {
+        setOpeningKey(null);
+      }
+    }
     openRallyHub(item.group.id, 'chat');
-    setOpeningKey(null);
   };
 
   const handlePress = (item: ChatInboxItem) => {
@@ -367,13 +385,19 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               accessibilityRole="button"
               accessibilityLabel={`Class announcement, ${item.class_title}`}
             >
+              <MaterialCommunityIcons
+                name="bullhorn-outline"
+                size={32}
+                color={colors.textSecondary}
+                style={styles.rowIcon}
+              />
               <View style={styles.rowMain}>
                 <Text style={styles.rowTitle}>{item.class_title}</Text>
                 <Text style={styles.rowSubtitle} numberOfLines={2}>
                   {item.preview}
                 </Text>
                 <Text style={styles.announceMeta}>
-                  To parents · not child DM
+                  {item.coach_display_name ? `${item.coach_display_name} · ` : ''}To parents
                   {item.sent_at ? ` · ${formatInboxMessageDate(item.sent_at)}` : ''}
                 </Text>
               </View>
@@ -439,7 +463,10 @@ const ChatListScreen: React.FC<Props> = ({ navigation }) => {
               <>
                 <Text style={styles.modalTitle}>{selectedAnnouncement.class_title}</Text>
                 <Text style={styles.modalMeta}>
-                  To parents · not child DM
+                  {selectedAnnouncement.coach_display_name
+                    ? `${selectedAnnouncement.coach_display_name} · `
+                    : ''}
+                  To parents
                   {selectedAnnouncement.sent_at
                     ? ` · ${new Date(selectedAnnouncement.sent_at).toLocaleString()}`
                     : ''}

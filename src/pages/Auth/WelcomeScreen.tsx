@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Dimensions,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
@@ -8,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,11 +22,11 @@ import type { AuthStackParamList } from '../../navigation/types';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Welcome'>;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const FOOTER_RESERVED = 168;
 
 const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const [activeSlide, setActiveSlide] = useState(0);
   const slideHeight =
     SCREEN_HEIGHT - insets.top - insets.bottom - FOOTER_RESERVED - spacing.xl;
@@ -153,10 +153,10 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.borderStrong,
+    backgroundColor: colors.textTertiary,
   },
   dotActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryDark,
     width: 10,
     height: 10,
     borderRadius: 5,

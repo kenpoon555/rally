@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -71,6 +71,7 @@ const ClassDetailScreen: React.FC<Props> = ({ route }) => {
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
   const [composeText, setComposeText] = useState('');
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
   const isCoach = userIsCoach(user);
 
   const load = useCallback(async () => {
@@ -130,14 +131,24 @@ const ClassDetailScreen: React.FC<Props> = ({ route }) => {
     if (!user?.id || !composeText.trim()) {
       return;
     }
+    if (sendingRef.current) {
+      return;
+    }
+    sendingRef.current = true;
     setSending(true);
     try {
-      await sendClassAnnouncement(classId, user.id, composeText.trim());
+      const count = await sendClassAnnouncement(classId, user.id, composeText.trim());
       setComposeText('');
       await loadAnnouncements();
+      if (count > 0) {
+        Alert.alert('Sent', `Sent to ${count} parent${count === 1 ? '' : 's'}.`);
+      } else {
+        Alert.alert('No parents enrolled yet', 'Your announcement was saved but no parents are enrolled in this class yet.');
+      }
     } catch (err) {
       Alert.alert('Could not send', err instanceof Error ? err.message : 'Try again.');
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };

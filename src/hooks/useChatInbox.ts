@@ -341,14 +341,17 @@ export function useChatInbox(userId: string | undefined) {
   }, [userId]);
 
   const clearUnread = useCallback((conversationId: string) => {
+    let cleared = 0;
     setItems((prev) =>
-      prev.map((item) =>
-        'conversationId' in item && item.conversationId === conversationId
-          ? { ...item, unread: 0 }
-          : item
-      )
+      prev.map((item) => {
+        if ('conversationId' in item && item.conversationId === conversationId) {
+          cleared = item.unread;
+          return { ...item, unread: 0 };
+        }
+        return item;
+      })
     );
-    setTotalUnread((prev) => Math.max(0, prev - 1));
+    setTotalUnread((prev) => Math.max(0, prev - cleared));
   }, []);
 
   return { items, loading, errorText, totalUnread, load, clearUnread };
