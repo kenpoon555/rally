@@ -91,7 +91,6 @@ const SafetyActionsSheet: React.FC<Props> = ({
                 contextId,
                 reportDetail: detail.trim() || `Blocked ${targetUsername} via Safety.`,
               });
-              Alert.alert('Blocked', `${targetUsername} has been blocked.`);
               onBlocked?.();
               handleClose();
             } catch (e: unknown) {

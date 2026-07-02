@@ -179,6 +179,9 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 32,
     alignItems: 'center',
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
   },
   avatar: {
     width: 72,

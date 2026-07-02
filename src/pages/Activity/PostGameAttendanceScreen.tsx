@@ -13,6 +13,7 @@ import { useActivity } from '../../hooks/useActivities';
 import { useAuth } from '../../hooks/useAuth';
 import { submitGameAttendance } from '../../services/activityService';
 import { getGameRecap, shareGameRecap } from '../../services/gameRecapService';
+import { PlayerTrustLine } from '../../components/PlayerTrustLine';
 import { Button, ScreenHeader } from '../../components/ui';
 import { colors, spacing, typography } from '../../constants/theme';
 import { formatActivityTime, getApprovedParticipants } from '../../utils/activityHelpers';
@@ -31,7 +32,9 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
   const { user } = useAuth();
   const { activity, loading } = useActivity(activityId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [initialSeed, setInitialSeed] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const participants = activity ? getApprovedParticipants(activity) : [];
   const isHost = activity?.user_id === user?.id;
@@ -41,8 +44,27 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     const readyIds = getApprovedParticipants(activity)
       .filter((p) => p.ready_at)
       .map((p) => p.user_id);
-    setSelected(new Set(readyIds));
+    const seed = new Set(readyIds);
+    setSelected(seed);
+    setInitialSeed(seed);
   }, [activity, isHost]);
+
+  const hasUnsavedChanges =
+    !submitted &&
+    (selected.size !== initialSeed.size ||
+      [...selected].some((id) => !initialSeed.has(id)));
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!hasUnsavedChanges) return;
+      e.preventDefault();
+      Alert.alert('Discard changes?', 'Your attendance selections will be lost.', [
+        { text: 'Keep editing', style: 'cancel' },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+      ]);
+    });
+    return unsubscribe;
+  }, [navigation, hasUnsavedChanges]);
 
   const toggle = (userId: string) => {
     setSelected((prev) => {
@@ -53,11 +75,12 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     });
   };
 
-  const handleSubmit = useCallback(async () => {
+  const doSubmit = useCallback(async (attendedUserIds: string[]) => {
     if (!activity) return;
     setSaving(true);
+    setSubmitted(true);
     try {
-      const recapId = await submitGameAttendance(activity.id, Array.from(selected));
+      const recapId = await submitGameAttendance(activity.id, attendedUserIds);
       if (recapId) {
         Alert.alert('Saved', 'Attendance recorded. Share the recap with your crew?', [
           {
@@ -82,6 +105,7 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
         ]);
       }
     } catch (error: unknown) {
+      setSubmitted(false);
       Alert.alert(
         'Could not save',
         error instanceof Error ? error.message : 'Try again.'
@@ -89,7 +113,24 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setSaving(false);
     }
-  }, [activity, navigation, selected]);
+  }, [activity, navigation]);
+
+  const handleSubmit = useCallback(() => {
+    if (!activity) return;
+    const attendedUserIds = Array.from(selected);
+    if (attendedUserIds.length === 0) {
+      Alert.alert(
+        'No players marked as attended',
+        'Submit anyway?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Confirm', onPress: () => void doSubmit(attendedUserIds) },
+        ]
+      );
+      return;
+    }
+    void doSubmit(attendedUserIds);
+  }, [activity, doSubmit, selected]);
 
   if (loading && !activity) {
     return (
@@ -103,6 +144,9 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <View style={styles.centered}>
         <Text style={styles.error}>This game is no longer available.</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backButtonText}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -152,7 +196,10 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
             onPress={() => toggle(p.user_id)}
           >
             <Text style={styles.check}>{selected.has(p.user_id) ? '☑' : '☐'}</Text>
-            <Text style={styles.name}>{p.user?.username ?? 'Player'}</Text>
+            <View style={styles.nameBlock}>
+              <Text style={styles.name}>{p.user?.username ?? 'Player'}</Text>
+              <PlayerTrustLine userId={p.user_id} />
+            </View>
             {p.ready_at ? (
               <Text style={styles.meta}>I'm in</Text>
             ) : (
@@ -162,7 +209,7 @@ const PostGameAttendanceScreen: React.FC<Props> = ({ route, navigation }) => {
         ))}
         <Button
           title={saving ? 'Saving…' : 'Submit attendance'}
-          onPress={() => void handleSubmit()}
+          onPress={handleSubmit}
           disabled={saving}
           style={styles.submit}
         />
@@ -193,11 +240,14 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   check: { fontSize: 18, width: 32 },
-  name: { ...typography.body, color: colors.text, flex: 1 },
+  nameBlock: { flex: 1 },
+  name: { ...typography.body, color: colors.text },
   meta: { ...typography.caption, color: colors.success },
   metaMuted: { ...typography.caption, color: colors.textSecondary },
   submit: { marginTop: spacing.xl },
   error: { ...typography.body, color: colors.textSecondary },
+  backButton: { marginTop: spacing.md, padding: spacing.sm },
+  backButtonText: { ...typography.body, color: colors.primary },
 });
 
 export default PostGameAttendanceScreen;

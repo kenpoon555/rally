@@ -129,11 +129,11 @@ const styles = StyleSheet.create({
   messageMeta: {
     ...typography.caption,
     fontSize: 11,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     marginTop: 4,
     alignSelf: 'flex-end',
   },
   messageMetaMine: {
-    color: 'rgba(20, 25, 22, 0.55)',
+    color: 'rgba(20, 25, 22, 0.70)',
   },
 });
