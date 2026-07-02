@@ -53,6 +53,7 @@ const GuardianConsentScreen: React.FC<Props> = ({ navigation, route: _route }) =
             Draft attestation text lives in the contract doc for counsel only — it is not shown in
             the app until approved.
           </Text>
+          <Button title="Go back" variant="secondary" onPress={() => navigation.goBack()} style={styles.pendingBack} />
         </View>
       ) : (
         <>
@@ -97,6 +98,7 @@ const styles = StyleSheet.create({
   pendingTitle: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
   pendingBody: { color: colors.textSecondary, lineHeight: 22, marginBottom: spacing.sm },
   pendingNote: { fontSize: 12, color: colors.textTertiary, lineHeight: 18 },
+  pendingBack: { marginTop: spacing.lg },
   attestRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: spacing.md },
   checkbox: {
     width: 22,
