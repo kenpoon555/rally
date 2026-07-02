@@ -1,6 +1,6 @@
-# Manually bump the app version before cutting a release.
-# Run this BEFORE merging to production. It commits the version change to dev.
-# Build number is managed automatically by EAS (appVersionSource: "remote").
+# Run before PR-ing dev → preview.
+# Bumps the app version (patch/minor/major) AND the build number in app.json.
+# EAS reads both values from app.json (appVersionSource: local, autoIncrement: false).
 
 name: Bump version
 
@@ -19,7 +19,7 @@ on:
 
 jobs:
   bump:
-    name: Bump ${{ github.event.inputs.bump }} version
+    name: Bump ${{ github.event.inputs.bump }} version + build number
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,37 +31,44 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Bump version in app.json
+      - name: Bump version and build number in app.json
         id: bump
         run: |
-          CURRENT=$(node -p "require('./app.json').expo.version")
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          CURRENT_VERSION=$(node -p "require('./app.json').expo.version")
+          CURRENT_BUILD=$(node -p "require('./app.json').expo.ios.buildNumber")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           case "${{ github.event.inputs.bump }}" in
             major) MAJOR=$((MAJOR+1)); MINOR=0; PATCH=0 ;;
             minor) MINOR=$((MINOR+1)); PATCH=0 ;;
             patch) PATCH=$((PATCH+1)) ;;
           esac
-          NEW="$MAJOR.$MINOR.$PATCH"
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_BUILD=$((CURRENT_BUILD + 1))
           node -e "
             const fs = require('fs');
             const cfg = JSON.parse(fs.readFileSync('app.json', 'utf8'));
-            cfg.expo.version = '$NEW';
+            cfg.expo.version = '$NEW_VERSION';
+            cfg.expo.ios.buildNumber = '$NEW_BUILD';
+            cfg.expo.android.versionCode = $NEW_BUILD;
             fs.writeFileSync('app.json', JSON.stringify(cfg, null, 2) + '\n');
           "
-          echo "version=$NEW" >> "$GITHUB_OUTPUT"
-          echo "Bumped $CURRENT → $NEW"
+          echo "version=$NEW_VERSION" >> "\$GITHUB_OUTPUT"
+          echo "build=$NEW_BUILD" >> "\$GITHUB_OUTPUT"
+          echo "Bumped version $CURRENT_VERSION → $NEW_VERSION, build $CURRENT_BUILD → $NEW_BUILD"
 
-      - name: Commit version bump
+      - name: Commit bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add app.json
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          git commit -m "chore: bump to ${{ steps.bump.outputs.version }} (build ${{ steps.bump.outputs.build }})"
           git push origin dev
 
       - name: Summary
         run: |
-          echo "## Version bumped to ${{ steps.bump.outputs.version }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Committed to \`dev\`. Flow through dev → preview → main → production as normal." >> "$GITHUB_STEP_SUMMARY"
-          echo "EAS will auto-increment the build number on the production push." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Released: ${{ steps.bump.outputs.version }} (build ${{ steps.bump.outputs.build }})"
+            echo ""
+            echo "Committed to \`dev\`. Now PR: **dev → preview → main → production**."
+            echo "EAS reads build number directly from app.json — no counter drift possible."
+          } >> "$GITHUB_STEP_SUMMARY"
