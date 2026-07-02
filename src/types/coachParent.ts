@@ -60,6 +60,7 @@ export type ParentClassEnrollment = {
 export type ClassAnnouncementInboxItem = {
   id: string;
   class_title: string;
+  coach_display_name?: string;
   preview: string;
   sent_at: string;
   audience: 'parents';

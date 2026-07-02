@@ -35,6 +35,7 @@ export type RootStackParamList = {
     inviteToken?: string;
     hostInvite?: boolean;
     fromGameRoom?: boolean;
+    scrollTo?: string;
   };
   CreateActivity:
     | {

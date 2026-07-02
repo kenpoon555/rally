@@ -77,7 +77,15 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - run: eas build --profile production --platform android --non-interactive --auto-submit
+      - name: Build and submit Android
+        run: |
+          eas build --profile production --platform android --non-interactive --auto-submit 2>&1 | tee /tmp/eas-android.log
+          EXIT=${PIPESTATUS[0]}
+          if [ $EXIT -ne 0 ] && grep -q "already submitted" /tmp/eas-android.log; then
+            echo "Version already submitted to Play Store — skipping."
+          else
+            exit $EXIT
+          fi
       - name: Builds dashboard
         run: echo "Android → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
 
@@ -101,7 +109,15 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
       - run: npm ci
-      - run: eas build --profile production --platform ios --non-interactive --auto-submit
+      - name: Build and submit iOS
+        run: |
+          eas build --profile production --platform ios --non-interactive --auto-submit 2>&1 | tee /tmp/eas-ios.log
+          EXIT=${PIPESTATUS[0]}
+          if [ $EXIT -ne 0 ] && grep -q "already submitted" /tmp/eas-ios.log; then
+            echo "Version already submitted to TestFlight — skipping."
+          else
+            exit $EXIT
+          fi
       - name: Builds dashboard
         run: echo "iOS → https://expo.dev/accounts/kendrewpoon/projects/rallyapp/builds"
 

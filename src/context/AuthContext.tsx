@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { Linking, Platform } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/api/supabase';
 import { sendDebugLog } from '../utils/debugIngest';
 import { withTimeout } from '../utils/withTimeout';
@@ -157,6 +158,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setNotificationCleanup(() => cleanup);
           } else {
             setNotificationCleanup(null);
+            const promptShown = await AsyncStorage.getItem('notif_permission_prompt_shown');
+            if (!promptShown) {
+              await AsyncStorage.setItem('notif_permission_prompt_shown', 'true');
+              Alert.alert(
+                'Enable notifications',
+                'Turn on notifications in Settings to get game reminders and messages.',
+                [
+                  { text: 'Not now', style: 'cancel' },
+                  { text: 'Go to Settings', onPress: () => Linking.openSettings() },
+                ]
+              );
+            }
           }
         } catch (notificationError: any) {
           console.warn(

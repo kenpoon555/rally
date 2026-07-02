@@ -46,6 +46,7 @@ import {
   REPORT_REASON_LABELS,
   ReportContextType,
 } from '../../types/safety';
+import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../constants/theme';
 import { KeyboardSafeView, keyboardAwareScrollProps } from '../../components/ui';
 import type { RootStackParamList } from '../../navigation/types';
@@ -96,6 +97,7 @@ const METRIC_ROWS: { key: keyof AdminPlatformMetrics; label: string; hint?: stri
 ];
 
 const AdminScreen: React.FC<Props> = () => {
+  const { user } = useAuth();
   const [tab, setTab] = useState<AdminTab>('metrics');
   const [reports, setReports] = useState<AdminReportQueueItem[]>([]);
   const [feedback, setFeedback] = useState<ProductFeedbackRow[]>([]);
@@ -224,6 +226,14 @@ const AdminScreen: React.FC<Props> = () => {
       },
     ]);
   };
+
+  if (!user?.is_admin) {
+    return (
+      <View style={styles.unauthorized}>
+        <Text style={{ color: colors.textSecondary }}>Not authorized</Text>
+      </View>
+    );
+  }
 
   return (
     <KeyboardSafeView style={styles.container}>
@@ -674,6 +684,7 @@ const AdminScreen: React.FC<Props> = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  unauthorized: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   content: { padding: 16, paddingBottom: 32 },
   title: { fontSize: 22, fontWeight: '700' },

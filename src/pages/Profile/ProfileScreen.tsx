@@ -1052,7 +1052,7 @@ const ProfileScreen: React.FC = () => {
           <>
             <ProfileSettingsRow
               label={PRODUCT_COPY.postAvailability}
-              value={showFreeAgentForm ? 'Editing…' : 'Los Angeles'}
+              value={showFreeAgentForm ? 'Editing…' : 'Your area'}
               onPress={() => setShowFreeAgentForm((v) => !v)}
             />
             {showFreeAgentForm ? (
@@ -1400,7 +1400,7 @@ const ProfileScreen: React.FC = () => {
 
       <View style={styles.sectionCard}>
         <Text style={styles.groupLabel}>Notifications</Text>
-        <Text style={styles.hint}>Quiet hours (UTC) — join pushes skipped during this window.</Text>
+        <Text style={styles.hint}>Quiet hours (local time) — join pushes skipped during this window.</Text>
         <View style={styles.quietRow}>
           {(['off', '22-8', '23-7'] as const).map((preset) => {
             const selected = quietPreset === preset;
@@ -1693,17 +1693,17 @@ const styles = StyleSheet.create({
   sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    paddingHorizontal: spacing.md + 2,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
   groupLabel: {
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.6,
-    color: colors.textTertiary,
+    color: colors.textSecondary,
     textTransform: 'uppercase',
     marginBottom: 4,
     marginTop: 4,

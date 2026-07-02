@@ -30,7 +30,7 @@ import { updateUserProfile } from '../../services/userService';
 import { SHOW_LOCATION_DEBUG_PANEL } from '../../constants/devFlags';
 import { getCurrentLocation } from '../../services/locationService';
 import { colors, PRIMARY_COLOR, radius, spacing } from '../../constants/theme';
-import { ScreenHeader, SegmentToggle } from '../../components/ui';
+import { EmptyState, ScreenHeader, SegmentToggle } from '../../components/ui';
 import { DevLocationLogPanel } from '../../components/DevLocationLogPanel';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { addLocationLog } from '../../utils/devLocationLog';
@@ -61,7 +61,6 @@ import { listFreeAgentPosts } from '../../services/freeAgentService';
 import { FreeAgentPost } from '../../types/freeAgent';
 import { COACH_CLASSES_DISCOVER } from '../../constants/coachParentFlags';
 import {
-  freeAgentEmptyCopy,
   playDiscoverSportFilter,
   shouldShowPlayClassesSegment,
 } from '../../config/surfaceVisibility';
@@ -569,14 +568,11 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.loadingText}>Loading players nearby…</Text>
               </View>
             ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>
-                  {freeAgentEmptyCopy(effectiveSportFilter).title}
-                </Text>
-                <Text style={styles.emptyText}>
-                  {freeAgentEmptyCopy(effectiveSportFilter).body}
-                </Text>
-              </View>
+              <EmptyState
+                iconName="account-search-outline"
+                title="No players available"
+                message="Check back after games end, or host one to find players."
+              />
             )
           }
         />
@@ -625,10 +621,11 @@ const HomeScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.loadingText}>Loading classes…</Text>
               </View>
             ) : (
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyTitle}>No {sportLabel} classes nearby</Text>
-                <Text style={styles.emptyText}>Check back later or try another sport.</Text>
-              </View>
+              <EmptyState
+                iconName="school-outline"
+                title="No classes nearby"
+                message="Classes from coaches in your area will appear here."
+              />
             )
           }
         />

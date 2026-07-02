@@ -1,6 +1,6 @@
 # Rally loop status
 
-_Updated: 2026-06-26 23:22 UTC_
+_Updated: 2026-06-30_
 
 ## ▶️ QUEUED — contract `flow-rally-session` (1/6)
 
@@ -10,20 +10,19 @@ _Works for any queue in release-loops.json (onboarding, pickup, sport-meetup, ba
 
 ---
 
-## Product review
+## What's left to build (as of 2026-06-30 audit)
 
-- queue: `taste-tier6-join-loop` tier 6
-- phase: `validation_spawned` · status: `running`
-- layer_2: `merged`
-- personas: 8/8
-- builder branch: `fix/taste-tier6-builder`
+All eng backlog items confirmed shipped. Remaining work:
 
-## Validation
+1. **Coach announcement sender name** — small: `coach_display_name` missing from query + UI
+2. **Theme palette pick** — founder decision → WCAG check → token swap in `theme.ts`
+3. **Cross-surface tier 4 review** — 8 personas, full-app behavioral bar (not started)
+4. **Visual tier 5 review** — after tier 4
 
-- queue: `taste-tier6`
-- contract: `flow-rally-session` (1/6)
-- phase: `started` · status: `running`
-- chain_enabled: True
+## Previously running
+
+- queue: `taste-tier6-join-loop` tier 6 — completed (PRs merged)
+- queue: `taste-tier6` validation — completed
 
 ---
 
