@@ -1,5 +1,5 @@
 import { shouldShowInDiscoverFeed } from '../src/utils/activityHelpers';
-import { Activity } from '../src/types/activity';
+import { Activity, JoinRequest } from '../src/types/activity';
 
 const baseActivity = (overrides: Partial<Activity> = {}): Activity =>
   ({
@@ -21,14 +21,14 @@ describe('shouldShowInDiscoverFeed', () => {
 
   it('hides games where viewer is approved', () => {
     const activity = baseActivity({
-      join_requests: [{ id: 'j1', user_id: 'player', status: 'approved' } as Activity['join_requests'][0]],
+      join_requests: [{ id: 'j1', user_id: 'player', status: 'approved' } as JoinRequest],
     });
     expect(shouldShowInDiscoverFeed(activity, 'player')).toBe(false);
   });
 
   it('shows open games for viewers not yet approved', () => {
     const activity = baseActivity({
-      join_requests: [{ id: 'j1', user_id: 'player', status: 'pending' } as Activity['join_requests'][0]],
+      join_requests: [{ id: 'j1', user_id: 'player', status: 'pending' } as JoinRequest],
     });
     expect(shouldShowInDiscoverFeed(activity, 'player')).toBe(true);
   });

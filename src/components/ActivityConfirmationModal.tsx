@@ -8,7 +8,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { ACTIVITY_DURATIONS, ActivityDuration, getSportMetadata, resolvePreferredSportForLaunch } from '../constants/sports';
+import { ACTIVITY_DURATIONS, ActivityDuration, getSportMetadata, resolvePreferredSportForLaunch, SportType } from '../constants/sports';
 import { ActivityLocation } from '../types/location';
 import { createActivity } from '../services/activityService';
 import { saveActivityLocation } from '../services/locationService';
@@ -33,8 +33,8 @@ const ActivityConfirmationModal: React.FC<ActivityConfirmationModalProps> = ({
 }) => {
   const { user } = useAuth();
   const { sports } = useSportsCatalog();
-  const [sportType, setSportType] = useState<string>(() =>
-    resolvePreferredSportForLaunch(suggestedSport)
+  const [sportType, setSportType] = useState<SportType>(
+    () => resolvePreferredSportForLaunch(suggestedSport) as SportType
   );
   const [duration, setDuration] = useState<ActivityDuration>(60);
   const [visibility, setVisibility] = useState<'friends' | 'nearby'>('nearby');
@@ -42,7 +42,7 @@ const ActivityConfirmationModal: React.FC<ActivityConfirmationModalProps> = ({
 
   useEffect(() => {
     if (visible) {
-      setSportType(resolvePreferredSportForLaunch(suggestedSport));
+      setSportType(resolvePreferredSportForLaunch(suggestedSport) as SportType);
     }
   }, [visible, suggestedSport]);
 
@@ -118,7 +118,7 @@ const ActivityConfirmationModal: React.FC<ActivityConfirmationModalProps> = ({
                     styles.sportButton,
                     sportType === sport.name && styles.sportButtonSelected,
                   ]}
-                  onPress={() => setSportType(sport.name)}
+                  onPress={() => setSportType(sport.name as SportType)}
                 >
                   <Text
                     style={[
