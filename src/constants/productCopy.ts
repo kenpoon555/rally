@@ -73,7 +73,7 @@ export const PRODUCT_COPY = {
   nudgeRosterSent: 'Reminder sent',
   nudgeRosterHint: 'Host is locking roster — tap I\'m in.',
   needPlayers: 'Need players',
-  needPlayersHint: 'Hosts posting open spots in LA — request to join, then tap I\'m in.',
+  needPlayersHint: 'Hosts posting open spots — request to join, then tap I\'m in.',
   playGamesHint: 'Find games · fill open spots nearby',
   playOpenGamesSection: 'Open games near you',
   playLockedWelcomingSection: 'Locked · still welcoming',

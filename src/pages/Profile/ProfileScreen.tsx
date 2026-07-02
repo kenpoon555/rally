@@ -1052,7 +1052,7 @@ const ProfileScreen: React.FC = () => {
           <>
             <ProfileSettingsRow
               label={PRODUCT_COPY.postAvailability}
-              value={showFreeAgentForm ? 'Editing…' : 'Los Angeles'}
+              value={showFreeAgentForm ? 'Editing…' : 'Your area'}
               onPress={() => setShowFreeAgentForm((v) => !v)}
             />
             {showFreeAgentForm ? (

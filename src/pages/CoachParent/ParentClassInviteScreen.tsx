@@ -51,7 +51,7 @@ const ParentClassInviteScreen: React.FC<Props> = ({ navigation, route }) => {
   if (!PARENT_PILOT_ENROLLMENT) {
     return (
       <View style={styles.container}>
-        <Text style={styles.error}>Parent enrollment is not enabled in this build.</Text>
+        <Text style={styles.error}>This invitation link is no longer valid.</Text>
       </View>
     );
   }
