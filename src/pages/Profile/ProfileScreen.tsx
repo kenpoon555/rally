@@ -60,6 +60,7 @@ import { bumpPreferredSportsMru } from '../../utils/buildPlayStripSports';
 import { setProfilePayment, formatPaymentLabel } from '../../services/paymentService';
 import { PreferredPayment } from '../../types/user';
 import { getMyCaptainStatus, submitCaptainApplication } from '../../services/captainService';
+import { submitCaptainFeedback } from '../../services/captainFeedbackService';
 import { CaptainStatusPayload } from '../../types/captain';
 import { SportType } from '../../constants/sports';
 import {
