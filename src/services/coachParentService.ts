@@ -1,5 +1,4 @@
 import { Activity } from '../types/activity';
-import { SportType } from '../constants/sports';
 import {
   ClassAnnouncementInboxItem,
   ClassRosterStudent,
@@ -26,123 +25,6 @@ import {
   isAdultAgeCategory,
   isTeenAgeCategory,
 } from '../types/ageCategory';
-
-const MARCUS_ID = 'd1000001-0001-4001-8001-000000000001';
-const OTHER_COACH_ID = 'd1000002-0002-4002-8002-000000000002';
-
-const DEMO_STUDENTS: StudentProfile[] = [
-  {
-    id: 'sp-demo-alex',
-    parent_user_id: MARCUS_ID,
-    display_name: 'Alex',
-    active_class_summary: 'Beginner Badminton · Mon 7 PM',
-    status: 'active',
-  },
-  {
-    id: 'sp-demo-mia',
-    parent_user_id: MARCUS_ID,
-    display_name: 'Mia',
-    active_class_summary: 'No active class',
-    status: 'active',
-  },
-];
-
-function nextMondayAt(hour: number): string {
-  const d = new Date();
-  const day = d.getDay();
-  const daysUntilMonday = (8 - day) % 7 || 7;
-  d.setDate(d.getDate() + daysUntilMonday);
-  d.setHours(hour, 0, 0, 0);
-  return d.toISOString();
-}
-
-const DEMO_COACH_CLASSES: CoachClassListing[] = [
-  {
-    id: 'class-demo-badminton',
-    coach_user_id: MARCUS_ID,
-    title: 'Beginner Badminton',
-    sport_type: SportType.BADMINTON,
-    location_name: 'Monrovia Community Center',
-    start_time: nextMondayAt(19),
-    duration_minutes: 90,
-    enrolled_count: 8,
-    confirmed_count: 6,
-    fee_note: '$20 drop-in · Venmo @marcus',
-  },
-  {
-    id: 'class-demo-basketball',
-    coach_user_id: MARCUS_ID,
-    title: 'Youth Basketball Clinic',
-    sport_type: SportType.BASKETBALL,
-    location_name: 'Julian Fisher Park Basketball Courts',
-    start_time: nextMondayAt(10),
-    duration_minutes: 120,
-    enrolled_count: 10,
-    confirmed_count: 7,
-    fee_note: 'Bring water',
-  },
-  {
-    id: 'class-discover-badminton',
-    coach_user_id: OTHER_COACH_ID,
-    title: 'Intermediate Badminton',
-    sport_type: SportType.BADMINTON,
-    location_name: 'Arcadia Badminton Center',
-    start_time: nextMondayAt(18),
-    duration_minutes: 90,
-    enrolled_count: 6,
-    confirmed_count: 4,
-    fee_note: '$25/session',
-  },
-  {
-    id: 'class-discover-basketball',
-    coach_user_id: OTHER_COACH_ID,
-    title: 'Saturday Skills Camp',
-    sport_type: SportType.BASKETBALL,
-    location_name: 'Pasadena YMCA',
-    start_time: nextMondayAt(9),
-    duration_minutes: 120,
-    enrolled_count: 12,
-    confirmed_count: 9,
-    fee_note: 'Ages 10–14',
-  },
-];
-
-const DEMO_PARENT_ENROLLMENTS: ParentClassEnrollment[] = [
-  {
-    id: 'enroll-alex-badminton',
-    student_profile_id: 'sp-demo-alex',
-    student_name: 'Alex',
-    class_id: 'class-demo-badminton',
-    class_title: 'Beginner Badminton',
-    sport_type: SportType.BADMINTON,
-    start_time: nextMondayAt(19),
-    response_status: 'not_responded',
-  },
-];
-
-const DEMO_ROSTER: Record<string, ClassRosterStudent[]> = {
-  'class-demo-badminton': [
-    { id: 'r1', display_name: 'Alex', status: 'not_responded', guardian_name: 'Marcus' },
-    { id: 'r2', display_name: 'Jordan K.', status: 'confirmed', guardian_name: 'Parent' },
-    { id: 'r3', display_name: 'Sam T.', status: 'confirmed', guardian_name: 'Parent' },
-    { id: 'r4', display_name: 'Riley P.', status: 'cant_make_it', guardian_name: 'Parent' },
-  ],
-  'class-demo-basketball': [
-    { id: 'r5', display_name: 'Casey', status: 'confirmed', guardian_name: 'Parent' },
-    { id: 'r6', display_name: 'Devin', status: 'confirmed', guardian_name: 'Parent' },
-    { id: 'r7', display_name: 'Taylor', status: 'not_responded', guardian_name: 'Parent' },
-  ],
-};
-
-const DEMO_ANNOUNCEMENTS: ClassAnnouncementInboxItem[] = [
-  {
-    id: 'ann-demo-1',
-    class_title: 'Beginner Badminton',
-    preview: 'Reminder: bring indoor shoes. Court 2 this Monday.',
-    sent_at: new Date().toISOString(),
-    audience: 'parents',
-  },
-];
 
 export type CoachParentUser = {
   id?: string;
@@ -205,64 +87,43 @@ export async function listStudentProfiles(parentUserId: string): Promise<Student
   if (!PARENT_FAMILY_UI && !STUDENT_PROFILES) {
     return [];
   }
-  if (STUDENT_PROFILES) {
-    try {
-      const rows = await listStudentProfilesForParent(parentUserId);
-      if (rows.length > 0) {
-        return rows;
-      }
-    } catch {
-      // Fall through to demo rows for coach foundation when DB empty.
-    }
-  }
-  if (!PARENT_FAMILY_UI) {
+  if (!STUDENT_PROFILES) {
     return [];
   }
-  return DEMO_STUDENTS.filter((row) => row.parent_user_id === parentUserId);
+  try {
+    return await listStudentProfilesForParent(parentUserId);
+  } catch {
+    return [];
+  }
 }
 
 export async function listCoachClasses(coachUserId: string): Promise<CoachClassListing[]> {
-  if (COACH_DASHBOARD) {
-    try {
-      const rows = await listCoachClassListingsFromDb(coachUserId);
-      if (rows.length > 0) {
-        return rows;
-      }
-    } catch {
-      // Fall through to demo rows when DB empty or migration pending.
-    }
+  if (!COACH_DASHBOARD) {
+    return [];
   }
-  return DEMO_COACH_CLASSES.filter((row) => row.coach_user_id === coachUserId);
+  try {
+    return await listCoachClassListingsFromDb(coachUserId);
+  } catch {
+    return [];
+  }
 }
 
 export async function listParentEnrollments(parentUserId: string): Promise<ParentClassEnrollment[]> {
   if (!PARENT_FAMILY_UI && !PARENT_PILOT_ENROLLMENT) {
     return [];
   }
-  if (PARENT_PILOT_ENROLLMENT) {
-    try {
-      const rows = await listParentEnrollmentsFromDb(parentUserId);
-      if (rows.length > 0) {
-        return rows;
-      }
-    } catch {
-      // Fall through to demo rows.
-    }
-  }
-  if (!PARENT_FAMILY_UI) {
+  if (!PARENT_PILOT_ENROLLMENT) {
     return [];
   }
-  if (parentUserId !== MARCUS_ID) {
+  try {
+    return await listParentEnrollmentsFromDb(parentUserId);
+  } catch {
     return [];
   }
-  return DEMO_PARENT_ENROLLMENTS;
 }
 
-export async function listDiscoverClasses(sport: string, coachUserId?: string): Promise<CoachClassListing[]> {
-  const rows = coachUserId
-    ? DEMO_COACH_CLASSES.filter((c) => c.coach_user_id !== coachUserId)
-    : DEMO_COACH_CLASSES;
-  return rows.filter((row) => row.sport_type === sport);
+export async function listDiscoverClasses(_sport: string, _coachUserId?: string): Promise<CoachClassListing[]> {
+  return [];
 }
 
 export async function getCoachClass(classId: string): Promise<CoachClassListing | null> {
@@ -294,29 +155,24 @@ export async function getCoachClass(classId: string): Promise<CoachClassListing 
     }
   }
 
-  const listing = DEMO_COACH_CLASSES.find((row) => row.id === classId) ?? null;
-  if (!listing || !COACH_CLASS_OPERATIONS) {
-    return listing;
-  }
-  try {
-    const state = await getClassSessionState(listing.coach_user_id, classId);
-    if (!state) {
-      return listing;
-    }
-    return {
-      ...listing,
-      session_status: state.session_status,
-      effective_start_time: state.effective_start,
-      start_time:
-        state.session_status === 'deferred' ? state.effective_start : listing.start_time,
-    };
-  } catch {
-    return listing;
-  }
+  return null;
 }
 
 export async function getClassRoster(classId: string): Promise<ClassRosterStudent[]> {
-  return DEMO_ROSTER[classId] ?? [];
+  if (!COACH_CLASS_OPERATIONS) {
+    return [];
+  }
+  try {
+    const { data, error } = await (await import('./api/supabase')).supabase
+      .from('class_roster_students')
+      .select('id, display_name, status, guardian_name')
+      .eq('class_id', classId)
+      .order('display_name');
+    if (error) throw error;
+    return (data ?? []) as ClassRosterStudent[];
+  } catch {
+    return [];
+  }
 }
 
 export async function listClassAnnouncements(
@@ -329,17 +185,14 @@ export async function listClassAnnouncements(
   if (!options?.isCoach && !options?.hasClassContext) {
     return [];
   }
-  if (COACH_CLASS_OPERATIONS && parentUserId) {
-    try {
-      const rows = await listParentClassNotifications(parentUserId);
-      if (rows.length > 0) {
-        return rows;
-      }
-    } catch {
-      // Fall through to demo rows.
-    }
+  if (!COACH_CLASS_OPERATIONS) {
+    return [];
   }
-  return DEMO_ANNOUNCEMENTS;
+  try {
+    return await listParentClassNotifications(parentUserId);
+  } catch {
+    return [];
+  }
 }
 
 export function coachClassToActivity(listing: CoachClassListing, hostUsername = 'coach'): Activity {
