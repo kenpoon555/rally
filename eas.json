@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 13.0.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -22,7 +22,6 @@
       }
     },
     "production": {
-      "autoIncrement": true,
       "env": {
         "APP_ENV": "production",
         "EXPO_PUBLIC_ENABLE_COACH_FOUNDATION": "true",

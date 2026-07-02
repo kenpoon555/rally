@@ -18,7 +18,7 @@ describe('roster capacity helpers', () => {
   });
 
   it('treats zero missing as full', () => {
-    expect(activityHasOpenSpots({ player_count: 8, missing_players: 0 })).toBe(false);
+    expect(activityHasOpenSpots({ missing_players: 0 })).toBe(false);
     expect(getActivityTotalSpots({ player_count: 8, missing_players: 0 })).toBe(8);
   });
 });

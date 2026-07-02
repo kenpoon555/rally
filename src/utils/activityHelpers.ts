@@ -167,7 +167,7 @@ export const getMyJoinRequest = (
 };
 
 /** Open spots from host-declared capacity (missing_players). */
-export const activityHasOpenSpots = (activity: Activity): boolean => {
+export const activityHasOpenSpots = (activity: Pick<Activity, 'missing_players'>): boolean => {
   return (activity.missing_players ?? 0) > 0;
 };
 
